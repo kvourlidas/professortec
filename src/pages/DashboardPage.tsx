@@ -155,6 +155,8 @@ export default function DashboardPage() {
   const [eventForm, setEventForm] = useState<EventEditForm>(emptyEventForm);
   const [eventSaving, setEventSaving] = useState(false);
 
+
+  
   const weekdayFromDate = (d: Date): string => {
     const map: Record<number, string> = {
       0: 'sunday',
