@@ -43,57 +43,72 @@ export default function LoginPage() {
     }
   };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-100">
-      <div className="w-full max-w-md rounded-2xl bg-white shadow-xl px-8 py-10">
-        <h1 className="text-2xl font-semibold text-center text-slate-900">
-          Tutor Admin
-        </h1>
-        <p className="mt-2 mb-6 text-center text-sm text-slate-500">
-          Sign in with your school owner account
-        </p>
+     return (
+    <div
+      className="min-h-screen flex items-center justify-center px-4"
+      style={{
+        // diagonal gradient: light (top-left) → dark (bottom-right)
+        background:
+          'linear-gradient(135deg, #4b5c70 0%, #253649 45%, #020617 100%)',
+      }}
+    >
+      {/* outer gradient border */}
+      <div className="login-card w-full max-w-md">
+        {/* inner transparent card */}
+        <div className="login-card-inner">
+          <h1 className="text-xl font-semibold text-center text-slate-50">
+            Tutor Admin
+          </h1>
+          <p className="mt-2 mb-6 text-center text-xs text-slate-300">
+            Σύνδεση διαχειριστή φροντιστηρίου
+          </p>
 
-        {error && (
-          <div className="mb-4 rounded-lg bg-red-100 px-3 py-2 text-sm text-red-700">
-            {error}
-          </div>
-        )}
+          {error && (
+            <div className="mb-4 rounded-lg border border-red-500/60 bg-red-900/70 px-3 py-2 text-xs text-red-100">
+              {error}
+            </div>
+          )}
 
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
-              Email
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
+          <form onSubmit={onSubmit} className="space-y-4">
+            <div>
+              <label className="form-label text-slate-100">Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="form-input"
+                style={{
+                  background: 'var(--color-input-bg)',
+                  color: 'var(--color-text-main)',
+                }}
+              />
+            </div>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">
-              Password
-            </label>
-            <input
-              type="password"
-              value={pw}
-              onChange={(e) => setPw(e.target.value)}
-              required
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
+            <div>
+              <label className="form-label text-slate-100">Κωδικός</label>
+              <input
+                type="password"
+                value={pw}
+                onChange={(e) => setPw(e.target.value)}
+                required
+                className="form-input"
+                style={{
+                  background: 'var(--color-input-bg)',
+                  color: 'var(--color-text-main)',
+                }}
+              />
+            </div>
 
-          <button
-            type="submit"
-            disabled={pending}
-            className="mt-2 w-full rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-400"
-          >
-            {pending ? 'Signing in…' : 'Sign in'}
-          </button>
-        </form>
+            <button
+              type="submit"
+              disabled={pending}
+              className="btn-primary w-full mt-2"
+            >
+              {pending ? 'Σύνδεση…' : 'Σύνδεση'}
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );

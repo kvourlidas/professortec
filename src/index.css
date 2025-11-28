@@ -2,6 +2,302 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  @apply bg-gray-100 text-gray-900;
+@layer base {
+  :root {
+    --color-background: #253649; /* page background */
+    --color-surface: #ffffff;    /* cards / modals */
+    --color-primary: #2563eb;
+    --color-primary-soft: #dbeafe;
+    --color-accent: #ffc947;
+    --color-input-bg: #303f50;
+
+    --color-text-main: #ffffff;
+    --color-text-td: #ffffff;
+    --color-text-muted: #6b7280;
+
+    --color-sidebar: #1f2d3d;
+    --color-sidebar-muted: #1f2937;
+    --color-sidebar-border: #111827;
+
+    /* FullCalendar theme variables */
+    --fc-border-color: rgba(148, 163, 184, 0.7);
+    --fc-page-bg-color: var(--color-sidebar);
+    --fc-neutral-bg-color: var(--color-sidebar);
+    --fc-neutral-text-color: var(--color-text-main);
+  }
+
+  .date-input {
+    background-color: var(--color-input-bg);
+    color: var(--color-text-main);
+  }
+
+  .date-input::placeholder {
+    color: var(--color-text-muted);
+  }
+
+  body {
+    @apply text-sm;
+    background-color: var(--color-background);
+    color: var(--color-text-main);
+  }
+
+  /* >>> NEW STYLES FOR SELECTS <<< */
+  .select-accent {
+    background-color: var(--color-input-bg);
+    color: var(--color-text-main);
+  }
+
+  .select-accent option {
+    background-color: var(--color-input-bg);
+    color: var(--color-text-main);
+  }
+}
+
+/* react-datepicker theme */
+.react-datepicker {
+  background-color: var(--color-sidebar);
+  border: 1px solid var(--color-sidebar-border);
+  color: var(--color-text-main);
+  border-radius: 0.75rem;
+  font-size: 12px;
+}
+
+.react-datepicker__header {
+  background-color: var(--color-background);
+  border-bottom: 1px solid var(--color-sidebar-border);
+}
+
+.react-datepicker__current-month,
+.react-datepicker__day-name {
+  color: var(--color-text-main);
+}
+
+.react-datepicker__current-week {
+  border: 1px solid var(--color-sidebar-border);
+}
+
+.react-datepicker__day {
+  color: var(--color-text-main);
+}
+
+.react-datepicker__day--selected,
+.react-datepicker__day--keyboard-selected {
+  background-color: var(--color-accent);
+  color: #000;
+}
+
+.react-datepicker__day--today {
+  outline: 1px solid var(--color-accent);
+  border-radius: 9999px;
+}
+
+.react-datepicker__navigation-icon::before {
+  border-color: var(--color-text-main);
+}
+
+@layer components {
+  .page-shell {
+    @apply mx-auto w-full max-w-full space-y-4;
+  }
+
+  .card {
+    @apply rounded-2xl shadow-sm;
+    background-color: var(--color-surface);
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center rounded-lg px-3 py-2 text-xs font-medium transition;
+  }
+
+  .btn-primary {
+    @apply btn;
+    background-color: var(--color-primary);
+    color: #ffffff;
+  }
+
+  .btn-ghost {
+    @apply btn;
+    background-color: #e5e7eb;
+    color: var(--color-text-main);
+  }
+
+  .form-label {
+    @apply mb-1 block text-xs font-medium;
+    color: var(--color-text-main);
+  }
+
+  .form-input {
+    @apply w-full rounded-lg border px-3 py-2 text-sm outline-none;
+    border-color: #d1d5db;
+  }
+
+  .form-textarea {
+    @apply w-full rounded-lg border px-3 py-2 text-sm outline-none;
+    border-color: #d1d5db;
+  }
+
+  /* >>> TABLE FOR CLASSES PAGE <<< */
+  .classes-table th,
+  .classes-table td {
+    text-align: center;
+  }
+
+  .classes-table thead th {
+    font-family: "Poppins", system-ui, -apple-system, BlinkMacSystemFont,
+      "Segoe UI", sans-serif;
+  }
+
+  .classes-table th.th-right {
+    text-align: right;
+  }
+
+  .app-header {
+    @apply flex items-center justify-between px-6 py-3 text-xs;
+    background-color: var(--color-sidebar);
+    color: var(--color-text-main);
+  }
+
+  .app-header-title {
+    @apply text-sm;
+    font-weight: 600;
+  }
+
+  .app-header-subtitle {
+    @apply ml-2 text-xs;
+    opacity: 0.85;
+  }
+
+  .logout-btn {
+    @apply btn-primary;
+    background-color: #dc2626; /* red-600 */
+  }
+
+  .logout-btn:hover {
+    background-color: #b91c1c; /* red-700 */
+  }
+
+  /* DASHBOARD WIDGETS */
+  .dashboard-widget {
+    @apply rounded-xl px-3 py-2 border flex flex-col justify-between;
+    min-height: 72px; /* smaller widgets */
+    background-color: var(--color-sidebar);
+    border-color: var(--color-sidebar-border);
+  }
+
+  .dashboard-widget-title {
+    @apply text-[10px] font-semibold uppercase tracking-wide;
+    color: var(--color-text-muted);
+  }
+
+  .dashboard-widget-value {
+    @apply text-xl font-semibold;
+    color: var(--color-text-main);
+  }
+
+  .dashboard-widget-sub {
+    @apply mt-1 text-[10px];
+    color: var(--color-text-muted);
+  }
+
+  /* optional color variations for widgets */
+  .dashboard-widget--primary {
+    background:
+      radial-gradient(circle at top left, rgba(37, 99, 235, 0.22), transparent),
+      var(--color-sidebar);
+    border-color: rgba(37, 99, 235, 0.55);
+  }
+
+  .dashboard-widget--success {
+    background:
+      radial-gradient(circle at top left, rgba(16, 185, 129, 0.22), transparent),
+      var(--color-sidebar);
+    border-color: rgba(16, 185, 129, 0.55);
+  }
+
+  .dashboard-widget--warning {
+    background:
+      radial-gradient(circle at top left, rgba(234, 179, 8, 0.22), transparent),
+      var(--color-sidebar);
+    border-color: rgba(234, 179, 8, 0.55);
+  }
+}
+
+/* ==== FullCalendar theming ==== */
+
+.fc {
+  font-size: 11px;
+  color: var(--color-text-main);
+  background-color: transparent;
+}
+
+/* Outer frame + background of the whole grid (header + body) */
+.fc-theme-standard .fc-scrollgrid {
+  border: 1px solid var(--fc-border-color) !important;
+  background-color: var(--color-sidebar);
+}
+
+/* Header row background */
+.fc-theme-standard .fc-col-header-cell {
+  background-color: var(--color-sidebar);
+}
+
+/* EVERY cell in the grid (header + body) has a border */
+.fc-theme-standard .fc-scrollgrid td,
+.fc-theme-standard .fc-scrollgrid th {
+  border: 1px solid var(--fc-border-color) !important;
+}
+
+/* Vertical lines for each day column + time axis */
+.fc-theme-standard .fc-timegrid-col,
+.fc-theme-standard .fc-timegrid-axis,
+.fc-theme-standard .fc-daygrid-day {
+  border-left: 1px solid var(--fc-border-color) !important;
+  border-right: 1px solid var(--fc-border-color) !important;
+}
+
+/* Horizontal slot lines (rows – including your 15-minute slots) */
+.fc-theme-standard .fc-timegrid-slot {
+  border-top: 1px solid var(--fc-border-color) !important;
+}
+
+/* Toolbar */
+.fc .fc-toolbar-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.fc .fc-button {
+  background-color: var(--color-sidebar);
+  border-color: var(--color-sidebar-border);
+  color: var(--color-text-main);
+  padding: 0.25rem 0.55rem;
+  font-size: 0.7rem;
+}
+
+.fc .fc-button.fc-button-primary:not(:disabled).fc-button-active,
+.fc .fc-button.fc-button-primary:not(:disabled):active {
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #000;
+}
+
+/* ====== LOGIN PAGE GLASS CARD ====== */
+
+.login-card {
+  position: relative;
+  border-radius: 1rem;
+  padding: 1px; /* thickness of the gradient border */
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.7),
+    rgba(255, 255, 255, 0.15)
+  );
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65);
+}
+
+.login-card-inner {
+  border-radius: inherit;
+  padding: 2rem 2.25rem;
+  background: rgba(15, 23, 42, 0.88); /* dark navy, semi-transparent */
+  backdrop-filter: blur(18px);
 }

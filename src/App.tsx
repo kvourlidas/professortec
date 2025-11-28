@@ -1,8 +1,16 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import type { ReactElement } from 'react';
+
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
+import ClassesPage from './pages/ClassesPage';
+import LevelsPage from './pages/LevelsPage';
+import StudentsPage from './pages/StudentsPage';
+import SubjectsPage from './pages/SubjectsPage';
+import TutorsPage from './pages/TutorsPage'; // 👈 NEW
+
 import { useAuth } from './auth';
+import Layout from './components/Layout';
 
 function ProtectedRoute({ children }: { children: ReactElement }) {
   const { user, loading } = useAuth();
@@ -19,7 +27,8 @@ function ProtectedRoute({ children }: { children: ReactElement }) {
     return <Navigate to="/login" replace />;
   }
 
-  return children;
+  // 👇 All protected pages are rendered inside the global Layout
+  return <Layout>{children}</Layout>;
 }
 
 export default function App() {
@@ -32,6 +41,51 @@ export default function App() {
         element={
           <ProtectedRoute>
             <DashboardPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/classes"
+        element={
+          <ProtectedRoute>
+            <ClassesPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/levels"
+        element={
+          <ProtectedRoute>
+            <LevelsPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/students"
+        element={
+          <ProtectedRoute>
+            <StudentsPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/tutors" // 👈 NEW route
+        element={
+          <ProtectedRoute>
+            <TutorsPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/subjects"
+        element={
+          <ProtectedRoute>
+            <SubjectsPage />
           </ProtectedRoute>
         }
       />
