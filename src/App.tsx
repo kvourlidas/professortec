@@ -1,3 +1,4 @@
+// src/App.tsx
 import { Routes, Route, Navigate } from 'react-router-dom';
 import type { ReactElement } from 'react';
 
@@ -7,7 +8,8 @@ import ClassesPage from './pages/ClassesPage';
 import LevelsPage from './pages/LevelsPage';
 import StudentsPage from './pages/StudentsPage';
 import SubjectsPage from './pages/SubjectsPage';
-import TutorsPage from './pages/TutorsPage'; // 👈 NEW
+import TutorsPage from './pages/TutorsPage';
+import ProgramPage from './pages/ProgramPage'; // 👈 NEW
 
 import { useAuth } from './auth';
 import Layout from './components/Layout';
@@ -73,7 +75,7 @@ export default function App() {
       />
 
       <Route
-        path="/tutors" // 👈 NEW route
+        path="/tutors"
         element={
           <ProtectedRoute>
             <TutorsPage />
@@ -86,6 +88,16 @@ export default function App() {
         element={
           <ProtectedRoute>
             <SubjectsPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* 👇 NEW route for ProgramPage */}
+      <Route
+        path="/program"
+        element={
+          <ProtectedRoute>
+            <ProgramPage />
           </ProtectedRoute>
         }
       />

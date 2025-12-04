@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { ChangeEvent } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
 
@@ -10,8 +9,8 @@ import interactionPlugin from '@fullcalendar/interaction';
 import type {
   EventDropArg,
   EventContentArg,
-  EventClickArg,
   DatesSetArg,
+  EventClickArg,
 } from '@fullcalendar/core';
 import StatWidget from '../components/StatWidget';
 import elLocale from '@fullcalendar/core/locales/el';
@@ -21,17 +20,41 @@ type ClassRow = {
   school_id: string;
   title: string;
   subject: string | null;
-  level: string | null;
+  subject_id: string | null;
   tutor_id: string | null;
-  day_of_week: string | null;
-  time_window: string | null; // "HH:MM–HH:MM" (24h)
-  repeat_weeks: number | null;
-  start_date: string | null; // "YYYY-MM-DD"
 };
 
 type TutorRow = {
   id: string;
   full_name: string | null;
+};
+
+type ProgramRow = {
+  id: string;
+  school_id: string;
+  name: string;
+  description: string | null;
+};
+
+type ProgramItemRow = {
+  id: string;
+  program_id: string;
+  class_id: string;
+  day_of_week: string;
+  position: number | null;
+  start_time: string | null; // "HH:MM:SS"
+  end_time: string | null;
+  start_date: string | null; // "YYYY-MM-DD"
+  end_date: string | null;
+};
+
+type ProgramItemOverrideRow = {
+  id: string;
+  program_item_id: string;
+  override_date: string | null; // "YYYY-MM-DD"
+  start_time: string | null; // "HH:MM:SS"
+  end_time: string | null;
+  is_deleted: boolean | null;
 };
 
 type DashboardStats = {
@@ -49,16 +72,6 @@ type DashboardNote = {
   is_urgent: boolean;
 };
 
-type EventEditForm = {
-  title: string;
-  date: string; // YYYY-MM-DD
-  startTime: string; // 12h "HH:MM"
-  startPeriod: 'AM' | 'PM';
-  endTime: string; // 12h "HH:MM"
-  endPeriod: 'AM' | 'PM';
-  repeatWeeks: string;
-};
-
 const NOTE_COLORS = [
   { value: '#f97316', label: 'Πορτοκαλί' },
   { value: '#3b82f6', label: 'Μπλε' },
@@ -69,58 +82,40 @@ const NOTE_COLORS = [
 
 const NOTES_PER_PAGE = 5;
 
-const emptyEventForm: EventEditForm = {
-  title: '',
-  date: '',
-  startTime: '',
-  startPeriod: 'AM',
-  endTime: '',
-  endPeriod: 'PM',
-  repeatWeeks: '',
-};
-
 const pad2 = (n: number) => n.toString().padStart(2, '0');
 
-/** 24h "HH:MM" -> { time12, period } */
-function convert24To12(
-  time: string,
-): { time12: string; period: 'AM' | 'PM' } {
-  if (!time) return { time12: '', period: 'AM' };
-  const [hStr, mStr = '00'] = time.split(':');
-  let h = Number(hStr);
-  let m = Number(mStr);
-  if (Number.isNaN(h) || Number.isNaN(m)) return { time12: time, period: 'AM' };
+// 🔧 helper: local date → "YYYY-MM-DD" (no UTC shift)
+const formatLocalYMD = (d: Date): string => {
+  const year = d.getFullYear();
+  const month = pad2(d.getMonth() + 1);
+  const day = pad2(d.getDate());
+  return `${year}-${month}-${day}`;
+};
 
-  const isPM = h >= 12;
-  h = h % 12;
-  if (h === 0) h = 12;
+const WEEKDAY_TO_INDEX: Record<string, number> = {
+  sunday: 0,
+  monday: 1,
+  tuesday: 2,
+  wednesday: 3,
+  thursday: 4,
+  friday: 5,
+  saturday: 6,
+};
 
-  return {
-    time12: `${pad2(h)}:${pad2(m)}`,
-    period: isPM ? 'PM' : 'AM',
-  };
+function getNextDateForDow(from: Date, dow: number): Date {
+  const d = new Date(from);
+  const diff = (dow - d.getDay() + 7) % 7;
+  d.setDate(d.getDate() + diff);
+  return d;
 }
 
-/** 12h "HH:MM" + AM/PM -> 24h "HH:MM" */
-function convert12To24(time: string, period: string): string | null {
-  const t = time.trim();
-  if (!t) return null;
-
-  const [hStr, mStr = '00'] = t.split(':');
-  let h = Number(hStr);
-  let m = Number(mStr);
-  if (Number.isNaN(h) || Number.isNaN(m)) return null;
-
-  h = h % 12;
-  if (period === 'PM') {
-    h += 12;
-  } else if (period === 'AM' && h === 12) {
-    // 12:xx AM -> 00:xx
-    h = 0;
-  }
-
-  return `${pad2(h)}:${pad2(m)}`;
-}
+type CalendarEventModal = {
+  programItemId: string;
+  dateStr: string; // "YYYY-MM-DD"
+  startTime: string; // "HH:MM"
+  endTime: string; // "HH:MM"
+  overrideId?: string;
+};
 
 export default function DashboardPage() {
   const { profile } = useAuth();
@@ -128,6 +123,9 @@ export default function DashboardPage() {
 
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [tutors, setTutors] = useState<TutorRow[]>([]);
+  const [program, setProgram] = useState<ProgramRow | null>(null);
+  const [programItems, setProgramItems] = useState<ProgramItemRow[]>([]);
+  const [overrides, setOverrides] = useState<ProgramItemOverrideRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats>({
     studentsCount: 0,
@@ -137,6 +135,12 @@ export default function DashboardPage() {
 
   // --- calendar view state (for month/week handling) ---
   const [calendarView, setCalendarView] = useState<string>('timeGridWeek');
+  const [viewRange, setViewRange] = useState<{ start: Date; end: Date } | null>(
+    null,
+  );
+
+  // modal for editing / deleting specific occurrence
+  const [eventModal, setEventModal] = useState<CalendarEventModal | null>(null);
 
   // NOTES
   const [notes, setNotes] = useState<DashboardNote[]>([]);
@@ -147,16 +151,7 @@ export default function DashboardPage() {
   const [notesSaving, setNotesSaving] = useState(false);
   const [notesPage, setNotesPage] = useState(1);
 
-  // EVENT EDIT MODAL
-  const [eventModalOpen, setEventModalOpen] = useState(false);
-  const [eventModalClass, setEventModalClass] = useState<ClassRow | null>(
-    null,
-  );
-  const [eventForm, setEventForm] = useState<EventEditForm>(emptyEventForm);
-  const [eventSaving, setEventSaving] = useState(false);
-
-
-  
+  // Weekday from Date -> string
   const weekdayFromDate = (d: Date): string => {
     const map: Record<number, string> = {
       0: 'sunday',
@@ -170,7 +165,7 @@ export default function DashboardPage() {
     return map[d.getDay()];
   };
 
-  // Load classes
+  // Load classes (basic info only)
   useEffect(() => {
     if (!schoolId) {
       setLoading(false);
@@ -181,9 +176,9 @@ export default function DashboardPage() {
       setLoading(true);
       const { data, error } = await supabase
         .from('classes')
-        .select('*')
+        .select('id, school_id, title, subject, subject_id, tutor_id')
         .eq('school_id', schoolId)
-        .order('created_at', { ascending: false });
+        .order('title', { ascending: true });
 
       if (error) {
         console.error('Failed to load classes for dashboard', error);
@@ -220,6 +215,102 @@ export default function DashboardPage() {
     };
 
     loadTutors();
+  }, [schoolId]);
+
+  // Load program + program_items + overrides
+  useEffect(() => {
+    if (!schoolId) {
+      setProgram(null);
+      setProgramItems([]);
+      setOverrides([]);
+      return;
+    }
+
+    const loadProgram = async () => {
+      const { data: programRows, error: programErr } = await supabase
+        .from('programs')
+        .select('*')
+        .eq('school_id', schoolId)
+        .order('created_at', { ascending: true });
+
+      if (programErr) {
+        console.error('Failed to load programs for dashboard', programErr);
+        setProgram(null);
+        setProgramItems([]);
+        setOverrides([]);
+        return;
+      }
+
+      let activeProgram: ProgramRow | null =
+        (programRows?.[0] as ProgramRow) ?? null;
+
+      if (!activeProgram) {
+        const { data: created, error: createErr } = await supabase
+          .from('programs')
+          .insert({
+            school_id: schoolId,
+            name: 'Βασικό πρόγραμμα',
+            description: null,
+          })
+          .select('*')
+          .maybeSingle();
+
+        if (createErr || !created) {
+          console.error(
+            'Failed to create default program for dashboard',
+            createErr,
+          );
+          setProgram(null);
+          setProgramItems([]);
+          setOverrides([]);
+          return;
+        }
+
+        activeProgram = created as ProgramRow;
+      }
+
+      setProgram(activeProgram);
+
+      const { data: itemData, error: itemErr } = await supabase
+        .from('program_items')
+        .select('*')
+        .eq('program_id', activeProgram.id)
+        .order('day_of_week', { ascending: true })
+        .order('position', { ascending: true });
+
+      if (itemErr) {
+        console.error('Failed to load program_items for dashboard', itemErr);
+        setProgramItems([]);
+        setOverrides([]);
+      } else {
+        const rows = (itemData ?? []) as ProgramItemRow[];
+        setProgramItems(rows);
+
+        if (rows.length > 0) {
+          const ids = rows.map((r) => r.id);
+          const { data: overrideData, error: overrideErr } = await supabase
+            .from('program_item_overrides')
+            .select('*')
+            .in('program_item_id', ids);
+
+          if (overrideErr) {
+            console.error(
+              'Failed to load program_item_overrides for dashboard',
+              overrideErr,
+            );
+            setOverrides([]);
+          } else {
+            setOverrides(
+              (overrideData ?? []) as ProgramItemOverrideRow[],
+            );
+          }
+        } else {
+          setOverrides([]);
+        }
+      }
+    };
+
+    loadProgram();
   }, [schoolId]);
 
   // Placeholder stats
@@ -374,8 +465,11 @@ export default function DashboardPage() {
     }
   };
 
-  // ---- Calendar events (with month view "no duplicates") ----
+  // ---- Calendar events: from program_items + overrides ----
   const events = useMemo(() => {
+    if (!viewRange) return [];
+
+    const { start: viewStart, end: viewEnd } = viewRange;
     const out: any[] = [];
 
     const tutorMap: Record<string, string> = {};
@@ -385,102 +479,343 @@ export default function DashboardPage() {
       }
     });
 
-    classes.forEach((c) => {
-      if (!c.start_date || !c.time_window) return;
+    const classMap = new Map<string, ClassRow>();
+    classes.forEach((c) => classMap.set(c.id, c));
 
-      const [startStr, endStr] = c.time_window.split('–').map((s) => s.trim());
-      if (!startStr || !endStr) return;
+    const programItemMap = new Map<string, ProgramItemRow>();
+    programItems.forEach((pi) => programItemMap.set(pi.id, pi));
 
-      const [sH, sM] = startStr.split(':').map(Number);
-      const [eH, eM] = endStr.split(':').map(Number);
+    const overrideMap = new Map<string, ProgramItemOverrideRow>();
+    overrides.forEach((ov) => {
+      if (!ov.override_date) return;
+      const key = `${ov.program_item_id}-${ov.override_date}`;
+      overrideMap.set(key, ov);
+    });
 
-      // 👉 στο month view δείχνουμε μόνο την πρώτη εβδομάδα
-      const repeatCount =
-        calendarView === 'dayGridMonth'
-          ? 1
-          : c.repeat_weeks && c.repeat_weeks > 0
-          ? c.repeat_weeks
-          : 1;
+    const usedOverrideIds = new Set<string>();
 
-      const baseDate = new Date(c.start_date + 'T00:00:00');
+    // 1) Pattern-based events (weekly), modified by overrides on same day
+    programItems.forEach((item) => {
+      const cls = classMap.get(item.class_id);
+      if (!cls) return;
+      if (!item.day_of_week || !item.start_time || !item.end_time) return;
+
+      const dow = WEEKDAY_TO_INDEX[item.day_of_week];
+      if (dow === undefined) return;
+
+      const patternStartDate = item.start_date
+        ? new Date(item.start_date + 'T00:00:00')
+        : new Date('1970-01-01T00:00:00');
+      const patternEndDate = item.end_date
+        ? new Date(item.end_date + 'T23:59:59')
+        : new Date('2999-12-31T23:59:59');
+
+      const effectiveStart =
+        patternStartDate > viewStart ? patternStartDate : viewStart;
+      const effectiveEnd =
+        patternEndDate < viewEnd ? patternEndDate : viewEnd;
+
+      if (effectiveStart > effectiveEnd) return;
+
+      let currentDate = getNextDateForDow(effectiveStart, dow);
 
       const tutorName =
-        c.tutor_id && tutorMap[c.tutor_id] ? tutorMap[c.tutor_id] : null;
+        cls.tutor_id && tutorMap[cls.tutor_id]
+          ? tutorMap[cls.tutor_id]
+          : null;
 
-      for (let i = 0; i < repeatCount; i++) {
-        const start = new Date(baseDate);
-        start.setDate(start.getDate() + i * 7);
-        start.setHours(sH, sM, 0, 0);
+      while (currentDate <= effectiveEnd) {
+        const dateStr = formatLocalYMD(currentDate);
+        const key = `${item.id}-${dateStr}`;
+        const override = overrideMap.get(key);
 
-        const end = new Date(baseDate);
-        end.setDate(end.getDate() + i * 7);
-        end.setHours(eH, eM, 0, 0);
+        let isDeleted = false;
+        let startTimeStr = item.start_time!;
+        let endTimeStr = item.end_time!;
+        let overrideId: string | undefined;
 
-        out.push({
-          id: `${c.id}-${i}`,
-          title: c.title,
-          start,
-          end,
-          extendedProps: {
-            classId: c.id,
-            subject: c.subject,
-            level: c.level,
-            tutorName,
-          },
-        });
+        if (override) {
+          usedOverrideIds.add(override.id);
+          overrideId = override.id;
+          if (override.is_deleted) {
+            isDeleted = true;
+          }
+          if (override.start_time) startTimeStr = override.start_time;
+          if (override.end_time) endTimeStr = override.end_time;
+        }
+
+        if (!isDeleted) {
+          const [sH, sM] = startTimeStr.split(':').map(Number);
+          const [eH, eM] = endTimeStr.split(':').map(Number);
+
+          const start = new Date(currentDate);
+          start.setHours(sH, sM, 0, 0);
+
+          const end = new Date(currentDate);
+          end.setHours(eH, eM, 0, 0);
+
+          out.push({
+            id: `${item.id}-${dateStr}`,
+            title: cls.title,
+            start,
+            end,
+            extendedProps: {
+              programItemId: item.id,
+              classId: cls.id,
+              subject: cls.subject,
+              tutorName,
+              overrideDate: override ? dateStr : null,
+              overrideId: overrideId ?? null,
+            },
+          });
+        }
+
+        const next = new Date(currentDate);
+        next.setDate(next.getDate() + 7);
+        currentDate = next;
       }
     });
 
+    // 2) Overrides that create a one-off event on a different weekday
+    overrides.forEach((ov) => {
+      if (!ov.override_date) return;
+      if (ov.is_deleted) return;
+      if (usedOverrideIds.has(ov.id)) return; // already used above
+
+      const item = programItemMap.get(ov.program_item_id);
+      if (!item) return;
+
+      const cls = classMap.get(item.class_id);
+      if (!cls) return;
+
+      const overrideDateObj = new Date(ov.override_date + 'T00:00:00');
+      if (overrideDateObj < viewStart || overrideDateObj > viewEnd) return;
+
+      const baseStartTime = ov.start_time ?? item.start_time;
+      const baseEndTime = ov.end_time ?? item.end_time;
+      if (!baseStartTime || !baseEndTime) return;
+
+      const [sH, sM] = baseStartTime.split(':').map(Number);
+      const [eH, eM] = baseEndTime.split(':').map(Number);
+
+      const start = new Date(overrideDateObj);
+      start.setHours(sH, sM, 0, 0);
+      const end = new Date(overrideDateObj);
+      end.setHours(eH, eM, 0, 0);
+
+      const tutorName =
+        cls.tutor_id && tutorMap[cls.tutor_id]
+          ? tutorMap[cls.tutor_id]
+          : null;
+
+      const dateStr = ov.override_date;
+
+      out.push({
+        id: `${item.id}-${dateStr}-override`,
+        title: cls.title,
+        start,
+        end,
+        extendedProps: {
+          programItemId: item.id,
+          classId: cls.id,
+          subject: cls.subject,
+          tutorName,
+          overrideDate: dateStr,
+          overrideId: ov.id,
+        },
+      });
+    });
+
     return out;
-  }, [classes, tutors, calendarView]);
+  }, [viewRange, programItems, classes, tutors, overrides]);
 
+  // ✅ Drag & drop single occurrence, no duplicates
   const handleEventDrop = async (arg: EventDropArg) => {
-    const { event, revert } = arg;
-    const classId = event.extendedProps['classId'] as string | undefined;
+    const { event, oldEvent, revert } = arg;
 
-    if (!classId || !event.start || !event.end) {
+    const programItemId = event.extendedProps['programItemId'] as
+      | string
+      | undefined;
+
+    if (
+      !programItemId ||
+      !event.start ||
+      !event.end ||
+      !oldEvent ||
+      !oldEvent.start
+    ) {
       revert();
       return;
     }
 
-    const start = event.start;
-    const end = event.end;
+    const oldDateStr = formatLocalYMD(oldEvent.start);
+    const newDateStr = formatLocalYMD(event.start);
 
-    const newDayOfWeek = weekdayFromDate(start);
-    const newStartDate = `${start.getFullYear()}-${pad2(
-      start.getMonth() + 1,
-    )}-${pad2(start.getDate())}`;
+    const newStartTimeDb = `${pad2(event.start.getHours())}:${pad2(
+      event.start.getMinutes(),
+    )}:00`;
+    const newEndTimeDb = `${pad2(event.end.getHours())}:${pad2(
+      event.end.getMinutes(),
+    )}:00`;
 
-    const startTime = `${pad2(start.getHours())}:${pad2(start.getMinutes())}`;
-    const endTime = `${pad2(end.getHours())}:${pad2(end.getMinutes())}`;
-    const newTimeWindow = `${startTime}–${endTime}`;
+    try {
+      if (oldDateStr === newDateStr) {
+        // same day → only time changed
+        const existing = overrides.find(
+          (o) =>
+            o.program_item_id === programItemId &&
+            o.override_date === newDateStr,
+        );
 
-    const { error, data } = await supabase
-      .from('classes')
-      .update({
-        day_of_week: newDayOfWeek,
-        start_date: newStartDate,
-        time_window: newTimeWindow,
-      })
-      .eq('id', classId)
-      .select('*')
-      .maybeSingle();
+        if (existing) {
+          const { data, error } = await supabase
+            .from('program_item_overrides')
+            .update({
+              start_time: newStartTimeDb,
+              end_time: newEndTimeDb,
+              is_deleted: false,
+            })
+            .eq('id', existing.id)
+            .select()
+            .single();
 
-    if (error || !data) {
-      console.error('Failed to update class on eventDrop', error);
+          if (error || !data) throw error ?? new Error('No data');
+
+          setOverrides((prev) =>
+            prev.map((o) =>
+              o.id === existing.id ? (data as ProgramItemOverrideRow) : o,
+            ),
+          );
+        } else {
+          const { data, error } = await supabase
+            .from('program_item_overrides')
+            .insert({
+              program_item_id: programItemId,
+              override_date: newDateStr,
+              start_time: newStartTimeDb,
+              end_time: newEndTimeDb,
+              is_deleted: false,
+            })
+            .select()
+            .single();
+
+          if (error || !data) throw error ?? new Error('No data');
+
+          setOverrides((prev) => [
+            ...prev,
+            data as ProgramItemOverrideRow,
+          ]);
+        }
+      } else {
+        // different day → delete old occurrence, create/update new one
+
+        // 1) Mark old date as deleted (so pattern won't draw it)
+        const existingOld = overrides.find(
+          (o) =>
+            o.program_item_id === programItemId &&
+            o.override_date === oldDateStr,
+        );
+
+        if (existingOld) {
+          const { data, error } = await supabase
+            .from('program_item_overrides')
+            .update({
+              is_deleted: true,
+              start_time: null,
+              end_time: null,
+            })
+            .eq('id', existingOld.id)
+            .select()
+            .single();
+
+          if (error || !data) throw error ?? new Error('No data');
+
+          setOverrides((prev) =>
+            prev.map((o) =>
+              o.id === existingOld.id
+                ? (data as ProgramItemOverrideRow)
+                : o,
+            ),
+          );
+        } else {
+          const { data, error } = await supabase
+            .from('program_item_overrides')
+            .insert({
+              program_item_id: programItemId,
+              override_date: oldDateStr,
+              is_deleted: true,
+              start_time: null,
+              end_time: null,
+            })
+            .select()
+            .single();
+
+          if (error || !data) throw error ?? new Error('No data');
+
+          setOverrides((prev) => [
+            ...prev,
+            data as ProgramItemOverrideRow,
+          ]);
+        }
+
+        // 2) Create/update override for new date with new time
+        const existingNew = overrides.find(
+          (o) =>
+            o.program_item_id === programItemId &&
+            o.override_date === newDateStr,
+        );
+
+        if (existingNew) {
+          const { data, error } = await supabase
+            .from('program_item_overrides')
+            .update({
+              start_time: newStartTimeDb,
+              end_time: newEndTimeDb,
+              is_deleted: false,
+            })
+            .eq('id', existingNew.id)
+            .select()
+            .single();
+
+          if (error || !data) throw error ?? new Error('No data');
+
+          setOverrides((prev) =>
+            prev.map((o) =>
+              o.id === existingNew.id
+                ? (data as ProgramItemOverrideRow)
+                : o,
+            ),
+          );
+        } else {
+          const { data, error } = await supabase
+            .from('program_item_overrides')
+            .insert({
+              program_item_id: programItemId,
+              override_date: newDateStr,
+              start_time: newStartTimeDb,
+              end_time: newEndTimeDb,
+              is_deleted: false,
+            })
+            .select()
+            .single();
+
+          if (error || !data) throw error ?? new Error('No data');
+
+          setOverrides((prev) => [
+            ...prev,
+            data as ProgramItemOverrideRow,
+          ]);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to handle eventDrop override', err);
       revert();
-      return;
     }
-
-    setClasses((prev) =>
-      prev.map((c) => (c.id === classId ? (data as ClassRow) : c)),
-    );
   };
 
   const renderEventContent = (arg: EventContentArg) => {
     const { event, timeText } = arg;
     const subject = event.extendedProps['subject'] as string | null;
-    const level = event.extendedProps['level'] as string | null;
     const tutorName = event.extendedProps['tutorName'] as string | null;
 
     return (
@@ -490,115 +825,192 @@ export default function DashboardPage() {
 
         {subject && <div className="mt-0.5">{subject}</div>}
 
-        {(level || tutorName) && (
+        {tutorName && (
           <div className="mt-0.5 opacity-90">
-            {level && <span>{level}</span>}
-            {level && tutorName && <span> · </span>}
-            {tutorName && <span>{tutorName}</span>}
+            <span>{tutorName}</span>
           </div>
         )}
       </div>
     );
   };
 
-  // ---- calendar callbacks: view change & click ----
+  // click on event → open modal
+  const handleEventClick = (arg: EventClickArg) => {
+    const { event } = arg;
+    const programItemId = event.extendedProps['programItemId'] as
+      | string
+      | undefined;
+
+    if (!programItemId || !event.start || !event.end) return;
+
+    const dateStr = formatLocalYMD(event.start);
+    const overrideId = event.extendedProps['overrideId'] as
+      | string
+      | null;
+
+    const startTime = `${pad2(event.start.getHours())}:${pad2(
+      event.start.getMinutes(),
+    )}`;
+    const endTime = `${pad2(event.end.getHours())}:${pad2(
+      event.end.getMinutes(),
+    )}`;
+
+    setEventModal({
+      programItemId,
+      dateStr,
+      startTime,
+      endTime,
+      overrideId: overrideId ?? undefined,
+    });
+  };
+
+  const handleEventModalSave = async () => {
+    if (!eventModal) return;
+    const { programItemId, dateStr, startTime, endTime, overrideId } =
+      eventModal;
+
+    const startTimeDb = `${startTime}:00`;
+    const endTimeDb = `${endTime}:00`;
+
+    try {
+      if (overrideId) {
+        const { data, error } = await supabase
+          .from('program_item_overrides')
+          .update({
+            start_time: startTimeDb,
+            end_time: endTimeDb,
+            is_deleted: false,
+          })
+          .eq('id', overrideId)
+          .select()
+          .single();
+
+        if (error || !data) throw error ?? new Error('No data');
+
+        setOverrides((prev) =>
+          prev.map((o) =>
+            o.id === overrideId ? (data as ProgramItemOverrideRow) : o,
+          ),
+        );
+      } else {
+        const existing = overrides.find(
+          (o) =>
+            o.program_item_id === programItemId &&
+            o.override_date === dateStr,
+        );
+
+        if (existing) {
+          const { data, error } = await supabase
+            .from('program_item_overrides')
+            .update({
+              start_time: startTimeDb,
+              end_time: endTimeDb,
+              is_deleted: false,
+            })
+            .eq('id', existing.id)
+            .select()
+            .single();
+
+          if (error || !data) throw error ?? new Error('No data');
+
+          setOverrides((prev) =>
+            prev.map((o) =>
+              o.id === existing.id
+                ? (data as ProgramItemOverrideRow)
+                : o,
+            ),
+          );
+        } else {
+          const { data, error } = await supabase
+            .from('program_item_overrides')
+            .insert({
+              program_item_id: programItemId,
+              override_date: dateStr,
+              start_time: startTimeDb,
+              end_time: endTimeDb,
+              is_deleted: false,
+            })
+            .select()
+            .single();
+
+          if (error || !data) throw error ?? new Error('No data');
+
+          setOverrides((prev) => [
+            ...prev,
+            data as ProgramItemOverrideRow,
+          ]);
+        }
+      }
+
+      setEventModal(null);
+    } catch (err) {
+      console.error('Failed to save event override via modal', err);
+    }
+  };
+
+  const handleEventModalDeleteForDay = async () => {
+    if (!eventModal) return;
+    const { programItemId, dateStr } = eventModal;
+
+    try {
+      const existing = overrides.find(
+        (o) =>
+          o.program_item_id === programItemId &&
+          o.override_date === dateStr,
+      );
+
+      if (existing) {
+        const { data, error } = await supabase
+          .from('program_item_overrides')
+          .update({
+            is_deleted: true,
+            start_time: null,
+            end_time: null,
+          })
+          .eq('id', existing.id)
+          .select()
+          .single();
+
+        if (error || !data) throw error ?? new Error('No data');
+
+        setOverrides((prev) =>
+          prev.map((o) =>
+            o.id === existing.id
+              ? (data as ProgramItemOverrideRow)
+              : o,
+          ),
+        );
+      } else {
+        const { data, error } = await supabase
+          .from('program_item_overrides')
+          .insert({
+            program_item_id: programItemId,
+            override_date: dateStr,
+            is_deleted: true,
+            start_time: null,
+            end_time: null,
+          })
+          .select()
+          .single();
+
+        if (error || !data) throw error ?? new Error('No data');
+
+        setOverrides((prev) => [
+          ...prev,
+          data as ProgramItemOverrideRow,
+        ]);
+      }
+
+      setEventModal(null);
+    } catch (err) {
+      console.error('Failed to delete event occurrence via modal', err);
+    }
+  };
+
+  // ---- calendar callbacks: view change ----
   const handleDatesSet = (arg: DatesSetArg) => {
     setCalendarView(arg.view.type);
-  };
-
-  const handleEventClick = (arg: EventClickArg) => {
-    const classId = arg.event.extendedProps['classId'] as string | undefined;
-    if (!classId) return;
-
-    const cls = classes.find((c) => c.id === classId);
-    if (!cls) return;
-
-    const [startStr = '', endStr = ''] = (cls.time_window ?? '')
-      .split('–')
-      .map((s) => s.trim());
-
-    const { time12: start12, period: startPeriod } = convert24To12(startStr);
-    const { time12: end12, period: endPeriod } = convert24To12(endStr);
-
-    setEventModalClass(cls);
-    setEventForm({
-      title: cls.title ?? '',
-      date: cls.start_date ? cls.start_date.slice(0, 10) : '',
-      startTime: start12,
-      startPeriod,
-      endTime: end12,
-      endPeriod,
-      repeatWeeks:
-        cls.repeat_weeks != null ? String(cls.repeat_weeks) : '',
-    });
-    setEventModalOpen(true);
-  };
-
-  const handleEventFormChange =
-    (field: keyof EventEditForm) =>
-    (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-      const value = e.target.value;
-      setEventForm((prev) => ({ ...prev, [field]: value as any }));
-    };
-
-  const closeEventModal = () => {
-    setEventModalOpen(false);
-    setEventModalClass(null);
-    setEventForm(emptyEventForm);
-    setEventSaving(false);
-  };
-
-  const handleEventSave = async () => {
-    if (!eventModalClass) return;
-
-    const start24 = convert12To24(
-      eventForm.startTime,
-      eventForm.startPeriod || 'AM',
-    );
-    const end24 = convert12To24(
-      eventForm.endTime,
-      eventForm.endPeriod || 'PM',
-    );
-    const timeWindow =
-      start24 && end24 ? `${start24}–${end24}` : eventModalClass.time_window;
-
-    const weeksNum = eventForm.repeatWeeks.trim()
-      ? Number(eventForm.repeatWeeks)
-      : null;
-
-    const newStartDate = eventForm.date || eventModalClass.start_date || null;
-    let newDayOfWeek = eventModalClass.day_of_week;
-    if (newStartDate) {
-      const d = new Date(newStartDate + 'T00:00:00');
-      newDayOfWeek = weekdayFromDate(d);
-    }
-
-    setEventSaving(true);
-
-    const { data, error } = await supabase
-      .from('classes')
-      .update({
-        title: eventForm.title.trim() || eventModalClass.title,
-        start_date: newStartDate,
-        day_of_week: newDayOfWeek,
-        time_window: timeWindow,
-        repeat_weeks: Number.isNaN(weeksNum) ? null : weeksNum,
-      })
-      .eq('id', eventModalClass.id)
-      .select('*')
-      .maybeSingle();
-
-    setEventSaving(false);
-
-    if (error || !data) {
-      console.error('Failed to update class from calendar modal', error);
-      return;
-    }
-
-    setClasses((prev) =>
-      prev.map((c) => (c.id === eventModalClass.id ? (data as ClassRow) : c)),
-    );
-    closeEventModal();
+    setViewRange({ start: arg.start, end: arg.end });
   };
 
   return (
@@ -852,6 +1264,8 @@ export default function DashboardPage() {
             nowIndicator={true}
             events={events}
             editable={true}
+            eventStartEditable={true}
+            eventDurationEditable={true}
             eventDrop={handleEventDrop}
             droppable={false}
             eventContent={renderEventContent}
@@ -861,159 +1275,78 @@ export default function DashboardPage() {
         )}
       </section>
 
-      {/* Event edit modal */}
-      {eventModalOpen && eventModalClass && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
-          <div
-            className="w-full max-w-md rounded-xl border border-slate-700 p-4 shadow-xl"
-            style={{ background: 'var(--color-sidebar)' }}
-          >
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-slate-50">
-                Επεξεργασία μαθήματος
-              </h2>
-              <button
-                type="button"
-                onClick={closeEventModal}
-                className="text-xs text-slate-200 hover:text-white"
-              >
-                Κλείσιμο
-              </button>
+      {/* Modal for editing a single occurrence */}
+      {eventModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-sm rounded-md bg-slate-900 border border-slate-700 p-4 space-y-3">
+            <h3 className="text-sm font-semibold text-slate-50 mb-1">
+              Επεξεργασία μαθήματος
+            </h3>
+            <p className="text-[11px] text-slate-300">
+              Ημερομηνία: {eventModal.dateStr}
+            </p>
+
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1">
+                <label className="text-[11px] text-slate-200">
+                  Ώρα έναρξης
+                </label>
+                <input
+                  type="time"
+                  value={eventModal.startTime}
+                  onChange={(e) =>
+                    setEventModal((prev) =>
+                      prev
+                        ? { ...prev, startTime: e.target.value }
+                        : prev,
+                    )
+                  }
+                  className="rounded border border-slate-600 bg-[color:var(--color-input-bg)] px-2 py-1 text-xs text-white outline-none"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-[11px] text-slate-200">
+                  Ώρα λήξης
+                </label>
+                <input
+                  type="time"
+                  value={eventModal.endTime}
+                  onChange={(e) =>
+                    setEventModal((prev) =>
+                      prev
+                        ? { ...prev, endTime: e.target.value }
+                        : prev,
+                    )
+                  }
+                  className="rounded border border-slate-600 bg-[color:var(--color-input-bg)] px-2 py-1 text-xs text-white outline-none"
+                />
+              </div>
             </div>
 
-            <div className="space-y-3 text-xs">
-              <div>
-                <label className="form-label text-slate-100">
-                  Τίτλος τμήματος
-                </label>
-                <input
-                  value={eventForm.title}
-                  onChange={handleEventFormChange('title')}
-                  className="form-input"
-                  style={{
-                    background: 'var(--color-input-bg)',
-                    color: 'var(--color-text-main)',
-                  }}
-                />
-              </div>
+            <div className="pt-3 mt-2 flex justify-between items-center border-t border-slate-700">
+              <button
+                type="button"
+                onClick={handleEventModalDeleteForDay}
+                className="text-[11px] px-2 py-1 rounded border border-red-500 text-red-300 hover:bg-red-500/10"
+              >
+                Διαγραφή μόνο για αυτή την ημέρα
+              </button>
 
-              <div>
-                <label className="form-label text-slate-100">
-                  Ημερομηνία έναρξης
-                </label>
-                <input
-                  type="date"
-                  value={eventForm.date}
-                  onChange={handleEventFormChange('date')}
-                  className="form-input"
-                  style={{
-                    background: 'var(--color-input-bg)',
-                    color: 'var(--color-text-main)',
-                  }}
-                />
-              </div>
-
-              <div className="grid gap-3 md:grid-cols-2">
-                <div>
-                  <label className="form-label text-slate-100">
-                    Ώρα έναρξης
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={eventForm.startTime}
-                      onChange={handleEventFormChange('startTime')}
-                      className="form-input pr-12"
-                      style={{
-                        background: 'var(--color-input-bg)',
-                        color: 'var(--color-text-main)',
-                      }}
-                      placeholder="π.χ. 06:15"
-                    />
-                    <select
-                      value={eventForm.startPeriod}
-                      onChange={handleEventFormChange('startPeriod')}
-                      className="absolute inset-y-1 right-1 rounded-md border border-slate-500 px-2 text-[10px] leading-tight"
-                      style={{
-                        backgroundColor: 'var(--color-input-bg)',
-                        color: 'var(--color-text-main)',
-                      }}
-                    >
-                      <option value="AM">AM</option>
-                      <option value="PM">PM</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="form-label text-slate-100">
-                    Ώρα λήξης
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={eventForm.endTime}
-                      onChange={handleEventFormChange('endTime')}
-                      className="form-input pr-12"
-                      style={{
-                        background: 'var(--color-input-bg)',
-                        color: 'var(--color-text-main)',
-                      }}
-                      placeholder="π.χ. 07:15"
-                    />
-                    <select
-                      value={eventForm.endPeriod}
-                      onChange={handleEventFormChange('endPeriod')}
-                      className="absolute inset-y-1 right-1 rounded-md border border-slate-500 px-2 text-[10px] leading-tight"
-                      style={{
-                        backgroundColor: 'var(--color-input-bg)',
-                        color: 'var(--color-text-main)',
-                      }}
-                    >
-                      <option value="AM">AM</option>
-                      <option value="PM">PM</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className="form-label text-slate-100">
-                  Για πόσες εβδομάδες
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  value={eventForm.repeatWeeks}
-                  onChange={handleEventFormChange('repeatWeeks')}
-                  className="form-input"
-                  style={{
-                    background: 'var(--color-input-bg)',
-                    color: 'var(--color-text-main)',
-                  }}
-                  placeholder="π.χ. 8"
-                />
-              </div>
-
-              <div className="mt-3 flex justify-end gap-2">
+              <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={closeEventModal}
-                  className="btn-ghost"
-                  style={{
-                    background: 'var(--color-input-bg)',
-                    color: 'var(--color-text-main)',
-                  }}
+                  onClick={() => setEventModal(null)}
+                  className="text-[11px] px-3 py-1 rounded border border-slate-600 text-slate-200 hover:bg-slate-700/60"
                 >
-                  Ακύρωση
+                  Άκυρο
                 </button>
                 <button
                   type="button"
-                  onClick={handleEventSave}
-                  disabled={eventSaving}
-                  className="btn-primary"
+                  onClick={handleEventModalSave}
+                  className="text-[11px] px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white"
                 >
-                  {eventSaving ? 'Αποθήκευση...' : 'Αποθήκευση αλλαγών'}
+                  Αποθήκευση
                 </button>
               </div>
             </div>

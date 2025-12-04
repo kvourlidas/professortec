@@ -3,29 +3,13 @@ import type { FormEvent, ChangeEvent } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
 
-// react-datepicker imports
-import DatePicker from 'react-datepicker';
-import 'react-datepicker/dist/react-datepicker.css';
-import { el } from 'date-fns/locale';
-import { getMonth, getYear } from 'date-fns';
-
 type ClassRow = {
   id: string;
   school_id: string;
   title: string;
-  description: string | null;
   subject: string | null;
-
   subject_id: string | null;
   tutor_id: string | null;
-
-  day_of_week: string | null;
-  time_window: string | null;
-  repeat_weeks: number | null;
-  start_date: string | null;
-
-  level: string | null;
-  default_capacity: number | null;
 };
 
 type SubjectRow = {
@@ -54,15 +38,6 @@ type ClassFormState = {
   subject: string;
   levelId: string;
   tutorId: string;
-
-  day: string;
-  startTime: string;    // 12h HH:MM
-  startPeriod: string;  // AM/PM
-  endTime: string;      // 12h HH:MM
-  endPeriod: string;    // AM/PM
-  capacity: string;
-  startDate: string;    // YYYY-MM-DD
-  repeatWeeks: string;
 };
 
 const emptyForm: ClassFormState = {
@@ -70,84 +45,7 @@ const emptyForm: ClassFormState = {
   subject: '',
   levelId: '',
   tutorId: '',
-  day: '',
-  startTime: '',
-  startPeriod: 'AM',
-  endTime: '',
-  endPeriod: 'PM',
-  capacity: '',
-  startDate: '',
-  repeatWeeks: '',
 };
-
-const DAY_OPTIONS = [
-  { value: '', label: 'Επιλέξτε ημέρα' },
-  { value: 'monday', label: 'Δευτέρα' },
-  { value: 'tuesday', label: 'Τρίτη' },
-  { value: 'wednesday', label: 'Τετάρτη' },
-  { value: 'thursday', label: 'Πέμπτη' },
-  { value: 'friday', label: 'Παρασκευή' },
-  { value: 'saturday', label: 'Σάββατο' },
-  { value: 'sunday', label: 'Κυριακή' },
-];
-
-const MONTHS_GR = [
-  'Ιανουάριος',
-  'Φεβρουάριος',
-  'Μάρτιος',
-  'Απρίλιος',
-  'Μάιος',
-  'Ιούνιος',
-  'Ιούλιος',
-  'Αύγουστος',
-  'Σεπτέμβριος',
-  'Οκτώβριος',
-  'Νοέμβριος',
-  'Δεκέμβριος',
-];
-
-const YEARS = Array.from({ length: 30 }, (_, i) => 2024 + i);
-
-const pad2 = (n: number) => n.toString().padStart(2, '0');
-
-// 24h "HH:MM" -> { time12, period }
-function convert24To12(time: string): { time12: string; period: 'AM' | 'PM' } {
-  if (!time) return { time12: '', period: 'AM' };
-  const [hStr, mStr = '00'] = time.split(':');
-  let h = Number(hStr);
-  let m = Number(mStr);
-  if (Number.isNaN(h) || Number.isNaN(m)) return { time12: time, period: 'AM' };
-
-  const isPM = h >= 12;
-  h = h % 12;
-  if (h === 0) h = 12;
-
-  return {
-    time12: `${pad2(h)}:${pad2(m)}`,
-    period: isPM ? 'PM' : 'AM',
-  };
-}
-
-// 12h input + AM/PM -> 24h "HH:MM"
-function convert12To24(time: string, period: string): string | null {
-  const t = time.trim();
-  if (!t) return null;
-
-  const [hStr, mStr = '00'] = t.split(':');
-  let h = Number(hStr);
-  let m = Number(mStr);
-  if (Number.isNaN(h) || Number.isNaN(m)) return null;
-
-  h = h % 12;
-  if (period === 'PM') {
-    h += 12;
-  } else if (period === 'AM' && h === 12) {
-    // 12:xx AM -> 00:xx
-    h = 0;
-  }
-
-  return `${pad2(h)}:${pad2(m)}`;
-}
 
 // normalize greek/latin text (remove accents, toLowerCase)
 function normalizeText(value: string | number | null | undefined): string {
@@ -185,6 +83,12 @@ export default function ClassesPage() {
     return m;
   }, [levels]);
 
+  const tutorNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    tutors.forEach((t) => m.set(t.id, t.full_name));
+    return m;
+  }, [tutors]);
+
   useEffect(() => {
     if (!schoolId) {
       setLoading(false);
@@ -197,13 +101,13 @@ export default function ClassesPage() {
 
       const { data, error } = await supabase
         .from('classes')
-        .select('*')
+        .select('id, school_id, title, subject, subject_id, tutor_id')
         .eq('school_id', schoolId)
         .order('created_at', { ascending: false });
 
       if (error) {
         console.error(error);
-        setError('Αποτυχία φόρτωσης τάξεων.');
+        setError('Αποτυχία φόρτωσης τμημάτων.');
       } else {
         setClasses((data ?? []) as ClassRow[]);
       }
@@ -264,32 +168,15 @@ export default function ClassesPage() {
     setModalMode('edit');
     setEditingClass(row);
 
-    const [start = '', end = ''] = (row.time_window ?? '')
-      .split('–')
-      .map((s) => s.trim());
-
     const subjRow = row.subject_id
       ? subjects.find((s) => s.id === row.subject_id)
       : undefined;
-
-    const { time12: start12, period: startPeriod } = convert24To12(start);
-    const { time12: end12, period: endPeriod } = convert24To12(end);
 
     setForm({
       title: row.title ?? '',
       subject: subjRow?.name ?? row.subject ?? '',
       levelId: subjRow?.level_id ?? '',
       tutorId: row.tutor_id ?? '',
-      day: row.day_of_week ?? '',
-      startTime: start12,
-      startPeriod,
-      endTime: end12,
-      endPeriod,
-      capacity:
-        row.default_capacity != null ? String(row.default_capacity) : '',
-      startDate: row.start_date ? row.start_date.slice(0, 10) : '',
-      repeatWeeks:
-        row.repeat_weeks != null ? String(row.repeat_weeks) : '',
     });
     setModalOpen(true);
   };
@@ -307,6 +194,7 @@ export default function ClassesPage() {
       const value = e.target.value;
       setForm((prev) => {
         if (field === 'subject') {
+          // reset level when subject changes
           return { ...prev, subject: value, levelId: '' };
         }
         return { ...prev, [field]: value };
@@ -323,7 +211,7 @@ export default function ClassesPage() {
     }
 
     if (!form.title.trim()) {
-      setError('Το όνομα της τάξης είναι υποχρεωτικό.');
+      setError('Το όνομα του τμήματος είναι υποχρεωτικό.');
       return;
     }
 
@@ -345,30 +233,12 @@ export default function ClassesPage() {
 
     const tutorId = form.tutorId || null;
 
-    const cap = form.capacity.trim() ? Number(form.capacity) : null;
-    const weeks = form.repeatWeeks.trim()
-      ? Number(form.repeatWeeks)
-      : null;
-
-    const start24 = convert12To24(form.startTime, form.startPeriod || 'AM');
-    const end24 = convert12To24(form.endTime, form.endPeriod || 'PM');
-
-    const timeWindow =
-      start24 && end24 ? `${start24}–${end24}` : null;
-
     const payload = {
       school_id: schoolId,
       title: form.title.trim(),
       subject: form.subject.trim() || null,
       subject_id: subjectId,
       tutor_id: tutorId,
-      day_of_week: form.day || null,
-      time_window: timeWindow,
-      repeat_weeks: Number.isNaN(weeks) ? null : weeks,
-      start_date: form.startDate || null,
-      description: null,
-      level: null,
-      default_capacity: Number.isNaN(cap) ? null : cap,
     };
 
     setSaving(true);
@@ -384,7 +254,7 @@ export default function ClassesPage() {
 
       if (error || !data) {
         console.error(error);
-        setError('Αποτυχία δημιουργίας τάξης.');
+        setError('Αποτυχία δημιουργίας τμήματος.');
         return;
       }
 
@@ -403,13 +273,6 @@ export default function ClassesPage() {
           subject: payload.subject,
           subject_id: payload.subject_id,
           tutor_id: payload.tutor_id,
-          day_of_week: payload.day_of_week,
-          time_window: payload.time_window,
-          repeat_weeks: payload.repeat_weeks,
-          start_date: payload.start_date,
-          description: payload.description,
-          level: payload.level,
-          default_capacity: payload.default_capacity,
         })
         .eq('id', editingClass.id)
         .select('*')
@@ -419,7 +282,7 @@ export default function ClassesPage() {
 
       if (error || !data) {
         console.error(error);
-        setError('Αποτυχία ενημέρωσης τάξης.');
+        setError('Αποτυχία ενημέρωσης τμήματος.');
         return;
       }
 
@@ -435,7 +298,7 @@ export default function ClassesPage() {
   const deleteClass = async (id: string) => {
     setError(null);
     const confirmed = window.confirm(
-      'Σίγουρα θέλετε να διαγράψετε αυτή την τάξη;',
+      'Σίγουρα θέλετε να διαγράψετε αυτό το τμήμα;',
     );
     if (!confirmed) return;
 
@@ -443,46 +306,12 @@ export default function ClassesPage() {
 
     if (error) {
       console.error(error);
-      setError('Αποτυχία διαγραφής τάξης.');
+      setError('Αποτυχία διαγραφής τμήματος.');
       return;
     }
 
     setClasses((prev) => prev.filter((c) => c.id !== id));
   };
-
-  const filteredClasses = useMemo(() => {
-    const q = normalizeText(search.trim());
-    if (!q) return classes;
-
-    return classes.filter((c) => {
-      const dayLabel =
-        DAY_OPTIONS.find((d) => d.value === c.day_of_week)?.label ??
-        '';
-
-      let levelName = '';
-      if (c.subject_id) {
-        const subjRow = subjects.find((s) => s.id === c.subject_id);
-        if (subjRow?.level_id) {
-          levelName = levelNameById.get(subjRow.level_id) ?? '';
-        }
-      }
-
-      const composite = [
-        c.title,
-        c.subject,
-        levelName,
-        dayLabel,
-        c.time_window,
-        c.start_date ? c.start_date.slice(0, 10) : '',
-        c.repeat_weeks != null ? String(c.repeat_weeks) : '',
-        c.default_capacity != null ? String(c.default_capacity) : '',
-      ]
-        .filter(Boolean)
-        .join(' ');
-
-      return normalizeText(composite).includes(q);
-    });
-  }, [classes, search, subjects, levelNameById]);
 
   const subjectNameOptions = useMemo(() => {
     const seen = new Set<string>();
@@ -506,6 +335,36 @@ export default function ClassesPage() {
     return levels.filter((lvl) => levelIds.has(lvl.id));
   }, [form.subject, subjects, levels]);
 
+  const filteredClasses = useMemo(() => {
+    const q = normalizeText(search.trim());
+    if (!q) return classes;
+
+    return classes.filter((c) => {
+      let levelName = '';
+      if (c.subject_id) {
+        const subjRow = subjects.find((s) => s.id === c.subject_id);
+        if (subjRow?.level_id) {
+          levelName = levelNameById.get(subjRow.level_id) ?? '';
+        }
+      }
+
+      const tutorName = c.tutor_id
+        ? tutorNameById.get(c.tutor_id) ?? ''
+        : '';
+
+      const composite = [
+        c.title,
+        c.subject,
+        levelName,
+        tutorName,
+      ]
+        .filter(Boolean)
+        .join(' ');
+
+      return normalizeText(composite).includes(q);
+    });
+  }, [classes, search, subjects, levelNameById, tutorNameById]);
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -513,10 +372,10 @@ export default function ClassesPage() {
         <div>
           <h1 className="text-base font-semibold text-slate-50">ΤΜΗΜΑΤΑ</h1>
           <p className="text-xs text-slate-300">
-            Διαχείριση τάξεων, ημερών, ωραρίων και επανάληψης.
+            Διαχείριση τμημάτων με μάθημα, επίπεδο και καθηγητή.
           </p>
           <p className="mt-1 text-[11px] text-slate-400">
-            Σύνολο τάξεων:{' '}
+            Σύνολο τμημάτων:{' '}
             <span className="font-medium text-slate-100">
               {classes.length}
             </span>
@@ -571,11 +430,11 @@ export default function ClassesPage() {
       {/* TABLE */}
       <div className="overflow-x-auto">
         {loading ? (
-          <div className="py-6 text-sm text-slate-200">Φόρτωση τάξεων…</div>
+          <div className="py-6 text-sm text-slate-200">Φόρτωση τμημάτων…</div>
         ) : classes.length === 0 ? (
           <div className="py-6 text-sm text-slate-200">
-            Δεν υπάρχουν ακόμη τάξεις. Πατήστε «Προσθήκη τάξης» για να
-            δημιουργήσετε την πρώτη.
+            Δεν υπάρχουν ακόμη τμήματα. Πατήστε «Προσθήκη τμήματος» για να
+            δημιουργήσετε το πρώτο.
           </div>
         ) : filteredClasses.length === 0 ? (
           <div className="py-6 text-sm text-slate-200">
@@ -593,7 +452,7 @@ export default function ClassesPage() {
                 }}
               >
                 <th className="border-b border-slate-600 px-4 py-2">
-                  ΟΝΟΜΑ ΤΜΉΜΑΤΟΣ
+                  ΟΝΟΜΑ ΤΜΗΜΑΤΟΣ
                 </th>
                 <th className="border-b border-slate-600 px-4 py-2">
                   ΜΑΘΗΜΑ
@@ -602,19 +461,7 @@ export default function ClassesPage() {
                   ΕΠΙΠΕΔΟ
                 </th>
                 <th className="border-b border-slate-600 px-4 py-2">
-                  ΗΜΕΡΑ
-                </th>
-                <th className="border-b border-slate-600 px-4 py-2">
-                  ΩΡΑΡΙΟ
-                </th>
-                <th className="border-b border-slate-600 px-4 py-2">
-                  ΕΝΑΡΞΗ
-                </th>
-                <th className="border-b border-slate-600 px-4 py-2 text-right">
-                  ΕΒΔΟΜΑΔΕΣ
-                </th>
-                <th className="border-b border-slate-600 px-4 py-2 text-right">
-                  ΧΩΡΗΤΙΚΟΤΗΤΑ
+                  ΚΑΘΗΓΗΤΗΣ
                 </th>
                 <th className="border-b border-slate-600 px-4 py-2 th-right">
                   ΕΝΕΡΓΕΙΕΣ
@@ -631,6 +478,10 @@ export default function ClassesPage() {
                       levelNameById.get(subjRow.level_id) ?? '—';
                   }
                 }
+
+                const tutorName = c.tutor_id
+                  ? tutorNameById.get(c.tutor_id) ?? '—'
+                  : '—';
 
                 return (
                   <tr key={c.id} className="hover:bg-slate-800/40">
@@ -663,47 +514,10 @@ export default function ClassesPage() {
 
                     <td className="border-b border-slate-700 px-4 py-2 align-top">
                       <span
-                        className="text-xs text-slate-300"
-                        style={{ color: 'var(--color-text-td)' }}
-                      >
-                        {DAY_OPTIONS.find((d) => d.value === c.day_of_week)
-                          ?.label || '—'}
-                      </span>
-                    </td>
-
-                    <td className="border-b border-slate-700 px-4 py-2 align-top">
-                      <span
-                        className="text-xs text-slate-300"
-                        style={{ color: 'var(--color-text-td)' }}
-                      >
-                        {c.time_window || '—'}
-                      </span>
-                    </td>
-
-                    <td className="border-b border-slate-700 px-4 py-2 align-top">
-                      <span
-                        className="text-xs text-slate-300"
-                        style={{ color: 'var(--color-text-td)' }}
-                      >
-                        {c.start_date ? c.start_date.slice(0, 10) : '—'}
-                      </span>
-                    </td>
-
-                    <td className="border-b border-slate-700 px-4 py-2 text-right align-top">
-                      <span
                         className="text-xs text-slate-100"
                         style={{ color: 'var(--color-text-td)' }}
                       >
-                        {c.repeat_weeks ?? '—'}
-                      </span>
-                    </td>
-
-                    <td className="border-b border-slate-700 px-4 py-2 text-right align-top">
-                      <span
-                        className="text-xs text-slate-100"
-                        style={{ color: 'var(--color-text-td)' }}
-                      >
-                        {c.default_capacity ?? '—'}
+                        {tutorName}
                       </span>
                     </td>
 
@@ -743,7 +557,7 @@ export default function ClassesPage() {
           >
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-slate-50">
-                {modalMode === 'create' ? 'Νέα τάξη' : 'Επεξεργασία τάξης'}
+                {modalMode === 'create' ? 'Νέο τμήμα' : 'Επεξεργασία τμήματος'}
               </h2>
               <button
                 type="button"
@@ -763,7 +577,7 @@ export default function ClassesPage() {
             <form onSubmit={handleSubmit} className="space-y-3">
               <div>
                 <label className="form-label text-slate-100">
-                  Όνομα τάξης *
+                  Όνομα τμήματος *
                 </label>
                 <input
                   value={form.title}
@@ -841,224 +655,6 @@ export default function ClassesPage() {
                 </select>
               </div>
 
-              <div className="grid gap-3 md:grid-cols-1">
-                <div>
-                  <label className="form-label text-slate-100">Ημέρα</label>
-                  <select
-                    value={form.day}
-                    onChange={handleFormChange('day')}
-                    className="form-input select-accent"
-                  >
-                    {DAY_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="grid gap-3 md:grid-cols-2">
-                  {/* Ώρα έναρξης */}
-                  <div>
-                    <label className="form-label text-slate-100">
-                      Ώρα έναρξης
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={form.startTime}
-                        onChange={handleFormChange('startTime')}
-                        className="form-input pr-12"
-                        style={{
-                          background: 'var(--color-input-bg)',
-                          color: 'var(--color-text-main)',
-                        }}
-                        placeholder="π.χ. 08:00"
-                      />
-                      <select
-                        value={form.startPeriod}
-                        onChange={handleFormChange('startPeriod')}
-                        className="absolute inset-y-1 right-1 rounded-md border border-slate-500 px-2 text-[10px] leading-tight"
-                        style={{
-                          backgroundColor: 'var(--color-input-bg)',
-                          color: 'var(--color-text-main)',
-                        }}
-                      >
-                        <option value="AM">AM</option>
-                        <option value="PM">PM</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Ώρα λήξης */}
-                  <div>
-                    <label className="form-label text-slate-100">
-                      Ώρα λήξης
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={form.endTime}
-                        onChange={handleFormChange('endTime')}
-                        className="form-input pr-12"
-                        style={{
-                          background: 'var(--color-input-bg)',
-                          color: 'var(--color-text-main)',
-                        }}
-                        placeholder="π.χ. 09:30"
-                      />
-                      <select
-                        value={form.endPeriod}
-                        onChange={handleFormChange('endPeriod')}
-                        className="absolute inset-y-1 right-1 rounded-md border border-slate-500 px-2 text-[10px] leading-tight"
-                        style={{
-                          backgroundColor: 'var(--color-input-bg)',
-                          color: 'var(--color-text-main)',
-                        }}
-                      >
-                        <option value="AM">AM</option>
-                        <option value="PM">PM</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid gap-3 md:grid-cols-2">
-                <div>
-                  <label className="form-label text-slate-100">
-                    Ημερομηνία έναρξης
-                  </label>
-
-                  <DatePicker
-                    selected={
-                      form.startDate
-                        ? new Date(form.startDate + 'T00:00:00')
-                        : null
-                    }
-                    onChange={(date: Date | null) => {
-                      setForm((prev) => ({
-                        ...prev,
-                        startDate: date
-                          ? `${date.getFullYear()}-${pad2(
-                              date.getMonth() + 1,
-                            )}-${pad2(date.getDate())}`
-                          : '',
-                      }));
-                    }}
-                    dateFormat="dd/MM/yyyy"
-                    locale={el}
-                    placeholderText="π.χ. 20/11/2025"
-                    className="form-input date-input"
-                    calendarClassName="datepicker-panel"
-                    popperClassName="datepicker-popper"
-                    wrapperClassName="w-full"
-                    renderCustomHeader={({
-                      date,
-                      changeYear,
-                      changeMonth,
-                      decreaseMonth,
-                      increaseMonth,
-                      prevMonthButtonDisabled,
-                      nextMonthButtonDisabled,
-                    }) => (
-                      <div className="flex items-center justify-between px-2 py-2">
-                        <button
-                          type="button"
-                          onClick={decreaseMonth}
-                          disabled={prevMonthButtonDisabled}
-                          className="px-2 text-xs font-semibold text-slate-50 disabled:opacity-40"
-                        >
-                          ‹
-                        </button>
-
-                        <div className="flex items-center gap-1 text-xs font-medium text-slate-50">
-                          <select
-                            value={getMonth(date)}
-                            onChange={(e) =>
-                              changeMonth(Number(e.target.value))
-                            }
-                            className="bg-transparent border-none focus:outline-none focus:ring-0 cursor-pointer"
-                          >
-                            {MONTHS_GR.map((m, idx) => (
-                              <option
-                                key={m}
-                                value={idx}
-                                className="bg-[var(--color-sidebar)] text-[var(--color-text-main)]"
-                              >
-                                {m}
-                              </option>
-                            ))}
-                          </select>
-
-                          <select
-                            value={getYear(date)}
-                            onChange={(e) =>
-                              changeYear(Number(e.target.value))
-                            }
-                            className="bg-transparent border-none focus:outline-none focus:ring-0 cursor-pointer"
-                          >
-                            {YEARS.map((y) => (
-                              <option
-                                key={y}
-                                value={y}
-                                className="bg-[var(--color-sidebar)] text-[var(--color-text-main)]"
-                              >
-                                {y}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={increaseMonth}
-                          disabled={nextMonthButtonDisabled}
-                          className="px-2 text-xs font-semibold text-slate-50 disabled:opacity-40"
-                        >
-                          ›
-                        </button>
-                      </div>
-                    )}
-                  />
-                </div>
-
-                <div>
-                  <label className="form-label text-slate-100">
-                    Για πόσες εβδομάδες
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={form.repeatWeeks}
-                    onChange={handleFormChange('repeatWeeks')}
-                    className="form-input"
-                    style={{
-                      background: 'var(--color-input-bg)',
-                      color: 'var(--color-text-main)',
-                    }}
-                    placeholder="π.χ. 8"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="form-label text-slate-100">
-                  Χωρητικότητα
-                </label>
-                <input
-                  type="number"
-                  value={form.capacity}
-                  onChange={handleFormChange('capacity')}
-                  className="form-input"
-                  style={{
-                    background: 'var(--color-input-bg)',
-                    color: 'var(--color-text-main)',
-                  }}
-                  placeholder="π.χ. 15"
-                />
-              </div>
-
               <div className="mt-4 flex justify-end gap-2">
                 <button
                   type="button"
@@ -1090,4 +686,3 @@ export default function ClassesPage() {
     </div>
   );
 }
-0
