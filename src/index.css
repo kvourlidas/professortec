@@ -266,6 +266,15 @@
   font-weight: 600;
 }
 
+.fc-event {
+      background:
+      radial-gradient(circle at top left, rgba(37, 99, 235, 0.22), transparent),
+      var(--color-sidebar);
+    border-color: rgba(37, 99, 235, 0.55);
+    margin-bottom: 1px;
+    border: none !important;
+}
+
 .fc .fc-button {
   background-color: var(--color-sidebar);
   border-color: var(--color-sidebar-border);
@@ -301,3 +310,10 @@
   background: rgba(15, 23, 42, 0.88); /* dark navy, semi-transparent */
   backdrop-filter: blur(18px);
 }
+
+.programs-card {
+    background:
+      radial-gradient(circle at top left, rgba(37, 99, 235, 0.22), transparent),
+      var(--color-sidebar);
+    border-color: rgba(37, 99, 235, 0.55);
+  }

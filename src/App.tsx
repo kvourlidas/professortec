@@ -9,7 +9,8 @@ import LevelsPage from './pages/LevelsPage';
 import StudentsPage from './pages/StudentsPage';
 import SubjectsPage from './pages/SubjectsPage';
 import TutorsPage from './pages/TutorsPage';
-import ProgramPage from './pages/ProgramPage'; // 👈 NEW
+import ProgramPage from './pages/ProgramPage';
+import HolidaysPage from './pages/HolidaysPage'; // 👈 NEW
 
 import { useAuth } from './auth';
 import Layout from './components/Layout';
@@ -92,12 +93,22 @@ export default function App() {
         }
       />
 
-      {/* 👇 NEW route for ProgramPage */}
+      {/* Program main page */}
       <Route
         path="/program"
         element={
           <ProtectedRoute>
             <ProgramPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* 👇 NEW Holidays page under Προγράμματα */}
+      <Route
+        path="/program/holidays"
+        element={
+          <ProtectedRoute>
+            <HolidaysPage />
           </ProtectedRoute>
         }
       />

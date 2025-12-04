@@ -72,6 +72,14 @@ type DashboardNote = {
   is_urgent: boolean;
 };
 
+/* ✅ NEW: holidays type */
+type HolidayRow = {
+  id: string;
+  school_id: string;
+  date: string; // "YYYY-MM-DD"
+  name: string | null;
+};
+
 const NOTE_COLORS = [
   { value: '#f97316', label: 'Πορτοκαλί' },
   { value: '#3b82f6', label: 'Μπλε' },
@@ -141,6 +149,10 @@ export default function DashboardPage() {
 
   // modal for editing / deleting specific occurrence
   const [eventModal, setEventModal] = useState<CalendarEventModal | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false); // ✅ NEW
+
+  /* ✅ NEW: holidays state */
+  const [holidays, setHolidays] = useState<HolidayRow[]>([]);
 
   // NOTES
   const [notes, setNotes] = useState<DashboardNote[]>([]);
@@ -313,6 +325,31 @@ export default function DashboardPage() {
     loadProgram();
   }, [schoolId]);
 
+  // ✅ NEW: Load holidays for this school
+  useEffect(() => {
+    if (!schoolId) {
+      setHolidays([]);
+      return;
+    }
+
+    const loadHolidays = async () => {
+      const { data, error } = await supabase
+        .from('school_holidays')
+        .select('*')
+        .eq('school_id', schoolId)
+        .order('date', { ascending: true });
+
+      if (error) {
+        console.error('Failed to load school holidays for dashboard', error);
+        setHolidays([]);
+      } else {
+        setHolidays((data ?? []) as HolidayRow[]);
+      }
+    };
+
+    loadHolidays();
+  }, [schoolId]);
+
   // Placeholder stats
   useEffect(() => {
     const loadStats = async () => {
@@ -472,6 +509,9 @@ export default function DashboardPage() {
     const { start: viewStart, end: viewEnd } = viewRange;
     const out: any[] = [];
 
+    /* ✅ NEW: set of holiday dates "YYYY-MM-DD" */
+    const holidaySet = new Set(holidays.map((h) => h.date));
+
     const tutorMap: Record<string, string> = {};
     tutors.forEach((t) => {
       if (t.id && t.full_name) {
@@ -526,6 +566,15 @@ export default function DashboardPage() {
 
       while (currentDate <= effectiveEnd) {
         const dateStr = formatLocalYMD(currentDate);
+
+        // ✅ Skip this date if it's a holiday
+        const next = new Date(currentDate);
+        next.setDate(next.getDate() + 7);
+        if (holidaySet.has(dateStr)) {
+          currentDate = next;
+          continue;
+        }
+
         const key = `${item.id}-${dateStr}`;
         const override = overrideMap.get(key);
 
@@ -570,8 +619,6 @@ export default function DashboardPage() {
           });
         }
 
-        const next = new Date(currentDate);
-        next.setDate(next.getDate() + 7);
         currentDate = next;
       }
     });
@@ -591,6 +638,11 @@ export default function DashboardPage() {
       const overrideDateObj = new Date(ov.override_date + 'T00:00:00');
       if (overrideDateObj < viewStart || overrideDateObj > viewEnd) return;
 
+      const dateStr = ov.override_date;
+
+      // ✅ Skip override event if it's on a holiday
+      if (holidaySet.has(dateStr)) return;
+
       const baseStartTime = ov.start_time ?? item.start_time;
       const baseEndTime = ov.end_time ?? item.end_time;
       if (!baseStartTime || !baseEndTime) return;
@@ -607,8 +659,6 @@ export default function DashboardPage() {
         cls.tutor_id && tutorMap[cls.tutor_id]
           ? tutorMap[cls.tutor_id]
           : null;
-
-      const dateStr = ov.override_date;
 
       out.push({
         id: `${item.id}-${dateStr}-override`,
@@ -627,7 +677,7 @@ export default function DashboardPage() {
     });
 
     return out;
-  }, [viewRange, programItems, classes, tutors, overrides]);
+  }, [viewRange, programItems, classes, tutors, overrides, holidays]); // ✅ holidays added
 
   // ✅ Drag & drop single occurrence, no duplicates
   const handleEventDrop = async (arg: EventDropArg) => {
@@ -814,16 +864,43 @@ export default function DashboardPage() {
   };
 
   const renderEventContent = (arg: EventContentArg) => {
-    const { event, timeText } = arg;
+    const { event } = arg;
     const subject = event.extendedProps['subject'] as string | null;
     const tutorName = event.extendedProps['tutorName'] as string | null;
 
-    return (
-      <div className="flex flex-col text-[10px] leading-tight">
-        <div className="font-semibold">{timeText}</div>
-        <div className="mt-0.5 font-semibold">{event.title}</div>
+    const start = event.start;
+    const end = event.end;
 
-        {subject && <div className="mt-0.5">{subject}</div>}
+    // Format time range with Greek locale (π.μ./μ.μ.)
+    const formatter = new Intl.DateTimeFormat('el-GR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    let timeRange = '';
+    if (start && end) {
+      timeRange = `${formatter.format(start)} – ${formatter.format(end)}`;
+    } else if (start) {
+      timeRange = formatter.format(start);
+    }
+
+    return (
+      <div className="flex flex-col text-[12px] leading-tight">
+        {timeRange && (
+          <div className="font-semibold text-[13px] text-[#ffc947]">
+            {timeRange}
+          </div>
+        )}
+
+        <div className="mt-0.5 font-semibold">
+          {event.title}
+        </div>
+
+        {subject && (
+          <div className="mt-0.5">
+            {subject}
+          </div>
+        )}
 
         {tutorName && (
           <div className="mt-0.5 opacity-90">
@@ -862,6 +939,7 @@ export default function DashboardPage() {
       endTime,
       overrideId: overrideId ?? undefined,
     });
+    setShowDeleteConfirm(false); // ✅ reset confirmation state on open
   };
 
   const handleEventModalSave = async () => {
@@ -943,6 +1021,7 @@ export default function DashboardPage() {
       }
 
       setEventModal(null);
+      setShowDeleteConfirm(false); // ✅
     } catch (err) {
       console.error('Failed to save event override via modal', err);
     }
@@ -1002,6 +1081,7 @@ export default function DashboardPage() {
       }
 
       setEventModal(null);
+      setShowDeleteConfirm(false); // ✅ close confirm state too
     } catch (err) {
       console.error('Failed to delete event occurrence via modal', err);
     }
@@ -1278,78 +1358,112 @@ export default function DashboardPage() {
       {/* Modal for editing a single occurrence */}
       {eventModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-sm rounded-md bg-slate-900 border border-slate-700 p-4 space-y-3">
-            <h3 className="text-sm font-semibold text-slate-50 mb-1">
-              Επεξεργασία μαθήματος
-            </h3>
-            <p className="text-[11px] text-slate-300">
-              Ημερομηνία: {eventModal.dateStr}
-            </p>
+          <div className="relative w-full max-w-sm rounded-md bg-slate-900 border border-slate-700 p-4 space-y-3">
+            {/* X close button */}
+            <button
+              type="button"
+              onClick={() => {
+                setEventModal(null);
+                setShowDeleteConfirm(false);
+              }}
+              className="absolute right-3 top-3 text-slate-400 hover:text-slate-200 text-sm"
+              aria-label="Κλείσιμο"
+            >
+              ×
+            </button>
 
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-col gap-1">
-                <label className="text-[11px] text-slate-200">
-                  Ώρα έναρξης
-                </label>
-                <input
-                  type="time"
-                  value={eventModal.startTime}
-                  onChange={(e) =>
-                    setEventModal((prev) =>
-                      prev
-                        ? { ...prev, startTime: e.target.value }
-                        : prev,
-                    )
-                  }
-                  className="rounded border border-slate-600 bg-[color:var(--color-input-bg)] px-2 py-1 text-xs text-white outline-none"
-                />
-              </div>
+            {showDeleteConfirm ? (
+              <>
+                <h3 className="text-sm font-semibold text-slate-50 mb-1">
+                  Διαγραφή μαθήματος
+                </h3>
+                <p className="text-[11px] text-slate-300">
+                  Είσαι σίγουρος ότι θέλεις να διαγράψεις το μάθημα για την
+                  ημερομηνία {eventModal.dateStr};
+                </p>
 
-              <div className="flex flex-col gap-1">
-                <label className="text-[11px] text-slate-200">
-                  Ώρα λήξης
-                </label>
-                <input
-                  type="time"
-                  value={eventModal.endTime}
-                  onChange={(e) =>
-                    setEventModal((prev) =>
-                      prev
-                        ? { ...prev, endTime: e.target.value }
-                        : prev,
-                    )
-                  }
-                  className="rounded border border-slate-600 bg-[color:var(--color-input-bg)] px-2 py-1 text-xs text-white outline-none"
-                />
-              </div>
-            </div>
+                <div className="pt-3 mt-2 flex justify-between items-center border-t border-slate-700">
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="text-[11px] px-3 py-1 rounded border border-slate-600 text-slate-200 hover:bg-slate-700/60"
+                  >
+                    Άκυρο
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleEventModalDeleteForDay}
+                    className="text-[11px] px-3 py-1 rounded bg-red-600 hover:bg-red-500 text-white font-medium"
+                  >
+                    Ναι, διαγραφή
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 className="text-sm font-semibold text-slate-50 mb-1">
+                  Επεξεργασία μαθήματος
+                </h3>
+                <p className="text-[11px] text-slate-300">
+                  Ημερομηνία: {eventModal.dateStr}
+                </p>
 
-            <div className="pt-3 mt-2 flex justify-between items-center border-t border-slate-700">
-              <button
-                type="button"
-                onClick={handleEventModalDeleteForDay}
-                className="text-[11px] px-2 py-1 rounded border border-red-500 text-red-300 hover:bg-red-500/10"
-              >
-                Διαγραφή μόνο για αυτή την ημέρα
-              </button>
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[11px] text-slate-200">
+                      Ώρα έναρξης
+                    </label>
+                    <input
+                      type="time"
+                      value={eventModal.startTime}
+                      onChange={(e) =>
+                        setEventModal((prev) =>
+                          prev ? { ...prev, startTime: e.target.value } : prev,
+                        )
+                      }
+                      className="rounded border border-slate-600 bg-[color:var(--color-input-bg)] px-2 py-1 text-xs text-white outline-none"
+                    />
+                  </div>
 
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setEventModal(null)}
-                  className="text-[11px] px-3 py-1 rounded border border-slate-600 text-slate-200 hover:bg-slate-700/60"
-                >
-                  Άκυρο
-                </button>
-                <button
-                  type="button"
-                  onClick={handleEventModalSave}
-                  className="text-[11px] px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white"
-                >
-                  Αποθήκευση
-                </button>
-              </div>
-            </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[11px] text-slate-200">
+                      Ώρα λήξης
+                    </label>
+                    <input
+                      type="time"
+                      value={eventModal.endTime}
+                      onChange={(e) =>
+                        setEventModal((prev) =>
+                          prev ? { ...prev, endTime: e.target.value } : prev,
+                        )
+                      }
+                      className="rounded border border-slate-600 bg-[color:var(--color-input-bg)] px-2 py-1 text-xs text-white outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Footer buttons */}
+                <div className="pt-3 mt-2 flex justify-between items-center border-t border-slate-700">
+                  {/* FULL RED delete button */}
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="text-[11px] px-3 py-1 rounded bg-red-600 hover:bg-red-500 text-white font-medium"
+                  >
+                    Διαγραφή μόνο για αυτή την ημέρα
+                  </button>
+
+                  {/* BLUE save button */}
+                  <button
+                    type="button"
+                    onClick={handleEventModalSave}
+                    className="text-[11px] px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white font-medium"
+                  >
+                    Αποθήκευση
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

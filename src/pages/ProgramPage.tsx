@@ -588,9 +588,10 @@ export default function ProgramPage() {
                     <div className="border-b border-slate-600 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-200">
                       {day.label}
                     </div>
-                    <div className="flex-1 space-y-2 p-2 text-[11px]">
+                    <div className="flex-1 space-y-2 p-2 text-[11px] programs-card"
+                    >
                       {itemsByDay[day.value]?.length === 0 ? (
-                        <div className="rounded border border-dashed border-slate-600 px-2 py-6 text-[10px] text-center text-slate-500">
+                        <div className="rounded border border-dashed border-slate-600 px-2 py-6 text-[10px] text-center text-[#ffc947]">
                           Σύρετε τμήμα εδώ ή προσθέστε από αριστερά.
                         </div>
                       ) : (

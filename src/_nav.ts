@@ -8,7 +8,8 @@ import {
   BookOpen,
   Layers3,
   NotebookTabs,
-  CalendarDays, // 👈 NEW
+  CalendarDays,
+  CalendarX2, // 👈 NEW icon for holidays
 } from 'lucide-react';
 
 export type NavItem = {
@@ -56,7 +57,7 @@ export const navItems: NavItem[] = [
     ],
   },
   {
-    label: 'Προγράμματα', // 👈 NEW group
+    label: 'Προγράμματα', // group
     icon: CalendarDays,
     children: [
       {
@@ -64,7 +65,11 @@ export const navItems: NavItem[] = [
         to: '/program',
         icon: CalendarDays,
       },
-      // 2η σελίδα θα προστεθεί όταν τη φτιάξουμε
+      {
+        label: 'Αργίες',           // 👈 NEW menu item
+        to: '/program/holidays',  // matches route below
+        icon: CalendarX2,
+      },
     ],
   },
 ];
