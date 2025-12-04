@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
-import type { FormEvent, ChangeEvent } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
+import ClassFormModal from '../components/classes/ClassFormModal';
 
 type ClassRow = {
   id: string;
@@ -40,13 +40,6 @@ type ClassFormState = {
   tutorId: string;
 };
 
-const emptyForm: ClassFormState = {
-  title: '',
-  subject: '',
-  levelId: '',
-  tutorId: '',
-};
-
 // normalize greek/latin text (remove accents, toLowerCase)
 function normalizeText(value: string | number | null | undefined): string {
   if (value === null || value === undefined) return '';
@@ -72,10 +65,16 @@ export default function ClassesPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<ModalMode>('create');
   const [editingClass, setEditingClass] = useState<ClassRow | null>(null);
-  const [form, setForm] = useState<ClassFormState>(emptyForm);
   const [saving, setSaving] = useState(false);
 
   const [search, setSearch] = useState('');
+
+  // 🔴 delete confirmation modal state
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const levelNameById = useMemo(() => {
     const m = new Map<string, string>();
@@ -159,7 +158,6 @@ export default function ClassesPage() {
     setError(null);
     setModalMode('create');
     setEditingClass(null);
-    setForm(emptyForm);
     setModalOpen(true);
   };
 
@@ -167,42 +165,16 @@ export default function ClassesPage() {
     setError(null);
     setModalMode('edit');
     setEditingClass(row);
-
-    const subjRow = row.subject_id
-      ? subjects.find((s) => s.id === row.subject_id)
-      : undefined;
-
-    setForm({
-      title: row.title ?? '',
-      subject: subjRow?.name ?? row.subject ?? '',
-      levelId: subjRow?.level_id ?? '',
-      tutorId: row.tutor_id ?? '',
-    });
     setModalOpen(true);
   };
 
   const closeModal = () => {
     setModalOpen(false);
     setEditingClass(null);
-    setForm(emptyForm);
     setSaving(false);
   };
 
-  const handleFormChange =
-    (field: keyof ClassFormState) =>
-    (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-      const value = e.target.value;
-      setForm((prev) => {
-        if (field === 'subject') {
-          // reset level when subject changes
-          return { ...prev, subject: value, levelId: '' };
-        }
-        return { ...prev, [field]: value };
-      });
-    };
-
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleSaveClass = async (form: ClassFormState) => {
     setError(null);
 
     if (!schoolId) {
@@ -295,14 +267,19 @@ export default function ClassesPage() {
     }
   };
 
-  const deleteClass = async (id: string) => {
-    setError(null);
-    const confirmed = window.confirm(
-      'Σίγουρα θέλετε να διαγράψετε αυτό το τμήμα;',
-    );
-    if (!confirmed) return;
+  // ✅ handle actual deletion after user confirms in custom modal
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
 
-    const { error } = await supabase.from('classes').delete().eq('id', id);
+    setError(null);
+    setDeleting(true);
+
+    const { error } = await supabase
+      .from('classes')
+      .delete()
+      .eq('id', deleteTarget.id);
+
+    setDeleting(false);
 
     if (error) {
       console.error(error);
@@ -310,30 +287,13 @@ export default function ClassesPage() {
       return;
     }
 
-    setClasses((prev) => prev.filter((c) => c.id !== id));
+    setClasses((prev) => prev.filter((c) => c.id !== deleteTarget.id));
+    setDeleteTarget(null);
   };
 
-  const subjectNameOptions = useMemo(() => {
-    const seen = new Set<string>();
-    const list: string[] = [];
-    subjects.forEach((s) => {
-      if (s.name && !seen.has(s.name)) {
-        seen.add(s.name);
-        list.push(s.name);
-      }
-    });
-    return list;
-  }, [subjects]);
-
-  const levelsForSelectedSubject = useMemo(() => {
-    if (!form.subject) return [];
-    const levelIds = new Set(
-      subjects
-        .filter((s) => s.name === form.subject && s.level_id)
-        .map((s) => s.level_id as string),
-    );
-    return levels.filter((lvl) => levelIds.has(lvl.id));
-  }, [form.subject, subjects, levels]);
+  const handleCancelDelete = () => {
+    setDeleteTarget(null);
+  };
 
   const filteredClasses = useMemo(() => {
     const q = normalizeText(search.trim());
@@ -533,7 +493,9 @@ export default function ClassesPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => deleteClass(c.id)}
+                          onClick={() =>
+                            setDeleteTarget({ id: c.id, title: c.title })
+                          }
                           className="btn-primary bg-red-600 px-2 py-1 text-[11px] hover:bg-red-700"
                         >
                           Διαγραφή
@@ -548,138 +510,62 @@ export default function ClassesPage() {
         )}
       </div>
 
-      {/* Modal */}
-      {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div
-            className="w-full max-w-lg rounded-xl p-5 shadow-xl border border-slate-700"
-            style={{ background: 'var(--color-sidebar)' }}
-          >
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-slate-50">
-                {modalMode === 'create' ? 'Νέο τμήμα' : 'Επεξεργασία τμήματος'}
-              </h2>
+      {/* Modal for create/edit */}
+      <ClassFormModal
+        open={modalOpen}
+        mode={modalMode}
+        editingClass={editingClass}
+        subjects={subjects}
+        levels={levels}
+        tutors={tutors}
+        error={error}
+        saving={saving}
+        onClose={closeModal}
+        onSubmit={handleSaveClass}
+      />
+
+      {/* 🔴 Custom delete confirmation modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="relative w-full max-w-sm rounded-md bg-slate-900 border border-slate-700 p-4 space-y-3">
+            {/* X close */}
+            <button
+              type="button"
+              onClick={handleCancelDelete}
+              className="absolute right-3 top-3 text-slate-400 hover:text-slate-200 text-sm"
+              aria-label="Κλείσιμο"
+            >
+              ×
+            </button>
+
+            <h3 className="text-sm font-semibold text-slate-50 mb-1">
+              Διαγραφή τμήματος
+            </h3>
+            <p className="text-[11px] text-slate-300">
+              Είσαι σίγουρος ότι θέλεις να διαγράψεις το τμήμα{' '}
+              <span className="font-semibold text-slate-100">
+                «{deleteTarget.title}»
+              </span>
+              ;
+            </p>
+
+            <div className="pt-3 mt-2 flex justify-between items-center border-t border-slate-700">
               <button
                 type="button"
-                onClick={closeModal}
-                className="text-xs"
+                onClick={handleCancelDelete}
+                className="text-[11px] px-3 py-1 rounded border border-slate-600 text-slate-200 hover:bg-slate-700/60"
               >
-                Κλείσιμο
+                Άκυρο
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={deleting}
+                className="text-[11px] px-3 py-1 rounded bg-red-600 hover:bg-red-500 text-white font-medium disabled:opacity-60"
+              >
+                {deleting ? 'Διαγραφή…' : 'Ναι, διαγραφή'}
               </button>
             </div>
-
-            {error && (
-              <div className="mb-3 rounded-lg bg-red-900/60 px-3 py-2 text-xs text-red-100">
-                {error}
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-3">
-              <div>
-                <label className="form-label text-slate-100">
-                  Όνομα τμήματος *
-                </label>
-                <input
-                  value={form.title}
-                  onChange={handleFormChange('title')}
-                  required
-                  className="form-input"
-                  style={{
-                    background: 'var(--color-input-bg)',
-                    color: 'var(--color-text-main)',
-                  }}
-                  placeholder="π.χ. Τμήμα Α1"
-                />
-              </div>
-
-              {/* Μάθημα + Επίπεδο */}
-              <div className="grid gap-3 md:grid-cols-2">
-                <div>
-                  <label className="form-label text-slate-100">Μάθημα</label>
-                  <select
-                    value={form.subject}
-                    onChange={handleFormChange('subject')}
-                    className="form-input select-accent"
-                  >
-                    <option value="">Επιλέξτε μάθημα</option>
-                    {subjectNameOptions.map((name) => (
-                      <option key={name} value={name}>
-                        {name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="form-label text-slate-100">
-                    Επίπεδο
-                  </label>
-                  <select
-                    value={form.levelId}
-                    onChange={handleFormChange('levelId')}
-                    className="form-input select-accent"
-                    disabled={
-                      !form.subject || levelsForSelectedSubject.length === 0
-                    }
-                  >
-                    <option value="">
-                      {form.subject
-                        ? 'Επιλέξτε επίπεδο'
-                        : 'Επιλέξτε πρώτα μάθημα'}
-                    </option>
-                    {levelsForSelectedSubject.map((lvl) => (
-                      <option key={lvl.id} value={lvl.id}>
-                        {lvl.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Καθηγητής */}
-              <div>
-                <label className="form-label text-slate-100">
-                  Καθηγητής
-                </label>
-                <select
-                  value={form.tutorId}
-                  onChange={handleFormChange('tutorId')}
-                  className="form-input select-accent"
-                >
-                  <option value="">Επιλέξτε καθηγητή</option>
-                  {tutors.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.full_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="mt-4 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  className="btn-ghost"
-                  style={{
-                    background: 'var(--color-input-bg)',
-                    color: 'var(--color-text-main)',
-                  }}
-                >
-                  Ακύρωση
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="btn-primary"
-                >
-                  {saving
-                    ? 'Αποθήκευση...'
-                    : modalMode === 'create'
-                    ? 'Δημιουργία'
-                    : 'Αποθήκευση αλλαγών'}
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       )}

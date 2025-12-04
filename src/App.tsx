@@ -10,7 +10,8 @@ import StudentsPage from './pages/StudentsPage';
 import SubjectsPage from './pages/SubjectsPage';
 import TutorsPage from './pages/TutorsPage';
 import ProgramPage from './pages/ProgramPage';
-import HolidaysPage from './pages/HolidaysPage'; // 👈 NEW
+import HolidaysPage from './pages/HolidaysPage'; // 👈 existing
+import EventsPage from './pages/EventsPage';      // 👈 NEW
 
 import { useAuth } from './auth';
 import Layout from './components/Layout';
@@ -103,7 +104,17 @@ export default function App() {
         }
       />
 
-      {/* 👇 NEW Holidays page under Προγράμματα */}
+      {/* 👇 NEW Events page under Προγράμματα */}
+      <Route
+        path="/program/events"
+        element={
+          <ProtectedRoute>
+            <EventsPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Holidays page under Προγράμματα */}
       <Route
         path="/program/holidays"
         element={
