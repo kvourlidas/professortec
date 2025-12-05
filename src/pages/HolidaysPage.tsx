@@ -1,7 +1,10 @@
 // src/pages/HolidaysPage.tsx
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, forwardRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import { CalendarDays } from 'lucide-react';
 
 type HolidayRow = {
   id: string;
@@ -41,8 +44,34 @@ const parseYMD = (s: string): Date => {
   return new Date(s + 'T00:00:00');
 };
 
-const formatDisplay = (iso: string) =>
-  new Date(iso + 'T00:00:00').toLocaleDateString('el-GR');
+// "YYYY-MM-DD" -> "dd/mm/yyyy"
+const formatDisplay = (iso: string) => {
+  const [y, m, d] = iso.split('-');
+  if (!y || !m || !d) return iso;
+  return `${d}/${m}/${y}`;
+};
+
+// Custom input for react-datepicker (matching other inputs + calendar icon)
+const DateInput = forwardRef<HTMLDivElement, any>(
+  ({ value, onClick, placeholder }, ref) => (
+    <div
+      ref={ref}
+      onClick={onClick}
+      className="relative cursor-pointer"
+    >
+      <input
+        readOnly
+        value={value ?? ''}
+        placeholder={placeholder}
+        className="w-full rounded-md border border-slate-600 bg-[color:var(--color-input-bg)] px-2 py-1 pr-8 text-xs text-white outline-none"
+      />
+      <CalendarDays
+        className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-300"
+      />
+    </div>
+  ),
+);
+DateInput.displayName = 'DateInput';
 
 export default function HolidaysPage() {
   const { profile } = useAuth();
@@ -51,11 +80,11 @@ export default function HolidaysPage() {
   const [holidays, setHolidays] = useState<HolidayRow[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // form state
+  // form state (Date objects; UI shows dd/mm/yyyy)
   const [mode, setMode] = useState<Mode>('single');
-  const [singleDate, setSingleDate] = useState('');
-  const [rangeStart, setRangeStart] = useState('');
-  const [rangeEnd, setRangeEnd] = useState('');
+  const [singleDate, setSingleDate] = useState<Date | null>(null);
+  const [rangeStart, setRangeStart] = useState<Date | null>(null);
+  const [rangeEnd, setRangeEnd] = useState<Date | null>(null);
   const [name, setName] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -105,7 +134,7 @@ export default function HolidaysPage() {
           .from('school_holidays')
           .insert({
             school_id: schoolId,
-            date: singleDate, // already "YYYY-MM-DD"
+            date: formatLocalYMD(singleDate), // "YYYY-MM-DD"
             name: trimmedName,
           })
           .select()
@@ -121,21 +150,25 @@ export default function HolidaysPage() {
           });
         }
 
-        setSingleDate('');
+        setSingleDate(null);
         setName('');
       } else {
         // range mode
         if (!rangeStart || !rangeEnd) return;
 
-        let start = parseYMD(rangeStart);
-        let end = parseYMD(rangeEnd);
+        let start = rangeStart;
+        let end = rangeEnd;
         if (end < start) {
           const tmp = start;
           start = end;
           end = tmp;
         }
 
-        const rowsToInsert: { school_id: string; date: string; name: string | null }[] = [];
+        const rowsToInsert: {
+          school_id: string;
+          date: string;
+          name: string | null;
+        }[] = [];
         let current = new Date(start);
 
         while (current <= end) {
@@ -162,8 +195,8 @@ export default function HolidaysPage() {
           });
         }
 
-        setRangeStart('');
-        setRangeEnd('');
+        setRangeStart(null);
+        setRangeEnd(null);
         setName('');
       }
     } catch (err) {
@@ -305,26 +338,28 @@ export default function HolidaysPage() {
             <label className="text-[11px] text-slate-200">
               {mode === 'single' ? 'Ημερομηνία αργίας' : 'Από'}
             </label>
-            <input
-              type="date"
-              value={mode === 'single' ? singleDate : rangeStart}
-              onChange={(e) =>
+            <DatePicker
+              selected={mode === 'single' ? singleDate : rangeStart}
+              onChange={(date: Date | null) =>
                 mode === 'single'
-                  ? setSingleDate(e.target.value)
-                  : setRangeStart(e.target.value)
+                  ? setSingleDate(date)
+                  : setRangeStart(date)
               }
-              className="w-full rounded-md border border-slate-600 bg-[color:var(--color-input-bg)] px-2 py-1 text-xs text-white outline-none"
+              dateFormat="dd/MM/yyyy"
+              placeholderText="π.χ. 24/12/2025"
+              customInput={<DateInput />}
             />
           </div>
 
           {mode === 'range' && (
             <div className="flex-1 space-y-1">
               <label className="text-[11px] text-slate-200">Έως</label>
-              <input
-                type="date"
-                value={rangeEnd}
-                onChange={(e) => setRangeEnd(e.target.value)}
-                className="w-full rounded-md border border-slate-600 bg-[color:var(--color-input-bg)] px-2 py-1 text-xs text-white outline-none"
+              <DatePicker
+                selected={rangeEnd}
+                onChange={(date: Date | null) => setRangeEnd(date)}
+                dateFormat="dd/MM/yyyy"
+                placeholderText="π.χ. 02/01/2026"
+                customInput={<DateInput />}
               />
             </div>
           )}
@@ -420,9 +455,7 @@ export default function HolidaysPage() {
             </h3>
             <p className="text-[11px] text-slate-300">
               Είσαι σίγουρος ότι θέλεις να διαγράψεις την αργία{' '}
-              {deleteGroup.name ? `"${deleteGroup.name}"` : 'αυτή'}
-              {' '}
-              για{' '}
+              {deleteGroup.name ? `"${deleteGroup.name}"` : 'αυτή'} για{' '}
               {deleteGroup.endDate && deleteGroup.endDate !== deleteGroup.startDate
                 ? `${formatDisplay(deleteGroup.startDate)} – ${formatDisplay(
                     deleteGroup.endDate,

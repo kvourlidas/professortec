@@ -1,7 +1,13 @@
 // src/pages/ProgramPage.tsx
-import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type ChangeEvent,
+} from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
+import AppDatePicker from '../components/ui/AppDatePicker';
 
 type ClassRow = {
   id: string;
@@ -44,8 +50,8 @@ type ProgramItemRow = {
   class_id: string;
   day_of_week: string;
   position: number | null;
-  start_time: string | null; // "HH:MM"
-  end_time: string | null;   // "HH:MM"
+  start_time: string | null; // "HH:MM" or "HH:MM:SS"
+  end_time: string | null;   // "HH:MM" or "HH:MM:SS"
   start_date: string | null; // "YYYY-MM-DD"
   end_date: string | null;   // "YYYY-MM-DD"
 };
@@ -57,8 +63,8 @@ type AddSlotForm = {
   startPeriod: 'AM' | 'PM';
   endTime: string;
   endPeriod: 'AM' | 'PM';
-  startDate: string;
-  endDate: string;
+  startDate: string; // displayed as dd/mm/yyyy
+  endDate: string;   // displayed as dd/mm/yyyy
 };
 
 const emptyAddSlotForm: AddSlotForm = {
@@ -134,6 +140,34 @@ function todayISO(): string {
   const m = pad2(d.getMonth() + 1);
   const day = pad2(d.getDate());
   return `${y}-${m}-${day}`;
+}
+
+/** "YYYY-MM-DD" -> "dd/mm/yyyy" for display */
+function formatDateDisplay(iso: string | null): string {
+  if (!iso) return '—';
+  const [y, m, d] = iso.split('-');
+  if (!y || !m || !d) return iso;
+  return `${d}/${m}/${y}`;
+}
+
+/** "dd/mm/yyyy" -> "YYYY-MM-DD" for saving */
+function parseDateDisplayToISO(display: string): string | null {
+  const v = display.trim();
+  if (!v) return null;
+  const parts = v.split(/[\/\-\.]/);
+  if (parts.length !== 3) return null;
+  const [dStr, mStr, yStr] = parts;
+  const day = Number(dStr);
+  const month = Number(mStr);
+  const year = Number(yStr);
+  if (!day || !month || !year) return null;
+  return `${year}-${pad2(month)}-${pad2(day)}`;
+}
+
+/** "HH:MM[:SS]" -> "HH:MM" for display */
+function formatTimeDisplay(t: string | null): string {
+  if (!t) return '—';
+  return t.slice(0, 5);
 }
 
 export default function ProgramPage() {
@@ -324,6 +358,7 @@ export default function ProgramPage() {
   // ---- add slot modal helpers ----
   const openAddSlotModal = (classId: string, day: string) => {
     const isoToday = todayISO();
+    const displayToday = formatDateDisplay(isoToday); // dd/mm/yyyy
     setError(null);
     setAddForm({
       classId,
@@ -332,8 +367,8 @@ export default function ProgramPage() {
       startPeriod: 'PM',
       endTime: '',
       endPeriod: 'PM',
-      startDate: isoToday,
-      endDate: isoToday,
+      startDate: displayToday,
+      endDate: displayToday,
     });
     setAddModalOpen(true);
   };
@@ -378,6 +413,14 @@ export default function ProgramPage() {
       return;
     }
 
+    const startDateISO = parseDateDisplayToISO(addForm.startDate);
+    const endDateISO = parseDateDisplayToISO(addForm.endDate);
+
+    if (!startDateISO || !endDateISO) {
+      setError('Συμπληρώστε σωστά τις ημερομηνίες (π.χ. 12/05/2025).');
+      return;
+    }
+
     // position = max + 1 for this day
     const itemsForDay = programItems.filter(
       (i) => i.day_of_week === addForm.day && i.program_id === program.id,
@@ -398,8 +441,8 @@ export default function ProgramPage() {
       position: newPos,
       start_time: start24,
       end_time: end24,
-      start_date: addForm.startDate,
-      end_date: addForm.endDate,
+      start_date: startDateISO,
+      end_date: endDateISO,
     };
 
     const { data, error } = await supabase
@@ -588,8 +631,7 @@ export default function ProgramPage() {
                     <div className="border-b border-slate-600 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-200">
                       {day.label}
                     </div>
-                    <div className="flex-1 space-y-2 p-2 text-[11px] programs-card"
-                    >
+                    <div className="flex-1 space-y-2 p-2 text-[11px] programs-card">
                       {itemsByDay[day.value]?.length === 0 ? (
                         <div className="rounded border border-dashed border-slate-600 px-2 py-6 text-[10px] text-center text-[#ffc947]">
                           Σύρετε τμήμα εδώ ή προσθέστε από αριστερά.
@@ -604,19 +646,13 @@ export default function ProgramPage() {
                           const rangeParts: string[] = [];
                           if (item.start_time && item.end_time) {
                             rangeParts.push(
-                              `${item.start_time} – ${item.end_time}`,
+                              `${formatTimeDisplay(item.start_time)} – ${formatTimeDisplay(item.end_time)}`,
                             );
                           }
                           if (item.start_date && item.end_date) {
-                            if (item.start_date === item.end_date) {
-                              rangeParts.push(
-                                `από ${item.start_date} έως ${item.end_date}`,
-                              );
-                            } else {
-                              rangeParts.push(
-                                `από ${item.start_date} έως ${item.end_date}`,
-                              );
-                            }
+                            const from = formatDateDisplay(item.start_date);
+                            const to = formatDateDisplay(item.end_date);
+                            rangeParts.push(`από ${from} έως ${to}`);
                           }
 
                           return (
@@ -761,30 +797,24 @@ export default function ProgramPage() {
                   <label className="form-label text-slate-100">
                     Ημερομηνία έναρξης
                   </label>
-                  <input
-                    type="date"
+                  <AppDatePicker
                     value={addForm.startDate}
-                    onChange={handleAddFieldChange('startDate')}
-                    className="form-input"
-                    style={{
-                      background: 'var(--color-input-bg)',
-                      color: 'var(--color-text-main)',
-                    }}
+                    onChange={(newValue) =>
+                      setAddForm((prev) => ({ ...prev, startDate: newValue }))
+                    }
+                    placeholder="π.χ. 12/05/2025"
                   />
                 </div>
                 <div>
                   <label className="form-label text-slate-100">
                     Ημερομηνία λήξης
                   </label>
-                  <input
-                    type="date"
+                  <AppDatePicker
                     value={addForm.endDate}
-                    onChange={handleAddFieldChange('endDate')}
-                    className="form-input"
-                    style={{
-                      background: 'var(--color-input-bg)',
-                      color: 'var(--color-text-main)',
-                    }}
+                    onChange={(newValue) =>
+                      setAddForm((prev) => ({ ...prev, endDate: newValue }))
+                    }
+                    placeholder="π.χ. 12/05/2025"
                   />
                 </div>
               </div>

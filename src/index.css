@@ -53,46 +53,108 @@
   }
 }
 
-/* react-datepicker theme */
+/* bring default react-datepicker styles */
+@import "react-datepicker/dist/react-datepicker.css";
+
+/* === Dark Cloudtec look for react-datepicker === */
 .react-datepicker {
-  background-color: var(--color-sidebar);
-  border: 1px solid var(--color-sidebar-border);
-  color: var(--color-text-main);
-  border-radius: 0.75rem;
+  background-color: #1f2d3d;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #e5e7eb;
   font-size: 12px;
 }
 
 .react-datepicker__header {
-  background-color: var(--color-background);
-  border-bottom: 1px solid var(--color-sidebar-border);
+  background-color: #1f2d3d;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
 }
 
-.react-datepicker__current-month,
+.react-datepicker__current-month {
+  color: #e5e7eb;
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .react-datepicker__day-name {
-  color: var(--color-text-main);
-}
-
-.react-datepicker__current-week {
-  border: 1px solid var(--color-sidebar-border);
+  color: #94a3b8;
 }
 
 .react-datepicker__day {
-  color: var(--color-text-main);
+  color: #e5e7eb;
 }
 
+/* Hover for “normal” days (not selected) */
+.react-datepicker__day:not(.react-datepicker__day--selected):not(.react-datepicker__day--keyboard-selected):hover {
+  background-color: #2f55d4 !important;
+  color: #ffffff !important;
+}
+
+/* Selected day style */
 .react-datepicker__day--selected,
 .react-datepicker__day--keyboard-selected {
-  background-color: var(--color-accent);
-  color: #000;
+  background-color: #ffc947 !important;
+  color: #050505 !important;
 }
 
-.react-datepicker__day--today {
-  outline: 1px solid var(--color-accent);
-  border-radius: 9999px;
+/* Hover on selected day (slightly darker optional) */
+.react-datepicker__day--selected:hover,
+.react-datepicker__day--keyboard-selected:hover {
+  background-color: #1f3faa !important; /* darker blue */
+  color: #ffffff !important;
 }
 
+.react-datepicker__triangle {
+  display: none; /* no white arrow */
+}
+
+/* Navigation arrows */
 .react-datepicker__navigation-icon::before {
-  border-color: var(--color-text-main);
+  border-color: #e5e7eb;
+}
+
+/* Year & Month dropdowns (dark theme) */
+.react-datepicker__year-select,
+.react-datepicker__month-select {
+  background-color: #111827;                 /* dark background */
+  color: #e5e7eb;                            /* light text */
+  border: 1px solid rgba(148, 163, 184, 0.7);/* slate-ish border */
+  border-radius: 0.375rem;                   /* rounded-md */
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+/* Options inside dropdown */
+.react-datepicker__year-select option,
+.react-datepicker__month-select option {
+  background-color: #111827;
+  color: #e5e7eb;
+}
+
+.react-datepicker__header select {
+  margin: 15px 2px 5px 1px;
+}
+
+.react-datepicker__year-select:focus,
+.react-datepicker__month-select:focus {
+  outline: none;
+  border-color: #2f55d4;
+  box-shadow: 0 0 0 1px #2f55d4;
+}
+
+/* Our custom container / popper classes (used in DatePickerField) */
+.ct-datepicker {
+  background-color: #1f2d3d;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  min-width: 260px;
+}
+
+.ct-datepicker .react-datepicker__header {
+  background-color: #111827;
+}
+
+.ct-datepicker-popper {
+  z-index: 40;
 }
 
 @layer components {
@@ -267,12 +329,12 @@
 }
 
 .fc-event {
-      background:
-      radial-gradient(circle at top left, rgba(37, 99, 235, 0.22), transparent),
-      var(--color-sidebar);
-    border-color: rgba(37, 99, 235, 0.55);
-    margin-bottom: 1px;
-    border: none !important;
+  background:
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.22), transparent),
+    var(--color-sidebar);
+  border-color: rgba(37, 99, 235, 0.55);
+  margin-bottom: 1px;
+  border: none !important;
 }
 
 .fc .fc-button {
@@ -312,8 +374,8 @@
 }
 
 .programs-card {
-    background:
-      radial-gradient(circle at top left, rgba(37, 99, 235, 0.22), transparent),
-      var(--color-sidebar);
-    border-color: rgba(37, 99, 235, 0.55);
-  }
+  background:
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.22), transparent),
+    var(--color-sidebar);
+  border-color: rgba(37, 99, 235, 0.55);
+}

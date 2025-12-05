@@ -377,11 +377,10 @@ export default function EventsPage() {
                             {filteredEvents.map((ev) => (
                                 <tr
                                     key={ev.id}
-                                    className="hover:bg-slate-800/40"
+                                    className="border-b border-slate-800/60 hover:bg-slate-900/40 transition-colors"
                                     style={{
-                                        // ίδιο gradient με το HolidaysPage
                                         background:
-                                            'linear-gradient(90deg, #0b172a 0%, #111827 50%, #020617 100%)',
+                                            'radial-gradient(circle at top left, rgba(37, 99, 235, 0.22), transparent), var(--color-sidebar)',
                                     }}
                                 >
                                     <td className="border-b border-slate-700 px-4 py-2 align-middle">
@@ -438,6 +437,7 @@ export default function EventsPage() {
                                 </tr>
                             ))}
                         </tbody>
+
 
                     </table>
                 )}
