@@ -51,25 +51,41 @@ type ProgramItemRow = {
   day_of_week: string;
   position: number | null;
   start_time: string | null; // "HH:MM" or "HH:MM:SS"
-  end_time: string | null;   // "HH:MM" or "HH:MM:SS"
+  end_time: string | null; // "HH:MM" or "HH:MM:SS"
   start_date: string | null; // "YYYY-MM-DD"
-  end_date: string | null;   // "YYYY-MM-DD"
+  end_date: string | null; // "YYYY-MM-DD"
+  subject_id: string | null;
+  tutor_id: string | null;
+};
+
+type ClassSubjectRow = {
+  class_id: string;
+  subject_id: string;
+};
+
+type SubjectTutorRow = {
+  subject_id: string;
+  tutor_id: string;
 };
 
 type AddSlotForm = {
   classId: string | null;
+  subjectId: string | null;
+  tutorId: string | null;
   day: string;
   startTime: string;
   startPeriod: 'AM' | 'PM';
   endTime: string;
   endPeriod: 'AM' | 'PM';
   startDate: string; // displayed as dd/mm/yyyy
-  endDate: string;   // displayed as dd/mm/yyyy
+  endDate: string; // displayed as dd/mm/yyyy
 };
 
 type EditSlotForm = {
   id: string;
   classId: string | null;
+  subjectId: string | null;
+  tutorId: string | null;
   day: string;
   startTime: string;
   startPeriod: 'AM' | 'PM';
@@ -81,6 +97,8 @@ type EditSlotForm = {
 
 const emptyAddSlotForm: AddSlotForm = {
   classId: null,
+  subjectId: null,
+  tutorId: null,
   day: '',
   startTime: '',
   startPeriod: 'PM',
@@ -210,6 +228,8 @@ export default function ProgramPage() {
   const [subjects, setSubjects] = useState<SubjectRow[]>([]);
   const [levels, setLevels] = useState<LevelRow[]>([]);
   const [tutors, setTutors] = useState<TutorRow[]>([]);
+  const [classSubjects, setClassSubjects] = useState<ClassSubjectRow[]>([]);
+  const [subjectTutors, setSubjectTutors] = useState<SubjectTutorRow[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -329,7 +349,7 @@ export default function ProgramPage() {
 
         setProgram(activeProgram);
 
-        // 2. load classes + lookups + program_items
+        // 2. load classes + lookups + program_items (βασικά)
         const [
           { data: classData, error: classErr },
           { data: subjData, error: subjErr },
@@ -376,6 +396,46 @@ export default function ProgramPage() {
         setLevels((levelData ?? []) as LevelRow[]);
         setTutors((tutorData ?? []) as TutorRow[]);
         setProgramItems((itemData ?? []) as ProgramItemRow[]);
+
+        // 3. Προαιρετικά relations: class_subjects
+        try {
+          const { data: classSubjectData, error: classSubjErr } = await supabase
+            .from('class_subjects')
+            .select('class_id, subject_id')
+            .eq('school_id', schoolId);
+
+          if (classSubjErr) {
+            console.warn('class_subjects load error', classSubjErr);
+            setClassSubjects([]);
+          } else {
+            setClassSubjects(
+              (classSubjectData ?? []) as ClassSubjectRow[],
+            );
+          }
+        } catch (e) {
+          console.warn('class_subjects not available', e);
+          setClassSubjects([]);
+        }
+
+        // 4. Προαιρετικά relations: subject_tutors
+        try {
+          const { data: subjectTutorData, error: subjTutorErr } = await supabase
+            .from('subject_tutors')
+            .select('subject_id, tutor_id')
+            .eq('school_id', schoolId);
+
+          if (subjTutorErr) {
+            console.warn('subject_tutors load error', subjTutorErr);
+            setSubjectTutors([]);
+          } else {
+            setSubjectTutors(
+              (subjectTutorData ?? []) as SubjectTutorRow[],
+            );
+          }
+        } catch (e) {
+          console.warn('subject_tutors not available', e);
+          setSubjectTutors([]);
+        }
       } catch (err: any) {
         console.error('ProgramPage load error', err);
         setError('Αποτυχία φόρτωσης προγράμματος.');
@@ -387,20 +447,46 @@ export default function ProgramPage() {
     load();
   }, [schoolId]);
 
-  const getClassLabel = (cls: ClassRow): string => {
-    const subj = cls.subject_id ? subjectById.get(cls.subject_id) : null;
-    const levelName =
-      subj?.level_id ? levelNameById.get(subj.level_id) ?? '' : '';
-    const tutorName = cls.tutor_id
-      ? tutorNameById.get(cls.tutor_id) ?? ''
-      : '';
+  // Helpers για options
+  const getSubjectsForClass = (classId: string | null): SubjectRow[] => {
+    if (!classId) return [];
 
-    const parts = [cls.title];
-    if (cls.subject) parts.push(cls.subject);
-    if (levelName) parts.push(levelName);
-    if (tutorName) parts.push(`(${tutorName})`);
+    const ids = new Set<string>();
 
-    return parts.join(' · ');
+    // 1) βασικό μάθημα του τμήματος (classes.subject_id)
+    const cls = classes.find((c) => c.id === classId);
+    if (cls?.subject_id) {
+      ids.add(cls.subject_id);
+    }
+
+    // 2) όλα τα μαθήματα που έχεις συνδέσει στο ClassesPage (class_subjects)
+    classSubjects
+      .filter((cs) => cs.class_id === classId && cs.subject_id)
+      .forEach((cs) => ids.add(cs.subject_id));
+
+    const result: SubjectRow[] = [];
+    ids.forEach((id) => {
+      const subj = subjectById.get(id);
+      if (subj) result.push(subj);
+    });
+
+    // ταξινόμηση με βάση όνομα
+    result.sort((a, b) => a.name.localeCompare(b.name, 'el-GR'));
+    return result;
+  };
+
+  const getTutorsForSubject = (subjectId: string | null): TutorRow[] => {
+    if (!subjectId) return [];
+    const tutorIds = subjectTutors
+      .filter((st) => st.subject_id === subjectId)
+      .map((st) => st.tutor_id);
+    const uniqueIds = Array.from(new Set(tutorIds));
+    const result: TutorRow[] = [];
+    uniqueIds.forEach((id) => {
+      const tutor = tutors.find((t) => t.id === id);
+      if (tutor) result.push(tutor);
+    });
+    return result;
   };
 
   // ---- add slot modal helpers ----
@@ -410,6 +496,8 @@ export default function ProgramPage() {
     setError(null);
     setAddForm({
       classId,
+      subjectId: null,
+      tutorId: null,
       day,
       startTime: '',
       startPeriod: 'PM',
@@ -438,13 +526,34 @@ export default function ProgramPage() {
     (field: keyof AddSlotForm) =>
     (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
       const value = e.target.value;
-      setAddForm((prev) => ({ ...prev, [field]: value as any }));
+      setAddForm((prev) => {
+        if (field === 'subjectId') {
+          return { ...prev, subjectId: value || null, tutorId: null };
+        }
+        if (field === 'tutorId') {
+          return { ...prev, tutorId: value || null };
+        }
+        return { ...prev, [field]: value as any };
+      });
     };
 
   const handleConfirmAddSlot = async () => {
     if (!program) return;
     if (!addForm.classId || !addForm.day) {
       setError('Επιλέξτε τμήμα και ημέρα.');
+      return;
+    }
+
+    const subjectsForClass = getSubjectsForClass(addForm.classId);
+    if (subjectsForClass.length === 0) {
+      setError(
+        'Το τμήμα δεν έχει συνδεδεμένα μαθήματα. Ρυθμίστε τα στη σελίδα «Τμήματα».',
+      );
+      return;
+    }
+
+    if (!addForm.subjectId) {
+      setError('Επιλέξτε μάθημα για το τμήμα.');
       return;
     }
 
@@ -485,6 +594,8 @@ export default function ProgramPage() {
     const payload = {
       program_id: program.id,
       class_id: addForm.classId,
+      subject_id: addForm.subjectId,
+      tutor_id: addForm.tutorId,
       day_of_week: addForm.day,
       position: newPos,
       start_time: start24,
@@ -522,6 +633,8 @@ export default function ProgramPage() {
     setEditForm({
       id: item.id,
       classId: item.class_id,
+      subjectId: item.subject_id ?? null,
+      tutorId: item.tutor_id ?? null,
       day: item.day_of_week,
       startTime,
       startPeriod,
@@ -552,9 +665,16 @@ export default function ProgramPage() {
     (field: keyof EditSlotForm) =>
     (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
       const value = e.target.value;
-      setEditForm((prev) =>
-        prev ? { ...prev, [field]: value as any } : prev,
-      );
+      setEditForm((prev) => {
+        if (!prev) return prev;
+        if (field === 'subjectId') {
+          return { ...prev, subjectId: value || null, tutorId: null };
+        }
+        if (field === 'tutorId') {
+          return { ...prev, tutorId: value || null };
+        }
+        return { ...prev, [field]: value as any };
+      });
     };
 
   const handleConfirmEditSlot = async () => {
@@ -562,6 +682,12 @@ export default function ProgramPage() {
 
     if (!editForm.classId || !editForm.day) {
       setError('Επιλέξτε τμήμα και ημέρα.');
+      return;
+    }
+
+    const subjectsForClass = getSubjectsForClass(editForm.classId);
+    if (subjectsForClass.length > 0 && !editForm.subjectId) {
+      setError('Επιλέξτε μάθημα για το τμήμα.');
       return;
     }
 
@@ -591,6 +717,8 @@ export default function ProgramPage() {
 
     const payload = {
       class_id: editForm.classId,
+      subject_id: editForm.subjectId,
+      tutor_id: editForm.tutorId,
       day_of_week: editForm.day,
       start_time: start24,
       end_time: end24,
@@ -813,7 +941,35 @@ export default function ProgramPage() {
                           );
                           if (!cls) return null;
 
-                          const classLabel = getClassLabel(cls);
+                          const subjForItem =
+                            item.subject_id
+                              ? subjectById.get(item.subject_id)
+                              : cls.subject_id
+                                ? subjectById.get(cls.subject_id)
+                                : null;
+                          const subjName =
+                            subjForItem?.name ?? cls.subject ?? '';
+                          const levelNameForItem =
+                            subjForItem?.level_id
+                              ? levelNameById.get(subjForItem.level_id) ?? ''
+                              : '';
+                          const tutorNameForItem =
+                            item.tutor_id
+                              ? tutorNameById.get(item.tutor_id) ?? ''
+                              : cls.tutor_id
+                                ? tutorNameById.get(cls.tutor_id) ?? ''
+                                : '';
+
+                          const infoParts: string[] = [];
+                          if (subjName) infoParts.push(subjName);
+                          if (levelNameForItem) infoParts.push(levelNameForItem);
+                          if (tutorNameForItem) infoParts.push(tutorNameForItem);
+
+                          const classTitle = cls.title || 'Τμήμα';
+                          const classLabel =
+                            infoParts.length > 0
+                              ? `${classTitle} · ${infoParts.join(' · ')}`
+                              : classTitle;
 
                           const rangeParts: string[] = [];
                           if (item.start_time && item.end_time) {
@@ -841,9 +997,16 @@ export default function ProgramPage() {
                               onClick={() => openEditSlotModal(item)}
                             >
                               <div className="flex items-start justify-between gap-1">
-                                <span className="font-semibold leading-snug">
-                                  {classLabel}
-                                </span>
+                                <div>
+                                  <span className="font-semibold leading-snug">
+                                    {classTitle}
+                                  </span>
+                                  {infoParts.length > 0 && (
+                                    <div className="text-[10px] text-slate-300">
+                                      {infoParts.join(' · ')}
+                                    </div>
+                                  )}
+                                </div>
                                 <button
                                   type="button"
                                   onClick={(e) => {
@@ -902,6 +1065,25 @@ export default function ProgramPage() {
             </div>
 
             <div className="space-y-3 text-xs">
+              {/* Τμήμα */}
+              <div>
+                <label className="form-label text-slate-100">Τμήμα</label>
+                <input
+                  disabled
+                  value={
+                    addForm.classId
+                      ? classes.find((c) => c.id === addForm.classId)?.title ??
+                        ''
+                      : ''
+                  }
+                  className="form-input disabled:opacity-80"
+                  style={{
+                    background: 'var(--color-input-bg)',
+                    color: 'var(--color-text-main)',
+                  }}
+                />
+              </div>
+
               <div>
                 <label className="form-label text-slate-100">Ημέρα</label>
                 <input
@@ -913,6 +1095,82 @@ export default function ProgramPage() {
                     color: 'var(--color-text-main)',
                   }}
                 />
+              </div>
+
+              {/* Μάθημα & Καθηγητής */}
+              <div className="grid gap-3 md:grid-cols-2">
+                <div>
+                  <label className="form-label text-slate-100">
+                    Μάθημα για το τμήμα
+                  </label>
+                  {(() => {
+                    const options = getSubjectsForClass(addForm.classId);
+                    return (
+                      <>
+                        <select
+                          className="form-input select-accent"
+                          value={addForm.subjectId ?? ''}
+                          onChange={handleAddFieldChange('subjectId')}
+                          disabled={options.length === 0}
+                          style={{
+                            background: 'var(--color-input-bg)',
+                            color: 'var(--color-text-main)',
+                          }}
+                        >
+                          <option value="">
+                            {options.length === 0
+                              ? 'Δεν έχουν οριστεί μαθήματα'
+                              : 'Επιλέξτε μάθημα'}
+                          </option>
+                          {options.map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {s.name}
+                            </option>
+                          ))}
+                        </select>
+                        {options.length === 0 && (
+                          <p className="mt-1 text-[10px] text-amber-300">
+                            Ρυθμίστε τα μαθήματα στη σελίδα «Τμήματα».
+                          </p>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+
+                <div>
+                  <label className="form-label text-slate-100">
+                    Καθηγητής μαθήματος
+                  </label>
+                  {(() => {
+                    const options = getTutorsForSubject(addForm.subjectId);
+                    return (
+                      <select
+                        className="form-input select-accent"
+                        value={addForm.tutorId ?? ''}
+                        onChange={handleAddFieldChange('tutorId')}
+                        disabled={
+                          !addForm.subjectId || options.length === 0
+                        }
+                        style={{
+                          background: 'var(--color-input-bg)',
+                          color: 'var(--color-text-main)',
+                        }}
+                      >
+                        <option value="">
+                          {options.length === 0
+                            ? 'Δεν έχουν οριστεί καθηγητές'
+                            : 'Επιλέξτε καθηγητή (προαιρετικό)'}
+                        </option>
+                        {options.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.full_name}
+                          </option>
+                        ))}
+                      </select>
+                    );
+                  })()}
+                </div>
               </div>
 
               <div className="grid gap-3 md:grid-cols-2">
@@ -1061,9 +1319,7 @@ export default function ProgramPage() {
                 <label className="form-label text-slate-100">Τμήμα</label>
                 <input
                   disabled
-                  value={
-                    currentEditClass ? getClassLabel(currentEditClass) : ''
-                  }
+                  value={currentEditClass?.title ?? ''}
                   className="form-input disabled:opacity-80"
                   style={{
                     background: 'var(--color-input-bg)',
@@ -1089,6 +1345,82 @@ export default function ProgramPage() {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              {/* Μάθημα & Καθηγητής */}
+              <div className="grid gap-3 md:grid-cols-2">
+                <div>
+                  <label className="form-label text-slate-100">
+                    Μάθημα για το τμήμα
+                  </label>
+                  {(() => {
+                    const options = getSubjectsForClass(editForm.classId);
+                    return (
+                      <>
+                        <select
+                          className="form-input select-accent"
+                          value={editForm.subjectId ?? ''}
+                          onChange={handleEditFieldChange('subjectId')}
+                          disabled={options.length === 0}
+                          style={{
+                            background: 'var(--color-input-bg)',
+                            color: 'var(--color-text-main)',
+                          }}
+                        >
+                          <option value="">
+                            {options.length === 0
+                              ? 'Δεν έχουν οριστεί μαθήματα'
+                              : 'Επιλέξτε μάθημα'}
+                          </option>
+                          {options.map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {s.name}
+                            </option>
+                          ))}
+                        </select>
+                        {options.length === 0 && (
+                          <p className="mt-1 text-[10px] text-amber-300">
+                            Ρυθμίστε τα μαθήματα στη σελίδα «Τμήματα».
+                          </p>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+
+                <div>
+                  <label className="form-label text-slate-100">
+                    Καθηγητής μαθήματος
+                  </label>
+                  {(() => {
+                    const options = getTutorsForSubject(editForm.subjectId);
+                    return (
+                      <select
+                        className="form-input select-accent"
+                        value={editForm.tutorId ?? ''}
+                        onChange={handleEditFieldChange('tutorId')}
+                        disabled={
+                          !editForm.subjectId || options.length === 0
+                        }
+                        style={{
+                          background: 'var(--color-input-bg)',
+                          color: 'var(--color-text-main)',
+                        }}
+                      >
+                        <option value="">
+                          {options.length === 0
+                            ? 'Δεν έχουν οριστεί καθηγητές'
+                            : 'Επιλέξτε καθηγητή (προαιρετικό)'}
+                        </option>
+                        {options.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.full_name}
+                          </option>
+                        ))}
+                      </select>
+                    );
+                  })()}
+                </div>
               </div>
 
               <div className="grid gap-3 md:grid-cols-2">

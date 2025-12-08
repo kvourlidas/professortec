@@ -3,8 +3,8 @@ import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
 import ClassFormModal from '../components/classes/ClassFormModal';
 import EditDeleteButtons from '../components/ui/EditDeleteButtons';
-import { Plus } from 'lucide-react'; // ⭐ NEW
-import ClassStudentsModal from '../components/classes/ClassStudentsModal'; // ⭐ NEW
+import { Plus } from 'lucide-react';
+import ClassStudentsModal from '../components/classes/ClassStudentsModal';
 
 type ClassRow = {
   id: string;
@@ -12,7 +12,7 @@ type ClassRow = {
   title: string;
   subject: string | null;
   subject_id: string | null;
-  tutor_id: string | null;
+  tutor_id: string | null; // still exists in DB but not used in UI
 };
 
 type SubjectRow = {
@@ -28,19 +28,12 @@ type LevelRow = {
   name: string;
 };
 
-type TutorRow = {
-  id: string;
-  school_id: string;
-  full_name: string;
-};
-
 type ModalMode = 'create' | 'edit';
 
 type ClassFormState = {
   title: string;
-  subject: string;
   levelId: string;
-  tutorId: string;
+  subjectIds: string[]; // multiple subjects from one level
 };
 
 // normalize greek/latin text (remove accents, toLowerCase)
@@ -60,7 +53,6 @@ export default function ClassesPage() {
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [subjects, setSubjects] = useState<SubjectRow[]>([]);
   const [levels, setLevels] = useState<LevelRow[]>([]);
-  const [tutors, setTutors] = useState<TutorRow[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -72,14 +64,14 @@ export default function ClassesPage() {
 
   const [search, setSearch] = useState('');
 
-  // 🔴 delete confirmation modal state
+  // delete confirmation modal state
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string;
     title: string;
   } | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // ⭐ NEW – state για modal μαθητών
+  // modal μαθητών
   const [studentsModalClass, setStudentsModalClass] = useState<{
     id: string;
     title: string;
@@ -90,12 +82,6 @@ export default function ClassesPage() {
     levels.forEach((lvl) => m.set(lvl.id, lvl.name));
     return m;
   }, [levels]);
-
-  const tutorNameById = useMemo(() => {
-    const m = new Map<string, string>();
-    tutors.forEach((t) => m.set(t.id, t.full_name));
-    return m;
-  }, [tutors]);
 
   useEffect(() => {
     if (!schoolId) {
@@ -128,7 +114,6 @@ export default function ClassesPage() {
         const [
           { data: subjData, error: subjErr },
           { data: levelData, error: lvlErr },
-          { data: tutorData, error: tutorErr },
         ] = await Promise.all([
           supabase
             .from('subjects')
@@ -140,20 +125,13 @@ export default function ClassesPage() {
             .select('id, school_id, name')
             .eq('school_id', schoolId)
             .order('name', { ascending: true }),
-          supabase
-            .from('tutors')
-            .select('id, school_id, full_name')
-            .eq('school_id', schoolId)
-            .order('full_name', { ascending: true }),
         ]);
 
         if (subjErr) console.error(subjErr);
         if (lvlErr) console.error(lvlErr);
-        if (tutorErr) console.error(tutorErr);
 
         if (subjData) setSubjects(subjData as SubjectRow[]);
         if (levelData) setLevels(levelData as LevelRow[]);
-        if (tutorData) setTutors(tutorData as TutorRow[]);
       } catch (err) {
         console.error('Lookup load error', err);
       }
@@ -196,30 +174,42 @@ export default function ClassesPage() {
       return;
     }
 
-    // Βρίσκουμε το subject row με βάση subject name + levelId
-    let subjectId: string | null = null;
-    if (form.subject) {
-      const matchingByName = subjects.filter(
-        (s) => s.name === form.subject,
-      );
-      if (form.levelId) {
-        const match = matchingByName.find(
-          (s) => s.level_id === form.levelId,
-        );
-        subjectId = match?.id ?? null;
-      } else if (matchingByName.length === 1) {
-        subjectId = matchingByName[0].id;
-      }
+    if (!form.levelId) {
+      setError('Πρέπει να επιλέξετε επίπεδο.');
+      return;
     }
 
-    const tutorId = form.tutorId || null;
+    if (!form.subjectIds || form.subjectIds.length === 0) {
+      setError('Πρέπει να επιλέξετε τουλάχιστον ένα μάθημα για το τμήμα.');
+      return;
+    }
+
+    // ensure all subjects belong to selected level
+    const invalidSubject = form.subjectIds.some((id) => {
+      const subj = subjects.find((s) => s.id === id);
+      return !subj || subj.level_id !== form.levelId;
+    });
+
+    if (invalidSubject) {
+      setError('Όλα τα μαθήματα πρέπει να ανήκουν στο ίδιο επίπεδο.');
+      return;
+    }
+
+    // display text: "Maths, Physics"
+    const selectedSubjectRows = subjects.filter((s) =>
+      form.subjectIds.includes(s.id),
+    );
+    const subjectText =
+      selectedSubjectRows.map((s) => s.name).join(', ') || null;
+
+    // primary subject_id = first selected
+    const primarySubjectId = form.subjectIds[0] ?? null;
 
     const payload = {
       school_id: schoolId,
       title: form.title.trim(),
-      subject: form.subject.trim() || null,
-      subject_id: subjectId,
-      tutor_id: tutorId,
+      subject: subjectText,
+      subject_id: primarySubjectId,
     };
 
     setSaving(true);
@@ -253,7 +243,6 @@ export default function ClassesPage() {
           title: payload.title,
           subject: payload.subject,
           subject_id: payload.subject_id,
-          tutor_id: payload.tutor_id,
         })
         .eq('id', editingClass.id)
         .select('*')
@@ -276,7 +265,6 @@ export default function ClassesPage() {
     }
   };
 
-  // ✅ handle actual deletion after user confirms in custom modal
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
 
@@ -317,22 +305,13 @@ export default function ClassesPage() {
         }
       }
 
-      const tutorName = c.tutor_id
-        ? tutorNameById.get(c.tutor_id) ?? ''
-        : '';
-
-      const composite = [
-        c.title,
-        c.subject,
-        levelName,
-        tutorName,
-      ]
+      const composite = [c.title, c.subject, levelName]
         .filter(Boolean)
         .join(' ');
 
       return normalizeText(composite).includes(q);
     });
-  }, [classes, search, subjects, levelNameById, tutorNameById]);
+  }, [classes, search, subjects, levelNameById]);
 
   return (
     <div className="space-y-4">
@@ -341,7 +320,7 @@ export default function ClassesPage() {
         <div>
           <h1 className="text-base font-semibold text-slate-50">ΤΜΗΜΑΤΑ</h1>
           <p className="text-xs text-slate-300">
-            Διαχείριση τμημάτων με μάθημα, επίπεδο και καθηγητή.
+            Διαχείριση τμημάτων με μάθημα και επίπεδο.
           </p>
           <p className="mt-1 text-[11px] text-slate-400">
             Σύνολο τμημάτων:{' '}
@@ -430,10 +409,6 @@ export default function ClassesPage() {
                   ΕΠΙΠΕΔΟ
                 </th>
                 <th className="border-b border-slate-600 px-4 py-2">
-                  ΚΑΘΗΓΗΤΗΣ
-                </th>
-                {/* ⭐ NEW column header */}
-                <th className="border-b border-slate-600 px-4 py-2">
                   ΜΑΘΗΤΕΣ
                 </th>
                 <th className="border-b border-slate-600 px-4 py-2 th-right">
@@ -451,10 +426,6 @@ export default function ClassesPage() {
                       levelNameById.get(subjRow.level_id) ?? '—';
                   }
                 }
-
-                const tutorName = c.tutor_id
-                  ? tutorNameById.get(c.tutor_id) ?? '—'
-                  : '—';
 
                 return (
                   <tr key={c.id} className="hover:bg-slate-800/40">
@@ -485,16 +456,6 @@ export default function ClassesPage() {
                       </span>
                     </td>
 
-                    <td className="border-b border-slate-700 px-4 py-2 align-top">
-                      <span
-                        className="text-xs text-slate-100"
-                        style={{ color: 'var(--color-text-td)' }}
-                      >
-                        {tutorName}
-                      </span>
-                    </td>
-
-                    {/* ⭐ NEW cell with green + button */}
                     <td className="border-b border-slate-700 px-4 py-2 align-top">
                       <button
                         type="button"
@@ -532,14 +493,13 @@ export default function ClassesPage() {
         editingClass={editingClass}
         subjects={subjects}
         levels={levels}
-        tutors={tutors}
         error={error}
         saving={saving}
         onClose={closeModal}
         onSubmit={handleSaveClass}
       />
 
-      {/* ⭐ NEW: modal για μαθητές */}
+      {/* Modal μαθητών */}
       <ClassStudentsModal
         open={!!studentsModalClass}
         onClose={() => setStudentsModalClass(null)}
@@ -547,14 +507,13 @@ export default function ClassesPage() {
         classTitle={studentsModalClass?.title}
       />
 
-      {/* 🔴 Custom delete confirmation modal – buttons aligned right */}
+      {/* Delete confirmation modal */}
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div
             className="relative w-full max-w-md rounded-xl border border-slate-700 p-5 shadow-xl"
             style={{ background: 'var(--color-sidebar)' }}
           >
-            {/* X close */}
             <button
               type="button"
               onClick={handleCancelDelete}

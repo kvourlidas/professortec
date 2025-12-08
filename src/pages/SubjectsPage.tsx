@@ -1,9 +1,9 @@
-// src/pages/SubjectsPage.tsx
 import { useState, useEffect, useMemo } from 'react';
 import type { FormEvent } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, Plus } from 'lucide-react';
+import SubjectTutorsModal from '../components/subjects/SubjectTutorsModal';
 
 type LevelRow = {
   id: string;
@@ -18,6 +18,12 @@ type SubjectRow = {
   name: string;
   level_id: string | null;
   created_at: string;
+};
+
+type TutorRow = {
+  id: string;
+  school_id: string;
+  full_name: string | null;
 };
 
 type ModalMode = 'create' | 'edit';
@@ -55,7 +61,20 @@ export default function SubjectsPage() {
   const [deleteTarget, setDeleteTarget] = useState<SubjectRow | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // Map level_id -> name for quick lookup
+  // ⭐ modal για καθηγητές ανά μάθημα
+  const [tutorsModalSubject, setTutorsModalSubject] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+
+  // ⭐ tutors per subject
+  const [tutorsBySubject, setTutorsBySubject] = useState<
+    Map<string, TutorRow[]>
+  >(new Map());
+
+  // flag για reload μετά από αλλαγές στο modal
+  const [reloadSubjectTutorsFlag, setReloadSubjectTutorsFlag] = useState(0);
+
   const levelNameById = useMemo(() => {
     const m = new Map<string, string>();
     levels.forEach((lvl) => m.set(lvl.id, lvl.name));
@@ -114,6 +133,52 @@ export default function SubjectsPage() {
     load();
   }, [schoolId]);
 
+  // ⭐ Load tutors per subject
+  useEffect(() => {
+    if (!schoolId) return;
+
+    const loadSubjectTutors = async () => {
+      try {
+        const [{ data: tutorsData, error: tutorsErr }, { data: linksData, error: linksErr }] =
+          await Promise.all([
+            supabase
+              .from('tutors')
+              .select('id, school_id, full_name')
+              .eq('school_id', schoolId)
+              .order('full_name', { ascending: true }),
+            supabase
+              .from('subject_tutors')
+              .select('subject_id, tutor_id')
+              .eq('school_id', schoolId),
+          ]);
+
+        if (tutorsErr) throw tutorsErr;
+        if (linksErr) throw linksErr;
+
+        const tutors = (tutorsData ?? []) as TutorRow[];
+        type LinkRow = { subject_id: string; tutor_id: string };
+        const links = (linksData ?? []) as LinkRow[];
+
+        const map = new Map<string, TutorRow[]>();
+
+        links.forEach((link) => {
+          const tutor = tutors.find((t) => t.id === link.tutor_id);
+          if (!tutor) return;
+          const list = map.get(link.subject_id) ?? [];
+          list.push(tutor);
+          map.set(link.subject_id, list);
+        });
+
+        setTutorsBySubject(map);
+      } catch (err) {
+        console.error('Error loading subject tutors map', err);
+        // δεν σπάμε τη σελίδα, απλά δεν δείχνουμε ονόματα αν αποτύχει
+      }
+    };
+
+    loadSubjectTutors();
+  }, [schoolId, reloadSubjectTutorsFlag]);
+
   const resetForm = () => {
     setSubjectName('');
     setLevelId('');
@@ -169,7 +234,6 @@ export default function SubjectsPage() {
     };
 
     if (modalMode === 'create') {
-      // INSERT
       const { data, error } = await supabase
         .from('subjects')
         .insert(payload)
@@ -187,7 +251,6 @@ export default function SubjectsPage() {
       setSubjects((prev) => [...prev, data as SubjectRow]);
       closeModal();
     } else if (modalMode === 'edit' && editingSubject) {
-      // UPDATE
       const { data, error } = await supabase
         .from('subjects')
         .update({
@@ -216,13 +279,11 @@ export default function SubjectsPage() {
     }
   };
 
-  // open custom delete modal
   const askDeleteSubject = (row: SubjectRow) => {
     setError(null);
     setDeleteTarget(row);
   };
 
-  // confirm delete
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
 
@@ -267,6 +328,11 @@ export default function SubjectsPage() {
       return normalizeText(composite).includes(q);
     });
   }, [subjects, levelNameById, search]);
+
+  // όταν αποθηκεύονται αλλαγές στο SubjectTutorsModal
+  const handleSubjectTutorsChanged = () => {
+    setReloadSubjectTutorsFlag((x) => x + 1);
+  };
 
   return (
     <div className="space-y-4">
@@ -355,6 +421,9 @@ export default function SubjectsPage() {
                 <th className="border-b border-slate-600 px-4 py-2 text-left">
                   Επίπεδο
                 </th>
+                <th className="border-b border-slate-600 px-4 py-2 text-left">
+                  Καθηγητές
+                </th>
                 <th className="border-b border-slate-600 px-4 py-2 text-right">
                   Ενέργειες
                 </th>
@@ -366,6 +435,8 @@ export default function SubjectsPage() {
                   subj.level_id && levelNameById.get(subj.level_id)
                     ? levelNameById.get(subj.level_id)!
                     : '—';
+
+                const tutorList = tutorsBySubject.get(subj.id) ?? [];
 
                 return (
                   <tr key={subj.id} className="hover:bg-slate-800/40">
@@ -385,6 +456,49 @@ export default function SubjectsPage() {
                         {levelName}
                       </span>
                     </td>
+
+                    {/* ⭐ Tutors column – icon left, names as chips */}
+                    <td className="border-b border-slate-700 px-4 py-2 text-left">
+                      <div className="flex items-start gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setTutorsModalSubject({
+                              id: subj.id,
+                              name: subj.name,
+                            })
+                          }
+                          className="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border border-emerald-500 text-emerald-400 hover:bg-emerald-500/10"
+                        >
+                          <Plus size={13} />
+                        </button>
+
+                        <div className="flex flex-wrap gap-1">
+                          {tutorList.length === 0 ? (
+                            <span className="text-[11px] italic text-slate-500">
+                              Χωρίς καθηγητές
+                            </span>
+                          ) : (
+                            <>
+                              {tutorList.slice(0, 3).map((t) => (
+                                <span
+                                  key={t.id}
+                                  className="rounded-full bg-slate-800/70 px-2 py-0.5 text-[11px] text-slate-100"
+                                >
+                                  {t.full_name ?? 'Χωρίς όνομα'}
+                                </span>
+                              ))}
+                              {tutorList.length > 3 && (
+                                <span className="text-[11px] text-slate-400">
+                                  +{tutorList.length - 3} ακόμα
+                                </span>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+
                     <td className="border-b border-slate-700 px-4 py-2">
                       <div className="flex items-center justify-end gap-2">
                         {/* Edit */}
@@ -550,6 +664,15 @@ export default function SubjectsPage() {
           </div>
         </div>
       )}
+
+      {/* Modal για καθηγητές ανά μάθημα */}
+      <SubjectTutorsModal
+        open={!!tutorsModalSubject}
+        onClose={() => setTutorsModalSubject(null)}
+        subjectId={tutorsModalSubject?.id ?? null}
+        subjectName={tutorsModalSubject?.name ?? ''}
+        onChanged={handleSubjectTutorsChanged}
+      />
     </div>
   );
 }
