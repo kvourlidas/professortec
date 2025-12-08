@@ -2,6 +2,9 @@ import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
 import ClassFormModal from '../components/classes/ClassFormModal';
+import EditDeleteButtons from '../components/ui/EditDeleteButtons';
+import { Plus } from 'lucide-react'; // ⭐ NEW
+import ClassStudentsModal from '../components/classes/ClassStudentsModal'; // ⭐ NEW
 
 type ClassRow = {
   id: string;
@@ -75,6 +78,12 @@ export default function ClassesPage() {
     title: string;
   } | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // ⭐ NEW – state για modal μαθητών
+  const [studentsModalClass, setStudentsModalClass] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
 
   const levelNameById = useMemo(() => {
     const m = new Map<string, string>();
@@ -423,6 +432,10 @@ export default function ClassesPage() {
                 <th className="border-b border-slate-600 px-4 py-2">
                   ΚΑΘΗΓΗΤΗΣ
                 </th>
+                {/* ⭐ NEW column header */}
+                <th className="border-b border-slate-600 px-4 py-2">
+                  ΜΑΘΗΤΕΣ
+                </th>
                 <th className="border-b border-slate-600 px-4 py-2 th-right">
                   ΕΝΕΡΓΕΙΕΣ
                 </th>
@@ -481,25 +494,27 @@ export default function ClassesPage() {
                       </span>
                     </td>
 
+                    {/* ⭐ NEW cell with green + button */}
+                    <td className="border-b border-slate-700 px-4 py-2 align-top">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setStudentsModalClass({ id: c.id, title: c.title })
+                        }
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-500 text-emerald-400 hover:bg-emerald-500/10"
+                      >
+                        <Plus size={14} />
+                      </button>
+                    </td>
+
                     <td className="border-b border-slate-700 px-4 py-2 align-top">
                       <div className="flex items-center justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => openEditModal(c)}
-                          style={{ background: 'var(--color-primary)' }}
-                          className="btn-ghost px-2 py-1 text-[11px]"
-                        >
-                          Επεξεργασία
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() =>
+                        <EditDeleteButtons
+                          onEdit={() => openEditModal(c)}
+                          onDelete={() =>
                             setDeleteTarget({ id: c.id, title: c.title })
                           }
-                          className="btn-primary bg-red-600 px-2 py-1 text-[11px] hover:bg-red-700"
-                        >
-                          Διαγραφή
-                        </button>
+                        />
                       </div>
                     </td>
                   </tr>
@@ -524,46 +539,60 @@ export default function ClassesPage() {
         onSubmit={handleSaveClass}
       />
 
-      {/* 🔴 Custom delete confirmation modal */}
+      {/* ⭐ NEW: modal για μαθητές */}
+      <ClassStudentsModal
+        open={!!studentsModalClass}
+        onClose={() => setStudentsModalClass(null)}
+        classId={studentsModalClass?.id ?? null}
+        classTitle={studentsModalClass?.title}
+      />
+
+      {/* 🔴 Custom delete confirmation modal – buttons aligned right */}
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="relative w-full max-w-sm rounded-md bg-slate-900 border border-slate-700 p-4 space-y-3">
+          <div
+            className="relative w-full max-w-md rounded-xl border border-slate-700 p-5 shadow-xl"
+            style={{ background: 'var(--color-sidebar)' }}
+          >
             {/* X close */}
             <button
               type="button"
               onClick={handleCancelDelete}
-              className="absolute right-3 top-3 text-slate-400 hover:text-slate-200 text-sm"
+              className="absolute right-4 top-3 text-slate-400 hover:text-slate-200 text-sm"
               aria-label="Κλείσιμο"
             >
               ×
             </button>
 
-            <h3 className="text-sm font-semibold text-slate-50 mb-1">
+            <h3 className="mb-2 text-sm font-semibold text-slate-50">
               Διαγραφή τμήματος
             </h3>
-            <p className="text-[11px] text-slate-300">
-              Είσαι σίγουρος ότι θέλεις να διαγράψεις το τμήμα{' '}
-              <span className="font-semibold text-slate-100">
+            <p className="text-xs text-slate-200">
+              Σίγουρα θέλεις να διαγράψεις το τμήμα{' '}
+              <span
+                className="font-semibold"
+                style={{ color: 'var(--color-accent)' }}
+              >
                 «{deleteTarget.title}»
               </span>
-              ;
+              ; Η ενέργεια αυτή δεν μπορεί να ανακληθεί.
             </p>
 
-            <div className="pt-3 mt-2 flex justify-between items-center border-t border-slate-700">
+            <div className="mt-5 flex justify-end gap-3">
               <button
                 type="button"
                 onClick={handleCancelDelete}
-                className="text-[11px] px-3 py-1 rounded border border-slate-600 text-slate-200 hover:bg-slate-700/60"
+                className="px-4 py-1.5 rounded-md border border-slate-600 bg-[color:var(--color-input-bg)] text-xs font-medium text-slate-100 hover:bg-slate-700/80"
               >
-                Άκυρο
+                Ακύρωση
               </button>
               <button
                 type="button"
                 onClick={handleConfirmDelete}
                 disabled={deleting}
-                className="text-[11px] px-3 py-1 rounded bg-red-600 hover:bg-red-500 text-white font-medium disabled:opacity-60"
+                className="px-4 py-1.5 rounded-md bg-red-600 hover:bg-red-500 text-xs font-semibold text-white disabled:opacity-60"
               >
-                {deleting ? 'Διαγραφή…' : 'Ναι, διαγραφή'}
+                {deleting ? 'Διαγραφή…' : 'Διαγραφή'}
               </button>
             </div>
           </div>

@@ -66,7 +66,6 @@ export default function ClassFormModal({
 }: ClassFormModalProps) {
   const [form, setForm] = useState<ClassFormState>(emptyForm);
 
-  // initialize / reset form when modal opens or editingClass changes
   useEffect(() => {
     if (!open) {
       setForm(emptyForm);
@@ -141,11 +140,7 @@ export default function ClassFormModal({
           <h2 className="text-sm font-semibold text-slate-50">
             {mode === 'create' ? 'Νέο τμήμα' : 'Επεξεργασία τμήματος'}
           </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-xs"
-          >
+          <button type="button" onClick={onClose} className="text-xs">
             Κλείσιμο
           </button>
         </div>
@@ -193,9 +188,7 @@ export default function ClassFormModal({
             </div>
 
             <div>
-              <label className="form-label text-slate-100">
-                Επίπεδο
-              </label>
+              <label className="form-label text-slate-100">Επίπεδο</label>
               <select
                 value={form.levelId}
                 onChange={handleFormChange('levelId')}
@@ -220,9 +213,7 @@ export default function ClassFormModal({
 
           {/* Καθηγητής */}
           <div>
-            <label className="form-label text-slate-100">
-              Καθηγητής
-            </label>
+            <label className="form-label text-slate-100">Καθηγητής</label>
             <select
               value={form.tutorId}
               onChange={handleFormChange('tutorId')}
@@ -249,11 +240,7 @@ export default function ClassFormModal({
             >
               Ακύρωση
             </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="btn-primary"
-            >
+            <button type="submit" disabled={saving} className="btn-primary">
               {saving
                 ? 'Αποθήκευση...'
                 : mode === 'create'

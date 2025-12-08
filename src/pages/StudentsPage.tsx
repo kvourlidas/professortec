@@ -3,6 +3,8 @@ import { useState, useEffect, useMemo } from 'react';
 import type { FormEvent } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
+import EditDeleteButtons from '../components/ui/EditDeleteButtons';
+import DatePickerField from '../components/ui/AppDatePicker';
 
 type LevelRow = {
   id: string;
@@ -24,13 +26,32 @@ type StudentRow = {
   created_at: string;
 };
 
-// helper: convert "yyyy-mm-dd" -> "dd/mm/yyyy"
+// helper: convert "yyyy-mm-dd" -> "dd/mm/yyyy" (for table display)
 function formatDateToGreek(dateStr: string | null): string {
   if (!dateStr) return '';
   const parts = dateStr.split('-'); // [yyyy, mm, dd]
   if (parts.length !== 3) return dateStr;
   const [y, m, d] = parts;
   return `${d}/${m}/${y}`;
+}
+
+// helpers for AppDatePicker (dd/mm/yyyy) <-> ISO (yyyy-mm-dd)
+function isoToDisplay(iso: string | null): string {
+  if (!iso) return '';
+  const [y, m, d] = iso.split('-');
+  if (!y || !m || !d) return '';
+  return `${d}/${m}/${y}`;
+}
+
+function displayToIso(display: string): string {
+  if (!display) return '';
+  const parts = display.split(/[\/\-\.]/); // dd / mm / yyyy
+  if (parts.length !== 3) return '';
+  const [d, m, y] = parts;
+  if (!d || !m || !y) return '';
+  const dd = d.padStart(2, '0');
+  const mm = m.padStart(2, '0');
+  return `${y}-${mm}-${dd}`;
 }
 
 // helper: normalize greek/latin text (remove accents, toLowerCase)
@@ -59,11 +80,16 @@ export default function StudentsPage() {
   const [editingStudent, setEditingStudent] = useState<StudentRow | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // 🔴 delete confirmation modal
+  const [deleteTarget, setDeleteTarget] = useState<StudentRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
   const [fullName, setFullName] = useState('');
-  const [dateOfBirth, setDateOfBirth] = useState(''); // yyyy-mm-dd
+  // holds dd/mm/yyyy for the AppDatePicker
+  const [dateOfBirth, setDateOfBirth] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
-  const [levelId, setLevelId] = useState(''); // selected level_id
+  const [levelId, setLevelId] = useState('');
   const [fatherName, setFatherName] = useState('');
   const [motherName, setMotherName] = useState('');
 
@@ -89,7 +115,6 @@ export default function StudentsPage() {
 
       if (error) {
         console.error(error);
-        // don't block page because of levels error; just show message
         setError('Αποτυχία φόρτωσης επιπέδων.');
       } else {
         setLevels((data ?? []) as LevelRow[]);
@@ -99,7 +124,7 @@ export default function StudentsPage() {
     loadLevels();
   }, [schoolId]);
 
-  // Load students from Supabase (WITHOUT join, we resolve level locally)
+  // Load students
   useEffect(() => {
     if (!schoolId) {
       setLoading(false);
@@ -153,7 +178,10 @@ export default function StudentsPage() {
     setEditingStudent(student);
 
     setFullName(student.full_name ?? '');
-    setDateOfBirth(student.date_of_birth ?? '');
+    // convert ISO from DB -> dd/mm/yyyy for picker
+    setDateOfBirth(
+      student.date_of_birth ? isoToDisplay(student.date_of_birth) : '',
+    );
     setPhone(student.phone ?? '');
     setEmail(student.email ?? '');
     setLevelId(student.level_id ?? '');
@@ -183,10 +211,13 @@ export default function StudentsPage() {
     setSaving(true);
     setError(null);
 
+    // convert dd/mm/yyyy -> ISO for DB
+    const isoDob = displayToIso(dateOfBirth);
+
     const payload = {
       school_id: schoolId,
       full_name: nameTrimmed,
-      date_of_birth: dateOfBirth || null,
+      date_of_birth: isoDob || null,
       phone: phone.trim() || null,
       email: email.trim() || null,
       level_id: levelId || null,
@@ -195,7 +226,6 @@ export default function StudentsPage() {
     };
 
     if (modalMode === 'create') {
-      // INSERT
       const { data, error } = await supabase
         .from('students')
         .insert(payload)
@@ -215,7 +245,6 @@ export default function StudentsPage() {
       setStudents((prev) => [...prev, data as StudentRow]);
       closeModal();
     } else if (modalMode === 'edit' && editingStudent) {
-      // UPDATE
       const { data, error } = await supabase
         .from('students')
         .update({
@@ -251,16 +280,30 @@ export default function StudentsPage() {
     }
   };
 
-  const deleteStudent = async (id: string) => {
-    const ok = window.confirm('Σίγουρα θέλετε να διαγράψετε αυτόν τον μαθητή;');
-    if (!ok) return;
+  // 🔴 open delete-confirm modal instead of window.confirm
+  const askDeleteStudent = (student: StudentRow) => {
+    setError(null);
+    setDeleteTarget(student);
+  };
+
+  const cancelDeleteStudent = () => {
+    if (deleting) return;
+    setDeleteTarget(null);
+  };
+
+  const confirmDeleteStudent = async () => {
+    if (!deleteTarget) return;
+
+    setDeleting(true);
     setError(null);
 
     const { error } = await supabase
       .from('students')
       .delete()
-      .eq('id', id)
+      .eq('id', deleteTarget.id)
       .eq('school_id', schoolId ?? '');
+
+    setDeleting(false);
 
     if (error) {
       console.error(error);
@@ -268,7 +311,8 @@ export default function StudentsPage() {
       return;
     }
 
-    setStudents((prev) => prev.filter((s) => s.id !== id));
+    setStudents((prev) => prev.filter((s) => s.id !== deleteTarget.id));
+    setDeleteTarget(null);
   };
 
   // 🔍 Filter students by any field
@@ -472,21 +516,10 @@ export default function StudentsPage() {
                     </td>
                     <td className="border-b border-slate-700 px-4 py-2">
                       <div className="flex items-center justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => openEditModal(s)}
-                          className="btn-ghost px-2 py-1 text-[11px]"
-                          style={{ background: 'var(--color-primary)' }}
-                        >
-                          Επεξεργασία
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => deleteStudent(s.id)}
-                          className="btn-primary bg-red-600 px-2 py-1 text-[11px] hover:bg-red-700"
-                        >
-                          Διαγραφή
-                        </button>
+                        <EditDeleteButtons
+                          onEdit={() => openEditModal(s)}
+                          onDelete={() => askDeleteStudent(s)}
+                        />
                       </div>
                     </td>
                   </tr>
@@ -579,22 +612,14 @@ export default function StudentsPage() {
                 </select>
               </div>
 
-              <div>
-                <label className="form-label text-slate-100">
-                  Ημερομηνία γέννησης
-                </label>
-                <input
-                  type="date"
-                  lang="el"
-                  className="form-input"
-                  style={{
-                    background: 'var(--color-input-bg)',
-                    color: 'var(--color-text-main)',
-                  }}
-                  value={dateOfBirth}
-                  onChange={(e) => setDateOfBirth(e.target.value)}
-                />
-              </div>
+              {/* Ημερομηνία γέννησης with AppDatePicker */}
+              <DatePickerField
+                label="Ημερομηνία γέννησης"
+                value={dateOfBirth} // dd/mm/yyyy
+                onChange={setDateOfBirth}
+                placeholder="π.χ. 24/12/2010"
+                id="student-dob"
+              />
 
               <div>
                 <label className="form-label text-slate-100">Τηλέφωνο</label>
@@ -647,6 +672,51 @@ export default function StudentsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* 🔴 Delete confirmation modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div
+            className="w-full max-w-sm rounded-xl border border-slate-700 p-5 shadow-xl"
+            style={{ background: 'var(--color-sidebar)' }}
+          >
+            <h2 className="text-sm font-semibold text-slate-50">
+              Διαγραφή μαθητή
+            </h2>
+            <p className="mt-3 text-xs text-slate-200">
+              Σίγουρα θέλετε να διαγράψετε τον μαθητή{' '}
+              <span className="font-semibold text-[var(--color-accent)]">
+                «{deleteTarget.full_name}»
+              </span>
+              ; Η ενέργεια αυτή δεν μπορεί να αναιρεθεί.
+            </p>
+
+            <div className="mt-4 flex justify-end gap-2 text-xs">
+              <button
+                type="button"
+                onClick={cancelDeleteStudent}
+                className="btn-ghost"
+                style={{
+                  background: 'var(--color-input-bg)',
+                  color: 'var(--color-text-main)',
+                }}
+                disabled={deleting}
+              >
+                Ακύρωση
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteStudent}
+                className="btn-primary"
+                style={{ backgroundColor: '#dc2626', color: '#fff' }}
+                disabled={deleting}
+              >
+                {deleting ? 'Διαγραφή…' : 'Διαγραφή'}
+              </button>
+            </div>
           </div>
         </div>
       )}

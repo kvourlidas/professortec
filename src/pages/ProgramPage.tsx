@@ -67,6 +67,18 @@ type AddSlotForm = {
   endDate: string;   // displayed as dd/mm/yyyy
 };
 
+type EditSlotForm = {
+  id: string;
+  classId: string | null;
+  day: string;
+  startTime: string;
+  startPeriod: 'AM' | 'PM';
+  endTime: string;
+  endPeriod: 'AM' | 'PM';
+  startDate: string;
+  endDate: string;
+};
+
 const emptyAddSlotForm: AddSlotForm = {
   classId: null,
   day: '',
@@ -116,6 +128,23 @@ function convert12To24(time: string, period: 'AM' | 'PM'): string | null {
   }
 
   return `${pad2(h)}:${pad2(m)}`;
+}
+
+/** 24h "HH:MM[:SS]" -> 12h + AM/PM */
+function convert24To12(
+  time: string | null,
+): { time: string; period: 'AM' | 'PM' } {
+  if (!time) return { time: '', period: 'AM' };
+  const [hStr, mStr = '00'] = time.split(':');
+  let h = Number(hStr);
+  const m = Number(mStr);
+  if (Number.isNaN(h) || Number.isNaN(m)) {
+    return { time: '', period: 'AM' };
+  }
+  const period: 'AM' | 'PM' = h >= 12 ? 'PM' : 'AM';
+  h = h % 12;
+  if (h === 0) h = 12;
+  return { time: `${pad2(h)}:${pad2(m)}`, period };
 }
 
 /** keeps only digits and inserts ":" after HH */
@@ -187,10 +216,24 @@ export default function ProgramPage() {
 
   const [dragClassId, setDragClassId] = useState<string | null>(null);
 
-  // modal state
+  // add-slot modal
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [addForm, setAddForm] = useState<AddSlotForm>(emptyAddSlotForm);
   const [savingSlot, setSavingSlot] = useState(false);
+
+  // edit-slot modal
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editForm, setEditForm] = useState<EditSlotForm | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  // delete-slot modal
+  const [deleteSlotTarget, setDeleteSlotTarget] = useState<{
+    id: string;
+    classLabel: string;
+    dayLabel: string;
+    timeRange: string;
+  } | null>(null);
+  const [deletingSlot, setDeletingSlot] = useState(false);
 
   // maps for display
   const levelNameById = useMemo(() => {
@@ -210,6 +253,11 @@ export default function ProgramPage() {
     subjects.forEach((s) => m.set(s.id, s));
     return m;
   }, [subjects]);
+
+  const currentEditClass = useMemo(() => {
+    if (!editForm) return null;
+    return classes.find((c) => c.id === editForm.classId) ?? null;
+  }, [editForm, classes]);
 
   // group items ανά μέρα, sort by start_time
   const itemsByDay = useMemo(() => {
@@ -463,21 +511,143 @@ export default function ProgramPage() {
     closeAddSlotModal();
   };
 
-  const handleRemoveProgramItem = async (id: string) => {
+  // ---- edit slot modal helpers ----
+  const openEditSlotModal = (item: ProgramItemRow) => {
+    const { time: startTime, period: startPeriod } = convert24To12(
+      item.start_time,
+    );
+    const { time: endTime, period: endPeriod } = convert24To12(item.end_time);
+
+    setError(null);
+    setEditForm({
+      id: item.id,
+      classId: item.class_id,
+      day: item.day_of_week,
+      startTime,
+      startPeriod,
+      endTime,
+      endPeriod,
+      startDate: item.start_date ? formatDateDisplay(item.start_date) : '',
+      endDate: item.end_date ? formatDateDisplay(item.end_date) : '',
+    });
+    setEditModalOpen(true);
+  };
+
+  const closeEditSlotModal = () => {
+    if (savingEdit) return;
+    setEditModalOpen(false);
+    setEditForm(null);
+  };
+
+  const handleEditTimeChange =
+    (field: 'startTime' | 'endTime') =>
+    (e: ChangeEvent<HTMLInputElement>) => {
+      const formatted = formatTimeInput(e.target.value);
+      setEditForm((prev) =>
+        prev ? { ...prev, [field]: formatted } : prev,
+      );
+    };
+
+  const handleEditFieldChange =
+    (field: keyof EditSlotForm) =>
+    (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+      const value = e.target.value;
+      setEditForm((prev) =>
+        prev ? { ...prev, [field]: value as any } : prev,
+      );
+    };
+
+  const handleConfirmEditSlot = async () => {
+    if (!program || !editForm) return;
+
+    if (!editForm.classId || !editForm.day) {
+      setError('Επιλέξτε τμήμα και ημέρα.');
+      return;
+    }
+
+    const start24 = convert12To24(editForm.startTime, editForm.startPeriod);
+    const end24 = convert12To24(editForm.endTime, editForm.endPeriod);
+
+    if (!start24 || !end24) {
+      setError('Συμπληρώστε σωστά τις ώρες (π.χ. 08:00).');
+      return;
+    }
+
+    if (!editForm.startDate || !editForm.endDate) {
+      setError('Συμπληρώστε ημερομηνία έναρξης και λήξης.');
+      return;
+    }
+
+    const startDateISO = parseDateDisplayToISO(editForm.startDate);
+    const endDateISO = parseDateDisplayToISO(editForm.endDate);
+
+    if (!startDateISO || !endDateISO) {
+      setError('Συμπληρώστε σωστά τις ημερομηνίες (π.χ. 12/05/2025).');
+      return;
+    }
+
+    setSavingEdit(true);
     setError(null);
 
-    const previous = programItems;
-    setProgramItems((prev) => prev.filter((i) => i.id !== id));
+    const payload = {
+      class_id: editForm.classId,
+      day_of_week: editForm.day,
+      start_time: start24,
+      end_time: end24,
+      start_date: startDateISO,
+      end_date: endDateISO,
+    };
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('program_items')
-      .delete()
-      .eq('id', id);
+      .update(payload)
+      .eq('id', editForm.id)
+      .select('*')
+      .maybeSingle();
 
-    if (error) {
-      console.error('Failed to delete program_item', error);
-      setError('Αποτυχία διαγραφής από το πρόγραμμα.');
-      setProgramItems(previous);
+    setSavingEdit(false);
+
+    if (error || !data) {
+      console.error('Failed to update program_item', error);
+      setError('Αποτυχία ενημέρωσης τμήματος στο πρόγραμμα.');
+      return;
+    }
+
+    setProgramItems((prev) =>
+      prev.map((i) => (i.id === editForm.id ? (data as ProgramItemRow) : i)),
+    );
+    closeEditSlotModal();
+  };
+
+  // ---- delete slot helpers (with modal) ----
+  const handleConfirmDeleteSlot = async () => {
+    if (!deleteSlotTarget) return;
+
+    const id = deleteSlotTarget.id;
+    const previous = programItems;
+
+    try {
+      setDeletingSlot(true);
+      setError(null);
+
+      // optimistic update
+      setProgramItems((prev) => prev.filter((i) => i.id !== id));
+
+      const { error } = await supabase
+        .from('program_items')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.error('Failed to delete program_item', error);
+        setError('Αποτυχία διαγραφής από το πρόγραμμα.');
+        setProgramItems(previous); // rollback
+        return;
+      }
+
+      setDeleteSlotTarget(null);
+    } finally {
+      setDeletingSlot(false);
     }
   };
 
@@ -643,6 +813,8 @@ export default function ProgramPage() {
                           );
                           if (!cls) return null;
 
+                          const classLabel = getClassLabel(cls);
+
                           const rangeParts: string[] = [];
                           if (item.start_time && item.end_time) {
                             rangeParts.push(
@@ -655,18 +827,37 @@ export default function ProgramPage() {
                             rangeParts.push(`από ${from} έως ${to}`);
                           }
 
+                          const timeRange =
+                            item.start_time && item.end_time
+                              ? `${formatTimeDisplay(
+                                  item.start_time,
+                                )} – ${formatTimeDisplay(item.end_time)}`
+                              : '';
+
                           return (
                             <div
                               key={item.id}
-                              className="rounded-md border border-slate-600 bg-slate-800/80 px-2 py-2 text-[11px] text-slate-100 flex flex-col gap-1"
+                              className="rounded-md border border-slate-600 bg-slate-800/80 px-2 py-2 text-[11px] text-slate-100 flex flex-col gap-1 cursor-pointer hover:border-[var(--color-accent)]/80"
+                              onClick={() => openEditSlotModal(item)}
                             >
                               <div className="flex items-start justify-between gap-1">
                                 <span className="font-semibold leading-snug">
-                                  {getClassLabel(cls)}
+                                  {classLabel}
                                 </span>
                                 <button
                                   type="button"
-                                  onClick={() => handleRemoveProgramItem(item.id)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDeleteSlotTarget({
+                                      id: item.id,
+                                      classLabel,
+                                      dayLabel:
+                                        DAY_LABEL_BY_VALUE[
+                                          item.day_of_week
+                                        ] ?? '',
+                                      timeRange,
+                                    });
+                                  }}
                                   className="ml-1 text-[10px] text-red-300 hover:text-red-200"
                                 >
                                   ✕
@@ -840,6 +1031,248 @@ export default function ProgramPage() {
                   {savingSlot ? 'Προσθήκη…' : 'Προσθήκη'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit-slot modal */}
+      {editModalOpen && editForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div
+            className="w-full max-w-lg rounded-xl border border-slate-700 p-5 shadow-xl"
+            style={{ background: 'var(--color-sidebar)' }}
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-slate-50">
+                Επεξεργασία στο πρόγραμμα
+              </h2>
+              <button
+                type="button"
+                onClick={closeEditSlotModal}
+                className="text-xs text-slate-200 hover:text-white"
+              >
+                Κλείσιμο
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="form-label text-slate-100">Τμήμα</label>
+                <input
+                  disabled
+                  value={
+                    currentEditClass ? getClassLabel(currentEditClass) : ''
+                  }
+                  className="form-input disabled:opacity-80"
+                  style={{
+                    background: 'var(--color-input-bg)',
+                    color: 'var(--color-text-main)',
+                  }}
+                />
+              </div>
+
+              <div>
+                <label className="form-label text-slate-100">Ημέρα</label>
+                <select
+                  value={editForm.day}
+                  onChange={handleEditFieldChange('day')}
+                  className="form-input"
+                  style={{
+                    background: 'var(--color-input-bg)',
+                    color: 'var(--color-text-main)',
+                  }}
+                >
+                  {DAY_OPTIONS.map((d) => (
+                    <option key={d.value} value={d.value}>
+                      {d.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                {/* Ώρα έναρξης */}
+                <div>
+                  <label className="form-label text-slate-100">
+                    Ώρα έναρξης
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="π.χ. 08:00"
+                      value={editForm.startTime}
+                      onChange={handleEditTimeChange('startTime')}
+                      className="form-input pr-12"
+                      style={{
+                        background: 'var(--color-input-bg)',
+                        color: 'var(--color-text-main)',
+                      }}
+                    />
+                    <select
+                      value={editForm.startPeriod}
+                      onChange={handleEditFieldChange('startPeriod')}
+                      className="absolute inset-y-1 right-1 rounded-md border border-slate-500 px-2 text-[10px] leading-tight"
+                      style={{
+                        backgroundColor: 'var(--color-input-bg)',
+                        color: 'var(--color-text-main)',
+                      }}
+                    >
+                      <option value="AM">AM</option>
+                      <option value="PM">PM</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Ώρα λήξης */}
+                <div>
+                  <label className="form-label text-slate-100">
+                    Ώρα λήξης
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="π.χ. 09:30"
+                      value={editForm.endTime}
+                      onChange={handleEditTimeChange('endTime')}
+                      className="form-input pr-12"
+                      style={{
+                        background: 'var(--color-input-bg)',
+                        color: 'var(--color-text-main)',
+                      }}
+                    />
+                    <select
+                      value={editForm.endPeriod}
+                      onChange={handleEditFieldChange('endPeriod')}
+                      className="absolute inset-y-1 right-1 rounded-md border border-slate-500 px-2 text-[10px] leading-tight"
+                      style={{
+                        backgroundColor: 'var(--color-input-bg)',
+                        color: 'var(--color-text-main)',
+                      }}
+                    >
+                      <option value="AM">AM</option>
+                      <option value="PM">PM</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <div>
+                  <label className="form-label text-slate-100">
+                    Ημερομηνία έναρξης
+                  </label>
+                  <AppDatePicker
+                    value={editForm.startDate}
+                    onChange={(newValue) =>
+                      setEditForm((prev) =>
+                        prev ? { ...prev, startDate: newValue } : prev,
+                      )
+                    }
+                    placeholder="π.χ. 12/05/2025"
+                  />
+                </div>
+                <div>
+                  <label className="form-label text-slate-100">
+                    Ημερομηνία λήξης
+                  </label>
+                  <AppDatePicker
+                    value={editForm.endDate}
+                    onChange={(newValue) =>
+                      setEditForm((prev) =>
+                        prev ? { ...prev, endDate: newValue } : prev,
+                      )
+                    }
+                    placeholder="π.χ. 12/05/2025"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={closeEditSlotModal}
+                  className="btn-ghost"
+                  style={{
+                    background: 'var(--color-input-bg)',
+                    color: 'var(--color-text-main)',
+                  }}
+                  disabled={savingEdit}
+                >
+                  Ακύρωση
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmEditSlot}
+                  disabled={savingEdit}
+                  className="btn-primary"
+                >
+                  {savingEdit ? 'Ενημέρωση…' : 'Ενημέρωση'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete-slot confirmation modal */}
+      {deleteSlotTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div
+            className="w-full max-w-md rounded-xl border border-slate-700 px-5 py-4 shadow-xl"
+            style={{ background: 'var(--color-sidebar)' }}
+          >
+            <h3 className="mb-2 text-sm font-semibold text-slate-50">
+              Διαγραφή από το πρόγραμμα
+            </h3>
+            <p className="mb-4 text-xs text-slate-200">
+              Είσαι σίγουρος ότι θέλεις να αφαιρέσεις το τμήμα{' '}
+              <span className="font-semibold text-[color:var(--color-accent)]">
+                «{deleteSlotTarget.classLabel}»
+              </span>{' '}
+              από την ημέρα{' '}
+              <span className="font-semibold text-slate-100">
+                {deleteSlotTarget.dayLabel}
+              </span>
+              {deleteSlotTarget.timeRange && (
+                <>
+                  {' '}
+                  στις{' '}
+                  <span className="font-semibold text-slate-100">
+                    {deleteSlotTarget.timeRange}
+                  </span>
+                </>
+              )}
+              ; Η ενέργεια αυτή δεν μπορεί να ανακληθεί.
+            </p>
+
+            <div className="flex justify-end gap-2 text-xs">
+              <button
+                type="button"
+                onClick={() => {
+                  if (deletingSlot) return;
+                  setDeleteSlotTarget(null);
+                }}
+                className="btn-ghost px-3 py-1"
+                style={{
+                  background: 'var(--color-input-bg)',
+                  color: 'var(--color-text-main)',
+                }}
+                disabled={deletingSlot}
+              >
+                Ακύρωση
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteSlot}
+                disabled={deletingSlot}
+                className="rounded-md px-3 py-1 text-xs font-semibold text-white"
+                style={{ backgroundColor: '#dc2626' }}
+              >
+                {deletingSlot ? 'Διαγραφή…' : 'Διαγραφή'}
+              </button>
             </div>
           </div>
         </div>

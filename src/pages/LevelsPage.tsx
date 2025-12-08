@@ -3,6 +3,7 @@ import { useEffect, useState, useMemo } from 'react';
 import type { FormEvent } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
+import { Pencil, Trash2 } from 'lucide-react';
 
 type LevelRow = {
   id: string;
@@ -35,6 +36,10 @@ export default function LevelsPage() {
   const [saving, setSaving] = useState(false);
 
   const [search, setSearch] = useState('');
+
+  // delete confirmation modal state
+  const [deleteTarget, setDeleteTarget] = useState<LevelRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // 🔹 Φόρτωση επιπέδων από Supabase
   useEffect(() => {
@@ -146,13 +151,25 @@ export default function LevelsPage() {
     }
   };
 
-  const deleteLevel = async (id: string) => {
-    const ok = window.confirm(
-      'Σίγουρα θέλετε να διαγράψετε αυτό το επίπεδο;',
-    );
-    if (!ok) return;
+  // open custom delete modal
+  const askDeleteLevel = (row: LevelRow) => {
+    setError(null);
+    setDeleteTarget(row);
+  };
 
-    const { error } = await supabase.from('levels').delete().eq('id', id);
+  // confirm delete
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+
+    setDeleting(true);
+    setError(null);
+
+    const { error } = await supabase
+      .from('levels')
+      .delete()
+      .eq('id', deleteTarget.id);
+
+    setDeleting(false);
 
     if (error) {
       console.error(error);
@@ -160,7 +177,13 @@ export default function LevelsPage() {
       return;
     }
 
-    setLevels((prev) => prev.filter((lvl) => lvl.id !== id));
+    setLevels((prev) => prev.filter((lvl) => lvl.id !== deleteTarget.id));
+    setDeleteTarget(null);
+  };
+
+  const handleCancelDelete = () => {
+    if (deleting) return;
+    setDeleteTarget(null);
   };
 
   // 🔍 Filter levels by name
@@ -273,20 +296,30 @@ export default function LevelsPage() {
                   </td>
                   <td className="border-b border-slate-700 px-4 py-2">
                     <div className="flex items-center justify-end gap-2">
+                      {/* Edit */}
                       <button
                         type="button"
                         onClick={() => openEditModal(lvl.id)}
-                        className="btn-ghost px-2 py-1 text-[11px]"
-                        style={{ background: 'var(--color-primary)' }}
+                        className="flex h-8 w-8 items-center justify-center rounded-full border transition-colors hover:bg-blue-600/10"
+                        style={{
+                          borderColor: '#60a5ff',
+                          color: '#60a5ff',
+                        }}
                       >
-                        Επεξεργασία
+                        <Pencil className="h-3.5 w-3.5" />
                       </button>
+
+                      {/* Delete */}
                       <button
                         type="button"
-                        onClick={() => deleteLevel(lvl.id)}
-                        className="btn-primary bg-red-600 px-2 py-1 text-[11px] hover:bg-red-700"
+                        onClick={() => askDeleteLevel(lvl)}
+                        className="flex h-8 w-8 items-center justify-center rounded-full border transition-colors hover:bg-red-600/10"
+                        style={{
+                          borderColor: '#f97373',
+                          color: '#f97373',
+                        }}
                       >
-                        Διαγραφή
+                        <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   </td>
@@ -360,6 +393,50 @@ export default function LevelsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirmation modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div
+            className="w-full max-w-md rounded-xl border border-slate-700 px-5 py-4 shadow-xl"
+            style={{ background: 'var(--color-sidebar)' }}
+          >
+            <h3 className="mb-2 text-sm font-semibold text-slate-50">
+              Διαγραφή επιπέδου
+            </h3>
+            <p className="mb-4 text-xs text-slate-200">
+              Σίγουρα θέλετε να διαγράψετε το επίπεδο{' '}
+              <span className="font-semibold text-[color:var(--color-accent)]">
+                «{deleteTarget.name}»
+              </span>
+              ; Η ενέργεια αυτή δεν μπορεί να ανακληθεί.
+            </p>
+            <div className="flex justify-end gap-2 text-xs">
+              <button
+                type="button"
+                onClick={handleCancelDelete}
+                className="btn-ghost px-3 py-1"
+                style={{
+                  background: 'var(--color-input-bg)',
+                  color: 'var(--color-text-main)',
+                }}
+                disabled={deleting}
+              >
+                Ακύρωση
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={deleting}
+                className="rounded-md px-3 py-1 text-xs font-semibold text-white"
+                style={{ backgroundColor: '#dc2626' }}
+              >
+                {deleting ? 'Διαγραφή…' : 'Διαγραφή'}
+              </button>
+            </div>
           </div>
         </div>
       )}

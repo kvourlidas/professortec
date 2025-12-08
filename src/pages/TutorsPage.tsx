@@ -3,12 +3,14 @@ import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent, ChangeEvent } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
+import EditDeleteButtons from '../components/ui/EditDeleteButtons';
+import DatePickerField from '../components/ui/AppDatePicker';
 
 type TutorRow = {
   id: string;
   school_id: string;
   full_name: string;
-  date_of_birth: string | null;
+  date_of_birth: string | null; // ISO: yyyy-mm-dd
   afm: string | null;
   salary_gross: number | null;
   salary_net: number | null;
@@ -21,7 +23,7 @@ type ModalMode = 'create' | 'edit';
 
 type TutorFormState = {
   fullName: string;
-  dateOfBirth: string; // yyyy-mm-dd
+  dateOfBirth: string; // dd/mm/yyyy (UI value for AppDatePicker)
   afm: string;
   salaryGross: string;
   salaryNet: string;
@@ -39,13 +41,32 @@ const emptyForm: TutorFormState = {
   email: '',
 };
 
-// helper: convert "yyyy-mm-dd" -> "dd/mm/yyyy"
+// helper: convert "yyyy-mm-dd" -> "dd/mm/yyyy" (for table display)
 function formatDateToGreek(dateStr: string | null): string {
   if (!dateStr) return '';
   const parts = dateStr.split('-'); // [yyyy, mm, dd]
   if (parts.length !== 3) return dateStr;
   const [y, m, d] = parts;
   return `${d}/${m}/${y}`;
+}
+
+// helpers: ISO <-> display for the AppDatePicker
+function isoToDisplay(iso: string | null): string {
+  if (!iso) return '';
+  const [y, m, d] = iso.split('-');
+  if (!y || !m || !d) return '';
+  return `${d}/${m}/${y}`; // dd/mm/yyyy
+}
+
+function displayToIso(display: string): string {
+  if (!display) return '';
+  const parts = display.split(/[\/\-\.]/); // dd / mm / yyyy
+  if (parts.length !== 3) return '';
+  const [d, m, y] = parts;
+  if (!d || !m || !y) return '';
+  const dd = d.padStart(2, '0');
+  const mm = m.padStart(2, '0');
+  return `${y}-${mm}-${dd}`; // yyyy-mm-dd
 }
 
 // helper: normalize greek/latin text (remove accents, toLowerCase)
@@ -73,6 +94,10 @@ export default function TutorsPage() {
   const [saving, setSaving] = useState(false);
 
   const [search, setSearch] = useState('');
+
+  // delete confirmation modal state
+  const [deleteTarget, setDeleteTarget] = useState<TutorRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Load tutors
   useEffect(() => {
@@ -125,7 +150,8 @@ export default function TutorsPage() {
 
     setForm({
       fullName: row.full_name ?? '',
-      dateOfBirth: row.date_of_birth ?? '',
+      // convert ISO from DB → dd/mm/yyyy for the picker
+      dateOfBirth: row.date_of_birth ? isoToDisplay(row.date_of_birth) : '',
       afm: row.afm ?? '',
       salaryGross:
         row.salary_gross != null ? String(row.salary_gross) : '',
@@ -171,10 +197,13 @@ export default function TutorsPage() {
     const salaryNet =
       form.salaryNet.trim() !== '' ? Number(form.salaryNet) : null;
 
+    // convert dd/mm/yyyy from AppDatePicker -> ISO for DB
+    const isoDob = displayToIso(form.dateOfBirth);
+
     const payload = {
       school_id: schoolId,
       full_name: fullNameTrimmed,
-      date_of_birth: form.dateOfBirth || null,
+      date_of_birth: isoDob || null,
       afm: form.afm.trim() || null,
       salary_gross: Number.isNaN(salaryGross) ? null : salaryGross,
       salary_net: Number.isNaN(salaryNet) ? null : salaryNet,
@@ -239,19 +268,26 @@ export default function TutorsPage() {
     }
   };
 
-  const deleteTutor = async (id: string) => {
-    const ok = window.confirm(
-      'Σίγουρα θέλετε να διαγράψετε αυτόν τον καθηγητή;',
-    );
-    if (!ok) return;
+  // open custom delete modal
+  const askDeleteTutor = (row: TutorRow) => {
+    setError(null);
+    setDeleteTarget(row);
+  };
 
+  // confirm delete
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget || !schoolId) return;
+
+    setDeleting(true);
     setError(null);
 
     const { error } = await supabase
       .from('tutors')
       .delete()
-      .eq('id', id)
-      .eq('school_id', schoolId ?? '');
+      .eq('id', deleteTarget.id)
+      .eq('school_id', schoolId);
+
+    setDeleting(false);
 
     if (error) {
       console.error(error);
@@ -259,7 +295,13 @@ export default function TutorsPage() {
       return;
     }
 
-    setTutors((prev) => prev.filter((t) => t.id !== id));
+    setTutors((prev) => prev.filter((t) => t.id !== deleteTarget.id));
+    setDeleteTarget(null);
+  };
+
+  const handleCancelDelete = () => {
+    if (deleting) return;
+    setDeleteTarget(null);
   };
 
   // 🔍 Filter tutors by any field
@@ -457,21 +499,10 @@ export default function TutorsPage() {
                   </td>
                   <td className="border-b border-slate-700 px-4 py-2">
                     <div className="flex items-center justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={() => openEditModal(t)}
-                        className="btn-ghost px-2 py-1 text-[11px]"
-                        style={{ background: 'var(--color-primary)' }}
-                      >
-                        Επεξεργασία
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => deleteTutor(t.id)}
-                        className="btn-primary bg-red-600 px-2 py-1 text-[11px] hover:bg-red-700"
-                      >
-                        Διαγραφή
-                      </button>
+                      <EditDeleteButtons
+                        onEdit={() => openEditModal(t)}
+                        onDelete={() => askDeleteTutor(t)}
+                      />
                     </div>
                   </td>
                 </tr>
@@ -527,21 +558,16 @@ export default function TutorsPage() {
                 />
               </div>
 
-              <div>
-                <label className="form-label text-slate-100">
-                  Ημερομηνία γέννησης
-                </label>
-                <input
-                  type="date"
-                  className="form-input"
-                  style={{
-                    background: 'var(--color-input-bg)',
-                    color: 'var(--color-text-main)',
-                  }}
-                  value={form.dateOfBirth}
-                  onChange={handleFormChange('dateOfBirth')}
-                />
-              </div>
+              {/* Ημερομηνία γέννησης με AppDatePicker */}
+              <DatePickerField
+                label="Ημερομηνία γέννησης"
+                value={form.dateOfBirth} // dd/mm/yyyy
+                onChange={(value) =>
+                  setForm((prev) => ({ ...prev, dateOfBirth: value }))
+                }
+                placeholder="π.χ. 24/12/1985"
+                id="tutor-dob"
+              />
 
               <div>
                 <label className="form-label text-slate-100">ΑΦΜ</label>
@@ -653,6 +679,50 @@ export default function TutorsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirmation modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div
+            className="w-full max-w-md rounded-xl border border-slate-700 px-5 py-4 shadow-xl"
+            style={{ background: 'var(--color-sidebar)' }}
+          >
+            <h3 className="mb-2 text-sm font-semibold text-slate-50">
+              Διαγραφή καθηγητή
+            </h3>
+            <p className="mb-4 text-xs text-slate-200">
+              Σίγουρα θέλετε να διαγράψετε τον καθηγητή{' '}
+              <span className="font-semibold text-[color:var(--color-accent)]">
+                {deleteTarget.full_name}
+              </span>
+              ; Η ενέργεια αυτή δεν μπορεί να ανακληθεί.
+            </p>
+            <div className="flex justify-end gap-2 text-xs">
+              <button
+                type="button"
+                onClick={handleCancelDelete}
+                className="btn-ghost px-3 py-1"
+                style={{
+                  background: 'var(--color-input-bg)',
+                  color: 'var(--color-text-main)',
+                }}
+                disabled={deleting}
+              >
+                Ακύρωση
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={deleting}
+                className="rounded-md px-3 py-1 text-xs font-semibold text-white"
+                style={{ backgroundColor: '#dc2626' }}
+              >
+                {deleting ? 'Διαγραφή…' : 'Διαγραφή'}
+              </button>
+            </div>
           </div>
         </div>
       )}

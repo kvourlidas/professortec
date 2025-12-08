@@ -1,12 +1,11 @@
-// src/components/common/DatePickerField.tsx
+// src/components/ui/AppDatePicker.tsx
 import React, { forwardRef } from 'react';
 import DatePicker, { registerLocale } from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css'; // 👈 ADD THIS
 import { CalendarDays } from 'lucide-react';
 import { el } from 'date-fns/locale';
-// ⚠️ Global CSS should already import react-datepicker styles:
-// @import "react-datepicker/dist/react-datepicker.css";
 
-// Greek month/day names (calendar only)
+// Greek month/day names
 registerLocale('el', el);
 
 type DatePickerFieldProps = {
@@ -38,14 +37,8 @@ function formatDateFromDate(date: Date | null): string {
   const y = date.getFullYear();
   const m = pad2(date.getMonth() + 1);
   const d = pad2(date.getDate());
-  return `${d}/${m}/${y}`; // ✅ dd/mm/yyyy
+  return `${d}/${m}/${y}`;
 }
-
-// ---- limits for years ----
-const MIN_YEAR = 1950;
-const MAX_YEAR = 2070;
-const MIN_DATE = new Date(MIN_YEAR, 0, 1);
-const MAX_DATE = new Date(MAX_YEAR, 11, 31);
 
 // ---- custom input (keeps your styling) ----
 type DateInputProps = React.HTMLProps<HTMLInputElement> & {
@@ -101,7 +94,7 @@ const DatePickerField: React.FC<DatePickerFieldProps> = ({
           const formatted = formatDateFromDate(date as Date | null);
           onChange(formatted);            // ✅ always dd/mm/yyyy in state
         }}
-        dateFormat="dd/MM/yyyy"            // ✅ dd/MM in the input (internal)
+        dateFormat="dd/MM/yyyy"
         placeholderText={placeholder}
         customInput={<DateInput displayValue={value} />}
         wrapperClassName="w-full"
@@ -109,12 +102,9 @@ const DatePickerField: React.FC<DatePickerFieldProps> = ({
         popperClassName="ct-datepicker-popper"
         showMonthDropdown
         showYearDropdown
-        dropdownMode="select"             // use <select> for month/year
-        scrollableYearDropdown            // list scrolls
-        yearDropdownItemNumber={10}       // ~10 years visible at once
-        minDate={MIN_DATE}
-        maxDate={MAX_DATE}
-        shouldCloseOnSelect               // close popup on date click
+        dropdownMode="select"
+        scrollableYearDropdown
+        yearDropdownItemNumber={10}
       />
     </div>
   );

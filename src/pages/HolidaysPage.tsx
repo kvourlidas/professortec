@@ -1,10 +1,9 @@
 // src/pages/HolidaysPage.tsx
-import { useEffect, useMemo, useState, forwardRef } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
-import DatePicker from 'react-datepicker';
-import 'react-datepicker/dist/react-datepicker.css';
-import { CalendarDays } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
+import DatePickerField from '../components/ui/AppDatePicker';
 
 type HolidayRow = {
   id: string;
@@ -25,7 +24,7 @@ type Mode = 'single' | 'range';
 
 const pad2 = (n: number) => n.toString().padStart(2, '0');
 
-// local → "YYYY-MM-DD"
+// local Date → "YYYY-MM-DD"
 const formatLocalYMD = (d: Date): string => {
   const y = d.getFullYear();
   const m = pad2(d.getMonth() + 1);
@@ -51,27 +50,27 @@ const formatDisplay = (iso: string) => {
   return `${d}/${m}/${y}`;
 };
 
-// Custom input for react-datepicker (matching other inputs + calendar icon)
-const DateInput = forwardRef<HTMLDivElement, any>(
-  ({ value, onClick, placeholder }, ref) => (
-    <div
-      ref={ref}
-      onClick={onClick}
-      className="relative cursor-pointer"
-    >
-      <input
-        readOnly
-        value={value ?? ''}
-        placeholder={placeholder}
-        className="w-full rounded-md border border-slate-600 bg-[color:var(--color-input-bg)] px-2 py-1 pr-8 text-xs text-white outline-none"
-      />
-      <CalendarDays
-        className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-300"
-      />
-    </div>
-  ),
-);
-DateInput.displayName = 'DateInput';
+// Date -> "dd/mm/yyyy" (for AppDatePicker value)
+const formatDateDisplayFromDate = (d: Date | null): string => {
+  if (!d) return '';
+  const y = d.getFullYear();
+  const m = pad2(d.getMonth() + 1);
+  const day = pad2(d.getDate());
+  return `${day}/${m}/${y}`;
+};
+
+// "dd/mm/yyyy" -> Date | null (for AppDatePicker onChange)
+const parseDisplayToDate = (display: string): Date | null => {
+  if (!display) return null;
+  const parts = display.split(/[\/\-\.]/); // dd / mm / yyyy
+  if (parts.length !== 3) return null;
+  const [dStr, mStr, yStr] = parts;
+  const day = Number(dStr);
+  const month = Number(mStr);
+  const year = Number(yStr);
+  if (!day || !month || !year) return null;
+  return new Date(year, month - 1, day);
+};
 
 export default function HolidaysPage() {
   const { profile } = useAuth();
@@ -80,7 +79,7 @@ export default function HolidaysPage() {
   const [holidays, setHolidays] = useState<HolidayRow[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // form state (Date objects; UI shows dd/mm/yyyy)
+  // state: Date objects
   const [mode, setMode] = useState<Mode>('single');
   const [singleDate, setSingleDate] = useState<Date | null>(null);
   const [rangeStart, setRangeStart] = useState<Date | null>(null);
@@ -334,32 +333,33 @@ export default function HolidaysPage() {
 
         {/* form */}
         <div className="flex flex-col gap-3 md:flex-row md:items-end">
-          <div className="flex-1 space-y-1">
-            <label className="text-[11px] text-slate-200">
-              {mode === 'single' ? 'Ημερομηνία αργίας' : 'Από'}
-            </label>
-            <DatePicker
-              selected={mode === 'single' ? singleDate : rangeStart}
-              onChange={(date: Date | null) =>
+          <div className="flex-1">
+            <DatePickerField
+              label={mode === 'single' ? 'Ημερομηνία αργίας' : 'Από'}
+              value={
                 mode === 'single'
-                  ? setSingleDate(date)
-                  : setRangeStart(date)
+                  ? formatDateDisplayFromDate(singleDate)
+                  : formatDateDisplayFromDate(rangeStart)
               }
-              dateFormat="dd/MM/yyyy"
-              placeholderText="π.χ. 24/12/2025"
-              customInput={<DateInput />}
+              onChange={(val) => {
+                const d = parseDisplayToDate(val);
+                if (mode === 'single') {
+                  setSingleDate(d);
+                } else {
+                  setRangeStart(d);
+                }
+              }}
+              placeholder="π.χ. 24/12/2025"
             />
           </div>
 
           {mode === 'range' && (
-            <div className="flex-1 space-y-1">
-              <label className="text-[11px] text-slate-200">Έως</label>
-              <DatePicker
-                selected={rangeEnd}
-                onChange={(date: Date | null) => setRangeEnd(date)}
-                dateFormat="dd/MM/yyyy"
-                placeholderText="π.χ. 02/01/2026"
-                customInput={<DateInput />}
+            <div className="flex-1">
+              <DatePickerField
+                label="Έως"
+                value={formatDateDisplayFromDate(rangeEnd)}
+                onChange={(val) => setRangeEnd(parseDisplayToDate(val))}
+                placeholder="π.χ. 02/01/2026"
               />
             </div>
           )}
@@ -428,14 +428,20 @@ export default function HolidaysPage() {
                       <td className="py-2 px-3">
                         {g.name || '—'}
                       </td>
-                      <td className="py-2 px-3 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenDeleteModal(g)}
-                          className="px-2 py-[3px] rounded bg-red-600 hover:bg-red-500 text-white text-[10px]"
-                        >
-                          Διαγραφή
-                        </button>
+                      <td className="py-2 px-3">
+                        <div className="flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenDeleteModal(g)}
+                            className="flex h-8 w-8 items-center justify-center rounded-full border transition-colors hover:bg-red-600/10"
+                            style={{
+                              borderColor: '#f97373',
+                              color: '#f97373',
+                            }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -446,40 +452,58 @@ export default function HolidaysPage() {
         </div>
       </div>
 
-      {/* Delete confirmation modal */}
+      {/* Delete confirmation modal – styled like the rest */}
       {deleteGroup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-sm rounded-md bg-slate-900 border border-slate-700 p-4 space-y-3">
-            <h3 className="text-sm font-semibold text-slate-50 mb-1">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div
+            className="w-full max-w-md rounded-xl border border-slate-700 px-5 py-4 shadow-xl"
+            style={{ background: 'var(--color-sidebar)' }}
+          >
+            <h3 className="mb-2 text-sm font-semibold text-slate-50">
               Διαγραφή αργίας
             </h3>
-            <p className="text-[11px] text-slate-300">
-              Είσαι σίγουρος ότι θέλεις να διαγράψεις την αργία{' '}
-              {deleteGroup.name ? `"${deleteGroup.name}"` : 'αυτή'} για{' '}
-              {deleteGroup.endDate && deleteGroup.endDate !== deleteGroup.startDate
-                ? `${formatDisplay(deleteGroup.startDate)} – ${formatDisplay(
-                    deleteGroup.endDate,
-                  )}`
-                : formatDisplay(deleteGroup.startDate)}
-              ;
+            <p className="mb-4 text-xs text-slate-200">
+              Σίγουρα θέλετε να διαγράψετε την αργία{' '}
+              {deleteGroup.name ? (
+                <span className="font-semibold text-[color:var(--color-accent)]">
+                  «{deleteGroup.name}»
+                </span>
+              ) : (
+                <span className="font-semibold text-slate-100">αυτή</span>
+              )}{' '}
+              για{' '}
+              <span className="font-semibold text-slate-100">
+                {deleteGroup.endDate &&
+                deleteGroup.endDate !== deleteGroup.startDate
+                  ? `${formatDisplay(
+                      deleteGroup.startDate,
+                    )} – ${formatDisplay(deleteGroup.endDate)}`
+                  : formatDisplay(deleteGroup.startDate)}
+              </span>
+              ; Η ενέργεια αυτή δεν μπορεί να ανακληθεί.
             </p>
 
-            <div className="pt-3 mt-2 flex justify-between items-center border-t border-slate-700">
+            <div className="flex justify-end gap-2 text-xs">
               <button
                 type="button"
                 onClick={handleCancelDelete}
+                className="btn-ghost px-3 py-1"
+                style={{
+                  background: 'var(--color-input-bg)',
+                  color: 'var(--color-text-main)',
+                }}
                 disabled={deleting}
-                className="text-[11px] px-3 py-1 rounded border border-slate-600 text-slate-200 hover:bg-slate-700/60 disabled:opacity-60"
               >
-                Άκυρο
+                Ακύρωση
               </button>
               <button
                 type="button"
                 onClick={handleConfirmDelete}
                 disabled={deleting}
-                className="text-[11px] px-3 py-1 rounded bg-red-600 hover:bg-red-500 text-white font-medium disabled:opacity-60"
+                className="rounded-md px-3 py-1 text-xs font-semibold text-white"
+                style={{ backgroundColor: '#dc2626' }}
               >
-                {deleting ? 'Διαγραφή…' : 'Ναι, διαγραφή'}
+                {deleting ? 'Διαγραφή…' : 'Διαγραφή'}
               </button>
             </div>
           </div>

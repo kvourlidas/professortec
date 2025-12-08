@@ -1,4 +1,5 @@
-import { NavLink } from 'react-router-dom';
+// src/layout/Layout.tsx
+import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth';
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
@@ -34,6 +35,8 @@ export default function Layout({ children }: LayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [openGroup, setOpenGroup] = useState<string | null>('Subjects'); // default open
 
+  const location = useLocation();
+
   useEffect(() => {
     const loadSchoolName = async () => {
       if (!profile?.school_id) return;
@@ -54,17 +57,18 @@ export default function Layout({ children }: LayoutProps) {
 
   const renderLink = (item: NavLinkItem) => {
     const Icon = item.icon;
+    const isActive = location.pathname === item.to;
 
     return (
       <NavLink
         key={item.to}
         to={item.to}
-        className={({ isActive }) =>
+        className={() =>
           [
-            'flex items-center rounded-lg px-3 py-2',
+            'flex items-center rounded-lg px-3 py-2 text-xs transition-colors',
             isActive
-              ? 'bg-sidebar-muted text-white'
-              : 'text-slate-200 hover:bg-sidebar-muted hover:text-white',
+              ? 'bg-sidebar-muted text-[color:var(--color-accent)] font-medium'
+              : 'text-slate-200 hover:bg-sidebar-muted hover:text-[color:var(--color-accent)]',
           ].join(' ')
         }
       >
@@ -92,7 +96,7 @@ export default function Layout({ children }: LayoutProps) {
         <button
           type="button"
           onClick={() => setOpenGroup(isOpen ? null : item.label)}
-          className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-slate-200 hover:bg-sidebar-muted hover:text-white"
+          className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-slate-200 hover:bg-sidebar-muted hover:text-[color:var(--color-accent)]"
         >
           <span className="flex items-center">
             {Icon && (
@@ -124,16 +128,18 @@ export default function Layout({ children }: LayoutProps) {
           <div className="mt-1 space-y-1 pl-7 text-xs">
             {item.children.map((child: NavLinkItem) => {
               const ChildIcon = child.icon;
+              const isChildActive = location.pathname === child.to;
+
               return (
                 <NavLink
                   key={child.to}
                   to={child.to}
-                  className={({ isActive }) =>
+                  className={() =>
                     [
-                      'flex items-center rounded-lg px-3 py-1',
-                      isActive
-                        ? 'bg-sidebar-muted text-white'
-                        : 'text-slate-300 hover:bg-sidebar-muted hover:text-white',
+                      'flex items-center rounded-lg px-3 py-1 text-[11px] transition-colors',
+                      isChildActive
+                        ? 'bg-sidebar-muted text-[color:var(--color-accent)] font-medium'
+                        : 'text-slate-300 hover:bg-sidebar-muted hover:text-[color:var(--color-accent)]',
                     ].join(' ')
                   }
                 >
