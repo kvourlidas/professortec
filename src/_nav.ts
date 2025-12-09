@@ -9,7 +9,8 @@ import {
   Layers3,
   NotebookTabs,
   CalendarDays,
-  CalendarX2, // icon for holidays
+  CalendarX2,    // icon for holidays
+  ClipboardList, // 👈 NEW icon for tests
 } from 'lucide-react';
 
 export type NavItem = {
@@ -66,8 +67,8 @@ export const navItems: NavItem[] = [
         icon: CalendarDays,
       },
       {
-        label: 'Εκδηλώσεις',   // 👈 NEW item
-        to: '/program/events', // 👈 MUST match App.tsx route
+        label: 'Εκδηλώσεις',
+        to: '/program/events',
         icon: CalendarDays,
       },
       {
@@ -76,5 +77,11 @@ export const navItems: NavItem[] = [
         icon: CalendarX2,
       },
     ],
+  },
+  // 👇 Standalone tests page with new icon
+  {
+    label: 'Διαγωνίσματα',
+    to: '/program/tests',
+    icon: ClipboardList,
   },
 ];

@@ -408,6 +408,32 @@
   color: #000;
 }
 
+/* === Compact shells for timeGridWeek when many events === */
+
+/* Make timed events a bit more compact only in week view */
+.fc-timeGridWeek-view .fc-timegrid-event {
+  padding: 2px 3px;
+  box-sizing: border-box;
+}
+
+/* Reduce the gap between stacked events in the same slot */
+.fc-timeGridWeek-view .fc-timegrid-event-harness {
+  margin-bottom: 1px;
+}
+
+/* Remove extra padding that FullCalendar adds inside events */
+.fc-timeGridWeek-view .fc-timegrid-event .fc-event-main {
+  padding: 0;
+}
+
+/* Allow our custom content to wrap instead of overflowing */
+.fc-timeGridWeek-view .fc-timegrid-event .fc-event-main > div {
+  white-space: normal;
+}
+
+
+
+
 /* ====== LOGIN PAGE GLASS CARD ====== */
 
 .login-card {

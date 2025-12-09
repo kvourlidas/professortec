@@ -11,7 +11,8 @@ import SubjectsPage from './pages/SubjectsPage';
 import TutorsPage from './pages/TutorsPage';
 import ProgramPage from './pages/ProgramPage';
 import HolidaysPage from './pages/HolidaysPage'; // 👈 existing
-import EventsPage from './pages/EventsPage';      // 👈 NEW
+import EventsPage from './pages/EventsPage';      // 👈 existing
+import TestsPage from './pages/TestsPage';        // 👈 NEW
 
 import { useAuth } from './auth';
 import Layout from './components/Layout';
@@ -104,7 +105,17 @@ export default function App() {
         }
       />
 
-      {/* 👇 NEW Events page under Προγράμματα */}
+      {/* 👇 NEW Tests page under Προγράμματα */}
+      <Route
+        path="/program/tests"
+        element={
+          <ProtectedRoute>
+            <TestsPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* 👇 Events page under Προγράμματα */}
       <Route
         path="/program/events"
         element={

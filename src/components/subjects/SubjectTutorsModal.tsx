@@ -156,6 +156,7 @@ export default function SubjectTutorsModal({
         return;
       }
 
+      // 🔹 UPSERT για αποφυγή duplicate key error
       if (toAdd.length > 0) {
         const rows = toAdd.map((tutorId) => ({
           school_id: schoolId,
@@ -165,7 +166,9 @@ export default function SubjectTutorsModal({
 
         const { error: addErr } = await supabase
           .from('subject_tutors')
-          .insert(rows);
+          .upsert(rows, {
+            onConflict: 'school_id,subject_id,tutor_id',
+          });
 
         if (addErr) throw addErr;
       }

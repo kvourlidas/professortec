@@ -401,8 +401,7 @@ export default function ProgramPage() {
         try {
           const { data: classSubjectData, error: classSubjErr } = await supabase
             .from('class_subjects')
-            .select('class_id, subject_id')
-            .eq('school_id', schoolId);
+            .select('class_id, subject_id'); // 👈 no school_id filter here
 
           if (classSubjErr) {
             console.warn('class_subjects load error', classSubjErr);
@@ -416,6 +415,7 @@ export default function ProgramPage() {
           console.warn('class_subjects not available', e);
           setClassSubjects([]);
         }
+
 
         // 4. Προαιρετικά relations: subject_tutors
         try {
@@ -448,33 +448,69 @@ export default function ProgramPage() {
   }, [schoolId]);
 
   // Helpers για options
+
+  // => ΌΛΑ τα μαθήματα που ανήκουν σε ένα τμήμα
   const getSubjectsForClass = (classId: string | null): SubjectRow[] => {
     if (!classId) return [];
 
-    const ids = new Set<string>();
+    const cls = classes.find((c) => c.id === classId) ?? null;
 
-    // 1) βασικό μάθημα του τμήματος (classes.subject_id)
-    const cls = classes.find((c) => c.id === classId);
-    if (cls?.subject_id) {
-      ids.add(cls.subject_id);
-    }
+    // --- 1) Μαθήματα που είναι "δεμένα" στο τμήμα (class_subjects + βασικό subject_id) ---
+    const attachedIds = new Set<string>();
 
-    // 2) όλα τα μαθήματα που έχεις συνδέσει στο ClassesPage (class_subjects)
+    // από τον πίνακα class_subjects (όσα έχουμε ορίσει στη ClassesPage)
     classSubjects
       .filter((cs) => cs.class_id === classId && cs.subject_id)
-      .forEach((cs) => ids.add(cs.subject_id));
+      .forEach((cs) => attachedIds.add(cs.subject_id));
 
-    const result: SubjectRow[] = [];
-    ids.forEach((id) => {
+    // και το βασικό μάθημα του τμήματος (classes.subject_id)
+    if (cls?.subject_id) {
+      attachedIds.add(cls.subject_id);
+    }
+
+    const attachedSubjects: SubjectRow[] = [];
+    attachedIds.forEach((id) => {
       const subj = subjectById.get(id);
-      if (subj) result.push(subj);
+      if (subj) attachedSubjects.push(subj);
     });
 
-    // ταξινόμηση με βάση όνομα
+    // Αν ήδη έχουμε 2+ καθαρά "δεμένα" μαθήματα, χρησιμοποιούμε ΜΟΝΟ αυτά.
+    if (attachedSubjects.length >= 2) {
+      return attachedSubjects.sort((a, b) =>
+        a.name.localeCompare(b.name, 'el-GR'),
+      );
+    }
+
+    // --- 2) Fallback: πάρε κι άλλα μαθήματα για να έχεις επιλογές στο dropdown ---
+
+    // Προσπάθησε πρώτα να περιορίσεις στο ίδιο επίπεδο με το βασικό μάθημα.
+    let levelId: string | null = null;
+    if (cls?.subject_id) {
+      const mainSubj = subjectById.get(cls.subject_id);
+      levelId = mainSubj?.level_id ?? null;
+    }
+
+    let extraSubjects: SubjectRow[];
+    if (levelId) {
+      extraSubjects = subjects.filter((s) => s.level_id === levelId);
+    } else {
+      // αν δεν ξέρουμε επίπεδο, δείξε όλα τα μαθήματα του σχολείου
+      extraSubjects = subjects;
+    }
+
+    // Merge: attached + extra (χωρίς duplicates)
+    const merged = new Map<string, SubjectRow>();
+    extraSubjects.forEach((s) => merged.set(s.id, s));
+    attachedSubjects.forEach((s) => merged.set(s.id, s));
+
+    const result = Array.from(merged.values());
     result.sort((a, b) => a.name.localeCompare(b.name, 'el-GR'));
     return result;
   };
 
+
+
+  // => ΌΛΟΙ οι καθηγητές που ανήκουν σε ένα μάθημα
   const getTutorsForSubject = (subjectId: string | null): TutorRow[] => {
     if (!subjectId) return [];
     const tutorIds = subjectTutors
@@ -517,25 +553,26 @@ export default function ProgramPage() {
 
   const handleAddTimeChange =
     (field: 'startTime' | 'endTime') =>
-    (e: ChangeEvent<HTMLInputElement>) => {
-      const formatted = formatTimeInput(e.target.value);
-      setAddForm((prev) => ({ ...prev, [field]: formatted }));
-    };
+      (e: ChangeEvent<HTMLInputElement>) => {
+        const formatted = formatTimeInput(e.target.value);
+        setAddForm((prev) => ({ ...prev, [field]: formatted }));
+      };
 
   const handleAddFieldChange =
     (field: keyof AddSlotForm) =>
-    (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-      const value = e.target.value;
-      setAddForm((prev) => {
-        if (field === 'subjectId') {
-          return { ...prev, subjectId: value || null, tutorId: null };
-        }
-        if (field === 'tutorId') {
-          return { ...prev, tutorId: value || null };
-        }
-        return { ...prev, [field]: value as any };
-      });
-    };
+      (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const value = e.target.value;
+        setAddForm((prev) => {
+          if (field === 'subjectId') {
+            // όταν αλλάζει μάθημα, καθάρισε τον καθηγητή
+            return { ...prev, subjectId: value || null, tutorId: null };
+          }
+          if (field === 'tutorId') {
+            return { ...prev, tutorId: value || null };
+          }
+          return { ...prev, [field]: value as any };
+        });
+      };
 
   const handleConfirmAddSlot = async () => {
     if (!program) return;
@@ -654,28 +691,29 @@ export default function ProgramPage() {
 
   const handleEditTimeChange =
     (field: 'startTime' | 'endTime') =>
-    (e: ChangeEvent<HTMLInputElement>) => {
-      const formatted = formatTimeInput(e.target.value);
-      setEditForm((prev) =>
-        prev ? { ...prev, [field]: formatted } : prev,
-      );
-    };
+      (e: ChangeEvent<HTMLInputElement>) => {
+        const formatted = formatTimeInput(e.target.value);
+        setEditForm((prev) =>
+          prev ? { ...prev, [field]: formatted } : prev,
+        );
+      };
 
   const handleEditFieldChange =
     (field: keyof EditSlotForm) =>
-    (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-      const value = e.target.value;
-      setEditForm((prev) => {
-        if (!prev) return prev;
-        if (field === 'subjectId') {
-          return { ...prev, subjectId: value || null, tutorId: null };
-        }
-        if (field === 'tutorId') {
-          return { ...prev, tutorId: value || null };
-        }
-        return { ...prev, [field]: value as any };
-      });
-    };
+      (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const value = e.target.value;
+        setEditForm((prev) => {
+          if (!prev) return prev;
+          if (field === 'subjectId') {
+            // όταν αλλάζει μάθημα, καθάρισε τον καθηγητή
+            return { ...prev, subjectId: value || null, tutorId: null };
+          }
+          if (field === 'tutorId') {
+            return { ...prev, tutorId: value || null };
+          }
+          return { ...prev, [field]: value as any };
+        });
+      };
 
   const handleConfirmEditSlot = async () => {
     if (!program || !editForm) return;
@@ -986,8 +1024,8 @@ export default function ProgramPage() {
                           const timeRange =
                             item.start_time && item.end_time
                               ? `${formatTimeDisplay(
-                                  item.start_time,
-                                )} – ${formatTimeDisplay(item.end_time)}`
+                                item.start_time,
+                              )} – ${formatTimeDisplay(item.end_time)}`
                               : '';
 
                           return (
@@ -1016,7 +1054,7 @@ export default function ProgramPage() {
                                       classLabel,
                                       dayLabel:
                                         DAY_LABEL_BY_VALUE[
-                                          item.day_of_week
+                                        item.day_of_week
                                         ] ?? '',
                                       timeRange,
                                     });
@@ -1073,7 +1111,7 @@ export default function ProgramPage() {
                   value={
                     addForm.classId
                       ? classes.find((c) => c.id === addForm.classId)?.title ??
-                        ''
+                      ''
                       : ''
                   }
                   className="form-input disabled:opacity-80"
