@@ -106,13 +106,14 @@ type TestRow = {
 
 type CalendarEventModal = {
   programItemId: string;
-  dateStr: string; // "YYYY-MM-DD"
+  originalDateStr: string; // "YYYY-MM-DD" when event was clicked
+  date: string; // "dd/mm/yyyy" for AppDatePicker
   startTime: string; // "HH:MM" (12h input)
   startPeriod: 'AM' | 'PM';
   endTime: string; // "HH:MM" (12h input)
   endPeriod: 'AM' | 'PM';
-  classTitle?: string;
-  subject?: string | null;
+  classId: string | null;
+  subjectId: string | null;
   overrideId?: string;
 };
 
@@ -1274,6 +1275,7 @@ export default function DashboardCalendarSection({
       endPeriod,
       title: testRow?.title ?? '',
     });
+    setShowDeleteConfirm(false);
   };
 
   const handleEventClick = (arg: EventClickArg) => {
@@ -1307,7 +1309,7 @@ export default function DashboardCalendarSection({
 
       if (!programItemId) return;
 
-      const dateStr = formatLocalYMD(event.start);
+      const dateIso = formatLocalYMD(event.start);
       const overrideId = event.extendedProps['overrideId'] as string | null;
 
       const start24 = `${pad2(event.start.getHours())}:${pad2(
@@ -1320,24 +1322,27 @@ export default function DashboardCalendarSection({
       const { time: startTime, period: startPeriod } = convert24To12(start24);
       const { time: endTime, period: endPeriod } = convert24To12(end24);
 
-      const classId = event.extendedProps['classId'] as string | undefined;
-      const clsRow = classId
-        ? classes.find((c) => c.id === classId) ?? null
+      const classIdProp = event.extendedProps['classId'] as
+        | string
+        | undefined;
+
+      const clsRow = classIdProp
+        ? classes.find((c) => c.id === classIdProp) ?? null
         : null;
+
+      const prefilledSubjectId = clsRow?.subject_id ?? null;
 
       setEventError(null);
       setEventModal({
         programItemId,
-        dateStr,
+        originalDateStr: dateIso,
+        date: formatDateDisplay(dateIso),
         startTime,
         startPeriod,
         endTime,
         endPeriod,
-        classTitle: clsRow?.title ?? '',
-        subject:
-          clsRow?.subject ??
-          ((event.extendedProps['subject'] as string | null | undefined) ??
-            null),
+        classId: classIdProp ?? null,
+        subjectId: prefilledSubjectId,
         overrideId: overrideId ?? undefined,
       });
       setShowDeleteConfirm(false);
@@ -1348,6 +1353,22 @@ export default function DashboardCalendarSection({
   };
 
   /* -------- PROGRAM override modal handlers -------- */
+
+  const handleProgramFieldChange =
+    (field: 'classId' | 'subjectId') =>
+    (e: ChangeEvent<HTMLSelectElement>) => {
+      const value = e.target.value;
+      setEventModal((prev) => {
+        if (!prev) return prev;
+        if (field === 'classId') {
+          return { ...prev, classId: value || null, subjectId: null };
+        }
+        if (field === 'subjectId') {
+          return { ...prev, subjectId: value || null };
+        }
+        return prev;
+      });
+    };
 
   const handleEventTimeChange =
     (field: 'startTime' | 'endTime') =>
@@ -1362,13 +1383,37 @@ export default function DashboardCalendarSection({
     if (!eventModal) return;
     const {
       programItemId,
-      dateStr,
+      originalDateStr,
+      date,
       startTime,
       startPeriod,
       endTime,
       endPeriod,
-      overrideId,
+      classId,
+      subjectId,
     } = eventModal;
+
+    if (!classId) {
+      setEventError('Επιλέξτε τμήμα.');
+      return;
+    }
+
+    const subjectOptions = getSubjectsForClass(classId);
+    if (subjectOptions.length > 0 && !subjectId) {
+      setEventError('Επιλέξτε μάθημα για το τμήμα.');
+      return;
+    }
+
+    if (!date) {
+      setEventError('Επιλέξτε ημερομηνία μαθήματος.');
+      return;
+    }
+
+    const newDateStr = parseDateDisplayToISO(date);
+    if (!newDateStr) {
+      setEventError('Μη έγκυρη ημερομηνία (π.χ. 12/05/2025).');
+      return;
+    }
 
     const start24 = convert12To24(startTime, startPeriod);
     const end24 = convert12To24(endTime, endPeriod);
@@ -1384,30 +1429,71 @@ export default function DashboardCalendarSection({
     try {
       setEventError(null);
 
-      if (overrideId) {
-        const { data, error } = await supabase
-          .from('program_item_overrides')
-          .update({
-            start_time: startTimeDb,
-            end_time: endTimeDb,
-            is_deleted: false,
-          })
-          .eq('id', overrideId)
-          .select()
+      // 1) Update program_items.class_id if changed
+      const item = programItems.find((pi) => pi.id === programItemId);
+      if (item && classId && classId !== item.class_id) {
+        const { data: updatedItem, error: itemErr } = await supabase
+          .from('program_items')
+          .update({ class_id: classId })
+          .eq('id', programItemId)
+          .select('*')
           .single();
 
-        if (error || !data) throw error ?? new Error('No data');
+        if (itemErr || !updatedItem)
+          throw itemErr ?? new Error('No data');
 
-        setOverrides((prev) =>
-          prev.map((o) =>
-            o.id === overrideId ? (data as ProgramItemOverrideRow) : o,
+        setProgramItems((prev) =>
+          prev.map((pi) =>
+            pi.id === programItemId
+              ? (updatedItem as ProgramItemRow)
+              : pi,
           ),
         );
-      } else {
+      }
+
+      // 2) Update class subject if changed
+      if (classId) {
+        const cls = classes.find((c) => c.id === classId) ?? null;
+        const oldSubjectId = cls?.subject_id ?? null;
+        const finalSubjectId =
+          subjectId ?? subjectOptions[0]?.id ?? null;
+
+        if (finalSubjectId && finalSubjectId !== oldSubjectId) {
+          const subjRow = subjectById.get(finalSubjectId);
+          const subjectName = subjRow?.name ?? null;
+
+          const { data: updatedClass, error: classErr } = await supabase
+            .from('classes')
+            .update({
+              subject_id: finalSubjectId,
+              subject: subjectName,
+            })
+            .eq('id', classId)
+            .select(
+              'id, school_id, title, subject, subject_id, tutor_id',
+            )
+            .maybeSingle();
+
+          if (classErr || !updatedClass)
+            throw classErr ?? new Error('No data');
+
+          setClasses((prev) =>
+            prev.map((c) =>
+              c.id === classId
+                ? (updatedClass as ClassRow)
+                : c,
+            ),
+          );
+        }
+      }
+
+      // 3) Update / create overrides for new times/date
+      if (newDateStr === originalDateStr) {
+        // same day -> just ensure override for time
         const existing = overrides.find(
           (o) =>
             o.program_item_id === programItemId &&
-            o.override_date === dateStr,
+            o.override_date === newDateStr,
         );
 
         if (existing) {
@@ -1436,7 +1522,104 @@ export default function DashboardCalendarSection({
             .from('program_item_overrides')
             .insert({
               program_item_id: programItemId,
-              override_date: dateStr,
+              override_date: newDateStr,
+              start_time: startTimeDb,
+              end_time: endTimeDb,
+              is_deleted: false,
+            })
+            .select()
+            .single();
+
+          if (error || !data) throw error ?? new Error('No data');
+
+          setOverrides((prev) => [
+            ...prev,
+            data as ProgramItemOverrideRow,
+          ]);
+        }
+      } else {
+        // different day -> mark old day as deleted and create/update new day override
+        const existingOld = overrides.find(
+          (o) =>
+            o.program_item_id === programItemId &&
+            o.override_date === originalDateStr,
+        );
+
+        if (existingOld) {
+          const { data, error } = await supabase
+            .from('program_item_overrides')
+            .update({
+              is_deleted: true,
+              start_time: null,
+              end_time: null,
+            })
+            .eq('id', existingOld.id)
+            .select()
+            .single();
+
+          if (error || !data) throw error ?? new Error('No data');
+
+          setOverrides((prev) =>
+            prev.map((o) =>
+              o.id === existingOld.id
+                ? (data as ProgramItemOverrideRow)
+                : o,
+            ),
+          );
+        } else {
+          const { data, error } = await supabase
+            .from('program_item_overrides')
+            .insert({
+              program_item_id: programItemId,
+              override_date: originalDateStr,
+              is_deleted: true,
+              start_time: null,
+              end_time: null,
+            })
+            .select()
+            .single();
+
+          if (error || !data) throw error ?? new Error('No data');
+
+          setOverrides((prev) => [
+            ...prev,
+            data as ProgramItemOverrideRow,
+          ]);
+        }
+
+        const existingNew = overrides.find(
+          (o) =>
+            o.program_item_id === programItemId &&
+            o.override_date === newDateStr,
+        );
+
+        if (existingNew) {
+          const { data, error } = await supabase
+            .from('program_item_overrides')
+            .update({
+              start_time: startTimeDb,
+              end_time: endTimeDb,
+              is_deleted: false,
+            })
+            .eq('id', existingNew.id)
+            .select()
+            .single();
+
+          if (error || !data) throw error ?? new Error('No data');
+
+          setOverrides((prev) =>
+            prev.map((o) =>
+              o.id === existingNew.id
+                ? (data as ProgramItemOverrideRow)
+                : o,
+            ),
+          );
+        } else {
+          const { data, error } = await supabase
+            .from('program_item_overrides')
+            .insert({
+              program_item_id: programItemId,
+              override_date: newDateStr,
               start_time: startTimeDb,
               end_time: endTimeDb,
               is_deleted: false,
@@ -1463,7 +1646,7 @@ export default function DashboardCalendarSection({
 
   const handleEventModalDeleteForDay = async () => {
     if (!eventModal) return;
-    const { programItemId, dateStr } = eventModal;
+    const { programItemId, originalDateStr } = eventModal;
 
     try {
       setEventError(null);
@@ -1471,7 +1654,7 @@ export default function DashboardCalendarSection({
       const existing = overrides.find(
         (o) =>
           o.program_item_id === programItemId &&
-          o.override_date === dateStr,
+          o.override_date === originalDateStr,
       );
 
       if (existing) {
@@ -1500,7 +1683,7 @@ export default function DashboardCalendarSection({
           .from('program_item_overrides')
           .insert({
             program_item_id: programItemId,
-            override_date: dateStr,
+            override_date: originalDateStr,
             is_deleted: true,
             start_time: null,
             end_time: null,
@@ -1642,6 +1825,30 @@ export default function DashboardCalendarSection({
     if (savingTest) return;
     setTestModal(null);
     setTestError(null);
+    setShowDeleteConfirm(false);
+  };
+
+  const handleTestDelete = async () => {
+    if (!testModal) return;
+    const { testId } = testModal;
+
+    try {
+      setTestError(null);
+      const { error } = await supabase
+        .from('tests')
+        .delete()
+        .eq('id', testId);
+
+      if (error) throw error;
+
+      setTests((prev) => prev.filter((t) => t.id !== testId));
+      setTestModal(null);
+      setShowDeleteConfirm(false);
+    } catch (err) {
+      console.error('Failed to delete test', err);
+      setTestError('Αποτυχία διαγραφής διαγωνίσματος. Προσπαθήστε ξανά.');
+      setShowDeleteConfirm(false);
+    }
   };
 
   /* -------- Render -------- */
@@ -1690,7 +1897,7 @@ export default function DashboardCalendarSection({
         />
       )}
 
-      {/* PROGRAM override modal – styled like the test modal */}
+      {/* PROGRAM override / edit modal – same sections as test modal (without title) */}
       {eventModal && !showDeleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div
@@ -1721,39 +1928,88 @@ export default function DashboardCalendarSection({
             )}
 
             <div className="space-y-3 text-xs">
-              {/* Ημερομηνία */}
+              {/* Τμήμα */}
               <div>
                 <label className="form-label text-slate-100">
-                  Ημερομηνία μαθήματος
+                  Τμήμα *
                 </label>
-                <p className="mt-1 text-[11px] text-slate-100">
-                  {formatDateDisplay(eventModal.dateStr)}
-                </p>
+                <select
+                  className="form-input"
+                  value={eventModal.classId ?? ''}
+                  onChange={handleProgramFieldChange('classId')}
+                  style={{
+                    background: 'var(--color-input-bg)',
+                    color: 'var(--color-text-main)',
+                  }}
+                >
+                  <option value="">Επιλέξτε τμήμα</option>
+                  {classes.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.title}
+                    </option>
+                  ))}
+                </select>
               </div>
 
-              {/* Τμήμα */}
-              {eventModal.classTitle && (
-                <div>
-                  <label className="form-label text-slate-100">
-                    Τμήμα
-                  </label>
-                  <p className="mt-1 text-[11px] text-slate-100">
-                    {eventModal.classTitle}
-                  </p>
-                </div>
-              )}
-
               {/* Μάθημα */}
-              {typeof eventModal.subject !== 'undefined' && (
-                <div>
-                  <label className="form-label text-slate-100">
-                    Μάθημα
-                  </label>
-                  <p className="mt-1 text-[11px] text-slate-100">
-                    {eventModal.subject || '-'}
-                  </p>
-                </div>
-              )}
+              <div>
+                <label className="form-label text-slate-100">
+                  Μάθημα για το τμήμα *
+                </label>
+                {(() => {
+                  const options = eventModal.classId
+                    ? getSubjectsForClass(eventModal.classId)
+                    : [];
+                  return (
+                    <>
+                      <select
+                        className="form-input select-accent"
+                        value={eventModal.subjectId ?? ''}
+                        onChange={handleProgramFieldChange('subjectId')}
+                        disabled={
+                          options.length === 0 || !eventModal.classId
+                        }
+                        style={{
+                          background: 'var(--color-input-bg)',
+                          color: 'var(--color-text-main)',
+                        }}
+                      >
+                        <option value="">
+                          {options.length === 0
+                            ? 'Δεν έχουν οριστεί μαθήματα'
+                            : 'Επιλέξτε μάθημα'}
+                        </option>
+                        {options.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name}
+                          </option>
+                        ))}
+                      </select>
+                      {options.length === 0 && eventModal.classId && (
+                        <p className="mt-1 text-[10px] text-amber-300">
+                          Ρυθμίστε τα μαθήματα στη σελίδα «Τμήματα».
+                        </p>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+
+              {/* Ημερομηνία μαθήματος */}
+              <div>
+                <label className="form-label text-slate-100">
+                  Ημερομηνία μαθήματος *
+                </label>
+                <AppDatePicker
+                  value={eventModal.date}
+                  onChange={(newValue) =>
+                    setEventModal((prev) =>
+                      prev ? { ...prev, date: newValue } : prev,
+                    )
+                  }
+                  placeholder="π.χ. 12/05/2025"
+                />
+              </div>
 
               {/* Ώρες */}
               <div className="grid gap-3 md:grid-cols-2">
@@ -1881,7 +2137,7 @@ export default function DashboardCalendarSection({
         </div>
       )}
 
-      {/* Delete confirmation – same style as other delete modals */}
+      {/* Delete confirmation – for PROGRAM events */}
       {eventModal && showDeleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div
@@ -1904,7 +2160,7 @@ export default function DashboardCalendarSection({
             <p className="text-xs text-slate-100">
               Σίγουρα θέλεις να διαγράψεις το μάθημα για την ημερομηνία{' '}
               <span className="font-semibold">
-                {formatDateDisplay(eventModal.dateStr)}
+                {formatDateDisplay(eventModal.originalDateStr)}
               </span>
               ; Η ενέργεια αυτή επηρεάζει μόνο αυτή την ημέρα και δεν μπορεί
               να ανακληθεί.
@@ -1934,8 +2190,8 @@ export default function DashboardCalendarSection({
         </div>
       )}
 
-      {/* TEST edit modal (unchanged) */}
-      {testModal && (
+      {/* TEST edit modal */}
+      {testModal && !showDeleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div
             className="w-full max-w-md rounded-xl border border-slate-700 p-5 shadow-xl space-y-3"
@@ -2124,28 +2380,91 @@ export default function DashboardCalendarSection({
                 />
               </div>
 
-              <div className="mt-4 flex justify-end gap-2">
+              {/* Buttons */}
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <button
                   type="button"
-                  onClick={handleTestModalClose}
-                  className="btn-ghost"
-                  style={{
-                    background: 'var(--color-input-bg)',
-                    color: 'var(--color-text-main)',
-                  }}
-                  disabled={savingTest}
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="rounded-md bg-red-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-red-500"
                 >
-                  Ακύρωση
+                  Διαγραφή διαγωνίσματος
                 </button>
-                <button
-                  type="button"
-                  onClick={handleTestModalSave}
-                  className="btn-primary"
-                  disabled={savingTest}
-                >
-                  {savingTest ? 'Αποθήκευση…' : 'Αποθήκευση'}
-                </button>
+
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={handleTestModalClose}
+                    className="btn-ghost"
+                    style={{
+                      background: 'var(--color-input-bg)',
+                      color: 'var(--color-text-main)',
+                    }}
+                    disabled={savingTest}
+                  >
+                    Ακύρωση
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleTestModalSave}
+                    className="btn-primary"
+                    disabled={savingTest}
+                  >
+                    {savingTest ? 'Αποθήκευση…' : 'Αποθήκευση'}
+                  </button>
+                </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TEST delete confirmation */}
+      {testModal && showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div
+            className="w-full max-w-md rounded-xl border border-slate-700 p-5 shadow-xl space-y-3"
+            style={{ background: 'var(--color-sidebar)' }}
+          >
+            <div className="flex items-center justify-between mb-1">
+              <h2 className="text-sm font-semibold text-slate-50">
+                Διαγραφή διαγωνίσματος
+              </h2>
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                className="text-xs text-slate-300 hover:text-slate-100"
+              >
+                ×
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-100">
+              Σίγουρα θέλεις να διαγράψεις αυτό το διαγώνισμα για την ημερομηνία{' '}
+              <span className="font-semibold">
+                {testModal.date}
+              </span>
+              ; Η ενέργεια αυτή δεν μπορεί να ανακληθεί.
+            </p>
+
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                className="btn-ghost"
+                style={{
+                  background: 'var(--color-input-bg)',
+                  color: 'var(--color-text-main)',
+                }}
+              >
+                Ακύρωση
+              </button>
+              <button
+                type="button"
+                onClick={handleTestDelete}
+                className="rounded-md bg-red-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-red-500"
+              >
+                Διαγραφή
+              </button>
             </div>
           </div>
         </div>

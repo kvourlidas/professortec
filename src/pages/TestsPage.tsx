@@ -10,6 +10,8 @@ import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
 import AppDatePicker from '../components/ui/AppDatePicker';
 import EditDeleteButtons from '../components/ui/EditDeleteButtons';
+import { ArrowRight, ArrowLeft, Loader2, Search } from 'lucide-react';
+import { Users, Percent } from 'lucide-react';
 
 type ClassRow = {
     id: string;
@@ -70,6 +72,33 @@ type EditTestForm = {
     endTime: string;
     endPeriod: 'AM' | 'PM';
     title: string;
+};
+
+type StudentRow = {
+    id: string;
+    school_id: string;
+    full_name: string | null;
+};
+
+type TestResultRow = {
+    id: string;
+    test_id: string;
+    student_id: string;
+    grade: number | null;
+};
+
+type TestResultsModalState = {
+    testId: string;
+    testTitle: string | null;
+    dateDisplay: string;
+    timeRange: string;
+    classTitle: string;
+    subjectName: string;
+};
+
+type GradeInfo = {
+    grade: string;
+    existingResultId?: string;
 };
 
 const emptyForm: AddTestForm = {
@@ -188,6 +217,29 @@ export default function TestsPage() {
         subjectName: string;
     } | null>(null);
     const [deleting, setDeleting] = useState(false);
+
+    // search
+    const [searchTerm, setSearchTerm] = useState('');
+
+    // results (students & grades) modal state
+    const [resultsModal, setResultsModal] = useState<TestResultsModalState | null>(
+        null,
+    );
+    const [resultsLoading, setResultsLoading] = useState(false);
+    const [resultsSaving, setResultsSaving] = useState(false);
+    const [resultsError, setResultsError] = useState<string | null>(null);
+
+    const [resultsAllStudents, setResultsAllStudents] = useState<StudentRow[]>([]);
+    const [resultsAssignedIds, setResultsAssignedIds] = useState<Set<string>>(
+        new Set(),
+    );
+    const [resultsInitialAssignedIds, setResultsInitialAssignedIds] =
+        useState<Set<string>>(new Set());
+    const [resultsGradeByStudent, setResultsGradeByStudent] = useState<
+        Record<string, GradeInfo>
+    >({});
+    const [resultsSearchLeft, setResultsSearchLeft] = useState('');
+    const [resultsSearchRight, setResultsSearchRight] = useState('');
 
     // maps for display
     const subjectById = useMemo(() => {
@@ -322,6 +374,49 @@ export default function TestsPage() {
         return result;
     };
 
+    // derived tests with display fields
+    const testsWithDisplay = useMemo(
+        () =>
+            tests.map((t) => {
+                const cls = classById.get(t.class_id);
+                const subj = subjectById.get(t.subject_id);
+                const timeRange =
+                    t.start_time && t.end_time
+                        ? `${formatTimeDisplay(t.start_time)} – ${formatTimeDisplay(
+                            t.end_time,
+                        )}`
+                        : '';
+                return {
+                    ...t,
+                    classTitle: cls?.title ?? '—',
+                    subjectName: subj?.name ?? '—',
+                    dateDisplay: formatDateDisplay(t.test_date),
+                    timeRange,
+                };
+            }),
+        [tests, classById, subjectById],
+    );
+
+    const filteredTests = useMemo(() => {
+        const q = searchTerm.trim().toLowerCase();
+        if (!q) return testsWithDisplay;
+
+        return testsWithDisplay.filter((t) => {
+            const date = (t.dateDisplay ?? '').toLowerCase();
+            const time = (t.timeRange ?? '').toLowerCase();
+            const classTitle = (t.classTitle ?? '').toLowerCase();
+            const subjectName = (t.subjectName ?? '').toLowerCase();
+            const title = (t.title ?? '').toLowerCase();
+            return (
+                date.includes(q) ||
+                time.includes(q) ||
+                classTitle.includes(q) ||
+                subjectName.includes(q) ||
+                title.includes(q)
+            );
+        });
+    }, [testsWithDisplay, searchTerm]);
+
     const openModal = () => {
         setError(null);
         setForm(emptyForm);
@@ -434,9 +529,7 @@ export default function TestsPage() {
         const t = tests.find((tt) => tt.id === testId);
         if (!t) return;
 
-        const { time: startTime, period: startPeriod } = convert24To12(
-            t.start_time,
-        );
+        const { time: startTime, period: startPeriod } = convert24To12(t.start_time);
         const { time: endTime, period: endPeriod } = convert24To12(t.end_time);
 
         setError(null);
@@ -607,23 +700,245 @@ export default function TestsPage() {
         setDeleteTarget(null);
     };
 
-    const testsWithDisplay = tests.map((t) => {
-        const cls = classById.get(t.class_id);
-        const subj = subjectById.get(t.subject_id);
-        const timeRange =
-            t.start_time && t.end_time
-                ? `${formatTimeDisplay(t.start_time)} – ${formatTimeDisplay(
-                    t.end_time,
-                )}`
-                : '';
-        return {
-            ...t,
-            classTitle: cls?.title ?? '—',
-            subjectName: subj?.name ?? '—',
-            dateDisplay: formatDateDisplay(t.test_date),
-            timeRange,
-        };
-    });
+    // ---- RESULTS (students & grades) helpers ----
+    const availableStudents = useMemo(
+        () =>
+            resultsAllStudents.filter(
+                (s) =>
+                    !resultsAssignedIds.has(s.id) &&
+                    (s.full_name ?? '')
+                        .toLowerCase()
+                        .includes(resultsSearchLeft.toLowerCase()),
+            ),
+        [resultsAllStudents, resultsAssignedIds, resultsSearchLeft],
+    );
+
+    const assignedStudents = useMemo(
+        () =>
+            resultsAllStudents
+                .filter((s) => resultsAssignedIds.has(s.id))
+                .filter((s) =>
+                    (s.full_name ?? '')
+                        .toLowerCase()
+                        .includes(resultsSearchRight.toLowerCase()),
+                ),
+        [resultsAllStudents, resultsAssignedIds, resultsSearchRight],
+    );
+
+    const openResultsModal = async (testId: string) => {
+        if (!schoolId) return;
+
+        const tDisplay = testsWithDisplay.find((tt) => tt.id === testId);
+        if (!tDisplay) return;
+
+        setResultsError(null);
+        setResultsModal({
+            testId,
+            testTitle: tDisplay.title ?? null,
+            dateDisplay: tDisplay.dateDisplay,
+            timeRange: tDisplay.timeRange,
+            classTitle: tDisplay.classTitle,
+            subjectName: tDisplay.subjectName,
+        });
+
+        setResultsLoading(true);
+
+        try {
+            // 1) Όλοι οι μαθητές του σχολείου
+            const { data: studentsData, error: studentsErr } = await supabase
+                .from('students')
+                .select('id, school_id, full_name')
+                .eq('school_id', schoolId)
+                .order('full_name', { ascending: true });
+
+            if (studentsErr) throw studentsErr;
+            const students = (studentsData ?? []) as StudentRow[];
+            setResultsAllStudents(students);
+
+            // 2) Υπάρχοντα αποτελέσματα για αυτό το test
+            const { data: resultsData, error: resultsErr } = await supabase
+                .from('test_results')
+                .select('id, test_id, student_id, grade')
+                .eq('test_id', testId);
+
+            if (resultsErr) throw resultsErr;
+
+            const assignedIds = new Set<string>();
+            const gradeMap: Record<string, GradeInfo> = {};
+
+            (resultsData ?? []).forEach((raw) => {
+                const r = raw as TestResultRow;
+                assignedIds.add(r.student_id);
+                gradeMap[r.student_id] = {
+                    grade:
+                        r.grade !== null && r.grade !== undefined ? String(r.grade) : '',
+                    existingResultId: r.id,
+                };
+            });
+
+            // Ensure every student has an entry in gradeMap
+            students.forEach((s) => {
+                if (!gradeMap[s.id]) {
+                    gradeMap[s.id] = { grade: '', existingResultId: undefined };
+                }
+            });
+
+            setResultsAssignedIds(assignedIds);
+            setResultsInitialAssignedIds(new Set(assignedIds));
+            setResultsGradeByStudent(gradeMap);
+            setResultsSearchLeft('');
+            setResultsSearchRight('');
+        } catch (err) {
+            console.error('load test results error', err);
+            setResultsError(
+                'Αποτυχία φόρτωσης μαθητών / βαθμών για το διαγώνισμα.',
+            );
+            setResultsAllStudents([]);
+            setResultsAssignedIds(new Set());
+            setResultsInitialAssignedIds(new Set());
+            setResultsGradeByStudent({});
+        } finally {
+            setResultsLoading(false);
+        }
+    };
+
+    const closeResultsModal = () => {
+        if (resultsSaving) return;
+        setResultsModal(null);
+        setResultsError(null);
+        setResultsLoading(false);
+        setResultsAllStudents([]);
+        setResultsAssignedIds(new Set());
+        setResultsInitialAssignedIds(new Set());
+        setResultsGradeByStudent({});
+        setResultsSearchLeft('');
+        setResultsSearchRight('');
+    };
+
+    const handleAddStudentToTest = (studentId: string) => {
+        if (resultsSaving) return;
+        setResultsAssignedIds((prev) => {
+            const next = new Set(prev);
+            next.add(studentId);
+            return next;
+        });
+    };
+
+    const handleRemoveStudentFromTest = (studentId: string) => {
+        if (resultsSaving) return;
+        setResultsAssignedIds((prev) => {
+            const next = new Set(prev);
+            next.delete(studentId);
+            return next;
+        });
+    };
+
+    const handleResultGradeChange = (studentId: string, value: string) => {
+        setResultsGradeByStudent((prev) => ({
+            ...prev,
+            [studentId]: {
+                grade: value,
+                existingResultId: prev[studentId]?.existingResultId,
+            },
+        }));
+    };
+
+    const handleSaveResults = async () => {
+        if (!resultsModal) return;
+
+        // validation: για όλους τους επιλεγμένους μαθητές πρέπει να υπάρχει valid grade
+        for (const studentId of resultsAssignedIds) {
+            const info = resultsGradeByStudent[studentId];
+            const gradeTrim = (info?.grade ?? '').trim();
+            if (!gradeTrim) {
+                const st = resultsAllStudents.find((s) => s.id === studentId);
+                setResultsError(
+                    `Συμπληρώστε βαθμό για τον μαθητή "${st?.full_name ?? 'Άγνωστος'}".`,
+                );
+                return;
+            }
+            const num = Number(gradeTrim.replace(',', '.'));
+            if (Number.isNaN(num)) {
+                const st = resultsAllStudents.find((s) => s.id === studentId);
+                setResultsError(
+                    `Μη έγκυρος βαθμός για τον μαθητή "${st?.full_name ?? 'Άγνωστος'}".`,
+                );
+                return;
+            }
+        }
+
+        setResultsSaving(true);
+        setResultsError(null);
+
+        try {
+            const inserts: { test_id: string; student_id: string; grade: number }[] =
+                [];
+            const updates: { id: string; grade: number }[] = [];
+            const deleteIds: string[] = [];
+
+            // Για όλους τους που είναι τώρα επιλεγμένοι
+            for (const studentId of resultsAssignedIds) {
+                const info = resultsGradeByStudent[studentId];
+                const gradeTrim = (info?.grade ?? '').trim();
+                const gradeNum = Number(gradeTrim.replace(',', '.'));
+
+                if (resultsInitialAssignedIds.has(studentId)) {
+                    // υπήρχε ήδη αποτέλεσμα -> update
+                    if (info?.existingResultId) {
+                        updates.push({ id: info.existingResultId, grade: gradeNum });
+                    }
+                } else {
+                    // νέος μαθητής στο test -> insert
+                    inserts.push({
+                        test_id: resultsModal.testId,
+                        student_id: studentId,
+                        grade: gradeNum,
+                    });
+                }
+            }
+
+            // Μαθητές που ήταν αρχικά αλλά τώρα δεν είναι -> delete
+            for (const studentId of resultsInitialAssignedIds) {
+                if (!resultsAssignedIds.has(studentId)) {
+                    const info = resultsGradeByStudent[studentId];
+                    if (info?.existingResultId) {
+                        deleteIds.push(info.existingResultId);
+                    }
+                }
+            }
+
+            if (inserts.length > 0) {
+                const { error: insertErr } = await supabase
+                    .from('test_results')
+                    .insert(inserts);
+                if (insertErr) throw insertErr;
+            }
+
+            for (const upd of updates) {
+                const { error: updateErr } = await supabase
+                    .from('test_results')
+                    .update({ grade: upd.grade })
+                    .eq('id', upd.id);
+                if (updateErr) throw updateErr;
+            }
+
+            if (deleteIds.length > 0) {
+                const { error: delErr } = await supabase
+                    .from('test_results')
+                    .delete()
+                    .in('id', deleteIds);
+                if (delErr) throw delErr;
+            }
+
+            // success
+            closeResultsModal();
+        } catch (err) {
+            console.error('save test results error', err);
+            setResultsError('Αποτυχία αποθήκευσης βαθμών.');
+        } finally {
+            setResultsSaving(false);
+        }
+    };
 
     return (
         <div className="space-y-4">
@@ -647,14 +962,30 @@ export default function TestsPage() {
                     )}
                 </div>
 
-                <button
-                    type="button"
-                    onClick={openModal}
-                    className="btn-primary"
-                    style={{ backgroundColor: 'var(--color-accent)', color: '#000' }}
-                >
-                    Προσθήκη διαγωνίσματος
-                </button>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <input
+                        type="text"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        placeholder="Αναζήτηση..."
+                        className="form-input text-xs placeholder:text-slate-400"
+                        style={{
+                            maxWidth: '260px',
+                            background: 'transparent',
+                            color: 'var(--color-text-main)',
+                        }}
+                    />
+
+                    <button
+                        type="button"
+                        onClick={openModal}
+                        className="btn-primary"
+                        style={{ backgroundColor: 'var(--color-accent)', color: '#000' }}
+                    >
+                        Προσθήκη διαγωνίσματος
+                    </button>
+                </div>
+
             </div>
 
             {error && (
@@ -704,59 +1035,82 @@ export default function TestsPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {testsWithDisplay.map((t) => (
-                                <tr key={t.id} className="hover:bg-slate-800/40">
-                                    <td className="border-b border-slate-700 px-4 py-2">
-                                        <span
-                                            className="text-xs"
-                                            style={{ color: 'var(--color-text-td)' }}
-                                        >
-                                            {t.dateDisplay}
-                                        </span>
+                            {filteredTests.length === 0 ? (
+                                <tr>
+                                    <td
+                                        colSpan={6}
+                                        className="border-b border-slate-700 px-4 py-3 text-center text-xs text-slate-300"
+                                    >
+                                        Δεν βρέθηκαν διαγωνίσματα για την αναζήτηση.
                                     </td>
-                                    <td className="border-b border-slate-700 px-4 py-2">
-                                        <span
-                                            className="text-xs"
-                                            style={{ color: 'var(--color-text-td)' }}
-                                        >
-                                            {t.timeRange || '—'}
-                                        </span>
-                                    </td>
-                                    <td className="border-b border-slate-700 px-4 py-2">
-                                        <span
-                                            className="text-xs"
-                                            style={{ color: 'var(--color-text-td)' }}
-                                        >
-                                            {t.classTitle}
-                                        </span>
-                                    </td>
-                                    <td className="border-b border-slate-700 px-4 py-2">
-                                        <span
-                                            className="text-xs"
-                                            style={{ color: 'var(--color-text-td)' }}
-                                        >
-                                            {t.subjectName}
-                                        </span>
-                                    </td>
-                                    <td className="border-b border-slate-700 px-4 py-2">
-                                        <span
-                                            className="text-xs"
-                                            style={{ color: 'var(--color-text-td)' }}
-                                        >
-                                            {t.title ?? '—'}
-                                        </span>
-                                    </td>
-                                    <td className="border-b border-slate-700 px-4 py-2">
-                                        <div className="flex justify-end">
-                                            <EditDeleteButtons
-                                                onEdit={() => openEditModal(t.id)}
-                                                onDelete={() => openDeleteModal(t.id)}
-                                            />
-                                        </div>
-                                    </td>
-
                                 </tr>
-                            ))}
+                            ) : (
+                                filteredTests.map((t) => (
+                                    <tr key={t.id} className="hover:bg-slate-800/40">
+                                        <td className="border-b border-slate-700 px-4 py-2">
+                                            <span
+                                                className="text-xs"
+                                                style={{ color: 'var(--color-text-td)' }}
+                                            >
+                                                {t.dateDisplay}
+                                            </span>
+                                        </td>
+                                        <td className="border-b border-slate-700 px-4 py-2">
+                                            <span
+                                                className="text-xs"
+                                                style={{ color: 'var(--color-text-td)' }}
+                                            >
+                                                {t.timeRange || '—'}
+                                            </span>
+                                        </td>
+                                        <td className="border-b border-slate-700 px-4 py-2">
+                                            <span
+                                                className="text-xs"
+                                                style={{ color: 'var(--color-text-td)' }}
+                                            >
+                                                {t.classTitle}
+                                            </span>
+                                        </td>
+                                        <td className="border-b border-slate-700 px-4 py-2">
+                                            <span
+                                                className="text-xs"
+                                                style={{ color: 'var(--color-text-td)' }}
+                                            >
+                                                {t.subjectName}
+                                            </span>
+                                        </td>
+                                        <td className="border-b border-slate-700 px-4 py-2">
+                                            <span
+                                                className="text-xs"
+                                                style={{ color: 'var(--color-text-td)' }}
+                                            >
+                                                {t.title ?? '—'}
+                                            </span>
+                                        </td>
+                                        <td className="border-b border-slate-700 px-4 py-2">
+                                            <div className="flex justify-end gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => openResultsModal(t.id)}
+                                                    className="inline-flex items-center gap-1 rounded-md border border-emerald-500/70 bg-emerald-500/10 px-2.5 py-1 text-[11px] text-emerald-200 hover:bg-emerald-500/20"
+                                                    title="Μαθητές & βαθμοί"
+                                                >
+                                                    <Users className="h-3.5 w-3.5" />
+                                                    <Percent className="h-3 w-3" />
+                                                </button>
+
+
+
+
+                                                <EditDeleteButtons
+                                                    onEdit={() => openEditModal(t.id)}
+                                                    onDelete={() => openDeleteModal(t.id)}
+                                                />
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
                         </tbody>
                     </table>
                 </div>
@@ -1227,6 +1581,209 @@ export default function TestsPage() {
                                 style={{ backgroundColor: '#dc2626' }}
                             >
                                 {deleting ? 'Διαγραφή…' : 'Διαγραφή'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Results modal: students & grades (dual list like ClassStudentsModal) */}
+            {resultsModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+                    <div
+                        className="w-full max-w-4xl rounded-xl border border-slate-700 p-5 shadow-xl"
+                        style={{ background: 'var(--color-sidebar)' }}
+                    >
+                        {/* Header */}
+                        <div className="mb-3 flex items-center justify-between">
+                            <div>
+                                <h2 className="text-sm font-semibold text-slate-50">
+                                    Μαθητές &amp; βαθμοί
+                                </h2>
+                                <p className="mt-1 text-[11px] text-slate-300">
+                                    {resultsModal.subjectName} · {resultsModal.classTitle}
+                                    {resultsModal.dateDisplay && (
+                                        <> · {resultsModal.dateDisplay}</>
+                                    )}
+                                    {resultsModal.timeRange && (
+                                        <> · {resultsModal.timeRange}</>
+                                    )}
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={closeResultsModal}
+                                className="text-xs text-slate-300 hover:text-slate-100"
+                            >
+                                Κλείσιμο
+                            </button>
+                        </div>
+
+                        {resultsError && (
+                            <div className="mb-3 rounded-lg bg-amber-900/60 px-3 py-2 text-xs text-amber-100">
+                                {resultsError}
+                            </div>
+                        )}
+
+                        {/* Body – δύο κάρτες όπως ClassStudentsModal */}
+                        {resultsLoading ? (
+                            <div className="flex items-center justify-center py-10 text-xs text-slate-200">
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Φόρτωση μαθητών και βαθμών...
+                            </div>
+                        ) : resultsAllStudents.length === 0 ? (
+                            <div className="py-4 text-xs text-slate-300">
+                                Δεν βρέθηκαν μαθητές στο σχολείο. Προσθέστε μαθητές στη σελίδα
+                                «Μαθητές».
+                            </div>
+                        ) : (
+                            <div className="grid gap-4 md:grid-cols-2">
+                                {/* Left: όλοι οι μαθητές */}
+                                <div className="rounded-md border border-slate-700 bg-slate-950/40">
+                                    <div className="flex items-center justify-between border-b border-slate-700 px-3 py-2">
+                                        <h3 className="text-xs font-semibold text-slate-100">
+                                            Όλοι οι μαθητές
+                                        </h3>
+                                        <div className="flex items-center rounded border border-slate-600 bg-slate-900 px-2">
+                                            <Search className="mr-1 h-3 w-3 text-slate-400" />
+                                            <input
+                                                className="w-28 bg-transparent text-[11px] text-slate-100 outline-none placeholder:text-slate-500"
+                                                placeholder="Αναζήτηση..."
+                                                value={resultsSearchLeft}
+                                                onChange={(e) => setResultsSearchLeft(e.target.value)}
+                                                disabled={resultsSaving}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="max-h-80 overflow-y-auto">
+                                        {availableStudents.length === 0 ? (
+                                            <p className="px-3 py-3 text-[11px] text-slate-500">
+                                                Δεν υπάρχουν διαθέσιμοι μαθητές.
+                                            </p>
+                                        ) : (
+                                            <ul className="divide-y divide-slate-800">
+                                                {availableStudents.map((s) => (
+                                                    <li
+                                                        key={s.id}
+                                                        className="flex items-center justify-between px-3 py-2"
+                                                    >
+                                                        <span className="text-xs text-slate-100">
+                                                            {s.full_name ?? 'Χωρίς όνομα'}
+                                                        </span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleAddStudentToTest(s.id)}
+                                                            disabled={resultsSaving}
+                                                            className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-emerald-500 text-emerald-400 hover:bg-emerald-500/10 disabled:opacity-60"
+                                                        >
+                                                            <ArrowRight size={14} />
+                                                        </button>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Right: μαθητές που έγραψαν + βαθμός */}
+                                <div className="rounded-md border border-slate-700 bg-slate-950/40">
+                                    <div className="flex items-center justify-between border-b border-slate-700 px-3 py-2">
+                                        <h3 className="text-xs font-semibold text-slate-100">
+                                            Μαθητές που έγραψαν
+                                        </h3>
+                                        <div className="flex items-center rounded border border-slate-600 bg-slate-900 px-2">
+                                            <Search className="mr-1 h-3 w-3 text-slate-400" />
+                                            <input
+                                                className="w-28 bg-transparent text-[11px] text-slate-100 outline-none placeholder:text-slate-500"
+                                                placeholder="Αναζήτηση..."
+                                                value={resultsSearchRight}
+                                                onChange={(e) => setResultsSearchRight(e.target.value)}
+                                                disabled={resultsSaving}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="max-h-80 overflow-y-auto">
+                                        {assignedStudents.length === 0 ? (
+                                            <p className="px-3 py-3 text-[11px] text-slate-500">
+                                                Δεν έχουν επιλεγεί μαθητές για το διαγώνισμα.
+                                            </p>
+                                        ) : (
+                                            <ul className="divide-y divide-slate-800">
+                                                {assignedStudents.map((s) => {
+                                                    const info = resultsGradeByStudent[s.id] ?? {
+                                                        grade: '',
+                                                    };
+                                                    return (
+                                                        <li
+                                                            key={s.id}
+                                                            className="flex items-center px-3 py-2"
+                                                        >
+                                                            <button
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    handleRemoveStudentFromTest(s.id)
+                                                                }
+                                                                disabled={resultsSaving}
+                                                                className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-red-500 text-red-400 hover:bg-red-500/10 disabled:opacity-60"
+                                                            >
+                                                                <ArrowLeft size={14} />
+                                                            </button>
+                                                            <span className="ml-2 flex-1 text-xs text-slate-100">
+                                                                {s.full_name ?? 'Χωρίς όνομα'}
+                                                            </span>
+                                                            <input
+                                                                type="text"
+                                                                inputMode="decimal"
+                                                                placeholder="π.χ. 18.5"
+                                                                value={info.grade}
+                                                                onChange={(e) =>
+                                                                    handleResultGradeChange(s.id, e.target.value)
+                                                                }
+                                                                className="form-input ml-3 w-20 text-xs"
+                                                                style={{
+                                                                    background: 'var(--color-input-bg)',
+                                                                    color: 'var(--color-text-main)',
+                                                                }}
+                                                                disabled={resultsSaving}
+                                                            />
+                                                        </li>
+                                                    );
+                                                })}
+                                            </ul>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Footer */}
+                        <div className="mt-4 flex justify-end gap-2">
+                            <button
+                                type="button"
+                                onClick={closeResultsModal}
+                                disabled={resultsSaving}
+                                className="btn-ghost"
+                                style={{
+                                    background: 'var(--color-input-bg)',
+                                    color: 'var(--color-text-main)',
+                                }}
+                            >
+                                Ακύρωση
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleSaveResults}
+                                disabled={resultsSaving || resultsLoading}
+                                className="btn-primary"
+                            >
+                                {resultsSaving ? (
+                                    <span className="inline-flex items-center gap-1 text-xs">
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                        Αποθήκευση...
+                                    </span>
+                                ) : (
+                                    'Αποθήκευση'
+                                )}
                             </button>
                         </div>
                     </div>
