@@ -461,3 +461,28 @@
     var(--color-sidebar);
   border-color: rgba(37, 99, 235, 0.55);
 }
+
+/* 🔹 Dark slim scrollbar for lists */
+.custom-scrollbar {
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: #38bdf8 #020617; /* thumb, track */
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;              /* thickness */
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.9); /* ~ slate-900 */
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #38bdf8;      /* sky-400 */
+  border-radius: 9999px;
+  border: 2px solid #020617; /* makes it look “pill” */
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #0ea5e9;      /* sky-500 on hover */
+}

@@ -10,9 +10,10 @@ import StudentsPage from './pages/StudentsPage';
 import SubjectsPage from './pages/SubjectsPage';
 import TutorsPage from './pages/TutorsPage';
 import ProgramPage from './pages/ProgramPage';
-import HolidaysPage from './pages/HolidaysPage'; // 👈 existing
-import EventsPage from './pages/EventsPage';      // 👈 existing
-import TestsPage from './pages/TestsPage';        // 👈 NEW
+import HolidaysPage from './pages/HolidaysPage'; // existing
+import EventsPage from './pages/EventsPage';      // existing
+import TestsPage from './pages/TestsPage';        // tests page
+import GradesPage from './pages/GradesPage';      // 👈 NEW grades page
 
 import { useAuth } from './auth';
 import Layout from './components/Layout';
@@ -32,7 +33,7 @@ function ProtectedRoute({ children }: { children: ReactElement }) {
     return <Navigate to="/login" replace />;
   }
 
-  // 👇 All protected pages are rendered inside the global Layout
+  // All protected pages are rendered inside the global Layout
   return <Layout>{children}</Layout>;
 }
 
@@ -105,7 +106,7 @@ export default function App() {
         }
       />
 
-      {/* 👇 NEW Tests page under Προγράμματα */}
+      {/* Tests page under Προγράμματα */}
       <Route
         path="/program/tests"
         element={
@@ -115,7 +116,7 @@ export default function App() {
         }
       />
 
-      {/* 👇 Events page under Προγράμματα */}
+      {/* Events page under Προγράμματα */}
       <Route
         path="/program/events"
         element={
@@ -131,6 +132,16 @@ export default function App() {
         element={
           <ProtectedRoute>
             <HolidaysPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* 👇 NEW Grades page */}
+      <Route
+        path="/grades"
+        element={
+          <ProtectedRoute>
+            <GradesPage />
           </ProtectedRoute>
         }
       />

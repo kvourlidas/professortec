@@ -15,8 +15,8 @@ type HolidayRow = {
 
 type HolidayGroup = {
   ids: string[];
-  startDate: string;        // first date in group
-  endDate?: string | null;  // last date (if multi-day)
+  startDate: string; // first date in group
+  endDate?: string | null; // last date (if multi-day)
   name: string | null;
 };
 
@@ -235,11 +235,9 @@ export default function HolidaysPage() {
       const sameName = (current.name ?? null) === (h.name ?? null);
 
       if (sameName && diffDays === 1) {
-        // extend group
         current.ids.push(h.id);
         current.endDate = h.date;
       } else {
-        // start new group
         current = {
           ids: [h.id],
           startDate: h.date,
@@ -265,7 +263,6 @@ export default function HolidaysPage() {
 
     try {
       setDeleting(true);
-      // optimistic update
       setHolidays((list) => list.filter((h) => !idsToDelete.includes(h.id)));
 
       const { error } = await supabase
@@ -275,7 +272,7 @@ export default function HolidaysPage() {
 
       if (error) {
         console.error('Failed to delete holiday group', error);
-        setHolidays(prev); // rollback
+        setHolidays(prev);
       }
 
       setDeleteGroup(null);
@@ -293,16 +290,11 @@ export default function HolidaysPage() {
     setDeleteGroup(null);
   };
 
-  const canSave =
-    mode === 'single'
-      ? !!singleDate
-      : !!rangeStart && !!rangeEnd;
+  const canSave = mode === 'single' ? !!singleDate : !!rangeStart && !!rangeEnd;
 
   return (
     <div className="space-y-4">
-      <h1 className="text-sm font-semibold text-slate-50">
-        Αργίες σχολείου
-      </h1>
+      <h1 className="text-sm font-semibold text-slate-50">Αργίες σχολείου</h1>
 
       <div className="border border-slate-700 rounded-md bg-[color:var(--color-sidebar)] p-4 space-y-4">
         {/* mode toggle */}
@@ -343,11 +335,8 @@ export default function HolidaysPage() {
               }
               onChange={(val) => {
                 const d = parseDisplayToDate(val);
-                if (mode === 'single') {
-                  setSingleDate(d);
-                } else {
-                  setRangeStart(d);
-                }
+                if (mode === 'single') setSingleDate(d);
+                else setRangeStart(d);
               }}
               placeholder="π.χ. 24/12/2025"
             />
@@ -390,64 +379,86 @@ export default function HolidaysPage() {
         {/* list */}
         <div className="border-t border-slate-700 pt-3">
           {loading ? (
-            <p className="text-[11px] text-slate-300">
-              Φόρτωση αργιών…
-            </p>
+            <p className="text-[11px] text-slate-300">Φόρτωση αργιών…</p>
           ) : groupedHolidays.length === 0 ? (
             <p className="text-[11px] text-slate-400">
               Δεν έχουν καταχωρηθεί ακόμη αργίες για το σχολείο σας.
             </p>
           ) : (
-            <table className="w-full text-[11px] text-slate-100">
-              <thead>
-                <tr className="text-left border-b border-slate-700">
-                  <th className="py-1">Ημερομηνία / Περίοδος</th>
-                  <th className="py-1">Περιγραφή</th>
-                  <th className="py-1 text-right">Ενέργειες</th>
-                </tr>
-              </thead>
-              <tbody>
-                {groupedHolidays.map((g, idx) => {
-                  const rangeLabel =
-                    g.endDate && g.endDate !== g.startDate
-                      ? `${formatDisplay(g.startDate)} – ${formatDisplay(
-                          g.endDate,
-                        )}`
-                      : formatDisplay(g.startDate);
-
-                  return (
+            // ✅ same card + row look as the other tables
+            <div className="rounded-xl border border-slate-400/60 bg-slate-950/7 backdrop-blur-md shadow-lg overflow-hidden ring-1 ring-inset ring-slate-300/15">
+              <div className="overflow-x-auto">
+                <table className="min-w-full border-collapse text-xs">
+                  <thead>
                     <tr
-                      key={idx}
-                      className="border-b border-slate-800/60"
+                      className="text-[11px] uppercase tracking-wide"
                       style={{
-                        background:
-                          'radial-gradient(circle at top left, rgba(37, 99, 235, 0.22), transparent), var(--color-sidebar)',
+                        color: 'var(--color-text-main)',
+                        fontFamily:
+                          '"Poppins", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
                       }}
                     >
-                      <td className="py-2 px-3">{rangeLabel}</td>
-                      <td className="py-2 px-3">
-                        {g.name || '—'}
-                      </td>
-                      <td className="py-2 px-3">
-                        <div className="flex justify-end">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenDeleteModal(g)}
-                            className="flex h-8 w-8 items-center justify-center rounded-full border transition-colors hover:bg-red-600/10"
-                            style={{
-                              borderColor: '#f97373',
-                              color: '#f97373',
-                            }}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      </td>
+                      <th className="border-b border-slate-600 px-4 py-2 text-left">
+                        ΗΜΕΡΟΜΗΝΙΑ / ΠΕΡΙΟΔΟΣ
+                      </th>
+                      <th className="border-b border-slate-600 px-4 py-2 text-left">
+                        ΠΕΡΙΓΡΑΦΗ
+                      </th>
+                      <th className="border-b border-slate-600 px-4 py-2 text-right">
+                        ΕΝΕΡΓΕΙΕΣ
+                      </th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  </thead>
+
+                  <tbody>
+                    {groupedHolidays.map((g, idx) => {
+                      const rangeLabel =
+                        g.endDate && g.endDate !== g.startDate
+                          ? `${formatDisplay(g.startDate)} – ${formatDisplay(g.endDate)}`
+                          : formatDisplay(g.startDate);
+
+                      const rowBg =
+                        idx % 2 === 0 ? 'bg-slate-950/45' : 'bg-slate-900/25';
+
+                      return (
+                        <tr
+                          key={`${g.startDate}-${g.endDate ?? ''}-${idx}`}
+                          className={`${rowBg} backdrop-blur-sm hover:bg-slate-800/40 transition-colors`}
+                        >
+                          <td className="border-b border-slate-700 px-4 py-2 align-middle">
+                            <span className="text-xs text-slate-100" style={{ color: 'var(--color-text-td)' }}>
+                              {rangeLabel}
+                            </span>
+                          </td>
+
+                          <td className="border-b border-slate-700 px-4 py-2 align-middle">
+                            <span className="text-xs text-slate-100" style={{ color: 'var(--color-text-td)' }}>
+                              {g.name || '—'}
+                            </span>
+                          </td>
+
+                          <td className="border-b border-slate-700 px-4 py-2 align-middle">
+                            <div className="flex justify-end">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenDeleteModal(g)}
+                                className="flex h-8 w-8 items-center justify-center rounded-full border transition-colors hover:bg-red-600/10"
+                                style={{
+                                  borderColor: '#f97373',
+                                  color: '#f97373',
+                                }}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           )}
         </div>
       </div>
@@ -473,11 +484,8 @@ export default function HolidaysPage() {
               )}{' '}
               για{' '}
               <span className="font-semibold text-slate-100">
-                {deleteGroup.endDate &&
-                deleteGroup.endDate !== deleteGroup.startDate
-                  ? `${formatDisplay(
-                      deleteGroup.startDate,
-                    )} – ${formatDisplay(deleteGroup.endDate)}`
+                {deleteGroup.endDate && deleteGroup.endDate !== deleteGroup.startDate
+                  ? `${formatDisplay(deleteGroup.startDate)} – ${formatDisplay(deleteGroup.endDate)}`
                   : formatDisplay(deleteGroup.startDate)}
               </span>
               ; Η ενέργεια αυτή δεν μπορεί να ανακληθεί.

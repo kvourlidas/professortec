@@ -71,6 +71,14 @@ export default function EventsPage() {
   } | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // ✅ Pagination
+  const pageSize = 10;
+  const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
+
   // Load events
   useEffect(() => {
     if (!schoolId) {
@@ -263,6 +271,23 @@ export default function EventsPage() {
     });
   }, [events, search]);
 
+  const pageCount = useMemo(() => {
+    return Math.max(1, Math.ceil(filteredEvents.length / pageSize));
+  }, [filteredEvents.length]);
+
+  useEffect(() => {
+    setPage((p) => Math.min(Math.max(1, p), pageCount));
+  }, [pageCount]);
+
+  const pagedEvents = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredEvents.slice(start, start + pageSize);
+  }, [filteredEvents, page]);
+
+  const showingFrom =
+    filteredEvents.length === 0 ? 0 : (page - 1) * pageSize + 1;
+  const showingTo = Math.min(page * pageSize, filteredEvents.length);
+
   return (
     <div className="space-y-4">
       {/* Tiny debug helper so you SEE the path */}
@@ -274,24 +299,17 @@ export default function EventsPage() {
       {/* Header */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-base font-semibold text-slate-50">
-            ΕΚΔΗΛΩΣΕΙΣ
-          </h1>
+          <h1 className="text-base font-semibold text-slate-50">ΕΚΔΗΛΩΣΕΙΣ</h1>
           <p className="text-xs text-slate-300">
-            Μοναδικές εκδηλώσεις σχολείου που εμφανίζονται και στο
-            ημερολόγιο του Dashboard.
+            Μοναδικές εκδηλώσεις σχολείου που εμφανίζονται και στο ημερολόγιο του Dashboard.
           </p>
           <p className="mt-1 text-[11px] text-slate-400">
             Σύνολο events:{' '}
-            <span className="font-medium text-slate-100">
-              {events.length}
-            </span>
+            <span className="font-medium text-slate-100">{events.length}</span>
             {search.trim() && (
               <>
                 {' · '}
-                <span className="text-slate-300">
-                  Εμφανίζονται: {filteredEvents.length}
-                </span>
+                <span className="text-slate-300">Εμφανίζονται: {filteredEvents.length}</span>
               </>
             )}
           </p>
@@ -312,9 +330,7 @@ export default function EventsPage() {
             type="button"
             onClick={openCreateModal}
             className="btn-primary text-black"
-            style={{
-              backgroundColor: 'var(--color-accent)',
-            }}
+            style={{ backgroundColor: 'var(--color-accent)' }}
           >
             Προσθήκη Εκδήλωσης
           </button>
@@ -333,105 +349,131 @@ export default function EventsPage() {
         </div>
       )}
 
-      {/* TABLE */}
-      <div className="overflow-x-auto">
-        {loading ? (
-          <div className="py-6 text-sm text-slate-200">
-            Φόρτωση events…
-          </div>
-        ) : events.length === 0 ? (
-          <div className="py-6 text-sm text-slate-200">
-            Δεν υπάρχουν ακόμη events. Πατήστε «Προσθήκη Event» για να
-            δημιουργήσετε το πρώτο.
-          </div>
-        ) : filteredEvents.length === 0 ? (
-          <div className="py-6 text-sm text-slate-200">
-            Δεν βρέθηκαν events με αυτά τα κριτήρια.
-          </div>
-        ) : (
-          <table className="min-w-full border-collapse text-xs">
-            <thead>
-              <tr
-                className="text-[11px] uppercase tracking-wide"
-                style={{
-                  color: 'var(--color-text-main)',
-                  fontFamily:
-                    '"Poppins", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-                }}
-              >
-                <th className="border-b border-slate-600 px-4 py-2 text-left">
-                  ΟΝΟΜΑ
-                </th>
-                <th className="border-b border-slate-600 px-4 py-2 text-left">
-                  ΗΜΕΡΟΜΗΝΙΑ
-                </th>
-                <th className="border-b border-slate-600 px-4 py-2 text-left">
-                  ΩΡΑ
-                </th>
-                <th className="border-b border-slate-600 px-4 py-2 text-left">
-                  ΠΕΡΙΓΡΑΦΗ
-                </th>
-                <th className="border-b border-slate-600 px-4 py-2 th-right text-right">
-                  ΕΝΕΡΓΕΙΕΣ
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredEvents.map((ev) => (
+      {/* ✅ TABLE (same card + zebra rows + pagination) */}
+      <div className="rounded-xl border border-slate-400/60 bg-slate-950/7 backdrop-blur-md shadow-lg overflow-hidden ring-1 ring-inset ring-slate-300/15">
+        <div className="overflow-x-auto">
+          {loading ? (
+            <div className="px-4 py-6 text-sm text-slate-200">Φόρτωση events…</div>
+          ) : events.length === 0 ? (
+            <div className="px-4 py-6 text-sm text-slate-200">
+              Δεν υπάρχουν ακόμη events. Πατήστε «Προσθήκη Event» για να δημιουργήσετε το πρώτο.
+            </div>
+          ) : filteredEvents.length === 0 ? (
+            <div className="px-4 py-6 text-sm text-slate-200">
+              Δεν βρέθηκαν events με αυτά τα κριτήρια.
+            </div>
+          ) : (
+            <table className="min-w-full border-collapse text-xs">
+              <thead>
                 <tr
-                  key={ev.id}
-                  className="border-b border-slate-800/60 hover:bg-slate-900/40 transition-colors"
+                  className="text-[11px] uppercase tracking-wide"
                   style={{
-                    background:
-                      'radial-gradient(circle at top left, rgba(37, 99, 235, 0.22), transparent), var(--color-sidebar)',
+                    color: 'var(--color-text-main)',
+                    fontFamily:
+                      '"Poppins", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
                   }}
                 >
-                  <td className="border-b border-slate-700 px-4 py-2 align-middle">
-                    <span
-                      className="text-xs font-medium text-slate-50"
-                      style={{ color: 'var(--color-text-td)' }}
-                    >
-                      {ev.name}
-                    </span>
-                  </td>
-                  <td className="border-b border-slate-700 px-4 py-2 align-middle">
-                    <span
-                      className="text-xs text-slate-100"
-                      style={{ color: 'var(--color-text-td)' }}
-                    >
-                      {formatDate(ev.date)}
-                    </span>
-                  </td>
-                  <td className="border-b border-slate-700 px-4 py-2 align-middle">
-                    <span
-                      className="text-xs text-slate-100"
-                      style={{ color: 'var(--color-text-td)' }}
-                    >
-                      {formatTimeRange(ev.start_time, ev.end_time)}
-                    </span>
-                  </td>
-                  <td className="border-b border-slate-700 px-4 py-2 align-middle">
-                    <span
-                      className="text-xs text-slate-100 whitespace-pre-wrap"
-                      style={{ color: 'var(--color-text-td)' }}
-                    >
-                      {ev.description || '—'}
-                    </span>
-                  </td>
-                  <td className="border-b border-slate-700 px-4 py-2 align-middle">
-                    <div className="flex items-center justify-end gap-2">
-                      <EditDeleteButtons
-                        onEdit={() => openEditModal(ev)}
-                        onDelete={() =>
-                          setDeleteTarget({ id: ev.id, name: ev.name })
-                        }
-                      />
-                    </div>
-                  </td>
+                  <th className="border-b border-slate-600 px-4 py-2 text-left">ΟΝΟΜΑ</th>
+                  <th className="border-b border-slate-600 px-4 py-2 text-left">ΗΜΕΡΟΜΗΝΙΑ</th>
+                  <th className="border-b border-slate-600 px-4 py-2 text-left">ΩΡΑ</th>
+                  <th className="border-b border-slate-600 px-4 py-2 text-left">ΠΕΡΙΓΡΑΦΗ</th>
+                  <th className="border-b border-slate-600 px-4 py-2 th-right text-right">
+                    ΕΝΕΡΓΕΙΕΣ
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+
+              <tbody>
+                {pagedEvents.map((ev, idx) => {
+                  const absoluteIndex = (page - 1) * pageSize + idx;
+                  const rowBg =
+                    absoluteIndex % 2 === 0 ? 'bg-slate-950/45' : 'bg-slate-900/25';
+
+                  return (
+                    <tr
+                      key={ev.id}
+                      className={`${rowBg} backdrop-blur-sm hover:bg-slate-800/40 transition-colors`}
+                    >
+                      <td className="border-b border-slate-700 px-4 py-2 align-middle">
+                        <span
+                          className="text-xs font-medium text-slate-50"
+                          style={{ color: 'var(--color-text-td)' }}
+                        >
+                          {ev.name}
+                        </span>
+                      </td>
+
+                      <td className="border-b border-slate-700 px-4 py-2 align-middle">
+                        <span className="text-xs text-slate-100" style={{ color: 'var(--color-text-td)' }}>
+                          {formatDate(ev.date)}
+                        </span>
+                      </td>
+
+                      <td className="border-b border-slate-700 px-4 py-2 align-middle">
+                        <span className="text-xs text-slate-100" style={{ color: 'var(--color-text-td)' }}>
+                          {formatTimeRange(ev.start_time, ev.end_time)}
+                        </span>
+                      </td>
+
+                      <td className="border-b border-slate-700 px-4 py-2 align-middle">
+                        <span
+                          className="text-xs text-slate-100 whitespace-pre-wrap"
+                          style={{ color: 'var(--color-text-td)' }}
+                        >
+                          {ev.description || '—'}
+                        </span>
+                      </td>
+
+                      <td className="border-b border-slate-700 px-4 py-2 align-middle">
+                        <div className="flex items-center justify-end gap-2">
+                          <EditDeleteButtons
+                            onEdit={() => openEditModal(ev)}
+                            onDelete={() => setDeleteTarget({ id: ev.id, name: ev.name })}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* ✅ Pagination footer */}
+        {!loading && filteredEvents.length > 0 && (
+          <div className="flex items-center justify-between gap-3 border-t border-slate-800/70 px-4 py-3">
+            <div className="text-[11px] text-slate-300">
+              Εμφάνιση <span className="text-slate-100">{showingFrom}</span>-
+              <span className="text-slate-100">{showingTo}</span> από{' '}
+              <span className="text-slate-100">{filteredEvents.length}</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="rounded-md border border-slate-700 bg-slate-900/30 px-3 py-1.5 text-[11px] text-slate-200 hover:bg-slate-800/40 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Προηγ.
+              </button>
+
+              <div className="rounded-md border border-slate-700 bg-slate-900/20 px-3 py-1.5 text-[11px] text-slate-200">
+                Σελίδα <span className="text-slate-50">{page}</span> /{' '}
+                <span className="text-slate-50">{pageCount}</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                disabled={page >= pageCount}
+                className="rounded-md border border-slate-700 bg-slate-900/30 px-3 py-1.5 text-[11px] text-slate-200 hover:bg-slate-800/40 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Επόμ.
+              </button>
+            </div>
+          </div>
         )}
       </div>
 
@@ -466,7 +508,7 @@ export default function EventsPage() {
             <div className="flex justify-end gap-2 text-xs">
               <button
                 type="button"
-                onClick={handleCancelDelete}
+                onClick={() => handleCancelDelete()}
                 className="btn-ghost px-3 py-1"
                 style={{
                   background: 'var(--color-input-bg)',

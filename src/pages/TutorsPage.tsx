@@ -95,6 +95,14 @@ export default function TutorsPage() {
 
   const [search, setSearch] = useState('');
 
+  // ✅ Pagination (same as Students/Classes)
+  const pageSize = 10;
+  const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
+
   // delete confirmation modal state
   const [deleteTarget, setDeleteTarget] = useState<TutorRow | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -153,10 +161,8 @@ export default function TutorsPage() {
       // convert ISO from DB → dd/mm/yyyy for the picker
       dateOfBirth: row.date_of_birth ? isoToDisplay(row.date_of_birth) : '',
       afm: row.afm ?? '',
-      salaryGross:
-        row.salary_gross != null ? String(row.salary_gross) : '',
-      salaryNet:
-        row.salary_net != null ? String(row.salary_net) : '',
+      salaryGross: row.salary_gross != null ? String(row.salary_gross) : '',
+      salaryNet: row.salary_net != null ? String(row.salary_net) : '',
       phone: row.phone ?? '',
       email: row.email ?? '',
     });
@@ -258,9 +264,7 @@ export default function TutorsPage() {
       }
 
       setTutors((prev) =>
-        prev.map((t) =>
-          t.id === editingTutor.id ? (data as TutorRow) : t,
-        ),
+        prev.map((t) => (t.id === editingTutor.id ? (data as TutorRow) : t)),
       );
       closeModal();
     } else {
@@ -327,23 +331,36 @@ export default function TutorsPage() {
     });
   }, [tutors, search]);
 
+  // ✅ Pagination helpers
+  const pageCount = useMemo(() => {
+    return Math.max(1, Math.ceil(filteredTutors.length / pageSize));
+  }, [filteredTutors.length]);
+
+  useEffect(() => {
+    setPage((p) => Math.min(Math.max(1, p), pageCount));
+  }, [pageCount]);
+
+  const pagedTutors = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredTutors.slice(start, start + pageSize);
+  }, [filteredTutors, page]);
+
+  const showingFrom = filteredTutors.length === 0 ? 0 : (page - 1) * pageSize + 1;
+  const showingTo = Math.min(page * pageSize, filteredTutors.length);
+
   return (
     <div className="space-y-4">
       {/* Header */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-base font-semibold text-slate-50">
-            Καθηγητές
-          </h1>
+          <h1 className="text-base font-semibold text-slate-50">Καθηγητές</h1>
           <p className="text-xs text-slate-300">
             Διαχείριση καθηγητών, στοιχείων και μισθοδοσίας.
           </p>
           {schoolId && (
             <p className="mt-1 text-[11px] text-slate-400">
               Σύνολο καθηγητών:{' '}
-              <span className="font-medium text-slate-100">
-                {tutors.length}
-              </span>
+              <span className="font-medium text-slate-100">{tutors.length}</span>
               {search.trim() && (
                 <>
                   {' · '}
@@ -391,124 +408,136 @@ export default function TutorsPage() {
         </div>
       )}
 
-      {/* Tutors table */}
-      <div className="overflow-x-auto">
-        {loading ? (
-          <div className="py-4 text-xs text-slate-300">
-            Φόρτωση καθηγητών…
-          </div>
-        ) : tutors.length === 0 ? (
-          <div className="py-4 text-xs text-slate-300">
-            Δεν υπάρχουν ακόμη καθηγητές. Πατήστε «Προσθήκη καθηγητή» για να
-            δημιουργήσετε τον πρώτο.
-          </div>
-        ) : filteredTutors.length === 0 ? (
-          <div className="py-4 text-xs text-slate-300">
-            Δεν βρέθηκαν καθηγητές με αυτά τα κριτήρια αναζήτησης.
-          </div>
-        ) : (
-          <table className="min-w-full border-collapse text-xs">
-            <thead>
-              <tr className="text-[11px] uppercase tracking-wide text-slate-200">
-                <th className="border-b border-slate-600 px-4 py-2 text-left">
-                  Ονοματεπώνυμο
-                </th>
-                <th className="border-b border-slate-600 px-4 py-2 text-left">
-                  Ημερομηνία γέννησης
-                </th>
-                <th className="border-b border-slate-600 px-4 py-2 text-left">
-                  ΑΦΜ
-                </th>
-                <th className="border-b border-slate-600 px-4 py-2 text-right">
-                  Μισθός μικτά
-                </th>
-                <th className="border-b border-slate-600 px-4 py-2 text-right">
-                  Μισθός καθαρά
-                </th>
-                <th className="border-b border-slate-600 px-4 py-2 text-left">
-                  Τηλέφωνο
-                </th>
-                <th className="border-b border-slate-600 px-4 py-2 text-left">
-                  Email
-                </th>
-                <th className="border-b border-slate-600 px-4 py-2 text-right">
-                  Ενέργειες
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredTutors.map((t) => (
-                <tr key={t.id} className="hover:bg-slate-800/40">
-                  <td className="border-b border-slate-700 px-4 py-2 text-left">
-                    <span
-                      className="text-xs font-medium"
-                      style={{ color: 'var(--color-text-td)' }}
-                    >
-                      {t.full_name}
-                    </span>
-                  </td>
-                  <td className="border-b border-slate-700 px-4 py-2 text-left">
-                    <span
-                      className="text-xs"
-                      style={{ color: 'var(--color-text-td)' }}
-                    >
-                      {t.date_of_birth
-                        ? formatDateToGreek(t.date_of_birth)
-                        : '—'}
-                    </span>
-                  </td>
-                  <td className="border-b border-slate-700 px-4 py-2 text-left">
-                    <span
-                      className="text-xs"
-                      style={{ color: 'var(--color-text-td)' }}
-                    >
-                      {t.afm || '—'}
-                    </span>
-                  </td>
-                  <td className="border-b border-slate-700 px-4 py-2 text-right">
-                    <span
-                      className="text-xs"
-                      style={{ color: 'var(--color-text-td)' }}
-                    >
-                      {t.salary_gross != null ? t.salary_gross.toFixed(2) : '—'}
-                    </span>
-                  </td>
-                  <td className="border-b border-slate-700 px-4 py-2 text-right">
-                    <span
-                      className="text-xs"
-                      style={{ color: 'var(--color-text-td)' }}
-                    >
-                      {t.salary_net != null ? t.salary_net.toFixed(2) : '—'}
-                    </span>
-                  </td>
-                  <td className="border-b border-slate-700 px-4 py-2 text-left">
-                    <span
-                      className="text-xs"
-                      style={{ color: 'var(--color-text-td)' }}
-                    >
-                      {t.phone || '—'}
-                    </span>
-                  </td>
-                  <td className="border-b border-slate-700 px-4 py-2 text-left">
-                    <span
-                      className="text-xs"
-                      style={{ color: 'var(--color-text-td)' }}
-                    >
-                      {t.email || '—'}
-                    </span>
-                  </td>
-                  <td className="border-b border-slate-700 px-4 py-2">
-                    <div className="flex items-center justify-end gap-2">
-                      <EditDeleteButtons
-                        onEdit={() => openEditModal(t)}
-                        onDelete={() => askDeleteTutor(t)}
-                      />
-                    </div>
-                  </td>
+      {/* ✅ Tutors table (same styling + pagination) */}
+      <div className="rounded-xl border border-slate-400/60 bg-slate-950/7 backdrop-blur-md shadow-lg overflow-hidden ring-1 ring-inset ring-slate-300/15">
+        <div className="overflow-x-auto">
+          {loading ? (
+            <div className="px-4 py-4 text-xs text-slate-300">Φόρτωση καθηγητών…</div>
+          ) : tutors.length === 0 ? (
+            <div className="px-4 py-4 text-xs text-slate-300">
+              Δεν υπάρχουν ακόμη καθηγητές. Πατήστε «Προσθήκη καθηγητή» για να δημιουργήσετε τον πρώτο.
+            </div>
+          ) : filteredTutors.length === 0 ? (
+            <div className="px-4 py-4 text-xs text-slate-300">
+              Δεν βρέθηκαν καθηγητές με αυτά τα κριτήρια αναζήτησης.
+            </div>
+          ) : (
+            <table className="min-w-full border-collapse text-xs">
+              <thead>
+                <tr className="text-[11px] uppercase tracking-wide text-slate-200">
+                  <th className="border-b border-slate-600 px-4 py-2 text-left">Ονοματεπώνυμο</th>
+                  <th className="border-b border-slate-600 px-4 py-2 text-left">Ημερομηνία γέννησης</th>
+                  <th className="border-b border-slate-600 px-4 py-2 text-left">ΑΦΜ</th>
+                  <th className="border-b border-slate-600 px-4 py-2 text-right">Μισθός μικτά</th>
+                  <th className="border-b border-slate-600 px-4 py-2 text-right">Μισθός καθαρά</th>
+                  <th className="border-b border-slate-600 px-4 py-2 text-left">Τηλέφωνο</th>
+                  <th className="border-b border-slate-600 px-4 py-2 text-left">Email</th>
+                  <th className="border-b border-slate-600 px-4 py-2 text-right">Ενέργειες</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+
+              <tbody>
+                {pagedTutors.map((t, idx) => {
+                  const absoluteIndex = (page - 1) * pageSize + idx;
+                  const rowBg = absoluteIndex % 2 === 0 ? 'bg-slate-950/45' : 'bg-slate-900/25';
+
+                  return (
+                    <tr
+                      key={t.id}
+                      className={`${rowBg} backdrop-blur-sm hover:bg-slate-800/40 transition-colors`}
+                    >
+                      <td className="border-b border-slate-700 px-4 py-2 text-left">
+                        <span className="text-xs font-medium" style={{ color: 'var(--color-text-td)' }}>
+                          {t.full_name}
+                        </span>
+                      </td>
+
+                      <td className="border-b border-slate-700 px-4 py-2 text-left">
+                        <span className="text-xs" style={{ color: 'var(--color-text-td)' }}>
+                          {t.date_of_birth ? formatDateToGreek(t.date_of_birth) : '—'}
+                        </span>
+                      </td>
+
+                      <td className="border-b border-slate-700 px-4 py-2 text-left">
+                        <span className="text-xs" style={{ color: 'var(--color-text-td)' }}>
+                          {t.afm || '—'}
+                        </span>
+                      </td>
+
+                      <td className="border-b border-slate-700 px-4 py-2 text-right">
+                        <span className="text-xs" style={{ color: 'var(--color-text-td)' }}>
+                          {t.salary_gross != null ? t.salary_gross.toFixed(2) : '—'}
+                        </span>
+                      </td>
+
+                      <td className="border-b border-slate-700 px-4 py-2 text-right">
+                        <span className="text-xs" style={{ color: 'var(--color-text-td)' }}>
+                          {t.salary_net != null ? t.salary_net.toFixed(2) : '—'}
+                        </span>
+                      </td>
+
+                      <td className="border-b border-slate-700 px-4 py-2 text-left">
+                        <span className="text-xs" style={{ color: 'var(--color-text-td)' }}>
+                          {t.phone || '—'}
+                        </span>
+                      </td>
+
+                      <td className="border-b border-slate-700 px-4 py-2 text-left">
+                        <span className="text-xs" style={{ color: 'var(--color-text-td)' }}>
+                          {t.email || '—'}
+                        </span>
+                      </td>
+
+                      <td className="border-b border-slate-700 px-4 py-2">
+                        <div className="flex items-center justify-end gap-2">
+                          <EditDeleteButtons
+                            onEdit={() => openEditModal(t)}
+                            onDelete={() => askDeleteTutor(t)}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* ✅ Pagination footer (same as Students/Classes) */}
+        {!loading && filteredTutors.length > 0 && (
+          <div className="flex items-center justify-between gap-3 border-t border-slate-800/70 px-4 py-3">
+            <div className="text-[11px] text-slate-300">
+              Εμφάνιση <span className="text-slate-100">{showingFrom}</span>-
+              <span className="text-slate-100">{showingTo}</span> από{' '}
+              <span className="text-slate-100">{filteredTutors.length}</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="rounded-md border border-slate-700 bg-slate-900/30 px-3 py-1.5 text-[11px] text-slate-200 hover:bg-slate-800/40 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Προηγ.
+              </button>
+
+              <div className="rounded-md border border-slate-700 bg-slate-900/20 px-3 py-1.5 text-[11px] text-slate-200">
+                Σελίδα <span className="text-slate-50">{page}</span> /{' '}
+                <span className="text-slate-50">{pageCount}</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                disabled={page >= pageCount}
+                className="rounded-md border border-slate-700 bg-slate-900/30 px-3 py-1.5 text-[11px] text-slate-200 hover:bg-slate-800/40 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Επόμ.
+              </button>
+            </div>
+          </div>
         )}
       </div>
 
@@ -521,9 +550,7 @@ export default function TutorsPage() {
           >
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-slate-50">
-                {modalMode === 'create'
-                  ? 'Νέος καθηγητής'
-                  : 'Επεξεργασία καθηγητή'}
+                {modalMode === 'create' ? 'Νέος καθηγητής' : 'Επεξεργασία καθηγητή'}
               </h2>
               <button
                 type="button"
@@ -542,9 +569,7 @@ export default function TutorsPage() {
 
             <form onSubmit={handleSubmit} className="space-y-3">
               <div>
-                <label className="form-label text-slate-100">
-                  Ονοματεπώνυμο *
-                </label>
+                <label className="form-label text-slate-100">Ονοματεπώνυμο *</label>
                 <input
                   className="form-input"
                   style={{
@@ -562,9 +587,7 @@ export default function TutorsPage() {
               <DatePickerField
                 label="Ημερομηνία γέννησης"
                 value={form.dateOfBirth} // dd/mm/yyyy
-                onChange={(value) =>
-                  setForm((prev) => ({ ...prev, dateOfBirth: value }))
-                }
+                onChange={(value) => setForm((prev) => ({ ...prev, dateOfBirth: value }))}
                 placeholder="π.χ. 24/12/1985"
                 id="tutor-dob"
               />
@@ -585,9 +608,7 @@ export default function TutorsPage() {
 
               <div className="grid gap-3 md:grid-cols-2">
                 <div>
-                  <label className="form-label text-slate-100">
-                    Μισθός μικτά
-                  </label>
+                  <label className="form-label text-slate-100">Μισθός μικτά</label>
                   <input
                     type="number"
                     step="0.01"
@@ -602,9 +623,7 @@ export default function TutorsPage() {
                   />
                 </div>
                 <div>
-                  <label className="form-label text-slate-100">
-                    Μισθός καθαρά
-                  </label>
+                  <label className="form-label text-slate-100">Μισθός καθαρά</label>
                   <input
                     type="number"
                     step="0.01"
@@ -621,9 +640,7 @@ export default function TutorsPage() {
               </div>
 
               <div>
-                <label className="form-label text-slate-100">
-                  Τηλέφωνο
-                </label>
+                <label className="form-label text-slate-100">Τηλέφωνο</label>
                 <input
                   className="form-input"
                   style={{
@@ -637,9 +654,7 @@ export default function TutorsPage() {
               </div>
 
               <div>
-                <label className="form-label text-slate-100">
-                  Email
-                </label>
+                <label className="form-label text-slate-100">Email</label>
                 <input
                   type="email"
                   className="form-input"
@@ -666,16 +681,8 @@ export default function TutorsPage() {
                 >
                   Ακύρωση
                 </button>
-                <button
-                  type="submit"
-                  className="btn-primary"
-                  disabled={saving}
-                >
-                  {saving
-                    ? 'Αποθήκευση...'
-                    : modalMode === 'create'
-                    ? 'Αποθήκευση'
-                    : 'Ενημέρωση'}
+                <button type="submit" className="btn-primary" disabled={saving}>
+                  {saving ? 'Αποθήκευση...' : modalMode === 'create' ? 'Αποθήκευση' : 'Ενημέρωση'}
                 </button>
               </div>
             </form>
@@ -690,9 +697,7 @@ export default function TutorsPage() {
             className="w-full max-w-md rounded-xl border border-slate-700 px-5 py-4 shadow-xl"
             style={{ background: 'var(--color-sidebar)' }}
           >
-            <h3 className="mb-2 text-sm font-semibold text-slate-50">
-              Διαγραφή καθηγητή
-            </h3>
+            <h3 className="mb-2 text-sm font-semibold text-slate-50">Διαγραφή καθηγητή</h3>
             <p className="mb-4 text-xs text-slate-200">
               Σίγουρα θέλετε να διαγράψετε τον καθηγητή{' '}
               <span className="font-semibold text-[color:var(--color-accent)]">

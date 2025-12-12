@@ -64,6 +64,14 @@ export default function ClassesPage() {
 
   const [search, setSearch] = useState('');
 
+  // ✅ Pagination (same as StudentsPage)
+  const pageSize = 10;
+  const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
+
   // delete confirmation modal state
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string;
@@ -257,9 +265,7 @@ export default function ClassesPage() {
       }
 
       setClasses((prev) =>
-        prev.map((c) =>
-          c.id === editingClass.id ? (data as ClassRow) : c,
-        ),
+        prev.map((c) => (c.id === editingClass.id ? (data as ClassRow) : c)),
       );
       closeModal();
     }
@@ -305,13 +311,27 @@ export default function ClassesPage() {
         }
       }
 
-      const composite = [c.title, c.subject, levelName]
-        .filter(Boolean)
-        .join(' ');
-
+      const composite = [c.title, c.subject, levelName].filter(Boolean).join(' ');
       return normalizeText(composite).includes(q);
     });
   }, [classes, search, subjects, levelNameById]);
+
+  // ✅ Pagination helpers (same as StudentsPage)
+  const pageCount = useMemo(() => {
+    return Math.max(1, Math.ceil(filteredClasses.length / pageSize));
+  }, [filteredClasses.length]);
+
+  useEffect(() => {
+    setPage((p) => Math.min(Math.max(1, p), pageCount));
+  }, [pageCount]);
+
+  const pagedClasses = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredClasses.slice(start, start + pageSize);
+  }, [filteredClasses, page]);
+
+  const showingFrom = filteredClasses.length === 0 ? 0 : (page - 1) * pageSize + 1;
+  const showingTo = Math.min(page * pageSize, filteredClasses.length);
 
   return (
     <div className="space-y-4">
@@ -324,9 +344,7 @@ export default function ClassesPage() {
           </p>
           <p className="mt-1 text-[11px] text-slate-400">
             Σύνολο τμημάτων:{' '}
-            <span className="font-medium text-slate-100">
-              {classes.length}
-            </span>
+            <span className="font-medium text-slate-100">{classes.length}</span>
             {search.trim() && (
               <>
                 {' · '}
@@ -370,119 +388,141 @@ export default function ClassesPage() {
 
       {!schoolId && (
         <div className="rounded border border-amber-500 bg-amber-900/40 px-4 py-2 text-xs text-amber-100">
-          Το προφίλ σας δεν είναι συνδεδεμένο με σχολείο (school_id είναι
-          null).
+          Το προφίλ σας δεν είναι συνδεδεμένο με σχολείο (school_id είναι null).
         </div>
       )}
 
-      {/* TABLE */}
-      <div className="overflow-x-auto">
-        {loading ? (
-          <div className="py-6 text-sm text-slate-200">Φόρτωση τμημάτων…</div>
-        ) : classes.length === 0 ? (
-          <div className="py-6 text-sm text-slate-200">
-            Δεν υπάρχουν ακόμη τμήματα. Πατήστε «Προσθήκη τμήματος» για να
-            δημιουργήσετε το πρώτο.
-          </div>
-        ) : filteredClasses.length === 0 ? (
-          <div className="py-6 text-sm text-slate-200">
-            Δεν βρέθηκαν τμήματα με αυτά τα κριτήρια αναζήτησης.
-          </div>
-        ) : (
-          <table className="min-w-full border-collapse text-xs classes-table">
-            <thead>
-              <tr
-                className="text-[11px] uppercase tracking-wide"
-                style={{
-                  color: 'var(--color-text-main)',
-                  fontFamily:
-                    '"Poppins", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-                }}
-              >
-                <th className="border-b border-slate-600 px-4 py-2">
-                  ΟΝΟΜΑ ΤΜΗΜΑΤΟΣ
-                </th>
-                <th className="border-b border-slate-600 px-4 py-2">
-                  ΜΑΘΗΜΑ
-                </th>
-                <th className="border-b border-slate-600 px-4 py-2">
-                  ΕΠΙΠΕΔΟ
-                </th>
-                <th className="border-b border-slate-600 px-4 py-2">
-                  ΜΑΘΗΤΕΣ
-                </th>
-                <th className="border-b border-slate-600 px-4 py-2 th-right">
-                  ΕΝΕΡΓΕΙΕΣ
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredClasses.map((c) => {
-                let levelName = '—';
-                if (c.subject_id) {
-                  const subjRow = subjects.find((s) => s.id === c.subject_id);
-                  if (subjRow?.level_id) {
-                    levelName =
-                      levelNameById.get(subjRow.level_id) ?? '—';
+      {/* ✅ TABLE (same styling as StudentsPage) */}
+      <div className="rounded-xl border border-slate-400/60 bg-slate-950/7 backdrop-blur-md shadow-lg overflow-hidden ring-1 ring-inset ring-slate-300/15">
+        <div className="overflow-x-auto">
+          {loading ? (
+            <div className="px-4 py-6 text-sm text-slate-200">Φόρτωση τμημάτων…</div>
+          ) : classes.length === 0 ? (
+            <div className="px-4 py-6 text-sm text-slate-200">
+              Δεν υπάρχουν ακόμη τμήματα. Πατήστε «Προσθήκη τμήματος» για να δημιουργήσετε το πρώτο.
+            </div>
+          ) : filteredClasses.length === 0 ? (
+            <div className="px-4 py-6 text-sm text-slate-200">
+              Δεν βρέθηκαν τμήματα με αυτά τα κριτήρια αναζήτησης.
+            </div>
+          ) : (
+            <table className="min-w-full border-collapse text-xs classes-table">
+              <thead>
+                <tr
+                  className="text-[11px] uppercase tracking-wide"
+                  style={{
+                    color: 'var(--color-text-main)',
+                    fontFamily:
+                      '"Poppins", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+                  }}
+                >
+                  <th className="border-b border-slate-600 px-4 py-2">ΟΝΟΜΑ ΤΜΗΜΑΤΟΣ</th>
+                  <th className="border-b border-slate-600 px-4 py-2">ΜΑΘΗΜΑ</th>
+                  <th className="border-b border-slate-600 px-4 py-2">ΕΠΙΠΕΔΟ</th>
+                  <th className="border-b border-slate-600 px-4 py-2">ΜΑΘΗΤΕΣ</th>
+                  <th className="border-b border-slate-600 px-4 py-2 th-right">ΕΝΕΡΓΕΙΕΣ</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {pagedClasses.map((c, idx) => {
+                  let levelName = '—';
+                  if (c.subject_id) {
+                    const subjRow = subjects.find((s) => s.id === c.subject_id);
+                    if (subjRow?.level_id) {
+                      levelName = levelNameById.get(subjRow.level_id) ?? '—';
+                    }
                   }
-                }
 
-                return (
-                  <tr key={c.id} className="hover:bg-slate-800/40">
-                    <td className="border-b border-slate-700 px-4 py-2 align-top">
-                      <span
-                        className="text-xs font-medium text-slate-50"
-                        style={{ color: 'var(--color-text-td)' }}
-                      >
-                        {c.title}
-                      </span>
-                    </td>
+                  const absoluteIndex = (page - 1) * pageSize + idx;
+                  const rowBg = absoluteIndex % 2 === 0 ? 'bg-slate-950/45' : 'bg-slate-900/25';
 
-                    <td className="border-b border-slate-700 px-4 py-2 align-top">
-                      <span
-                        className="text-xs text-slate-100"
-                        style={{ color: 'var(--color-text-td)' }}
-                      >
-                        {c.subject || '—'}
-                      </span>
-                    </td>
+                  return (
+                    <tr
+                      key={c.id}
+                      className={`${rowBg} backdrop-blur-sm hover:bg-slate-800/40 transition-colors`}
+                    >
+                      <td className="border-b border-slate-700 px-4 py-2 align-top">
+                        <span
+                          className="text-xs font-medium text-slate-50"
+                          style={{ color: 'var(--color-text-td)' }}
+                        >
+                          {c.title}
+                        </span>
+                      </td>
 
-                    <td className="border-b border-slate-700 px-4 py-2 align-top">
-                      <span
-                        className="text-xs text-slate-100"
-                        style={{ color: 'var(--color-text-td)' }}
-                      >
-                        {levelName}
-                      </span>
-                    </td>
+                      <td className="border-b border-slate-700 px-4 py-2 align-top">
+                        <span className="text-xs text-slate-100" style={{ color: 'var(--color-text-td)' }}>
+                          {c.subject || '—'}
+                        </span>
+                      </td>
 
-                    <td className="border-b border-slate-700 px-4 py-2 align-top">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setStudentsModalClass({ id: c.id, title: c.title })
-                        }
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-500 text-emerald-400 hover:bg-emerald-500/10"
-                      >
-                        <Plus size={14} />
-                      </button>
-                    </td>
+                      <td className="border-b border-slate-700 px-4 py-2 align-top">
+                        <span className="text-xs text-slate-100" style={{ color: 'var(--color-text-td)' }}>
+                          {levelName}
+                        </span>
+                      </td>
 
-                    <td className="border-b border-slate-700 px-4 py-2 align-top">
-                      <div className="flex items-center justify-end gap-2">
-                        <EditDeleteButtons
-                          onEdit={() => openEditModal(c)}
-                          onDelete={() =>
-                            setDeleteTarget({ id: c.id, title: c.title })
-                          }
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      <td className="border-b border-slate-700 px-4 py-2 align-top">
+                        <button
+                          type="button"
+                          onClick={() => setStudentsModalClass({ id: c.id, title: c.title })}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-500 text-emerald-400 hover:bg-emerald-500/10"
+                        >
+                          <Plus size={14} />
+                        </button>
+                      </td>
+
+                      <td className="border-b border-slate-700 px-4 py-2 align-top">
+                        <div className="flex items-center justify-end gap-2">
+                          <EditDeleteButtons
+                            onEdit={() => openEditModal(c)}
+                            onDelete={() => setDeleteTarget({ id: c.id, title: c.title })}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* ✅ Pagination footer (same as StudentsPage) */}
+        {!loading && filteredClasses.length > 0 && (
+          <div className="flex items-center justify-between gap-3 border-t border-slate-800/70 px-4 py-3">
+            <div className="text-[11px] text-slate-300">
+              Εμφάνιση <span className="text-slate-100">{showingFrom}</span>-
+              <span className="text-slate-100">{showingTo}</span> από{' '}
+              <span className="text-slate-100">{filteredClasses.length}</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="rounded-md border border-slate-700 bg-slate-900/30 px-3 py-1.5 text-[11px] text-slate-200 hover:bg-slate-800/40 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Προηγ.
+              </button>
+
+              <div className="rounded-md border border-slate-700 bg-slate-900/20 px-3 py-1.5 text-[11px] text-slate-200">
+                Σελίδα <span className="text-slate-50">{page}</span> /{' '}
+                <span className="text-slate-50">{pageCount}</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                disabled={page >= pageCount}
+                className="rounded-md border border-slate-700 bg-slate-900/30 px-3 py-1.5 text-[11px] text-slate-200 hover:bg-slate-800/40 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Επόμ.
+              </button>
+            </div>
+          </div>
         )}
       </div>
 
@@ -523,15 +563,10 @@ export default function ClassesPage() {
               ×
             </button>
 
-            <h3 className="mb-2 text-sm font-semibold text-slate-50">
-              Διαγραφή τμήματος
-            </h3>
+            <h3 className="mb-2 text-sm font-semibold text-slate-50">Διαγραφή τμήματος</h3>
             <p className="text-xs text-slate-200">
               Σίγουρα θέλεις να διαγράψεις το τμήμα{' '}
-              <span
-                className="font-semibold"
-                style={{ color: 'var(--color-accent)' }}
-              >
+              <span className="font-semibold" style={{ color: 'var(--color-accent)' }}>
                 «{deleteTarget.title}»
               </span>
               ; Η ενέργεια αυτή δεν μπορεί να ανακληθεί.

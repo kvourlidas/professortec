@@ -1,3 +1,4 @@
+// src/pages/SubjectsPage.tsx
 import { useState, useEffect, useMemo } from 'react';
 import type { FormEvent } from 'react';
 import { supabase } from '../lib/supabaseClient';
@@ -68,9 +69,9 @@ export default function SubjectsPage() {
   } | null>(null);
 
   // ⭐ tutors per subject
-  const [tutorsBySubject, setTutorsBySubject] = useState<
-    Map<string, TutorRow[]>
-  >(new Map());
+  const [tutorsBySubject, setTutorsBySubject] = useState<Map<string, TutorRow[]>>(
+    new Map(),
+  );
 
   // flag για reload μετά από αλλαγές στο modal
   const [reloadSubjectTutorsFlag, setReloadSubjectTutorsFlag] = useState(0);
@@ -80,6 +81,14 @@ export default function SubjectsPage() {
     levels.forEach((lvl) => m.set(lvl.id, lvl.name));
     return m;
   }, [levels]);
+
+  // ✅ Pagination (same as other pages)
+  const pageSize = 10;
+  const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
 
   // Load levels for dropdown
   useEffect(() => {
@@ -139,18 +148,20 @@ export default function SubjectsPage() {
 
     const loadSubjectTutors = async () => {
       try {
-        const [{ data: tutorsData, error: tutorsErr }, { data: linksData, error: linksErr }] =
-          await Promise.all([
-            supabase
-              .from('tutors')
-              .select('id, school_id, full_name')
-              .eq('school_id', schoolId)
-              .order('full_name', { ascending: true }),
-            supabase
-              .from('subject_tutors')
-              .select('subject_id, tutor_id')
-              .eq('school_id', schoolId),
-          ]);
+        const [
+          { data: tutorsData, error: tutorsErr },
+          { data: linksData, error: linksErr },
+        ] = await Promise.all([
+          supabase
+            .from('tutors')
+            .select('id, school_id, full_name')
+            .eq('school_id', schoolId)
+            .order('full_name', { ascending: true }),
+          supabase
+            .from('subject_tutors')
+            .select('subject_id, tutor_id')
+            .eq('school_id', schoolId),
+        ]);
 
         if (tutorsErr) throw tutorsErr;
         if (linksErr) throw linksErr;
@@ -172,7 +183,6 @@ export default function SubjectsPage() {
         setTutorsBySubject(map);
       } catch (err) {
         console.error('Error loading subject tutors map', err);
-        // δεν σπάμε τη σελίδα, απλά δεν δείχνουμε ονόματα αν αποτύχει
       }
     };
 
@@ -329,6 +339,23 @@ export default function SubjectsPage() {
     });
   }, [subjects, levelNameById, search]);
 
+  const pageCount = useMemo(() => {
+    return Math.max(1, Math.ceil(filteredSubjects.length / pageSize));
+  }, [filteredSubjects.length]);
+
+  useEffect(() => {
+    setPage((p) => Math.min(Math.max(1, p), pageCount));
+  }, [pageCount]);
+
+  const pagedSubjects = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredSubjects.slice(start, start + pageSize);
+  }, [filteredSubjects, page]);
+
+  const showingFrom =
+    filteredSubjects.length === 0 ? 0 : (page - 1) * pageSize + 1;
+  const showingTo = Math.min(page * pageSize, filteredSubjects.length);
+
   // όταν αποθηκεύονται αλλαγές στο SubjectTutorsModal
   const handleSubjectTutorsChanged = () => {
     setReloadSubjectTutorsFlag((x) => x + 1);
@@ -339,18 +366,14 @@ export default function SubjectsPage() {
       {/* Header */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-base font-semibold text-slate-50">
-            Μαθήματα
-          </h1>
+          <h1 className="text-base font-semibold text-slate-50">Μαθήματα</h1>
           <p className="text-xs text-slate-300">
             Διαχείριση μαθημάτων και των επιπέδων τους.
           </p>
           {schoolId && (
             <p className="mt-1 text-[11px] text-slate-400">
               Σύνολο μαθημάτων:{' '}
-              <span className="font-medium text-slate-100">
-                {subjects.length}
-              </span>
+              <span className="font-medium text-slate-100">{subjects.length}</span>
               {search.trim() && (
                 <>
                   {' · '}
@@ -398,141 +421,184 @@ export default function SubjectsPage() {
         </div>
       )}
 
-      {/* Subjects table */}
-      <div className="overflow-x-auto">
-        {loading ? (
-          <div className="py-4 text-xs text-slate-300">Φόρτωση μαθημάτων…</div>
-        ) : subjects.length === 0 ? (
-          <div className="py-4 text-xs text-slate-300">
-            Δεν υπάρχουν ακόμη μαθήματα. Πατήστε «Προσθήκη μαθήματος» για να
-            δημιουργήσετε το πρώτο.
-          </div>
-        ) : filteredSubjects.length === 0 ? (
-          <div className="py-4 text-xs text-slate-300">
-            Δεν βρέθηκαν μαθήματα με αυτά τα κριτήρια αναζήτησης.
-          </div>
-        ) : (
-          <table className="min-w-full border-collapse text-xs">
-            <thead>
-              <tr className="text-[11px] uppercase tracking-wide text-slate-200">
-                <th className="border-b border-slate-600 px-4 py-2 text-left">
-                  Όνομα μαθήματος
-                </th>
-                <th className="border-b border-slate-600 px-4 py-2 text-left">
-                  Επίπεδο
-                </th>
-                <th className="border-b border-slate-600 px-4 py-2 text-left">
-                  Καθηγητές
-                </th>
-                <th className="border-b border-slate-600 px-4 py-2 text-right">
-                  Ενέργειες
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredSubjects.map((subj) => {
-                const levelName =
-                  subj.level_id && levelNameById.get(subj.level_id)
-                    ? levelNameById.get(subj.level_id)!
-                    : '—';
+      {/* ✅ Subjects table (same card + zebra rows + pagination) */}
+      <div className="rounded-xl border border-slate-400/60 bg-slate-950/7 backdrop-blur-md shadow-lg overflow-hidden ring-1 ring-inset ring-slate-300/15">
+        <div className="overflow-x-auto">
+          {loading ? (
+            <div className="px-4 py-4 text-xs text-slate-300">Φόρτωση μαθημάτων…</div>
+          ) : subjects.length === 0 ? (
+            <div className="px-4 py-4 text-xs text-slate-300">
+              Δεν υπάρχουν ακόμη μαθήματα. Πατήστε «Προσθήκη μαθήματος» για να δημιουργήσετε το πρώτο.
+            </div>
+          ) : filteredSubjects.length === 0 ? (
+            <div className="px-4 py-4 text-xs text-slate-300">
+              Δεν βρέθηκαν μαθήματα με αυτά τα κριτήρια αναζήτησης.
+            </div>
+          ) : (
+            <table className="min-w-full border-collapse text-xs">
+              <thead>
+                <tr className="text-[11px] uppercase tracking-wide text-slate-200">
+                  <th className="border-b border-slate-600 px-4 py-2 text-left">
+                    Όνομα μαθήματος
+                  </th>
+                  <th className="border-b border-slate-600 px-4 py-2 text-left">
+                    Επίπεδο
+                  </th>
+                  <th className="border-b border-slate-600 px-4 py-2 text-left">
+                    Καθηγητές
+                  </th>
+                  <th className="border-b border-slate-600 px-4 py-2 text-right">
+                    Ενέργειες
+                  </th>
+                </tr>
+              </thead>
 
-                const tutorList = tutorsBySubject.get(subj.id) ?? [];
+              <tbody>
+                {pagedSubjects.map((subj, idx) => {
+                  const absoluteIndex = (page - 1) * pageSize + idx;
+                  const rowBg =
+                    absoluteIndex % 2 === 0 ? 'bg-slate-950/45' : 'bg-slate-900/25';
 
-                return (
-                  <tr key={subj.id} className="hover:bg-slate-800/40">
-                    <td className="border-b border-slate-700 px-4 py-2 text-left">
-                      <span
-                        className="text-xs font-medium"
-                        style={{ color: 'var(--color-text-td)' }}
-                      >
-                        {subj.name}
-                      </span>
-                    </td>
-                    <td className="border-b border-slate-700 px-4 py-2 text-left">
-                      <span
-                        className="text-xs"
-                        style={{ color: 'var(--color-text-td)' }}
-                      >
-                        {levelName}
-                      </span>
-                    </td>
+                  const levelName =
+                    subj.level_id && levelNameById.get(subj.level_id)
+                      ? levelNameById.get(subj.level_id)!
+                      : '—';
 
-                    {/* ⭐ Tutors column – icon left, names as chips */}
-                    <td className="border-b border-slate-700 px-4 py-2 text-left">
-                      <div className="flex items-start gap-2">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setTutorsModalSubject({
-                              id: subj.id,
-                              name: subj.name,
-                            })
-                          }
-                          className="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border border-emerald-500 text-emerald-400 hover:bg-emerald-500/10"
+                  const tutorList = tutorsBySubject.get(subj.id) ?? [];
+
+                  return (
+                    <tr
+                      key={subj.id}
+                      className={`${rowBg} backdrop-blur-sm hover:bg-slate-800/40 transition-colors`}
+                    >
+                      <td className="border-b border-slate-700 px-4 py-2 text-left">
+                        <span
+                          className="text-xs font-medium"
+                          style={{ color: 'var(--color-text-td)' }}
                         >
-                          <Plus size={13} />
-                        </button>
+                          {subj.name}
+                        </span>
+                      </td>
 
-                        <div className="flex flex-wrap gap-1">
-                          {tutorList.length === 0 ? (
-                            <span className="text-[11px] italic text-slate-500">
-                              Χωρίς καθηγητές
-                            </span>
-                          ) : (
-                            <>
-                              {tutorList.slice(0, 3).map((t) => (
-                                <span
-                                  key={t.id}
-                                  className="rounded-full bg-slate-800/70 px-2 py-0.5 text-[11px] text-slate-100"
-                                >
-                                  {t.full_name ?? 'Χωρίς όνομα'}
-                                </span>
-                              ))}
-                              {tutorList.length > 3 && (
-                                <span className="text-[11px] text-slate-400">
-                                  +{tutorList.length - 3} ακόμα
-                                </span>
-                              )}
-                            </>
-                          )}
+                      <td className="border-b border-slate-700 px-4 py-2 text-left">
+                        <span className="text-xs" style={{ color: 'var(--color-text-td)' }}>
+                          {levelName}
+                        </span>
+                      </td>
+
+                      {/* ⭐ Tutors column – icon left, names as chips */}
+                      <td className="border-b border-slate-700 px-4 py-2 text-left">
+                        <div className="flex items-start gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setTutorsModalSubject({
+                                id: subj.id,
+                                name: subj.name,
+                              })
+                            }
+                            className="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border border-emerald-500 text-emerald-400 hover:bg-emerald-500/10"
+                          >
+                            <Plus size={13} />
+                          </button>
+
+                          <div className="flex flex-wrap gap-1">
+                            {tutorList.length === 0 ? (
+                              <span className="text-[11px] italic text-slate-500">
+                                Χωρίς καθηγητές
+                              </span>
+                            ) : (
+                              <>
+                                {tutorList.slice(0, 3).map((t) => (
+                                  <span
+                                    key={t.id}
+                                    className="rounded-full bg-slate-800/70 px-2 py-0.5 text-[11px] text-slate-100"
+                                  >
+                                    {t.full_name ?? 'Χωρίς όνομα'}
+                                  </span>
+                                ))}
+                                {tutorList.length > 3 && (
+                                  <span className="text-[11px] text-slate-400">
+                                    +{tutorList.length - 3} ακόμα
+                                  </span>
+                                )}
+                              </>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </td>
+                      </td>
 
-                    <td className="border-b border-slate-700 px-4 py-2">
-                      <div className="flex items-center justify-end gap-2">
-                        {/* Edit */}
-                        <button
-                          type="button"
-                          onClick={() => openEditModal(subj)}
-                          className="flex h-8 w-8 items-center justify-center rounded-full border transition-colors hover:bg-blue-600/10"
-                          style={{
-                            borderColor: '#60a5ff',
-                            color: '#60a5ff',
-                          }}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
+                      <td className="border-b border-slate-700 px-4 py-2">
+                        <div className="flex items-center justify-end gap-2">
+                          {/* Edit */}
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(subj)}
+                            className="flex h-8 w-8 items-center justify-center rounded-full border transition-colors hover:bg-blue-600/10"
+                            style={{
+                              borderColor: '#60a5ff',
+                              color: '#60a5ff',
+                            }}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
 
-                        {/* Delete */}
-                        <button
-                          type="button"
-                          onClick={() => askDeleteSubject(subj)}
-                          className="flex h-8 w-8 items-center justify-center rounded-full border transition-colors hover:bg-red-600/10"
-                          style={{
-                            borderColor: '#f97373',
-                            color: '#f97373',
-                          }}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                          {/* Delete */}
+                          <button
+                            type="button"
+                            onClick={() => askDeleteSubject(subj)}
+                            className="flex h-8 w-8 items-center justify-center rounded-full border transition-colors hover:bg-red-600/10"
+                            style={{
+                              borderColor: '#f97373',
+                              color: '#f97373',
+                            }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* ✅ Pagination footer */}
+        {!loading && filteredSubjects.length > 0 && (
+          <div className="flex items-center justify-between gap-3 border-t border-slate-800/70 px-4 py-3">
+            <div className="text-[11px] text-slate-300">
+              Εμφάνιση <span className="text-slate-100">{showingFrom}</span>-
+              <span className="text-slate-100">{showingTo}</span> από{' '}
+              <span className="text-slate-100">{filteredSubjects.length}</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="rounded-md border border-slate-700 bg-slate-900/30 px-3 py-1.5 text-[11px] text-slate-200 hover:bg-slate-800/40 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Προηγ.
+              </button>
+
+              <div className="rounded-md border border-slate-700 bg-slate-900/20 px-3 py-1.5 text-[11px] text-slate-200">
+                Σελίδα <span className="text-slate-50">{page}</span> /{' '}
+                <span className="text-slate-50">{pageCount}</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                disabled={page >= pageCount}
+                className="rounded-md border border-slate-700 bg-slate-900/30 px-3 py-1.5 text-[11px] text-slate-200 hover:bg-slate-800/40 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Επόμ.
+              </button>
+            </div>
+          </div>
         )}
       </div>
 
@@ -545,9 +611,7 @@ export default function SubjectsPage() {
           >
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-slate-50">
-                {modalMode === 'create'
-                  ? 'Νέο μάθημα'
-                  : 'Επεξεργασία μαθήματος'}
+                {modalMode === 'create' ? 'Νέο μάθημα' : 'Επεξεργασία μαθήματος'}
               </h2>
               <button
                 type="button"
@@ -560,9 +624,7 @@ export default function SubjectsPage() {
 
             <form onSubmit={handleSubmit} className="space-y-3">
               <div>
-                <label className="form-label text-slate-100">
-                  Όνομα μαθήματος *
-                </label>
+                <label className="form-label text-slate-100">Όνομα μαθήματος *</label>
                 <input
                   className="form-input"
                   style={{
@@ -577,9 +639,7 @@ export default function SubjectsPage() {
               </div>
 
               <div>
-                <label className="form-label text-slate-100">
-                  Επίπεδο *
-                </label>
+                <label className="form-label text-slate-100">Επίπεδο *</label>
                 <select
                   className="form-input select-accent"
                   value={levelId}
@@ -609,11 +669,7 @@ export default function SubjectsPage() {
                   Ακύρωση
                 </button>
                 <button type="submit" className="btn-primary" disabled={saving}>
-                  {saving
-                    ? 'Αποθήκευση...'
-                    : modalMode === 'create'
-                    ? 'Αποθήκευση'
-                    : 'Ενημέρωση'}
+                  {saving ? 'Αποθήκευση...' : modalMode === 'create' ? 'Αποθήκευση' : 'Ενημέρωση'}
                 </button>
               </div>
             </form>

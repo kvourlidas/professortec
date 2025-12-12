@@ -10,7 +10,8 @@ import {
   NotebookTabs,
   CalendarDays,
   CalendarX2,    // icon for holidays
-  ClipboardList, // 👈 NEW icon for tests
+  ClipboardList, // icon for tests
+  BarChart3,     // 👈 NEW icon for grades
 } from 'lucide-react';
 
 export type NavItem = {
@@ -78,10 +79,16 @@ export const navItems: NavItem[] = [
       },
     ],
   },
-  // 👇 Standalone tests page with new icon
+  // Standalone tests page
   {
     label: 'Διαγωνίσματα',
     to: '/program/tests',
     icon: ClipboardList,
+  },
+  // 👇 NEW standalone grades page
+  {
+    label: 'Βαθμοί',
+    to: '/grades',
+    icon: BarChart3,
   },
 ];
