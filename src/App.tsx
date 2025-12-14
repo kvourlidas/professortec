@@ -10,10 +10,14 @@ import StudentsPage from './pages/StudentsPage';
 import SubjectsPage from './pages/SubjectsPage';
 import TutorsPage from './pages/TutorsPage';
 import ProgramPage from './pages/ProgramPage';
-import HolidaysPage from './pages/HolidaysPage'; // existing
-import EventsPage from './pages/EventsPage';      // existing
-import TestsPage from './pages/TestsPage';        // tests page
-import GradesPage from './pages/GradesPage';      // 👈 NEW grades page
+import HolidaysPage from './pages/HolidaysPage';
+import EventsPage from './pages/EventsPage';
+import TestsPage from './pages/TestsPage';
+import GradesPage from './pages/GradesPage';
+
+// ✅ Economics pages
+import PackageSubscriptionsPage from './pages/economics/PackageSubscriptionsPage';
+import StudentsSubscriptionsPage from './pages/economics/StudentsSubscriptionsPage';
 
 import { useAuth } from './auth';
 import Layout from './components/Layout';
@@ -33,7 +37,6 @@ function ProtectedRoute({ children }: { children: ReactElement }) {
     return <Navigate to="/login" replace />;
   }
 
-  // All protected pages are rendered inside the global Layout
   return <Layout>{children}</Layout>;
 }
 
@@ -136,12 +139,32 @@ export default function App() {
         }
       />
 
-      {/* 👇 NEW Grades page */}
+      {/* Grades */}
       <Route
         path="/grades"
         element={
           <ProtectedRoute>
             <GradesPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* ✅ Economics -> Package Subscriptions */}
+      <Route
+        path="/economics/package-subscriptions"
+        element={
+          <ProtectedRoute>
+            <PackageSubscriptionsPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* ✅ Economics -> Students Subscriptions */}
+      <Route
+        path="/economics/student-subscriptions"
+        element={
+          <ProtectedRoute>
+            <StudentsSubscriptionsPage />
           </ProtectedRoute>
         }
       />

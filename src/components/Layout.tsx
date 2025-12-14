@@ -33,7 +33,9 @@ export default function Layout({ children }: LayoutProps) {
   const { user, profile, signOut } = useAuth();
   const [schoolName, setSchoolName] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [openGroup, setOpenGroup] = useState<string | null>('Subjects'); // default open
+
+  // ✅ default open group (matches _nav labels)
+  const [openGroup, setOpenGroup] = useState<string | null>('Μαθήματα');
 
   const location = useLocation();
 
@@ -54,6 +56,23 @@ export default function Layout({ children }: LayoutProps) {
 
     loadSchoolName();
   }, [profile?.school_id]);
+
+  // ✅ auto-open the group that contains the current route
+  useEffect(() => {
+    const path = location.pathname;
+
+    const match = navItems.find(
+      (it) =>
+        it.children &&
+        it.children.some(
+          (ch) => ch.to && (path === ch.to || path.startsWith(ch.to + '/')),
+        ),
+    );
+
+    if (match?.label) {
+      setOpenGroup(match.label);
+    }
+  }, [location.pathname]);
 
   const renderLink = (item: NavLinkItem) => {
     const Icon = item.icon;
@@ -187,7 +206,7 @@ export default function Layout({ children }: LayoutProps) {
         {/* if sidebar ever gets tall, it can scroll independently */}
         <nav className="mt-2 flex-1 space-y-1 px-2 text-sm overflow-y-auto">
           {navItems.map((item: NavItem) =>
-            'children' in item && item.children
+            item.children && item.children.length
               ? renderGroup(item as NavGroupItem)
               : renderLink(item as NavLinkItem),
           )}
@@ -209,9 +228,7 @@ export default function Layout({ children }: LayoutProps) {
               <div className="font-medium">
                 {profile?.full_name || user?.email}
               </div>
-              <div className="opacity-80">
-                {profile?.role || 'no role'}
-              </div>
+              <div className="opacity-80">{profile?.role || 'no role'}</div>
             </div>
             <button
               onClick={signOut}

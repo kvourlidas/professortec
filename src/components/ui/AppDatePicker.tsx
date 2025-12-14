@@ -1,7 +1,7 @@
 // src/components/ui/AppDatePicker.tsx
-import React, { forwardRef } from 'react';
+import React, { forwardRef, useEffect } from 'react';
 import DatePicker, { registerLocale } from 'react-datepicker';
-import 'react-datepicker/dist/react-datepicker.css'; // 👈 ADD THIS
+import 'react-datepicker/dist/react-datepicker.css';
 import { CalendarDays } from 'lucide-react';
 import { el } from 'date-fns/locale';
 
@@ -10,7 +10,7 @@ registerLocale('el', el);
 
 type DatePickerFieldProps = {
   label?: string;
-  value: string;              // ALWAYS dd/mm/yyyy
+  value: string; // ALWAYS dd/mm/yyyy
   onChange: (value: string) => void;
   placeholder?: string;
   id?: string;
@@ -60,14 +60,14 @@ const DateInput = forwardRef<HTMLInputElement, DateInputProps>(
             color: 'var(--color-text-main)',
           }}
         />
-        <CalendarDays
-          className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-300"
-        />
+        <CalendarDays className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-300" />
       </div>
     );
   },
 );
 DateInput.displayName = 'DateInput';
+
+const PORTAL_ID = 'ct-datepicker-portal';
 
 const DatePickerField: React.FC<DatePickerFieldProps> = ({
   label,
@@ -77,6 +77,17 @@ const DatePickerField: React.FC<DatePickerFieldProps> = ({
   id,
 }) => {
   const selected = value ? parseDisplayToDate(value) : null;
+
+  // ✅ Ensure a portal root exists on <body> so the calendar can't be clipped by tables/cards
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    let el = document.getElementById(PORTAL_ID);
+    if (!el) {
+      el = document.createElement('div');
+      el.id = PORTAL_ID;
+      document.body.appendChild(el);
+    }
+  }, []);
 
   return (
     <div className="space-y-1">
@@ -89,10 +100,9 @@ const DatePickerField: React.FC<DatePickerFieldProps> = ({
       <DatePicker
         id={id}
         locale="el"
-        selected={selected ?? undefined}
+        selected={selected}
         onChange={(date) => {
-          const formatted = formatDateFromDate(date as Date | null);
-          onChange(formatted);            // ✅ always dd/mm/yyyy in state
+          onChange(formatDateFromDate(date as Date | null)); // ✅ always dd/mm/yyyy in state
         }}
         dateFormat="dd/MM/yyyy"
         placeholderText={placeholder}
@@ -100,6 +110,9 @@ const DatePickerField: React.FC<DatePickerFieldProps> = ({
         wrapperClassName="w-full"
         calendarClassName="ct-datepicker"
         popperClassName="ct-datepicker-popper"
+        portalId={PORTAL_ID}
+        popperProps={{ strategy: 'fixed' }} // ✅ more robust inside scroll/overflow layouts
+        popperPlacement="bottom-start"
         showMonthDropdown
         showYearDropdown
         dropdownMode="select"

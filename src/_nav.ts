@@ -9,9 +9,12 @@ import {
   Layers3,
   NotebookTabs,
   CalendarDays,
-  CalendarX2,    // icon for holidays
-  ClipboardList, // icon for tests
-  BarChart3,     // 👈 NEW icon for grades
+  CalendarX2,
+  ClipboardList,
+  BarChart3,
+  Wallet,
+  Package,
+  WalletCards, // ✅ NEW
 } from 'lucide-react';
 
 export type NavItem = {
@@ -43,7 +46,7 @@ export const navItems: NavItem[] = [
     icon: Users2,
   },
   {
-    label: 'Μαθήματα', // group
+    label: 'Μαθήματα',
     icon: BookOpen,
     children: [
       {
@@ -59,7 +62,7 @@ export const navItems: NavItem[] = [
     ],
   },
   {
-    label: 'Προγράμματα', // group
+    label: 'Προγράμματα',
     icon: CalendarDays,
     children: [
       {
@@ -79,16 +82,32 @@ export const navItems: NavItem[] = [
       },
     ],
   },
-  // Standalone tests page
   {
     label: 'Διαγωνίσματα',
     to: '/program/tests',
     icon: ClipboardList,
   },
-  // 👇 NEW standalone grades page
   {
     label: 'Βαθμοί',
     to: '/grades',
     icon: BarChart3,
+  },
+
+  // ✅ LAST: Economics
+  {
+    label: 'Οικονομικά',
+    icon: Wallet,
+    children: [
+      {
+        label: 'Πακέτα Συνδρομών',
+        to: '/economics/package-subscriptions',
+        icon: Package,
+      },
+      {
+        label: 'Συνδρομές Μαθητών',
+        to: '/economics/student-subscriptions',
+        icon: WalletCards,
+      },
+    ],
   },
 ];
