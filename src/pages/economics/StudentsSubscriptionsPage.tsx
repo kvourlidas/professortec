@@ -17,13 +17,14 @@ type PackageRow = {
   id: string;
   school_id: string;
   name: string;
-  price: number;
+  price: number; // may come as string from PostgREST, we always Number() it when needed
   currency: string;
   is_active: boolean;
   sort_order: number;
   created_at?: string | null;
 };
 
+// NOTE: For hourly, price = hourly rate, but charge_amount = rate * used_hours
 type SubscriptionRow = {
   id: string;
   school_id: string;
@@ -36,6 +37,12 @@ type SubscriptionRow = {
   starts_on: string | null;
   ends_on: string | null;
   created_at: string | null;
+
+  // from student_subscriptions_with_totals view
+  used_hours?: number | null;
+  charge_amount?: number | null;
+  paid_amount?: number | null;
+  balance?: number | null;
 };
 
 type PaymentRow = {
@@ -48,8 +55,11 @@ type StudentViewRow = {
   student_id: string;
   student_name: string;
   sub: SubscriptionRow | null;
+
+  // display values (prefer view totals)
   paid: number;
   balance: number;
+
   payments: PaymentRow[];
 };
 
@@ -72,6 +82,11 @@ function parseMoney(input: string) {
 /* ------------------- DATE HELPERS ------------------- */
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
+
+function todayLocalISODate(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
 
 /** "dd/mm/yyyy" -> "yyyy-mm-dd" */
 function displayToISODate(display: string): string | null {
@@ -161,6 +176,11 @@ function isYearlyPackageName(name: string | null | undefined) {
 function isMonthlyPackageName(name: string | null | undefined) {
   const n = normalizeText(name);
   return n.includes('μην') || n.includes('monthly') || n.includes('month');
+}
+
+function isHourlyPackageName(name: string | null | undefined) {
+  const n = normalizeText(name);
+  return n.includes('ωρια') || n.includes('hour') || n.includes('hourly');
 }
 
 function formatDateTime(iso: string | null) {
@@ -343,9 +363,12 @@ export default function StudentsSubscriptionsPage() {
 
     const studentIds = students.map((s) => s.id);
 
+    // ✅ IMPORTANT: load from the totals VIEW (handles hourly used_hours/charge_amount/balance)
     const subRes = await supabase
-      .from('student_subscriptions')
-      .select('id, school_id, student_id, package_id, package_name, price, currency, status, starts_on, ends_on, created_at')
+      .from('student_subscriptions_with_totals')
+      .select(
+        'id, school_id, student_id, package_id, package_name, price, currency, status, starts_on, ends_on, created_at, used_hours, charge_amount, paid_amount, balance',
+      )
       .eq('school_id', schoolId)
       .in('student_id', studentIds)
       .order('created_at', { ascending: false });
@@ -365,7 +388,7 @@ export default function StudentsSubscriptionsPage() {
 
     const subIds = Array.from(latestSubByStudent.values()).map((s) => s.id);
 
-    const paidBySubId = new Map<string, number>();
+    // payments for history modal (still needed)
     const paymentsBySubId = new Map<string, PaymentRow[]>();
 
     if (subIds.length > 0) {
@@ -384,9 +407,6 @@ export default function StudentsSubscriptionsPage() {
 
       const pays = (payRes.data ?? []) as PaymentRow[];
       for (const p of pays) {
-        const amt = Number(p.amount ?? 0);
-        paidBySubId.set(p.subscription_id, (paidBySubId.get(p.subscription_id) ?? 0) + amt);
-
         const list = paymentsBySubId.get(p.subscription_id) ?? [];
         list.push(p);
         paymentsBySubId.set(p.subscription_id, list);
@@ -400,9 +420,10 @@ export default function StudentsSubscriptionsPage() {
 
     const view: StudentViewRow[] = students.map((st) => {
       const sub = latestSubByStudent.get(st.id) ?? null;
-      const price = sub ? Number(sub.price ?? 0) : 0;
-      const paid = sub ? paidBySubId.get(sub.id) ?? 0 : 0;
-      const balance = sub ? Math.max(price - paid, 0) : 0;
+
+      const paid = sub ? Number((sub as any).paid_amount ?? 0) : 0;
+      const balance = sub ? Number((sub as any).balance ?? 0) : 0;
+
       const payments = sub ? paymentsBySubId.get(sub.id) ?? [] : [];
 
       return {
@@ -434,13 +455,17 @@ export default function StudentsSubscriptionsPage() {
 
     setStartsOn((prev) => {
       const next = { ...prev };
-      for (const r of view) if (!(r.student_id in next)) next[r.student_id] = isoToDisplayDate(r.sub?.starts_on);
+      for (const r of view) {
+        if (!(r.student_id in next)) next[r.student_id] = isoToDisplayDate(r.sub?.starts_on);
+      }
       return next;
     });
 
     setEndsOn((prev) => {
       const next = { ...prev };
-      for (const r of view) if (!(r.student_id in next)) next[r.student_id] = isoToDisplayDate(r.sub?.ends_on);
+      for (const r of view) {
+        if (!(r.student_id in next)) next[r.student_id] = isoToDisplayDate(r.sub?.ends_on);
+      }
       return next;
     });
 
@@ -494,7 +519,12 @@ export default function StudentsSubscriptionsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [schoolId, page, search]);
 
-  const openPackageModalIfNeeded = (studentId: string, studentName: string, nextPkgId: string, prevPkgId: string) => {
+  const openPackageModalIfNeeded = (
+    studentId: string,
+    studentName: string,
+    nextPkgId: string,
+    prevPkgId: string,
+  ) => {
     const pkg = nextPkgId ? packageById.get(nextPkgId) : null;
     if (!pkg) return;
 
@@ -517,6 +547,17 @@ export default function StudentsSubscriptionsPage() {
         pkgName: pkg.name,
         prevPkgId,
       });
+      return;
+    }
+
+    // hourly: set starts_on = today by default (if empty)
+    if (isHourlyPackageName(pkg.name)) {
+      setStartsOn((p) => ({
+        ...p,
+        [studentId]: (p[studentId] ?? '').trim() || isoToDisplayDate(todayLocalISODate()),
+      }));
+      setEndsOn((p) => ({ ...p, [studentId]: '' }));
+      setPeriodMode((p) => ({ ...p, [studentId]: 'range' }));
       return;
     }
 
@@ -543,6 +584,7 @@ export default function StudentsSubscriptionsPage() {
 
     const yearly = isYearlyPackageName(pkg.name);
     const monthly = isMonthlyPackageName(pkg.name);
+    const hourly = isHourlyPackageName(pkg.name);
 
     const sOnDisplay = (startsOn[studentId] ?? '').trim();
     const eOnDisplay = (endsOn[studentId] ?? '').trim();
@@ -589,6 +631,14 @@ export default function StudentsSubscriptionsPage() {
         startsISO = range.startISO;
         endsISO = range.endISO;
       }
+    } else if (hourly) {
+      // ✅ Hourly: start date MUST be the day we assign the package
+      startsISO = displayToISODate(sOnDisplay) ?? todayLocalISODate();
+      endsISO = null;
+
+      // keep UI state consistent
+      setStartsOn((p) => ({ ...p, [studentId]: isoToDisplayDate(startsISO) }));
+      setEndsOn((p) => ({ ...p, [studentId]: '' }));
     } else {
       startsISO = null;
       endsISO = null;
@@ -605,7 +655,7 @@ export default function StudentsSubscriptionsPage() {
       student_id: studentId,
       package_id: pkg.id,
       package_name: pkg.name,
-      price: Number(Number(pkg.price ?? 0).toFixed(2)),
+      price: Number(Number((pkg as any).price ?? 0).toFixed(2)), // hourly rate or fixed price
       currency: pkg.currency ?? 'EUR',
       status: 'active' as const,
       starts_on: startsISO,
@@ -682,7 +732,11 @@ export default function StudentsSubscriptionsPage() {
   const showingFrom = totalStudents === 0 ? 0 : (page - 1) * pageSize + 1;
   const showingTo = Math.min(page * pageSize, totalStudents);
 
-  const periodSummary = (studentId: string, pkgName: string | null | undefined) => {
+  const periodSummary = (
+    studentId: string,
+    pkgName: string | null | undefined,
+    sub: SubscriptionRow | null,
+  ) => {
     if (!pkgName) return '—';
 
     if (isYearlyPackageName(pkgName)) {
@@ -703,6 +757,12 @@ export default function StudentsSubscriptionsPage() {
       if (!y || !m) return '—';
       const label = monthLabel(m);
       return label ? `${label} ${y}` : `${m}/${y}`;
+    }
+
+    if (isHourlyPackageName(pkgName)) {
+      const s = (startsOn[studentId] ?? '').trim() || isoToDisplayDate(sub?.starts_on);
+      const hrs = sub ? Number((sub as any).used_hours ?? 0) : 0;
+      return s ? `Από ${s} · ${money(hrs)} ώρες` : '—';
     }
 
     return '—';
@@ -732,7 +792,9 @@ export default function StudentsSubscriptionsPage() {
         <div
           className={[
             'rounded border px-4 py-2 text-xs',
-            error ? 'border-red-500 bg-red-900/40 text-red-100' : 'border-emerald-500/40 bg-emerald-950/20 text-emerald-200',
+            error
+              ? 'border-red-500 bg-red-900/40 text-red-100'
+              : 'border-emerald-500/40 bg-emerald-950/20 text-emerald-200',
           ].join(' ')}
         >
           {error ?? info}
@@ -771,8 +833,10 @@ export default function StudentsSubscriptionsPage() {
                   const paid = r.paid;
                   const balance = r.balance;
 
-                  const paidCls = !hasSub ? 'text-slate-400' : paid > 0 ? 'text-emerald-200' : 'text-slate-300';
-                  const balanceCls = !hasSub ? 'text-slate-400' : balance > 0 ? 'text-amber-200' : 'text-emerald-200';
+                  const paidCls =
+                    !hasSub ? 'text-slate-400' : paid > 0 ? 'text-emerald-200' : 'text-slate-300';
+                  const balanceCls =
+                    !hasSub ? 'text-slate-400' : balance > 0 ? 'text-amber-200' : 'text-emerald-200';
 
                   const badge = !hasSub
                     ? { text: 'Χωρίς πακέτο', cls: 'border-slate-600/60 bg-slate-900/30 text-slate-200' }
@@ -785,7 +849,14 @@ export default function StudentsSubscriptionsPage() {
                   const selectedPkgId = selectedPackage[r.student_id] ?? '';
                   const selectedPkg = selectedPkgId ? packageById.get(selectedPkgId) ?? null : null;
 
-                  const summary = periodSummary(r.student_id, selectedPkg?.name ?? r.sub?.package_name);
+                  const summary = periodSummary(
+                    r.student_id,
+                    selectedPkg?.name ?? r.sub?.package_name,
+                    r.sub,
+                  );
+
+                  // ✅ show computed billed amount (hourly uses charge_amount)
+                  const billedAmount = r.sub ? Number((r.sub as any).charge_amount ?? r.sub.price ?? 0) : 0;
 
                   return (
                     <tr key={r.student_id} className={`${rowBg} hover:bg-slate-800/40 transition-colors`}>
@@ -835,7 +906,7 @@ export default function StudentsSubscriptionsPage() {
                       </td>
 
                       <td className="border-b border-slate-700 px-4 py-2 align-middle text-right text-slate-100">
-                        {r.sub ? `${money(r.sub.price)} ${CURRENCY_SYMBOL}` : '—'}
+                        {r.sub ? `${money(billedAmount)} ${CURRENCY_SYMBOL}` : '—'}
                       </td>
 
                       <td className={`border-b border-slate-700 px-4 py-2 align-middle text-right ${paidCls}`}>
@@ -859,7 +930,9 @@ export default function StudentsSubscriptionsPage() {
                             onChange={(e) =>
                               setPaymentInput((prev) => ({
                                 ...prev,
-                                [r.student_id]: e.target.value.replace(',', '.').replace(/[^0-9.]/g, ''),
+                                [r.student_id]: e.target.value
+                                  .replace(',', '.')
+                                  .replace(/[^0-9.]/g, ''),
                               }))
                             }
                             disabled={!hasSub || payingStudentId === r.student_id}
@@ -941,7 +1014,8 @@ export default function StudentsSubscriptionsPage() {
         {!loading && totalStudents > 0 && (
           <div className="flex items-center justify-between gap-3 border-t border-slate-800/70 px-4 py-3">
             <div className="text-[11px] text-slate-300">
-              Εμφάνιση <span className="text-slate-100">{showingFrom}</span>-<span className="text-slate-100">{showingTo}</span> από{' '}
+              Εμφάνιση <span className="text-slate-100">{showingFrom}</span>-
+              <span className="text-slate-100">{showingTo}</span> από{' '}
               <span className="text-slate-100">{totalStudents}</span>
             </div>
 
@@ -956,7 +1030,8 @@ export default function StudentsSubscriptionsPage() {
               </button>
 
               <div className="rounded-md border border-slate-700 bg-slate-900/20 px-3 py-1.5 text-[11px] text-slate-200">
-                Σελίδα <span className="text-slate-50">{page}</span> / <span className="text-slate-50">{pageCount}</span>
+                Σελίδα <span className="text-slate-50">{page}</span> /{' '}
+                <span className="text-slate-50">{pageCount}</span>
               </div>
 
               <button
@@ -1041,13 +1116,18 @@ export default function StudentsSubscriptionsPage() {
       {/* ✅ History Modal */}
       {historyTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-xl border border-slate-700 px-5 py-4 shadow-xl" style={{ background: 'var(--color-sidebar)' }}>
+          <div
+            className="w-full max-w-lg rounded-xl border border-slate-700 px-5 py-4 shadow-xl"
+            style={{ background: 'var(--color-sidebar)' }}
+          >
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
                 <div className="text-sm font-semibold text-slate-50">Ιστορικό πληρωμών</div>
                 <div className="mt-0.5 text-xs text-slate-300">
                   Μαθητής:{' '}
-                  <span className="font-semibold text-[color:var(--color-accent)]">{historyTarget.studentName}</span>
+                  <span className="font-semibold text-[color:var(--color-accent)]">
+                    {historyTarget.studentName}
+                  </span>
                 </div>
               </div>
 
@@ -1077,8 +1157,13 @@ export default function StudentsSubscriptionsPage() {
                   </thead>
                   <tbody>
                     {historyTarget.payments.map((p, i) => (
-                      <tr key={`${p.created_at ?? 'na'}-${i}`} className={i % 2 === 0 ? 'bg-slate-950/35' : 'bg-slate-900/20'}>
-                        <td className="border-b border-slate-700 px-4 py-2 text-slate-100">{formatDateTime(p.created_at)}</td>
+                      <tr
+                        key={`${p.created_at ?? 'na'}-${i}`}
+                        className={i % 2 === 0 ? 'bg-slate-950/35' : 'bg-slate-900/20'}
+                      >
+                        <td className="border-b border-slate-700 px-4 py-2 text-slate-100">
+                          {formatDateTime(p.created_at)}
+                        </td>
                         <td className="border-b border-slate-700 px-4 py-2 text-right text-emerald-200">
                           {money(p.amount)} {CURRENCY_SYMBOL}
                         </td>
