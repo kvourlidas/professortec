@@ -1,4 +1,3 @@
-// src/App.tsx
 import { Routes, Route, Navigate } from 'react-router-dom';
 import type { ReactElement } from 'react';
 
@@ -16,8 +15,10 @@ import TestsPage from './pages/TestsPage';
 import GradesPage from './pages/GradesPage';
 
 // ✅ Economics pages
+import EconomicsAnalysisPage from './pages/economics/EconomicsAnalysisPage'; // ✅ NEW
 import PackageSubscriptionsPage from './pages/economics/PackageSubscriptionsPage';
 import StudentsSubscriptionsPage from './pages/economics/StudentsSubscriptionsPage';
+import TutorsPaymentsPage from './pages/economics/TutorsPaymentsPage';
 
 import { useAuth } from './auth';
 import Layout from './components/Layout';
@@ -149,6 +150,16 @@ export default function App() {
         }
       />
 
+      {/* ✅ Economics -> Analysis (NEW) */}
+      <Route
+        path="/economics/analysis"
+        element={
+          <ProtectedRoute>
+            <EconomicsAnalysisPage />
+          </ProtectedRoute>
+        }
+      />
+
       {/* ✅ Economics -> Package Subscriptions */}
       <Route
         path="/economics/package-subscriptions"
@@ -165,6 +176,16 @@ export default function App() {
         element={
           <ProtectedRoute>
             <StudentsSubscriptionsPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* ✅ Economics -> Tutors Payments */}
+      <Route
+        path="/economics/tutors-payments"
+        element={
+          <ProtectedRoute>
+            <TutorsPaymentsPage />
           </ProtectedRoute>
         }
       />

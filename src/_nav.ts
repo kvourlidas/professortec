@@ -14,7 +14,9 @@ import {
   BarChart3,
   Wallet,
   Package,
-  WalletCards, // ✅ NEW
+  WalletCards,
+  HandCoins,
+  TrendingUp,
 } from 'lucide-react';
 
 export type NavItem = {
@@ -93,7 +95,7 @@ export const navItems: NavItem[] = [
     icon: BarChart3,
   },
 
-  // ✅ LAST: Economics
+  // ✅ Economics
   {
     label: 'Οικονομικά',
     icon: Wallet,
@@ -107,6 +109,16 @@ export const navItems: NavItem[] = [
         label: 'Συνδρομές Μαθητών',
         to: '/economics/student-subscriptions',
         icon: WalletCards,
+      },
+      {
+        label: 'Πληρωμές Καθηγητών',
+        to: '/economics/tutors-payments',
+        icon: HandCoins,
+      },
+      {
+        label: 'Ανάλυση Οικονομικών',
+        to: '/economics/analysis',
+        icon: TrendingUp,
       },
     ],
   },
