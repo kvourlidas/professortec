@@ -57,6 +57,7 @@ type ProgramItemOverrideRow = {
   start_time: string | null; // "HH:MM:SS"
   end_time: string | null;
   is_deleted: boolean | null;
+  active_during_holiday: boolean | null; // NEW
 };
 
 type HolidayRow = {
@@ -71,9 +72,9 @@ type SchoolEventRow = {
   school_id: string;
   name: string;
   description: string | null;
-  date: string;        // "YYYY-MM-DD"
-  start_time: string;  // "HH:MM:SS"
-  end_time: string;    // "HH:MM:SS"
+  date: string; // "YYYY-MM-DD"
+  start_time: string; // "HH:MM:SS"
+  end_time: string; // "HH:MM:SS"
   created_at: string | null;
 };
 
@@ -102,6 +103,7 @@ type TestRow = {
   end_time: string | null;
   title: string | null;
   description: string | null;
+  active_during_holiday: boolean | null; // NEW
 };
 
 type CalendarEventModal = {
@@ -115,6 +117,7 @@ type CalendarEventModal = {
   classId: string | null;
   subjectId: string | null;
   overrideId?: string;
+  activeDuringHoliday: boolean; // NEW
 };
 
 type TestModalState = {
@@ -127,6 +130,7 @@ type TestModalState = {
   endTime: string;
   endPeriod: 'AM' | 'PM';
   title: string;
+  activeDuringHoliday: boolean; // NEW
 };
 
 const pad2 = (n: number) => n.toString().padStart(2, '0');
@@ -257,6 +261,18 @@ export default function DashboardCalendarSection({
   const [testModal, setTestModal] = useState<TestModalState | null>(null);
   const [savingTest, setSavingTest] = useState(false);
   const [testError, setTestError] = useState<string | null>(null);
+
+  /* -------- Holidays helpers -------- */
+
+  const holidayDateSet = useMemo(() => {
+    return new Set(holidays.map((h) => h.date));
+  }, [holidays]);
+
+  const holidayNameByDate = useMemo(() => {
+    const m = new Map<string, string | null>();
+    holidays.forEach((h) => m.set(h.date, h.name ?? null));
+    return m;
+  }, [holidays]);
 
   /* -------- Data loading -------- */
 
@@ -396,9 +412,7 @@ export default function DashboardCalendarSection({
             );
             setOverrides([]);
           } else {
-            setOverrides(
-              (overrideData ?? []) as ProgramItemOverrideRow[],
-            );
+            setOverrides((overrideData ?? []) as ProgramItemOverrideRow[]);
           }
         } else {
           setOverrides([]);
@@ -488,7 +502,7 @@ export default function DashboardCalendarSection({
           supabase
             .from('tests')
             .select(
-              'id, school_id, class_id, subject_id, test_date, start_time, end_time, title, description',
+              'id, school_id, class_id, subject_id, test_date, start_time, end_time, title, description, active_during_holiday',
             )
             .eq('school_id', schoolId)
             .order('test_date', { ascending: true }),
@@ -506,13 +520,9 @@ export default function DashboardCalendarSection({
             'Failed to load class_subjects for dashboard',
             classSubjErr,
           );
-          setClassSubjects(
-            (classSubjData ?? []) as ClassSubjectRow[],
-          );
+          setClassSubjects((classSubjData ?? []) as ClassSubjectRow[]);
         } else {
-          setClassSubjects(
-            (classSubjData ?? []) as ClassSubjectRow[],
-          );
+          setClassSubjects((classSubjData ?? []) as ClassSubjectRow[]);
         }
 
         if (testsErr) {
@@ -598,8 +608,6 @@ export default function DashboardCalendarSection({
     const { start: viewStart, end: viewEnd } = viewRange;
     const out: any[] = [];
 
-    const holidaySet = new Set(holidays.map((h) => h.date));
-
     const tutorMap: Record<string, string> = {};
     tutors.forEach((t) => {
       if (t.id && t.full_name) {
@@ -622,7 +630,7 @@ export default function DashboardCalendarSection({
 
     const usedOverrideIds = new Set<string>();
 
-    // For tests: group per (class_id, test_date) and track which (class, date) already has program
+    // For tests: group per (class_id, test_date)
     const testsByKey = new Map<string, TestRow[]>();
     tests.forEach((t) => {
       const key = `${t.class_id}-${t.test_date}`;
@@ -631,9 +639,16 @@ export default function DashboardCalendarSection({
       testsByKey.set(key, arr);
     });
 
-    const programClassDateSet = new Set<string>();
+    // Hide standalone tests ONLY when we intentionally combine them with a class (non-holiday)
+    const hideStandaloneTestKeys = new Set<string>();
 
-    // 1) PROGRAM pattern-based events (plus combined tests)
+    const inactiveColors = {
+      backgroundColor: 'rgba(148, 163, 184, 0.18)',
+      borderColor: 'rgba(148, 163, 184, 0.45)',
+      textColor: '#e2e8f0',
+    };
+
+    // 1) PROGRAM pattern-based events
     programItems.forEach((item) => {
       const cls = classMap.get(item.class_id);
       if (!cls) return;
@@ -659,22 +674,17 @@ export default function DashboardCalendarSection({
       let currentDate = getNextDateForDow(effectiveStart, dow);
 
       const tutorName =
-        cls.tutor_id && tutorMap[cls.tutor_id]
-          ? tutorMap[cls.tutor_id]
-          : null;
+        cls.tutor_id && tutorMap[cls.tutor_id] ? tutorMap[cls.tutor_id] : null;
 
       while (currentDate <= effectiveEnd) {
         const dateStr = formatLocalYMD(currentDate);
         const next = new Date(currentDate);
         next.setDate(next.getDate() + 7);
 
-        if (holidaySet.has(dateStr)) {
-          currentDate = next;
-          continue;
-        }
+        const isHoliday = holidayDateSet.has(dateStr);
+        const holidayName = holidayNameByDate.get(dateStr) ?? null;
 
         const key = `${item.class_id}-${dateStr}`;
-        programClassDateSet.add(key);
 
         const override = overrideMap.get(`${item.id}-${dateStr}`);
 
@@ -682,6 +692,9 @@ export default function DashboardCalendarSection({
         let startTimeStr = item.start_time!;
         let endTimeStr = item.end_time!;
         let overrideId: string | undefined;
+
+        const activeDuringHoliday = !!override?.active_during_holiday;
+        const isInactive = isHoliday && !activeDuringHoliday;
 
         if (override) {
           usedOverrideIds.add(override.id);
@@ -703,20 +716,27 @@ export default function DashboardCalendarSection({
           const end = new Date(currentDate);
           end.setHours(eH, eM, 0, 0);
 
-          // Check if there is at least one test for this class & date
+          // Combine tests ONLY on non-holiday days (so holiday days show separate class + test events)
           const testsForClassDate = testsByKey.get(key) ?? [];
-          const combinedTest = testsForClassDate[0]; // we handle first one
+          const shouldCombineTest = !isHoliday && testsForClassDate.length > 0;
+          const combinedTest = shouldCombineTest ? testsForClassDate[0] : null;
 
           const titleBase = cls.title;
-          const title = combinedTest
-            ? `${titleBase} · Διαγώνισμα`
-            : titleBase;
+          const title = combinedTest ? `${titleBase} · Διαγώνισμα` : titleBase;
+
+          if (combinedTest) {
+            hideStandaloneTestKeys.add(key);
+          }
 
           out.push({
             id: `${item.id}-${dateStr}`,
             title,
             start,
             end,
+            editable: !isInactive,
+            startEditable: !isInactive,
+            durationEditable: !isInactive,
+            ...(isInactive ? inactiveColors : {}),
             extendedProps: {
               kind: 'program',
               programItemId: item.id,
@@ -725,7 +745,14 @@ export default function DashboardCalendarSection({
               tutorName,
               overrideDate: override ? dateStr : null,
               overrideId: overrideId ?? null,
-              // NEW: combined test info (if exists)
+
+              // holiday flags
+              isHoliday,
+              holidayName,
+              isInactive,
+              activeDuringHoliday,
+
+              // combined test info (only non-holiday)
               testId: combinedTest ? combinedTest.id : null,
               testSubjectId: combinedTest ? combinedTest.subject_id : null,
             },
@@ -752,7 +779,12 @@ export default function DashboardCalendarSection({
       if (overrideDateObj < viewStart || overrideDateObj > viewEnd) return;
 
       const dateStr = ov.override_date;
-      if (holidaySet.has(dateStr)) return;
+
+      const isHoliday = holidayDateSet.has(dateStr);
+      const holidayName = holidayNameByDate.get(dateStr) ?? null;
+
+      const activeDuringHoliday = !!ov.active_during_holiday;
+      const isInactive = isHoliday && !activeDuringHoliday;
 
       const baseStartTime = ov.start_time ?? item.start_time;
       const baseEndTime = ov.end_time ?? item.end_time;
@@ -767,26 +799,31 @@ export default function DashboardCalendarSection({
       end.setHours(eH, eM, 0, 0);
 
       const tutorName =
-        cls.tutor_id && tutorMap[cls.tutor_id]
-          ? tutorMap[cls.tutor_id]
-          : null;
+        cls.tutor_id && tutorMap[cls.tutor_id] ? tutorMap[cls.tutor_id] : null;
 
       const key = `${item.class_id}-${dateStr}`;
-      programClassDateSet.add(key);
 
+      // Combine tests ONLY on non-holiday days
       const testsForClassDate = testsByKey.get(key) ?? [];
-      const combinedTest = testsForClassDate[0];
+      const shouldCombineTest = !isHoliday && testsForClassDate.length > 0;
+      const combinedTest = shouldCombineTest ? testsForClassDate[0] : null;
 
       const titleBase = cls.title;
-      const title = combinedTest
-        ? `${titleBase} · Διαγώνισμα`
-        : titleBase;
+      const title = combinedTest ? `${titleBase} · Διαγώνισμα` : titleBase;
+
+      if (combinedTest) {
+        hideStandaloneTestKeys.add(key);
+      }
 
       out.push({
         id: `${item.id}-${dateStr}-override`,
         title,
         start,
         end,
+        editable: !isInactive,
+        startEditable: !isInactive,
+        durationEditable: !isInactive,
+        ...(isInactive ? inactiveColors : {}),
         extendedProps: {
           kind: 'program',
           programItemId: item.id,
@@ -795,23 +832,34 @@ export default function DashboardCalendarSection({
           tutorName,
           overrideDate: dateStr,
           overrideId: ov.id,
+
+          // holiday flags
+          isHoliday,
+          holidayName,
+          isInactive,
+          activeDuringHoliday,
+
+          // combined test info (only non-holiday)
           testId: combinedTest ? combinedTest.id : null,
           testSubjectId: combinedTest ? combinedTest.subject_id : null,
         },
       });
     });
 
-    // 3) Standalone TEST events (when there is no class that day)
+    // 3) Standalone TEST events (shown on holidays too, as inactive unless active_during_holiday=true)
     tests.forEach((t) => {
       const key = `${t.class_id}-${t.test_date}`;
-      if (programClassDateSet.has(key)) {
-        // already combined with class above
+      if (hideStandaloneTestKeys.has(key)) {
         return;
       }
 
       const dateObj = new Date(t.test_date + 'T00:00:00');
       if (dateObj < viewStart || dateObj > viewEnd) return;
-      if (holidaySet.has(t.test_date)) return;
+
+      const isHoliday = holidayDateSet.has(t.test_date);
+      const holidayName = holidayNameByDate.get(t.test_date) ?? null;
+      const activeDuringHoliday = !!t.active_during_holiday;
+      const isInactive = isHoliday && !activeDuringHoliday;
 
       const cls = classMap.get(t.class_id);
       const subj = subjectById.get(t.subject_id);
@@ -842,22 +890,32 @@ export default function DashboardCalendarSection({
         title: label,
         start,
         end,
+        editable: !isInactive,
+        startEditable: !isInactive,
+        durationEditable: !isInactive,
+        ...(isInactive ? inactiveColors : {}),
         extendedProps: {
           kind: 'test',
           testId: t.id,
           classId: t.class_id,
           subjectId: t.subject_id,
+
+          // holiday flags
+          isHoliday,
+          holidayName,
+          isInactive,
+          activeDuringHoliday,
         },
       });
     });
 
-    // 4) SCHOOL EVENTS
+    // 4) SCHOOL EVENTS (keep hidden on holidays like before)
     schoolEvents.forEach((ev) => {
       const start = new Date(ev.date + 'T' + ev.start_time);
       const end = new Date(ev.date + 'T' + ev.end_time);
 
       if (start < viewStart || start > viewEnd) return;
-      if (holidaySet.has(ev.date)) return;
+      if (holidayDateSet.has(ev.date)) return;
 
       out.push({
         id: `event-${ev.id}`,
@@ -880,15 +938,24 @@ export default function DashboardCalendarSection({
     tutors,
     overrides,
     holidays,
+    holidayDateSet,
+    holidayNameByDate,
     schoolEvents,
     tests,
     subjects,
+    subjectById,
   ]);
 
   /* -------- Drag & drop handling -------- */
 
   const handleEventDrop = async (arg: EventDropArg) => {
     const { event, oldEvent, revert } = arg;
+
+    const isInactive = event.extendedProps['isInactive'] as boolean | undefined;
+    if (isInactive) {
+      revert();
+      return;
+    }
 
     const kind = event.extendedProps['kind'] as
       | 'program'
@@ -936,9 +1003,7 @@ export default function DashboardCalendarSection({
         }
 
         setSchoolEvents((prev) =>
-          prev.map((ev) =>
-            ev.id === eventId ? (data as SchoolEventRow) : ev,
-          ),
+          prev.map((ev) => (ev.id === eventId ? (data as SchoolEventRow) : ev)),
         );
       } catch (err) {
         console.error('Failed to handle school_event eventDrop', err);
@@ -957,12 +1022,16 @@ export default function DashboardCalendarSection({
       }
 
       try {
+        const movedToHoliday = holidayDateSet.has(newDateStr);
+
         const { data, error } = await supabase
           .from('tests')
           .update({
             test_date: newDateStr,
             start_time: newStartTimeDb,
             end_time: newEndTimeDb,
+            // if you drag a test onto a holiday, we assume you want it active
+            active_during_holiday: movedToHoliday ? true : false,
           })
           .eq('id', testId)
           .select('*')
@@ -974,11 +1043,7 @@ export default function DashboardCalendarSection({
           return;
         }
 
-        setTests((prev) =>
-          prev.map((t) =>
-            t.id === testId ? (data as TestRow) : t,
-          ),
-        );
+        setTests((prev) => prev.map((t) => (t.id === testId ? (data as TestRow) : t)));
       } catch (err) {
         console.error('Failed to handle test eventDrop', err);
         revert();
@@ -988,9 +1053,7 @@ export default function DashboardCalendarSection({
     }
 
     // PROGRAM EVENTS (existing logic with overrides)
-    const programItemId = event.extendedProps['programItemId'] as
-      | string
-      | undefined;
+    const programItemId = event.extendedProps['programItemId'] as string | undefined;
 
     if (!programItemId || !oldEvent || !oldEvent.start) {
       revert();
@@ -1000,11 +1063,11 @@ export default function DashboardCalendarSection({
     const oldDateStr = formatLocalYMD(oldEvent.start);
 
     try {
+      const movedToHoliday = holidayDateSet.has(newDateStr);
+
       if (oldDateStr === newDateStr) {
         const existing = overrides.find(
-          (o) =>
-            o.program_item_id === programItemId &&
-            o.override_date === newDateStr,
+          (o) => o.program_item_id === programItemId && o.override_date === newDateStr,
         );
 
         if (existing) {
@@ -1014,6 +1077,7 @@ export default function DashboardCalendarSection({
               start_time: newStartTimeDb,
               end_time: newEndTimeDb,
               is_deleted: false,
+              active_during_holiday: movedToHoliday ? true : false,
             })
             .eq('id', existing.id)
             .select()
@@ -1022,9 +1086,7 @@ export default function DashboardCalendarSection({
           if (error || !data) throw error ?? new Error('No data');
 
           setOverrides((prev) =>
-            prev.map((o) =>
-              o.id === existing.id ? (data as ProgramItemOverrideRow) : o,
-            ),
+            prev.map((o) => (o.id === existing.id ? (data as ProgramItemOverrideRow) : o)),
           );
         } else {
           const { data, error } = await supabase
@@ -1035,23 +1097,19 @@ export default function DashboardCalendarSection({
               start_time: newStartTimeDb,
               end_time: newEndTimeDb,
               is_deleted: false,
+              active_during_holiday: movedToHoliday ? true : false,
             })
             .select()
             .single();
 
           if (error || !data) throw error ?? new Error('No data');
 
-          setOverrides((prev) => [
-            ...prev,
-            data as ProgramItemOverrideRow,
-          ]);
+          setOverrides((prev) => [...prev, data as ProgramItemOverrideRow]);
         }
       } else {
         // different day
         const existingOld = overrides.find(
-          (o) =>
-            o.program_item_id === programItemId &&
-            o.override_date === oldDateStr,
+          (o) => o.program_item_id === programItemId && o.override_date === oldDateStr,
         );
 
         if (existingOld) {
@@ -1061,6 +1119,7 @@ export default function DashboardCalendarSection({
               is_deleted: true,
               start_time: null,
               end_time: null,
+              active_during_holiday: false,
             })
             .eq('id', existingOld.id)
             .select()
@@ -1069,11 +1128,7 @@ export default function DashboardCalendarSection({
           if (error || !data) throw error ?? new Error('No data');
 
           setOverrides((prev) =>
-            prev.map((o) =>
-              o.id === existingOld.id
-                ? (data as ProgramItemOverrideRow)
-                : o,
-            ),
+            prev.map((o) => (o.id === existingOld.id ? (data as ProgramItemOverrideRow) : o)),
           );
         } else {
           const { data, error } = await supabase
@@ -1084,22 +1139,18 @@ export default function DashboardCalendarSection({
               is_deleted: true,
               start_time: null,
               end_time: null,
+              active_during_holiday: false,
             })
             .select()
             .single();
 
           if (error || !data) throw error ?? new Error('No data');
 
-          setOverrides((prev) => [
-            ...prev,
-            data as ProgramItemOverrideRow,
-          ]);
+          setOverrides((prev) => [...prev, data as ProgramItemOverrideRow]);
         }
 
         const existingNew = overrides.find(
-          (o) =>
-            o.program_item_id === programItemId &&
-            o.override_date === newDateStr,
+          (o) => o.program_item_id === programItemId && o.override_date === newDateStr,
         );
 
         if (existingNew) {
@@ -1109,6 +1160,7 @@ export default function DashboardCalendarSection({
               start_time: newStartTimeDb,
               end_time: newEndTimeDb,
               is_deleted: false,
+              active_during_holiday: movedToHoliday ? true : false,
             })
             .eq('id', existingNew.id)
             .select()
@@ -1117,11 +1169,7 @@ export default function DashboardCalendarSection({
           if (error || !data) throw error ?? new Error('No data');
 
           setOverrides((prev) =>
-            prev.map((o) =>
-              o.id === existingNew.id
-                ? (data as ProgramItemOverrideRow)
-                : o,
-            ),
+            prev.map((o) => (o.id === existingNew.id ? (data as ProgramItemOverrideRow) : o)),
           );
         } else {
           const { data, error } = await supabase
@@ -1132,16 +1180,14 @@ export default function DashboardCalendarSection({
               start_time: newStartTimeDb,
               end_time: newEndTimeDb,
               is_deleted: false,
+              active_during_holiday: movedToHoliday ? true : false,
             })
             .select()
             .single();
 
           if (error || !data) throw error ?? new Error('No data');
 
-          setOverrides((prev) => [
-            ...prev,
-            data as ProgramItemOverrideRow,
-          ]);
+          setOverrides((prev) => [...prev, data as ProgramItemOverrideRow]);
         }
       }
     } catch (err) {
@@ -1159,6 +1205,9 @@ export default function DashboardCalendarSection({
     const subject = event.extendedProps['subject'] as string | null;
     const tutorName = event.extendedProps['tutorName'] as string | null;
 
+    const isInactive = !!event.extendedProps['isInactive'];
+    const holidayName = (event.extendedProps['holidayName'] as string | null) ?? null;
+
     const start = event.start;
     const end = event.end;
 
@@ -1174,20 +1223,16 @@ export default function DashboardCalendarSection({
       timeRange = formatter.format(start);
     }
 
-    // 👉 Check if this event is a test (standalone) or a class that has a test
-    const hasTest =
-      kind === 'test' || !!event.extendedProps['testId'];
+    // Check if this event is a test (standalone) or a class that has a test
+    const hasTest = kind === 'test' || !!event.extendedProps['testId'];
 
     const rawTitle = event.title ?? '';
     let mainTitle = rawTitle;
 
-    // 👉 Strip the word "Διαγώνισμα" from the text title so we can show it as a badge
     if (hasTest) {
       if (/^Διαγώνισμα\s*·/u.test(rawTitle)) {
-        // "Διαγώνισμα · XXX"
         mainTitle = rawTitle.replace(/^Διαγώνισμα\s*·\s*/u, '').trim();
       } else if (/\s*·\s*Διαγώνισμα\s*$/u.test(rawTitle)) {
-        // "XXX · Διαγώνισμα"
         mainTitle = rawTitle.replace(/\s*·\s*Διαγώνισμα\s*$/u, '').trim();
       }
     }
@@ -1200,7 +1245,14 @@ export default function DashboardCalendarSection({
           </div>
         )}
 
-        {/* Title row with Διαγώνισμα badge */}
+        {isInactive && (
+          <div className="mt-0.5">
+            <span className="inline-flex items-center rounded-full border border-slate-400/50 bg-slate-500/10 px-2 py-[1px] text-[10px] font-semibold text-slate-200">
+              Ανενεργό (Αργία{holidayName ? ` · ${holidayName}` : ''})
+            </span>
+          </div>
+        )}
+
         <div className="mt-0.5 flex flex-wrap items-center gap-1">
           {hasTest && (
             <span
@@ -1212,18 +1264,10 @@ export default function DashboardCalendarSection({
             </span>
           )}
 
-          {mainTitle && (
-            <span className="font-semibold">
-              {mainTitle}
-            </span>
-          )}
+          {mainTitle && <span className="font-semibold">{mainTitle}</span>}
         </div>
 
-        {kind === 'program' && subject && (
-          <div className="mt-0.5">
-            {subject}
-          </div>
-        )}
+        {kind === 'program' && subject && <div className="mt-0.5">{subject}</div>}
 
         {kind === 'program' && tutorName && (
           <div className="mt-0.5 opacity-90">
@@ -1241,10 +1285,12 @@ export default function DashboardCalendarSection({
     if (!testId || !event.start || !event.end) return;
 
     const testRow = tests.find((t) => t.id === testId) ?? null;
+
     const classId =
       (event.extendedProps['classId'] as string | undefined) ??
       testRow?.class_id ??
       null;
+
     const subjectId =
       (event.extendedProps['subjectId'] as string | undefined) ??
       (event.extendedProps['testSubjectId'] as string | undefined) ??
@@ -1252,13 +1298,10 @@ export default function DashboardCalendarSection({
       null;
 
     const dateIso = formatLocalYMD(event.start);
+    const isHoliday = holidayDateSet.has(dateIso);
 
-    const start24 = `${pad2(event.start.getHours())}:${pad2(
-      event.start.getMinutes(),
-    )}`;
-    const end24 = `${pad2(event.end.getHours())}:${pad2(
-      event.end.getMinutes(),
-    )}`;
+    const start24 = `${pad2(event.start.getHours())}:${pad2(event.start.getMinutes())}`;
+    const end24 = `${pad2(event.end.getHours())}:${pad2(event.end.getMinutes())}`;
 
     const { time: startTime, period: startPeriod } = convert24To12(start24);
     const { time: endTime, period: endPeriod } = convert24To12(end24);
@@ -1274,6 +1317,7 @@ export default function DashboardCalendarSection({
       endTime,
       endPeriod,
       title: testRow?.title ?? '',
+      activeDuringHoliday: isHoliday ? !!testRow?.active_during_holiday : false,
     });
     setShowDeleteConfirm(false);
   };
@@ -1294,7 +1338,7 @@ export default function DashboardCalendarSection({
       return;
     }
 
-    // PROGRAM event with combined test → open test modal instead of override
+    // PROGRAM event with combined test → open test modal (non-holiday only)
     if (kind === 'program') {
       const testId = event.extendedProps['testId'] as string | null;
       if (testId) {
@@ -1302,34 +1346,21 @@ export default function DashboardCalendarSection({
         return;
       }
 
-      // PROGRAM override modal
-      const programItemId = event.extendedProps['programItemId'] as
-        | string
-        | undefined;
-
+      const programItemId = event.extendedProps['programItemId'] as string | undefined;
       if (!programItemId) return;
 
       const dateIso = formatLocalYMD(event.start);
       const overrideId = event.extendedProps['overrideId'] as string | null;
 
-      const start24 = `${pad2(event.start.getHours())}:${pad2(
-        event.start.getMinutes(),
-      )}`;
-      const end24 = `${pad2(event.end.getHours())}:${pad2(
-        event.end.getMinutes(),
-      )}`;
+      const start24 = `${pad2(event.start.getHours())}:${pad2(event.start.getMinutes())}`;
+      const end24 = `${pad2(event.end.getHours())}:${pad2(event.end.getMinutes())}`;
 
       const { time: startTime, period: startPeriod } = convert24To12(start24);
       const { time: endTime, period: endPeriod } = convert24To12(end24);
 
-      const classIdProp = event.extendedProps['classId'] as
-        | string
-        | undefined;
+      const classIdProp = event.extendedProps['classId'] as string | undefined;
 
-      const clsRow = classIdProp
-        ? classes.find((c) => c.id === classIdProp) ?? null
-        : null;
-
+      const clsRow = classIdProp ? classes.find((c) => c.id === classIdProp) ?? null : null;
       const prefilledSubjectId = clsRow?.subject_id ?? null;
 
       setEventError(null);
@@ -1344,6 +1375,7 @@ export default function DashboardCalendarSection({
         classId: classIdProp ?? null,
         subjectId: prefilledSubjectId,
         overrideId: overrideId ?? undefined,
+        activeDuringHoliday: !!event.extendedProps['activeDuringHoliday'],
       });
       setShowDeleteConfirm(false);
       return;
@@ -1374,9 +1406,7 @@ export default function DashboardCalendarSection({
     (field: 'startTime' | 'endTime') =>
     (e: ChangeEvent<HTMLInputElement>) => {
       const formatted = formatTimeInput(e.target.value);
-      setEventModal((prev) =>
-        prev ? { ...prev, [field]: formatted } : prev,
-      );
+      setEventModal((prev) => (prev ? { ...prev, [field]: formatted } : prev));
     };
 
   const handleEventModalSave = async () => {
@@ -1391,6 +1421,7 @@ export default function DashboardCalendarSection({
       endPeriod,
       classId,
       subjectId,
+      activeDuringHoliday,
     } = eventModal;
 
     if (!classId) {
@@ -1426,6 +1457,9 @@ export default function DashboardCalendarSection({
     const startTimeDb = `${start24}:00`;
     const endTimeDb = `${end24}:00`;
 
+    const isHoliday = holidayDateSet.has(newDateStr);
+    const finalActiveDuringHoliday = isHoliday ? !!activeDuringHoliday : false;
+
     try {
       setEventError(null);
 
@@ -1439,15 +1473,10 @@ export default function DashboardCalendarSection({
           .select('*')
           .single();
 
-        if (itemErr || !updatedItem)
-          throw itemErr ?? new Error('No data');
+        if (itemErr || !updatedItem) throw itemErr ?? new Error('No data');
 
         setProgramItems((prev) =>
-          prev.map((pi) =>
-            pi.id === programItemId
-              ? (updatedItem as ProgramItemRow)
-              : pi,
-          ),
+          prev.map((pi) => (pi.id === programItemId ? (updatedItem as ProgramItemRow) : pi)),
         );
       }
 
@@ -1455,8 +1484,7 @@ export default function DashboardCalendarSection({
       if (classId) {
         const cls = classes.find((c) => c.id === classId) ?? null;
         const oldSubjectId = cls?.subject_id ?? null;
-        const finalSubjectId =
-          subjectId ?? subjectOptions[0]?.id ?? null;
+        const finalSubjectId = subjectId ?? subjectOptions[0]?.id ?? null;
 
         if (finalSubjectId && finalSubjectId !== oldSubjectId) {
           const subjRow = subjectById.get(finalSubjectId);
@@ -1469,31 +1497,19 @@ export default function DashboardCalendarSection({
               subject: subjectName,
             })
             .eq('id', classId)
-            .select(
-              'id, school_id, title, subject, subject_id, tutor_id',
-            )
+            .select('id, school_id, title, subject, subject_id, tutor_id')
             .maybeSingle();
 
-          if (classErr || !updatedClass)
-            throw classErr ?? new Error('No data');
+          if (classErr || !updatedClass) throw classErr ?? new Error('No data');
 
-          setClasses((prev) =>
-            prev.map((c) =>
-              c.id === classId
-                ? (updatedClass as ClassRow)
-                : c,
-            ),
-          );
+          setClasses((prev) => prev.map((c) => (c.id === classId ? (updatedClass as ClassRow) : c)));
         }
       }
 
-      // 3) Update / create overrides for new times/date
+      // 3) Update / create overrides for new times/date (+ holiday active flag)
       if (newDateStr === originalDateStr) {
-        // same day -> just ensure override for time
         const existing = overrides.find(
-          (o) =>
-            o.program_item_id === programItemId &&
-            o.override_date === newDateStr,
+          (o) => o.program_item_id === programItemId && o.override_date === newDateStr,
         );
 
         if (existing) {
@@ -1503,6 +1519,7 @@ export default function DashboardCalendarSection({
               start_time: startTimeDb,
               end_time: endTimeDb,
               is_deleted: false,
+              active_during_holiday: finalActiveDuringHoliday,
             })
             .eq('id', existing.id)
             .select()
@@ -1510,13 +1527,7 @@ export default function DashboardCalendarSection({
 
           if (error || !data) throw error ?? new Error('No data');
 
-          setOverrides((prev) =>
-            prev.map((o) =>
-              o.id === existing.id
-                ? (data as ProgramItemOverrideRow)
-                : o,
-            ),
-          );
+          setOverrides((prev) => prev.map((o) => (o.id === existing.id ? (data as ProgramItemOverrideRow) : o)));
         } else {
           const { data, error } = await supabase
             .from('program_item_overrides')
@@ -1526,23 +1537,18 @@ export default function DashboardCalendarSection({
               start_time: startTimeDb,
               end_time: endTimeDb,
               is_deleted: false,
+              active_during_holiday: finalActiveDuringHoliday,
             })
             .select()
             .single();
 
           if (error || !data) throw error ?? new Error('No data');
 
-          setOverrides((prev) => [
-            ...prev,
-            data as ProgramItemOverrideRow,
-          ]);
+          setOverrides((prev) => [...prev, data as ProgramItemOverrideRow]);
         }
       } else {
-        // different day -> mark old day as deleted and create/update new day override
         const existingOld = overrides.find(
-          (o) =>
-            o.program_item_id === programItemId &&
-            o.override_date === originalDateStr,
+          (o) => o.program_item_id === programItemId && o.override_date === originalDateStr,
         );
 
         if (existingOld) {
@@ -1552,6 +1558,7 @@ export default function DashboardCalendarSection({
               is_deleted: true,
               start_time: null,
               end_time: null,
+              active_during_holiday: false,
             })
             .eq('id', existingOld.id)
             .select()
@@ -1559,13 +1566,7 @@ export default function DashboardCalendarSection({
 
           if (error || !data) throw error ?? new Error('No data');
 
-          setOverrides((prev) =>
-            prev.map((o) =>
-              o.id === existingOld.id
-                ? (data as ProgramItemOverrideRow)
-                : o,
-            ),
-          );
+          setOverrides((prev) => prev.map((o) => (o.id === existingOld.id ? (data as ProgramItemOverrideRow) : o)));
         } else {
           const { data, error } = await supabase
             .from('program_item_overrides')
@@ -1575,22 +1576,18 @@ export default function DashboardCalendarSection({
               is_deleted: true,
               start_time: null,
               end_time: null,
+              active_during_holiday: false,
             })
             .select()
             .single();
 
           if (error || !data) throw error ?? new Error('No data');
 
-          setOverrides((prev) => [
-            ...prev,
-            data as ProgramItemOverrideRow,
-          ]);
+          setOverrides((prev) => [...prev, data as ProgramItemOverrideRow]);
         }
 
         const existingNew = overrides.find(
-          (o) =>
-            o.program_item_id === programItemId &&
-            o.override_date === newDateStr,
+          (o) => o.program_item_id === programItemId && o.override_date === newDateStr,
         );
 
         if (existingNew) {
@@ -1600,6 +1597,7 @@ export default function DashboardCalendarSection({
               start_time: startTimeDb,
               end_time: endTimeDb,
               is_deleted: false,
+              active_during_holiday: finalActiveDuringHoliday,
             })
             .eq('id', existingNew.id)
             .select()
@@ -1607,13 +1605,7 @@ export default function DashboardCalendarSection({
 
           if (error || !data) throw error ?? new Error('No data');
 
-          setOverrides((prev) =>
-            prev.map((o) =>
-              o.id === existingNew.id
-                ? (data as ProgramItemOverrideRow)
-                : o,
-            ),
-          );
+          setOverrides((prev) => prev.map((o) => (o.id === existingNew.id ? (data as ProgramItemOverrideRow) : o)));
         } else {
           const { data, error } = await supabase
             .from('program_item_overrides')
@@ -1623,16 +1615,14 @@ export default function DashboardCalendarSection({
               start_time: startTimeDb,
               end_time: endTimeDb,
               is_deleted: false,
+              active_during_holiday: finalActiveDuringHoliday,
             })
             .select()
             .single();
 
           if (error || !data) throw error ?? new Error('No data');
 
-          setOverrides((prev) => [
-            ...prev,
-            data as ProgramItemOverrideRow,
-          ]);
+          setOverrides((prev) => [...prev, data as ProgramItemOverrideRow]);
         }
       }
 
@@ -1652,9 +1642,7 @@ export default function DashboardCalendarSection({
       setEventError(null);
 
       const existing = overrides.find(
-        (o) =>
-          o.program_item_id === programItemId &&
-          o.override_date === originalDateStr,
+        (o) => o.program_item_id === programItemId && o.override_date === originalDateStr,
       );
 
       if (existing) {
@@ -1664,6 +1652,7 @@ export default function DashboardCalendarSection({
             is_deleted: true,
             start_time: null,
             end_time: null,
+            active_during_holiday: false,
           })
           .eq('id', existing.id)
           .select()
@@ -1671,13 +1660,7 @@ export default function DashboardCalendarSection({
 
         if (error || !data) throw error ?? new Error('No data');
 
-        setOverrides((prev) =>
-          prev.map((o) =>
-            o.id === existing.id
-              ? (data as ProgramItemOverrideRow)
-              : o,
-          ),
-        );
+        setOverrides((prev) => prev.map((o) => (o.id === existing.id ? (data as ProgramItemOverrideRow) : o)));
       } else {
         const { data, error } = await supabase
           .from('program_item_overrides')
@@ -1687,16 +1670,14 @@ export default function DashboardCalendarSection({
             is_deleted: true,
             start_time: null,
             end_time: null,
+            active_during_holiday: false,
           })
           .select()
           .single();
 
         if (error || !data) throw error ?? new Error('No data');
 
-        setOverrides((prev) => [
-          ...prev,
-          data as ProgramItemOverrideRow,
-        ]);
+        setOverrides((prev) => [...prev, data as ProgramItemOverrideRow]);
       }
 
       setEventModal(null);
@@ -1716,11 +1697,7 @@ export default function DashboardCalendarSection({
 
   const handleTestFieldChange =
     (field: keyof TestModalState) =>
-    (
-      e: ChangeEvent<
-        HTMLSelectElement | HTMLInputElement
-      >,
-    ) => {
+    (e: ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
       const value = e.target.value;
       setTestModal((prev) => {
         if (!prev) return prev;
@@ -1738,9 +1715,7 @@ export default function DashboardCalendarSection({
     (field: 'startTime' | 'endTime') =>
     (e: ChangeEvent<HTMLInputElement>) => {
       const formatted = formatTimeInput(e.target.value);
-      setTestModal((prev) =>
-        prev ? { ...prev, [field]: formatted } : prev,
-      );
+      setTestModal((prev) => (prev ? { ...prev, [field]: formatted } : prev));
     };
 
   const handleTestModalSave = async () => {
@@ -1756,6 +1731,7 @@ export default function DashboardCalendarSection({
       endTime,
       endPeriod,
       title,
+      activeDuringHoliday,
     } = testModal;
 
     if (!classId) {
@@ -1788,6 +1764,9 @@ export default function DashboardCalendarSection({
       return;
     }
 
+    const isHoliday = holidayDateSet.has(testDateISO);
+    const finalActiveDuringHoliday = isHoliday ? !!activeDuringHoliday : false;
+
     setSavingTest(true);
     setTestError(null);
 
@@ -1798,6 +1777,7 @@ export default function DashboardCalendarSection({
       start_time: `${start24}:00`,
       end_time: `${end24}:00`,
       title: title || null,
+      active_during_holiday: finalActiveDuringHoliday,
     };
 
     const { data, error } = await supabase
@@ -1815,9 +1795,7 @@ export default function DashboardCalendarSection({
       return;
     }
 
-    setTests((prev) =>
-      prev.map((t) => (t.id === testId ? (data as TestRow) : t)),
-    );
+    setTests((prev) => prev.map((t) => (t.id === testId ? (data as TestRow) : t)));
     setTestModal(null);
   };
 
@@ -1834,10 +1812,7 @@ export default function DashboardCalendarSection({
 
     try {
       setTestError(null);
-      const { error } = await supabase
-        .from('tests')
-        .delete()
-        .eq('id', testId);
+      const { error } = await supabase.from('tests').delete().eq('id', testId);
 
       if (error) throw error;
 
@@ -1897,7 +1872,7 @@ export default function DashboardCalendarSection({
         />
       )}
 
-      {/* PROGRAM override / edit modal – same sections as test modal (without title) */}
+      {/* PROGRAM override / edit modal */}
       {eventModal && !showDeleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div
@@ -1927,12 +1902,48 @@ export default function DashboardCalendarSection({
               </div>
             )}
 
+            {/* Holiday toggle */}
+            {(() => {
+              const iso = parseDateDisplayToISO(eventModal.date) ?? eventModal.originalDateStr;
+              const isHoliday = holidayDateSet.has(iso);
+              if (!isHoliday) return null;
+
+              const holidayName = holidayNameByDate.get(iso) ?? null;
+
+              return (
+                <div className="rounded-lg border border-slate-500/60 bg-slate-900/30 px-3 py-2 text-xs">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="text-slate-100">
+                      <div className="font-semibold">
+                        Αργία{holidayName ? ` · ${holidayName}` : ''}
+                      </div>
+                      <div className="mt-0.5 text-[11px] text-slate-200">
+                        Από προεπιλογή το μάθημα είναι ανενεργό σε αργία.
+                      </div>
+                    </div>
+
+                    <label className="flex items-center gap-2 text-[11px] text-slate-100">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4"
+                        checked={eventModal.activeDuringHoliday}
+                        onChange={(e) =>
+                          setEventModal((prev) =>
+                            prev ? { ...prev, activeDuringHoliday: e.target.checked } : prev,
+                          )
+                        }
+                      />
+                      Ενεργό
+                    </label>
+                  </div>
+                </div>
+              );
+            })()}
+
             <div className="space-y-3 text-xs">
               {/* Τμήμα */}
               <div>
-                <label className="form-label text-slate-100">
-                  Τμήμα *
-                </label>
+                <label className="form-label text-slate-100">Τμήμα *</label>
                 <select
                   className="form-input"
                   value={eventModal.classId ?? ''}
@@ -1953,31 +1964,23 @@ export default function DashboardCalendarSection({
 
               {/* Μάθημα */}
               <div>
-                <label className="form-label text-slate-100">
-                  Μάθημα για το τμήμα *
-                </label>
+                <label className="form-label text-slate-100">Μάθημα για το τμήμα *</label>
                 {(() => {
-                  const options = eventModal.classId
-                    ? getSubjectsForClass(eventModal.classId)
-                    : [];
+                  const options = eventModal.classId ? getSubjectsForClass(eventModal.classId) : [];
                   return (
                     <>
                       <select
                         className="form-input select-accent"
                         value={eventModal.subjectId ?? ''}
                         onChange={handleProgramFieldChange('subjectId')}
-                        disabled={
-                          options.length === 0 || !eventModal.classId
-                        }
+                        disabled={options.length === 0 || !eventModal.classId}
                         style={{
                           background: 'var(--color-input-bg)',
                           color: 'var(--color-text-main)',
                         }}
                       >
                         <option value="">
-                          {options.length === 0
-                            ? 'Δεν έχουν οριστεί μαθήματα'
-                            : 'Επιλέξτε μάθημα'}
+                          {options.length === 0 ? 'Δεν έχουν οριστεί μαθήματα' : 'Επιλέξτε μάθημα'}
                         </option>
                         {options.map((s) => (
                           <option key={s.id} value={s.id}>
@@ -1997,16 +2000,31 @@ export default function DashboardCalendarSection({
 
               {/* Ημερομηνία μαθήματος */}
               <div>
-                <label className="form-label text-slate-100">
-                  Ημερομηνία μαθήματος *
-                </label>
+                <label className="form-label text-slate-100">Ημερομηνία μαθήματος *</label>
                 <AppDatePicker
                   value={eventModal.date}
-                  onChange={(newValue) =>
+                  onChange={(newValue) => {
+                    const iso = parseDateDisplayToISO(newValue);
+                    const isHoliday = !!(iso && holidayDateSet.has(iso));
+                    const existing =
+                      iso
+                        ? overrides.find(
+                            (o) =>
+                              o.program_item_id === eventModal.programItemId &&
+                              o.override_date === iso,
+                          ) ?? null
+                        : null;
+
                     setEventModal((prev) =>
-                      prev ? { ...prev, date: newValue } : prev,
-                    )
-                  }
+                      prev
+                        ? {
+                            ...prev,
+                            date: newValue,
+                            activeDuringHoliday: isHoliday ? !!existing?.active_during_holiday : false,
+                          }
+                        : prev,
+                    );
+                  }}
                   placeholder="π.χ. 12/05/2025"
                 />
               </div>
@@ -2014,9 +2032,7 @@ export default function DashboardCalendarSection({
               {/* Ώρες */}
               <div className="grid gap-3 md:grid-cols-2">
                 <div>
-                  <label className="form-label text-slate-100">
-                    Ώρα έναρξης
-                  </label>
+                  <label className="form-label text-slate-100">Ώρα έναρξης</label>
                   <div className="relative">
                     <input
                       type="text"
@@ -2034,13 +2050,7 @@ export default function DashboardCalendarSection({
                       value={eventModal.startPeriod}
                       onChange={(e) =>
                         setEventModal((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                startPeriod: e.target
-                                  .value as 'AM' | 'PM',
-                              }
-                            : prev,
+                          prev ? { ...prev, startPeriod: e.target.value as 'AM' | 'PM' } : prev,
                         )
                       }
                       className="absolute inset-y-1 right-1 rounded-md border border-slate-500 px-2 text-[10px] leading-tight"
@@ -2056,9 +2066,7 @@ export default function DashboardCalendarSection({
                 </div>
 
                 <div>
-                  <label className="form-label text-slate-100">
-                    Ώρα λήξης
-                  </label>
+                  <label className="form-label text-slate-100">Ώρα λήξης</label>
                   <div className="relative">
                     <input
                       type="text"
@@ -2076,12 +2084,7 @@ export default function DashboardCalendarSection({
                       value={eventModal.endPeriod}
                       onChange={(e) =>
                         setEventModal((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                endPeriod: e.target.value as 'AM' | 'PM',
-                              }
-                            : prev,
+                          prev ? { ...prev, endPeriod: e.target.value as 'AM' | 'PM' } : prev,
                         )
                       }
                       className="absolute inset-y-1 right-1 rounded-md border border-slate-500 px-2 text-[10px] leading-tight"
@@ -2123,11 +2126,7 @@ export default function DashboardCalendarSection({
                   >
                     Ακύρωση
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleEventModalSave}
-                    className="btn-primary"
-                  >
+                  <button type="button" onClick={handleEventModalSave} className="btn-primary">
                     Αποθήκευση
                   </button>
                 </div>
@@ -2145,9 +2144,7 @@ export default function DashboardCalendarSection({
             style={{ background: 'var(--color-sidebar)' }}
           >
             <div className="flex items-center justify-between mb-1">
-              <h2 className="text-sm font-semibold text-slate-50">
-                Διαγραφή μαθήματος
-              </h2>
+              <h2 className="text-sm font-semibold text-slate-50">Διαγραφή μαθήματος</h2>
               <button
                 type="button"
                 onClick={() => setShowDeleteConfirm(false)}
@@ -2159,11 +2156,8 @@ export default function DashboardCalendarSection({
 
             <p className="text-xs text-slate-100">
               Σίγουρα θέλεις να διαγράψεις το μάθημα για την ημερομηνία{' '}
-              <span className="font-semibold">
-                {formatDateDisplay(eventModal.originalDateStr)}
-              </span>
-              ; Η ενέργεια αυτή επηρεάζει μόνο αυτή την ημέρα και δεν μπορεί
-              να ανακληθεί.
+              <span className="font-semibold">{formatDateDisplay(eventModal.originalDateStr)}</span>; Η ενέργεια αυτή
+              επηρεάζει μόνο αυτή την ημέρα και δεν μπορεί να ανακληθεί.
             </p>
 
             <div className="mt-4 flex justify-end gap-2">
@@ -2198,9 +2192,7 @@ export default function DashboardCalendarSection({
             style={{ background: 'var(--color-sidebar)' }}
           >
             <div className="flex items-center justify-between mb-1">
-              <h2 className="text-sm font-semibold text-slate-50">
-                Επεξεργασία διαγωνίσματος
-              </h2>
+              <h2 className="text-sm font-semibold text-slate-50">Επεξεργασία διαγωνίσματος</h2>
               <button
                 type="button"
                 onClick={handleTestModalClose}
@@ -2216,12 +2208,48 @@ export default function DashboardCalendarSection({
               </div>
             )}
 
+            {/* Holiday toggle */}
+            {(() => {
+              const iso = parseDateDisplayToISO(testModal.date);
+              const isHoliday = !!(iso && holidayDateSet.has(iso));
+              if (!isHoliday || !iso) return null;
+
+              const holidayName = holidayNameByDate.get(iso) ?? null;
+
+              return (
+                <div className="rounded-lg border border-slate-500/60 bg-slate-900/30 px-3 py-2 text-xs">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="text-slate-100">
+                      <div className="font-semibold">
+                        Αργία{holidayName ? ` · ${holidayName}` : ''}
+                      </div>
+                      <div className="mt-0.5 text-[11px] text-slate-200">
+                        Από προεπιλογή το διαγώνισμα είναι ανενεργό σε αργία.
+                      </div>
+                    </div>
+
+                    <label className="flex items-center gap-2 text-[11px] text-slate-100">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4"
+                        checked={testModal.activeDuringHoliday}
+                        onChange={(e) =>
+                          setTestModal((prev) =>
+                            prev ? { ...prev, activeDuringHoliday: e.target.checked } : prev,
+                          )
+                        }
+                      />
+                      Ενεργό
+                    </label>
+                  </div>
+                </div>
+              );
+            })()}
+
             <div className="space-y-3 text-xs">
               {/* Τμήμα */}
               <div>
-                <label className="form-label text-slate-100">
-                  Τμήμα *
-                </label>
+                <label className="form-label text-slate-100">Τμήμα *</label>
                 <select
                   className="form-input"
                   value={testModal.classId ?? ''}
@@ -2242,9 +2270,7 @@ export default function DashboardCalendarSection({
 
               {/* Μάθημα */}
               <div>
-                <label className="form-label text-slate-100">
-                  Μάθημα για το τμήμα *
-                </label>
+                <label className="form-label text-slate-100">Μάθημα για το τμήμα *</label>
                 {(() => {
                   const options = getSubjectsForClass(testModal.classId);
                   return (
@@ -2260,9 +2286,7 @@ export default function DashboardCalendarSection({
                         }}
                       >
                         <option value="">
-                          {options.length === 0
-                            ? 'Δεν έχουν οριστεί μαθήματα'
-                            : 'Επιλέξτε μάθημα'}
+                          {options.length === 0 ? 'Δεν έχουν οριστεί μαθήματα' : 'Επιλέξτε μάθημα'}
                         </option>
                         {options.map((s) => (
                           <option key={s.id} value={s.id}>
@@ -2282,16 +2306,22 @@ export default function DashboardCalendarSection({
 
               {/* Ημερομηνία */}
               <div>
-                <label className="form-label text-slate-100">
-                  Ημερομηνία διαγωνίσματος *
-                </label>
+                <label className="form-label text-slate-100">Ημερομηνία διαγωνίσματος *</label>
                 <AppDatePicker
                   value={testModal.date}
-                  onChange={(newValue) =>
+                  onChange={(newValue) => {
+                    const iso = parseDateDisplayToISO(newValue);
+                    const isHoliday = !!(iso && holidayDateSet.has(iso));
                     setTestModal((prev) =>
-                      prev ? { ...prev, date: newValue } : prev,
-                    )
-                  }
+                      prev
+                        ? {
+                            ...prev,
+                            date: newValue,
+                            activeDuringHoliday: isHoliday ? true : false,
+                          }
+                        : prev,
+                    );
+                  }}
                   placeholder="π.χ. 12/05/2025"
                 />
               </div>
@@ -2299,9 +2329,7 @@ export default function DashboardCalendarSection({
               {/* Ώρες */}
               <div className="grid gap-3 md:grid-cols-2">
                 <div>
-                  <label className="form-label text-slate-100">
-                    Ώρα έναρξης
-                  </label>
+                  <label className="form-label text-slate-100">Ώρα έναρξης</label>
                   <div className="relative">
                     <input
                       type="text"
@@ -2331,9 +2359,7 @@ export default function DashboardCalendarSection({
                 </div>
 
                 <div>
-                  <label className="form-label text-slate-100">
-                    Ώρα λήξης
-                  </label>
+                  <label className="form-label text-slate-100">Ώρα λήξης</label>
                   <div className="relative">
                     <input
                       type="text"
@@ -2365,9 +2391,7 @@ export default function DashboardCalendarSection({
 
               {/* Τίτλος */}
               <div>
-                <label className="form-label text-slate-100">
-                  Τίτλος (προαιρετικό)
-                </label>
+                <label className="form-label text-slate-100">Τίτλος (προαιρετικό)</label>
                 <input
                   className="form-input"
                   style={{
@@ -2403,12 +2427,7 @@ export default function DashboardCalendarSection({
                   >
                     Ακύρωση
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleTestModalSave}
-                    className="btn-primary"
-                    disabled={savingTest}
-                  >
+                  <button type="button" onClick={handleTestModalSave} className="btn-primary" disabled={savingTest}>
                     {savingTest ? 'Αποθήκευση…' : 'Αποθήκευση'}
                   </button>
                 </div>
@@ -2426,9 +2445,7 @@ export default function DashboardCalendarSection({
             style={{ background: 'var(--color-sidebar)' }}
           >
             <div className="flex items-center justify-between mb-1">
-              <h2 className="text-sm font-semibold text-slate-50">
-                Διαγραφή διαγωνίσματος
-              </h2>
+              <h2 className="text-sm font-semibold text-slate-50">Διαγραφή διαγωνίσματος</h2>
               <button
                 type="button"
                 onClick={() => setShowDeleteConfirm(false)}
@@ -2440,10 +2457,7 @@ export default function DashboardCalendarSection({
 
             <p className="text-xs text-slate-100">
               Σίγουρα θέλεις να διαγράψεις αυτό το διαγώνισμα για την ημερομηνία{' '}
-              <span className="font-semibold">
-                {testModal.date}
-              </span>
-              ; Η ενέργεια αυτή δεν μπορεί να ανακληθεί.
+              <span className="font-semibold">{testModal.date}</span>; Η ενέργεια αυτή δεν μπορεί να ανακληθεί.
             </p>
 
             <div className="mt-4 flex justify-end gap-2">

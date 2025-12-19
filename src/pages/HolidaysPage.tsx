@@ -1,5 +1,5 @@
 // src/pages/HolidaysPage.tsx
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
 import { Trash2 } from 'lucide-react';
@@ -78,6 +78,7 @@ export default function HolidaysPage() {
 
   const [holidays, setHolidays] = useState<HolidayRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [pageError, setPageError] = useState<string | null>(null);
 
   // state: Date objects
   const [mode, setMode] = useState<Mode>('single');
@@ -91,32 +92,36 @@ export default function HolidaysPage() {
   const [deleteGroup, setDeleteGroup] = useState<HolidayGroup | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // load holidays
-  useEffect(() => {
+  const loadHolidays = useCallback(async () => {
     if (!schoolId) {
       setHolidays([]);
       return;
     }
 
-    const load = async () => {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('school_holidays')
-        .select('*')
-        .eq('school_id', schoolId)
-        .order('date', { ascending: true });
+    setLoading(true);
+    setPageError(null);
 
-      if (error) {
-        console.error('Failed to load school holidays', error);
-        setHolidays([]);
-      } else {
-        setHolidays((data ?? []) as HolidayRow[]);
-      }
-      setLoading(false);
-    };
+    const { data, error } = await supabase
+      .from('school_holidays')
+      .select('*')
+      .eq('school_id', schoolId)
+      .order('date', { ascending: true });
 
-    load();
+    if (error) {
+      console.error('Failed to load school holidays', error);
+      setPageError('Αποτυχία φόρτωσης αργιών.');
+      setHolidays([]);
+    } else {
+      setHolidays((data ?? []) as HolidayRow[]);
+    }
+
+    setLoading(false);
   }, [schoolId]);
+
+  // load holidays
+  useEffect(() => {
+    loadHolidays();
+  }, [loadHolidays]);
 
   const handleAdd = async () => {
     if (!schoolId) return;
@@ -125,32 +130,29 @@ export default function HolidaysPage() {
 
     try {
       setSaving(true);
+      setPageError(null);
 
       if (mode === 'single') {
         if (!singleDate) return;
 
-        const { data, error } = await supabase
+        const payload = {
+          school_id: schoolId,
+          date: formatLocalYMD(singleDate),
+          name: trimmedName,
+        };
+
+        // ✅ upsert so duplicates won't 409
+        const { error } = await supabase
           .from('school_holidays')
-          .insert({
-            school_id: schoolId,
-            date: formatLocalYMD(singleDate), // "YYYY-MM-DD"
-            name: trimmedName,
-          })
-          .select()
-          .single();
+          .upsert(payload, { onConflict: 'school_id,date' });
 
         if (error) throw error;
 
-        if (data) {
-          setHolidays((prev) => {
-            const next = [...prev, data as HolidayRow];
-            next.sort((a, b) => a.date.localeCompare(b.date));
-            return next;
-          });
-        }
-
         setSingleDate(null);
         setName('');
+
+        // ✅ always reload so UI is guaranteed correct
+        await loadHolidays();
       } else {
         // range mode
         if (!rangeStart || !rangeEnd) return;
@@ -163,15 +165,15 @@ export default function HolidaysPage() {
           end = tmp;
         }
 
-        const rowsToInsert: {
+        const rowsToUpsert: {
           school_id: string;
           date: string;
           name: string | null;
         }[] = [];
-        let current = new Date(start);
 
+        let current = new Date(start);
         while (current <= end) {
-          rowsToInsert.push({
+          rowsToUpsert.push({
             school_id: schoolId,
             date: formatLocalYMD(current),
             name: trimmedName,
@@ -179,27 +181,26 @@ export default function HolidaysPage() {
           current = addDays(current, 1);
         }
 
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('school_holidays')
-          .insert(rowsToInsert)
-          .select();
+          .upsert(rowsToUpsert, { onConflict: 'school_id,date' });
 
         if (error) throw error;
-
-        if (data && Array.isArray(data)) {
-          setHolidays((prev) => {
-            const next = [...prev, ...(data as HolidayRow[])];
-            next.sort((a, b) => a.date.localeCompare(b.date));
-            return next;
-          });
-        }
 
         setRangeStart(null);
         setRangeEnd(null);
         setName('');
+
+        // ✅ always reload so UI is guaranteed correct
+        await loadHolidays();
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to insert holiday(s)', err);
+      setPageError(
+        err?.message
+          ? `Αποτυχία αποθήκευσης: ${err.message}`
+          : 'Αποτυχία αποθήκευσης αργίας.',
+      );
     } finally {
       setSaving(false);
     }
@@ -263,6 +264,8 @@ export default function HolidaysPage() {
 
     try {
       setDeleting(true);
+      setPageError(null);
+
       setHolidays((list) => list.filter((h) => !idsToDelete.includes(h.id)));
 
       const { error } = await supabase
@@ -272,12 +275,17 @@ export default function HolidaysPage() {
 
       if (error) {
         console.error('Failed to delete holiday group', error);
+        setPageError('Αποτυχία διαγραφής αργίας.');
         setHolidays(prev);
+      } else {
+        // ✅ keep UI in sync
+        await loadHolidays();
       }
 
       setDeleteGroup(null);
     } catch (err) {
       console.error('Failed to delete holiday group', err);
+      setPageError('Αποτυχία διαγραφής αργίας.');
       setHolidays(prev);
       setDeleteGroup(null);
     } finally {
@@ -297,6 +305,13 @@ export default function HolidaysPage() {
       <h1 className="text-sm font-semibold text-slate-50">Αργίες σχολείου</h1>
 
       <div className="border border-slate-700 rounded-md bg-[color:var(--color-sidebar)] p-4 space-y-4">
+        {/* error */}
+        {pageError && (
+          <div className="rounded-lg border border-red-500/60 bg-red-900/30 px-3 py-2 text-[11px] text-red-100">
+            {pageError}
+          </div>
+        )}
+
         {/* mode toggle */}
         <div className="flex gap-2 text-[11px]">
           <button
@@ -385,7 +400,6 @@ export default function HolidaysPage() {
               Δεν έχουν καταχωρηθεί ακόμη αργίες για το σχολείο σας.
             </p>
           ) : (
-            // ✅ same card + row look as the other tables
             <div className="rounded-xl border border-slate-400/60 bg-slate-950/7 backdrop-blur-md shadow-lg overflow-hidden ring-1 ring-inset ring-slate-300/15">
               <div className="overflow-x-auto">
                 <table className="min-w-full border-collapse text-xs">
@@ -426,13 +440,19 @@ export default function HolidaysPage() {
                           className={`${rowBg} backdrop-blur-sm hover:bg-slate-800/40 transition-colors`}
                         >
                           <td className="border-b border-slate-700 px-4 py-2 align-middle">
-                            <span className="text-xs text-slate-100" style={{ color: 'var(--color-text-td)' }}>
+                            <span
+                              className="text-xs text-slate-100"
+                              style={{ color: 'var(--color-text-td)' }}
+                            >
                               {rangeLabel}
                             </span>
                           </td>
 
                           <td className="border-b border-slate-700 px-4 py-2 align-middle">
-                            <span className="text-xs text-slate-100" style={{ color: 'var(--color-text-td)' }}>
+                            <span
+                              className="text-xs text-slate-100"
+                              style={{ color: 'var(--color-text-td)' }}
+                            >
                               {g.name || '—'}
                             </span>
                           </td>
@@ -463,7 +483,7 @@ export default function HolidaysPage() {
         </div>
       </div>
 
-      {/* Delete confirmation modal – styled like the rest */}
+      {/* Delete confirmation modal */}
       {deleteGroup && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div
