@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
-import { Trash2 } from 'lucide-react';
+import { Trash2, CalendarOff } from 'lucide-react';
 import DatePickerField from '../components/ui/AppDatePicker';
 
 type HolidayRow = {
@@ -302,8 +302,10 @@ export default function HolidaysPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-sm font-semibold text-slate-50">Αργίες σχολείου</h1>
-
+      <h1 className="flex items-center gap-2 text-sm font-semibold text-slate-50">
+        <CalendarOff className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
+        Αργίες σχολείου
+      </h1>
       <div className="border border-slate-700 rounded-md bg-[color:var(--color-sidebar)] p-4 space-y-4">
         {/* error */}
         {pageError && (
@@ -317,22 +319,20 @@ export default function HolidaysPage() {
           <button
             type="button"
             onClick={() => setMode('single')}
-            className={`px-3 py-1 rounded-full border text-xs ${
-              mode === 'single'
+            className={`px-3 py-1 rounded-full border text-xs ${mode === 'single'
                 ? 'bg-blue-600 border-blue-500 text-white'
                 : 'bg-slate-800 border-slate-600 text-slate-200'
-            }`}
+              }`}
           >
             Μονοήμερη αργία
           </button>
           <button
             type="button"
             onClick={() => setMode('range')}
-            className={`px-3 py-1 rounded-full border text-xs ${
-              mode === 'range'
+            className={`px-3 py-1 rounded-full border text-xs ${mode === 'range'
                 ? 'bg-blue-600 border-blue-500 text-white'
                 : 'bg-slate-800 border-slate-600 text-slate-200'
-            }`}
+              }`}
           >
             Περίοδος αργιών
           </button>

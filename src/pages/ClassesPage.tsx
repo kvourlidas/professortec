@@ -3,8 +3,9 @@ import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
 import ClassFormModal from '../components/classes/ClassFormModal';
 import EditDeleteButtons from '../components/ui/EditDeleteButtons';
-import { Plus } from 'lucide-react';
+import { Plus, TrendingUp } from 'lucide-react';
 import ClassStudentsModal from '../components/classes/ClassStudentsModal';
+
 
 type ClassRow = {
   id: string;
@@ -338,7 +339,10 @@ export default function ClassesPage() {
       {/* Header */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-base font-semibold text-slate-50">ΤΜΗΜΑΤΑ</h1>
+          <h1 className="flex items-center gap-2 text-base font-semibold text-slate-50">
+            <TrendingUp className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
+            Τμήματα
+          </h1>
           <p className="text-xs text-slate-300">
             Διαχείριση τμημάτων με μάθημα και επίπεδο.
           </p>

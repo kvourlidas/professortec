@@ -5,6 +5,8 @@ import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
 import EditDeleteButtons from '../components/ui/EditDeleteButtons';
 import DatePickerField from '../components/ui/AppDatePicker';
+import { Users } from 'lucide-react';
+
 
 type LevelRow = {
   id: string;
@@ -21,21 +23,37 @@ type StudentRow = {
   phone: string | null;
   email: string | null;
   level_id: string | null;
+
   father_name: string | null;
+  father_date_of_birth: string | null;
+  father_phone: string | null;
+  father_email: string | null;
+
   mother_name: string | null;
+  mother_date_of_birth: string | null;
+  mother_phone: string | null;
+  mother_email: string | null;
+
   created_at: string;
 };
 
-// helper: convert "yyyy-mm-dd" -> "dd/mm/yyyy" (for table display)
+const STUDENT_SELECT = `
+  id, school_id, full_name, date_of_birth, phone, email, level_id,
+  father_name, father_date_of_birth, father_phone, father_email,
+  mother_name, mother_date_of_birth, mother_phone, mother_email,
+  created_at
+`;
+
+// helper: convert "yyyy-mm-dd" -> "dd/mm/yyyy"
 function formatDateToGreek(dateStr: string | null): string {
-  if (!dateStr) return '';
-  const parts = dateStr.split('-'); // [yyyy, mm, dd]
+  if (!dateStr) return '—';
+  const parts = dateStr.split('-');
   if (parts.length !== 3) return dateStr;
   const [y, m, d] = parts;
   return `${d}/${m}/${y}`;
 }
 
-// helpers for AppDatePicker (dd/mm/yyyy) <-> ISO (yyyy-mm-dd)
+// AppDatePicker helpers (dd/mm/yyyy) <-> ISO (yyyy-mm-dd)
 function isoToDisplay(iso: string | null): string {
   if (!iso) return '';
   const [y, m, d] = iso.split('-');
@@ -45,7 +63,7 @@ function isoToDisplay(iso: string | null): string {
 
 function displayToIso(display: string): string {
   if (!display) return '';
-  const parts = display.split(/[\/\-\.]/); // dd / mm / yyyy
+  const parts = display.split(/[\/\-\.]/);
   if (parts.length !== 3) return '';
   const [d, m, y] = parts;
   if (!d || !m || !y) return '';
@@ -65,6 +83,7 @@ function normalizeText(value: string | null | undefined): string {
 }
 
 type ModalMode = 'create' | 'edit';
+type TabKey = 'student' | 'parents';
 
 export default function StudentsPage() {
   const { profile } = useAuth();
@@ -75,23 +94,38 @@ export default function StudentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // create/edit modal
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<ModalMode>('create');
   const [editingStudent, setEditingStudent] = useState<StudentRow | null>(null);
   const [saving, setSaving] = useState(false);
+  const [modalTab, setModalTab] = useState<TabKey>('student');
 
-  // 🔴 delete confirmation modal
+  // info modal (parents only)
+  const [infoStudent, setInfoStudent] = useState<StudentRow | null>(null);
+
+  // delete confirmation modal
   const [deleteTarget, setDeleteTarget] = useState<StudentRow | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Student fields
   const [fullName, setFullName] = useState('');
-  // holds dd/mm/yyyy for the AppDatePicker
-  const [dateOfBirth, setDateOfBirth] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState(''); // dd/mm/yyyy
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [levelId, setLevelId] = useState('');
+
+  // Father
   const [fatherName, setFatherName] = useState('');
+  const [fatherDob, setFatherDob] = useState(''); // dd/mm/yyyy
+  const [fatherPhone, setFatherPhone] = useState('');
+  const [fatherEmail, setFatherEmail] = useState('');
+
+  // Mother
   const [motherName, setMotherName] = useState('');
+  const [motherDob, setMotherDob] = useState(''); // dd/mm/yyyy
+  const [motherPhone, setMotherPhone] = useState('');
+  const [motherEmail, setMotherEmail] = useState('');
 
   const [search, setSearch] = useState('');
 
@@ -99,31 +133,29 @@ export default function StudentsPage() {
   const pageSize = 10;
   const [page, setPage] = useState(1);
 
-  // reset page when search changes
   useEffect(() => {
     setPage(1);
   }, [search]);
 
-  // Map level_id -> level name for fast lookup
   const levelNameById = useMemo(() => {
     const m = new Map<string, string>();
     levels.forEach((lvl) => m.set(lvl.id, lvl.name));
     return m;
   }, [levels]);
 
-  // Load levels for dropdown
+  // Load levels
   useEffect(() => {
     if (!schoolId) return;
 
     const loadLevels = async () => {
-      const { data, error } = await supabase
+      const { data, error: dbError } = await supabase
         .from('levels')
         .select('*')
         .eq('school_id', schoolId)
         .order('name', { ascending: true });
 
-      if (error) {
-        console.error(error);
+      if (dbError) {
+        console.error(dbError);
         setError('Αποτυχία φόρτωσης επιπέδων.');
       } else {
         setLevels((data ?? []) as LevelRow[]);
@@ -143,17 +175,17 @@ export default function StudentsPage() {
     const load = async () => {
       setLoading(true);
       setError(null);
-      const { data, error } = await supabase
+
+      const { data, error: dbError } = await supabase
         .from('students')
-        .select(
-          'id, school_id, full_name, date_of_birth, phone, email, level_id, father_name, mother_name, created_at',
-        )
+        .select(STUDENT_SELECT)
         .eq('school_id', schoolId)
         .order('created_at', { ascending: true });
 
-      if (error) {
-        console.error(error);
+      if (dbError) {
+        console.error(dbError);
         setError('Αποτυχία φόρτωσης μαθητών.');
+        setStudents([]);
       } else {
         setStudents((data ?? []) as StudentRow[]);
       }
@@ -169,8 +201,16 @@ export default function StudentsPage() {
     setPhone('');
     setEmail('');
     setLevelId('');
+
     setFatherName('');
+    setFatherDob('');
+    setFatherPhone('');
+    setFatherEmail('');
+
     setMotherName('');
+    setMotherDob('');
+    setMotherPhone('');
+    setMotherEmail('');
   };
 
   const openCreateModal = () => {
@@ -178,6 +218,7 @@ export default function StudentsPage() {
     setError(null);
     setModalMode('create');
     setEditingStudent(null);
+    setModalTab('student');
     setModalOpen(true);
   };
 
@@ -185,15 +226,24 @@ export default function StudentsPage() {
     setError(null);
     setModalMode('edit');
     setEditingStudent(student);
+    setModalTab('student');
 
     setFullName(student.full_name ?? '');
-    // convert ISO from DB -> dd/mm/yyyy for picker
     setDateOfBirth(student.date_of_birth ? isoToDisplay(student.date_of_birth) : '');
     setPhone(student.phone ?? '');
     setEmail(student.email ?? '');
     setLevelId(student.level_id ?? '');
+
     setFatherName(student.father_name ?? '');
+    setFatherDob(student.father_date_of_birth ? isoToDisplay(student.father_date_of_birth) : '');
+    setFatherPhone(student.father_phone ?? '');
+    setFatherEmail(student.father_email ?? '');
+
     setMotherName(student.mother_name ?? '');
+    setMotherDob(student.mother_date_of_birth ? isoToDisplay(student.mother_date_of_birth) : '');
+    setMotherPhone(student.mother_phone ?? '');
+    setMotherEmail(student.mother_email ?? '');
+
     setModalOpen(true);
   };
 
@@ -202,6 +252,7 @@ export default function StudentsPage() {
     setModalOpen(false);
     setEditingStudent(null);
     setModalMode('create');
+    setModalTab('student');
     resetForm();
   };
 
@@ -218,76 +269,79 @@ export default function StudentsPage() {
     setSaving(true);
     setError(null);
 
-    // convert dd/mm/yyyy -> ISO for DB
-    const isoDob = displayToIso(dateOfBirth);
-
     const payload = {
       school_id: schoolId,
       full_name: nameTrimmed,
-      date_of_birth: isoDob || null,
+      date_of_birth: displayToIso(dateOfBirth) || null,
       phone: phone.trim() || null,
       email: email.trim() || null,
       level_id: levelId || null,
+
       father_name: fatherName.trim() || null,
+      father_date_of_birth: displayToIso(fatherDob) || null,
+      father_phone: fatherPhone.trim() || null,
+      father_email: fatherEmail.trim() || null,
+
       mother_name: motherName.trim() || null,
+      mother_date_of_birth: displayToIso(motherDob) || null,
+      mother_phone: motherPhone.trim() || null,
+      mother_email: motherEmail.trim() || null,
     };
 
-    if (modalMode === 'create') {
-      const { data, error } = await supabase
-        .from('students')
-        .insert(payload)
-        .select(
-          'id, school_id, full_name, date_of_birth, phone, email, level_id, father_name, mother_name, created_at',
-        )
-        .maybeSingle();
+    try {
+      if (modalMode === 'create') {
+        const { data, error: dbError } = await supabase
+          .from('students')
+          .insert(payload)
+          .select(STUDENT_SELECT);
 
-      setSaving(false);
+        if (dbError || !data || data.length === 0) {
+          console.error(dbError);
+          setError('Αποτυχία δημιουργίας μαθητή.');
+          return;
+        }
 
-      if (error || !data) {
-        console.error(error);
-        setError('Αποτυχία δημιουργίας μαθητή.');
-        return;
+        setStudents((prev) => [...prev, data[0] as StudentRow]);
+        closeModal();
+      } else if (modalMode === 'edit' && editingStudent) {
+        const { data, error: dbError } = await supabase
+          .from('students')
+          .update({
+            full_name: payload.full_name,
+            date_of_birth: payload.date_of_birth,
+            phone: payload.phone,
+            email: payload.email,
+            level_id: payload.level_id,
+
+            father_name: payload.father_name,
+            father_date_of_birth: payload.father_date_of_birth,
+            father_phone: payload.father_phone,
+            father_email: payload.father_email,
+
+            mother_name: payload.mother_name,
+            mother_date_of_birth: payload.mother_date_of_birth,
+            mother_phone: payload.mother_phone,
+            mother_email: payload.mother_email,
+          })
+          .eq('id', editingStudent.id)
+          .eq('school_id', schoolId)
+          .select(STUDENT_SELECT);
+
+        if (dbError || !data || data.length === 0) {
+          console.error(dbError);
+          setError('Αποτυχία ενημέρωσης μαθητή.');
+          return;
+        }
+
+        const updated = data[0] as StudentRow;
+        setStudents((prev) => prev.map((s) => (s.id === editingStudent.id ? updated : s)));
+        closeModal();
       }
-
-      setStudents((prev) => [...prev, data as StudentRow]);
-      closeModal();
-    } else if (modalMode === 'edit' && editingStudent) {
-      const { data, error } = await supabase
-        .from('students')
-        .update({
-          full_name: payload.full_name,
-          date_of_birth: payload.date_of_birth,
-          phone: payload.phone,
-          email: payload.email,
-          level_id: payload.level_id,
-          father_name: payload.father_name,
-          mother_name: payload.mother_name,
-        })
-        .eq('id', editingStudent.id)
-        .eq('school_id', schoolId)
-        .select(
-          'id, school_id, full_name, date_of_birth, phone, email, level_id, father_name, mother_name, created_at',
-        )
-        .maybeSingle();
-
-      setSaving(false);
-
-      if (error || !data) {
-        console.error(error);
-        setError('Αποτυχία ενημέρωσης μαθητή.');
-        return;
-      }
-
-      setStudents((prev) =>
-        prev.map((s) => (s.id === editingStudent.id ? (data as StudentRow) : s)),
-      );
-      closeModal();
-    } else {
+    } finally {
       setSaving(false);
     }
   };
 
-  // 🔴 open delete-confirm modal instead of window.confirm
   const askDeleteStudent = (student: StudentRow) => {
     setError(null);
     setDeleteTarget(student);
@@ -304,7 +358,7 @@ export default function StudentsPage() {
     setDeleting(true);
     setError(null);
 
-    const { error } = await supabase
+    const { error: dbError } = await supabase
       .from('students')
       .delete()
       .eq('id', deleteTarget.id)
@@ -312,8 +366,8 @@ export default function StudentsPage() {
 
     setDeleting(false);
 
-    if (error) {
-      console.error(error);
+    if (dbError) {
+      console.error(dbError);
       setError('Αποτυχία διαγραφής μαθητή.');
       return;
     }
@@ -322,7 +376,7 @@ export default function StudentsPage() {
     setDeleteTarget(null);
   };
 
-  // 🔍 Filter students by any field
+  // 🔍 Filter students (student + parents fields are searchable)
   const filteredStudents = useMemo(() => {
     const q = normalizeText(search.trim());
     if (!q) return students;
@@ -333,13 +387,23 @@ export default function StudentsPage() {
 
       const composite = [
         s.full_name,
-        s.father_name,
-        s.mother_name,
         levelName,
         s.phone,
         s.email,
         s.date_of_birth,
         s.date_of_birth ? formatDateToGreek(s.date_of_birth) : '',
+
+        s.father_name,
+        s.father_phone,
+        s.father_email,
+        s.father_date_of_birth,
+        s.father_date_of_birth ? formatDateToGreek(s.father_date_of_birth) : '',
+
+        s.mother_name,
+        s.mother_phone,
+        s.mother_email,
+        s.mother_date_of_birth,
+        s.mother_date_of_birth ? formatDateToGreek(s.mother_date_of_birth) : '',
       ]
         .filter(Boolean)
         .join(' ');
@@ -348,11 +412,10 @@ export default function StudentsPage() {
     });
   }, [students, levelNameById, search]);
 
-  const pageCount = useMemo(() => {
-    return Math.max(1, Math.ceil(filteredStudents.length / pageSize));
-  }, [filteredStudents.length]);
+  const pageCount = useMemo(() => Math.max(1, Math.ceil(filteredStudents.length / pageSize)), [
+    filteredStudents.length,
+  ]);
 
-  // clamp page if items change (delete/filter)
   useEffect(() => {
     setPage((p) => Math.min(Math.max(1, p), pageCount));
   }, [pageCount]);
@@ -365,12 +428,32 @@ export default function StudentsPage() {
   const showingFrom = filteredStudents.length === 0 ? 0 : (page - 1) * pageSize + 1;
   const showingTo = Math.min(page * pageSize, filteredStudents.length);
 
+  const openInfoModal = (student: StudentRow) => {
+    setInfoStudent(student);
+  };
+
+  const closeInfoModal = () => setInfoStudent(null);
+
+  const InfoField = ({ label, value }: { label: string; value: string | null | undefined }) => (
+    <div className="rounded-md border border-slate-700/70 bg-slate-900/25 px-3 py-2">
+      <div className="text-[10px] uppercase tracking-wide text-slate-300">{label}</div>
+      <div className="mt-0.5 text-xs text-slate-100">{value && value.trim() ? value : '—'}</div>
+    </div>
+  );
+
+  const InfoDateField = ({ label, iso }: { label: string; iso: string | null }) => (
+    <InfoField label={label} value={iso ? formatDateToGreek(iso) : '—'} />
+  );
+
   return (
     <div className="space-y-4">
       {/* Header */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-base font-semibold text-slate-50">Μαθητές</h1>
+          <h1 className="flex items-center gap-2 text-base font-semibold text-slate-50">
+            <Users className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
+            Μαθητές
+          </h1>
           <p className="text-xs text-slate-300">Διαχείριση μαθητών του σχολείου σας.</p>
           {schoolId && (
             <p className="mt-1 text-[11px] text-slate-400">
@@ -389,10 +472,7 @@ export default function StudentsPage() {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
           <input
             className="form-input w-full sm:w-56"
-            style={{
-              background: 'var(--color-input-bg)',
-              color: 'var(--color-text-main)',
-            }}
+            style={{ background: 'var(--color-input-bg)', color: 'var(--color-text-main)' }}
             placeholder="Αναζήτηση..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -420,7 +500,7 @@ export default function StudentsPage() {
         </div>
       )}
 
-      {/* Students table in glass card + pagination */}
+      {/* Students table */}
       <div className="rounded-xl border border-slate-400/60 bg-slate-950/7 backdrop-blur-md shadow-lg overflow-hidden ring-1 ring-inset ring-slate-300/15">
         <div className="overflow-x-auto">
           {loading ? (
@@ -438,8 +518,6 @@ export default function StudentsPage() {
               <thead>
                 <tr className="text-[11px] uppercase tracking-wide text-slate-200">
                   <th className="border-b border-slate-700 px-4 py-2 text-left">Ονοματεπώνυμο</th>
-                  <th className="border-b border-slate-700 px-4 py-2 text-left">Όνομα πατέρα</th>
-                  <th className="border-b border-slate-700 px-4 py-2 text-left">Όνομα μητέρας</th>
                   <th className="border-b border-slate-700 px-4 py-2 text-left">Επίπεδο</th>
                   <th className="border-b border-slate-700 px-4 py-2 text-left">
                     Ημερομηνία γέννησης
@@ -457,7 +535,6 @@ export default function StudentsPage() {
                       ? levelNameById.get(s.level_id)
                       : '—';
 
-                  // keep striping consistent across pages
                   const absoluteIndex = (page - 1) * pageSize + idx;
                   const rowBg = absoluteIndex % 2 === 0 ? 'bg-slate-950/45' : 'bg-slate-900/25';
 
@@ -467,23 +544,8 @@ export default function StudentsPage() {
                       className={`${rowBg} backdrop-blur-sm hover:bg-slate-800/40 transition-colors`}
                     >
                       <td className="border-b border-slate-800/70 px-4 py-2 text-left">
-                        <span
-                          className="text-xs font-medium"
-                          style={{ color: 'var(--color-text-td)' }}
-                        >
+                        <span className="text-xs font-medium" style={{ color: 'var(--color-text-td)' }}>
                           {s.full_name}
-                        </span>
-                      </td>
-
-                      <td className="border-b border-slate-800/70 px-4 py-2 text-left">
-                        <span className="text-xs" style={{ color: 'var(--color-text-td)' }}>
-                          {s.father_name || '—'}
-                        </span>
-                      </td>
-
-                      <td className="border-b border-slate-800/70 px-4 py-2 text-left">
-                        <span className="text-xs" style={{ color: 'var(--color-text-td)' }}>
-                          {s.mother_name || '—'}
                         </span>
                       </td>
 
@@ -513,6 +575,17 @@ export default function StudentsPage() {
 
                       <td className="border-b border-slate-800/70 px-4 py-2">
                         <div className="flex items-center justify-end gap-2">
+                          {/* Parents info button: circle + "i" */}
+                          <button
+                            type="button"
+                            onClick={() => openInfoModal(s)}
+                            className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-500/70 bg-slate-900/20 text-slate-200 transition-colors hover:bg-slate-800/40 hover:text-slate-50"
+                            title="Πληροφορίες γονέων"
+                            aria-label="Πληροφορίες γονέων"
+                          >
+                            <span className="text-[13px] font-semibold leading-none">i</span>
+                          </button>
+
                           <EditDeleteButtons
                             onEdit={() => openEditModal(s)}
                             onDelete={() => askDeleteStudent(s)}
@@ -564,11 +637,60 @@ export default function StudentsPage() {
         )}
       </div>
 
-      {/* Modal: create / edit student */}
+      {/* Parents Info modal (ONLY parents info) */}
+      {infoStudent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div
+            className="w-full max-w-lg rounded-xl border border-slate-700 p-5 shadow-xl"
+            style={{ background: 'var(--color-sidebar)' }}
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-semibold text-slate-50">Πληροφορίες γονέων</h2>
+                <p className="mt-0.5 text-[11px] text-slate-300">
+                  Μαθητής: <span className="text-slate-100 font-medium">{infoStudent.full_name}</span>
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={closeInfoModal}
+                className="text-xs text-slate-300 hover:text-slate-100"
+              >
+                Κλείσιμο
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div className="rounded-lg border border-slate-700/70 bg-slate-900/20 p-3">
+                <div className="mb-2 text-xs font-semibold text-slate-100">Πατέρας</div>
+                <div className="grid gap-2 md:grid-cols-2">
+                  <InfoField label="Ονοματεπώνυμο" value={infoStudent.father_name} />
+                  <InfoDateField label="Ημ. γέννησης" iso={infoStudent.father_date_of_birth} />
+                  <InfoField label="Τηλέφωνο" value={infoStudent.father_phone} />
+                  <InfoField label="Email" value={infoStudent.father_email} />
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-slate-700/70 bg-slate-900/20 p-3">
+                <div className="mb-2 text-xs font-semibold text-slate-100">Μητέρα</div>
+                <div className="grid gap-2 md:grid-cols-2">
+                  <InfoField label="Ονοματεπώνυμο" value={infoStudent.mother_name} />
+                  <InfoDateField label="Ημ. γέννησης" iso={infoStudent.mother_date_of_birth} />
+                  <InfoField label="Τηλέφωνο" value={infoStudent.mother_phone} />
+                  <InfoField label="Email" value={infoStudent.mother_email} />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create / Edit modal (tabs: student + parents) */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div
-            className="w-full max-w-md rounded-xl border border-slate-700 p-5 shadow-xl"
+            className="w-full max-w-lg rounded-xl border border-slate-700 p-5 shadow-xl"
             style={{ background: 'var(--color-sidebar)' }}
           >
             <div className="mb-3 flex items-center justify-between">
@@ -584,113 +706,197 @@ export default function StudentsPage() {
               </button>
             </div>
 
+            <div className="mb-4 flex gap-2 text-[11px]">
+              <button
+                type="button"
+                onClick={() => setModalTab('student')}
+                className={`px-3 py-1 rounded-full border text-xs ${modalTab === 'student'
+                    ? 'bg-blue-600 border-blue-500 text-white'
+                    : 'bg-slate-800 border-slate-600 text-slate-200'
+                  }`}
+              >
+                Μαθητής
+              </button>
+              <button
+                type="button"
+                onClick={() => setModalTab('parents')}
+                className={`px-3 py-1 rounded-full border text-xs ${modalTab === 'parents'
+                    ? 'bg-blue-600 border-blue-500 text-white'
+                    : 'bg-slate-800 border-slate-600 text-slate-200'
+                  }`}
+              >
+                Γονείς
+              </button>
+            </div>
+
             <form onSubmit={handleSubmit} className="space-y-3">
-              <div>
-                <label className="form-label text-slate-100">Ονοματεπώνυμο *</label>
-                <input
-                  className="form-input"
-                  style={{
-                    background: 'var(--color-input-bg)',
-                    color: 'var(--color-text-main)',
-                  }}
-                  placeholder="π.χ. Γιάννης Παπαδόπουλος"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  required
-                />
-              </div>
+              {modalTab === 'student' ? (
+                <>
+                  <div>
+                    <label className="form-label text-slate-100">Ονοματεπώνυμο *</label>
+                    <input
+                      className="form-input"
+                      style={{ background: 'var(--color-input-bg)', color: 'var(--color-text-main)' }}
+                      placeholder="π.χ. Γιάννης Παπαδόπουλος"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      required
+                    />
+                  </div>
 
-              <div>
-                <label className="form-label text-slate-100">Όνομα πατέρα</label>
-                <input
-                  className="form-input"
-                  style={{
-                    background: 'var(--color-input-bg)',
-                    color: 'var(--color-text-main)',
-                  }}
-                  placeholder="π.χ. Δημήτρης Παπαδόπουλος"
-                  value={fatherName}
-                  onChange={(e) => setFatherName(e.target.value)}
-                />
-              </div>
+                  <div>
+                    <label className="form-label text-slate-100">Επίπεδο</label>
+                    <select
+                      className="form-input select-accent"
+                      value={levelId}
+                      onChange={(e) => setLevelId(e.target.value)}
+                    >
+                      <option value="">Χωρίς επίπεδο</option>
+                      {levels.map((lvl) => (
+                        <option key={lvl.id} value={lvl.id}>
+                          {lvl.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-              <div>
-                <label className="form-label text-slate-100">Όνομα μητέρας</label>
-                <input
-                  className="form-input"
-                  style={{
-                    background: 'var(--color-input-bg)',
-                    color: 'var(--color-text-main)',
-                  }}
-                  placeholder="π.χ. Μαρία Παπαδοπούλου"
-                  value={motherName}
-                  onChange={(e) => setMotherName(e.target.value)}
-                />
-              </div>
+                  <DatePickerField
+                    label="Ημερομηνία γέννησης"
+                    value={dateOfBirth}
+                    onChange={setDateOfBirth}
+                    placeholder="π.χ. 24/12/2010"
+                    id="student-dob"
+                  />
 
-              <div>
-                <label className="form-label text-slate-100">Επίπεδο</label>
-                <select
-                  className="form-input select-accent"
-                  value={levelId}
-                  onChange={(e) => setLevelId(e.target.value)}
-                >
-                  <option value="">Χωρίς επίπεδο</option>
-                  {levels.map((lvl) => (
-                    <option key={lvl.id} value={lvl.id}>
-                      {lvl.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                  <div>
+                    <label className="form-label text-slate-100">Τηλέφωνο</label>
+                    <input
+                      className="form-input"
+                      style={{ background: 'var(--color-input-bg)', color: 'var(--color-text-main)' }}
+                      placeholder="π.χ. 6900000000"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                    />
+                  </div>
 
-              {/* Ημερομηνία γέννησης with AppDatePicker */}
-              <DatePickerField
-                label="Ημερομηνία γέννησης"
-                value={dateOfBirth} // dd/mm/yyyy
-                onChange={setDateOfBirth}
-                placeholder="π.χ. 24/12/2010"
-                id="student-dob"
-              />
+                  <div>
+                    <label className="form-label text-slate-100">Email</label>
+                    <input
+                      type="email"
+                      className="form-input"
+                      style={{ background: 'var(--color-input-bg)', color: 'var(--color-text-main)' }}
+                      placeholder="π.χ. student@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="rounded-lg border border-slate-700/70 bg-slate-900/20 p-3">
+                    <div className="mb-2 text-xs font-semibold text-slate-100">Πατέρας</div>
 
-              <div>
-                <label className="form-label text-slate-100">Τηλέφωνο</label>
-                <input
-                  className="form-input"
-                  style={{
-                    background: 'var(--color-input-bg)',
-                    color: 'var(--color-text-main)',
-                  }}
-                  placeholder="π.χ. 6900000000"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                />
-              </div>
+                    <div>
+                      <label className="form-label text-slate-100">Ονοματεπώνυμο</label>
+                      <input
+                        className="form-input"
+                        style={{ background: 'var(--color-input-bg)', color: 'var(--color-text-main)' }}
+                        placeholder="π.χ. Δημήτρης Παπαδόπουλος"
+                        value={fatherName}
+                        onChange={(e) => setFatherName(e.target.value)}
+                      />
+                    </div>
 
-              <div>
-                <label className="form-label text-slate-100">Email</label>
-                <input
-                  type="email"
-                  className="form-input"
-                  style={{
-                    background: 'var(--color-input-bg)',
-                    color: 'var(--color-text-main)',
-                  }}
-                  placeholder="π.χ. student@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
+                    <div className="mt-3">
+                      <DatePickerField
+                        label="Ημερομηνία γέννησης"
+                        value={fatherDob}
+                        onChange={setFatherDob}
+                        placeholder="π.χ. 24/12/1980"
+                        id="father-dob"
+                      />
+                    </div>
+
+                    <div className="mt-3">
+                      <label className="form-label text-slate-100">Τηλέφωνο</label>
+                      <input
+                        className="form-input"
+                        style={{ background: 'var(--color-input-bg)', color: 'var(--color-text-main)' }}
+                        placeholder="π.χ. 6900000000"
+                        value={fatherPhone}
+                        onChange={(e) => setFatherPhone(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="mt-3">
+                      <label className="form-label text-slate-100">Email</label>
+                      <input
+                        type="email"
+                        className="form-input"
+                        style={{ background: 'var(--color-input-bg)', color: 'var(--color-text-main)' }}
+                        placeholder="π.χ. father@example.com"
+                        value={fatherEmail}
+                        onChange={(e) => setFatherEmail(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-slate-700/70 bg-slate-900/20 p-3">
+                    <div className="mb-2 text-xs font-semibold text-slate-100">Μητέρα</div>
+
+                    <div>
+                      <label className="form-label text-slate-100">Ονοματεπώνυμο</label>
+                      <input
+                        className="form-input"
+                        style={{ background: 'var(--color-input-bg)', color: 'var(--color-text-main)' }}
+                        placeholder="π.χ. Μαρία Παπαδοπούλου"
+                        value={motherName}
+                        onChange={(e) => setMotherName(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="mt-3">
+                      <DatePickerField
+                        label="Ημερομηνία γέννησης"
+                        value={motherDob}
+                        onChange={setMotherDob}
+                        placeholder="π.χ. 10/03/1983"
+                        id="mother-dob"
+                      />
+                    </div>
+
+                    <div className="mt-3">
+                      <label className="form-label text-slate-100">Τηλέφωνο</label>
+                      <input
+                        className="form-input"
+                        style={{ background: 'var(--color-input-bg)', color: 'var(--color-text-main)' }}
+                        placeholder="π.χ. 6900000000"
+                        value={motherPhone}
+                        onChange={(e) => setMotherPhone(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="mt-3">
+                      <label className="form-label text-slate-100">Email</label>
+                      <input
+                        type="email"
+                        className="form-input"
+                        style={{ background: 'var(--color-input-bg)', color: 'var(--color-text-main)' }}
+                        placeholder="π.χ. mother@example.com"
+                        value={motherEmail}
+                        onChange={(e) => setMotherEmail(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
 
               <div className="mt-4 flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={closeModal}
                   className="btn-ghost"
-                  style={{
-                    background: 'var(--color-input-bg)',
-                    color: 'var(--color-text-main)',
-                  }}
+                  style={{ background: 'var(--color-input-bg)', color: 'var(--color-text-main)' }}
                   disabled={saving}
                 >
                   Ακύρωση
@@ -704,7 +910,7 @@ export default function StudentsPage() {
         </div>
       )}
 
-      {/* 🔴 Delete confirmation modal */}
+      {/* Delete confirmation modal */}
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div
@@ -725,10 +931,7 @@ export default function StudentsPage() {
                 type="button"
                 onClick={cancelDeleteStudent}
                 className="btn-ghost"
-                style={{
-                  background: 'var(--color-input-bg)',
-                  color: 'var(--color-text-main)',
-                }}
+                style={{ background: 'var(--color-input-bg)', color: 'var(--color-text-main)' }}
                 disabled={deleting}
               >
                 Ακύρωση

@@ -327,7 +327,10 @@ const GradesPage = () => {
             {/* Header */}
             <div className="mb-6 flex items-center justify-between">
                 <div>
-                    <h1 className="text-lg font-semibold text-slate-50">Βαθμοί</h1>
+                    <h1 className="flex items-center gap-2 text-lg font-semibold text-slate-50">
+                        <BarChart3 className="h-5 w-5" style={{ color: 'var(--color-accent)' }} />
+                        Βαθμοί
+                    </h1>
                     <p className="mt-1 text-xs text-slate-400">
                         Δες την πορεία βαθμών για μαθητές και καθηγητές.
                     </p>

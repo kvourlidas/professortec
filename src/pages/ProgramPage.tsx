@@ -8,6 +8,8 @@ import {
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
 import AppDatePicker from '../components/ui/AppDatePicker';
+import { CalendarDays } from 'lucide-react';
+
 
 type ClassRow = {
   id: string;
@@ -828,8 +830,9 @@ export default function ProgramPage() {
       {/* Header */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-base font-semibold text-slate-50">
-            ΠΡΟΓΡΑΜΜΑ ΤΜΗΜΑΤΩΝ
+          <h1 className="flex items-center gap-2 text-base font-semibold text-slate-50">
+            <CalendarDays className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
+            Πρόγραμμα Τμημάτων
           </h1>
           <p className="text-xs text-slate-300">
             Δημιούργησε ένα εβδομαδιαίο πρόγραμμα, προσθέτοντας τμήματα σε κάθε

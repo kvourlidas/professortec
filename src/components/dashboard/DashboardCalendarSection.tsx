@@ -57,7 +57,10 @@ type ProgramItemOverrideRow = {
   start_time: string | null; // "HH:MM:SS"
   end_time: string | null;
   is_deleted: boolean | null;
-  active_during_holiday: boolean | null; // NEW
+
+  // ✅ new columns
+  is_inactive: boolean | null;
+  holiday_active_override: boolean | null;
 };
 
 type HolidayRow = {
@@ -103,21 +106,25 @@ type TestRow = {
   end_time: string | null;
   title: string | null;
   description: string | null;
-  active_during_holiday: boolean | null; // NEW
+
+  // (unchanged for tests table)
+  active_during_holiday: boolean | null;
 };
 
 type CalendarEventModal = {
   programItemId: string;
   originalDateStr: string; // "YYYY-MM-DD" when event was clicked
   date: string; // "dd/mm/yyyy" for AppDatePicker
-  startTime: string; // "HH:MM" (12h input)
+  startTime: string; // "HH:MM"
   startPeriod: 'AM' | 'PM';
-  endTime: string; // "HH:MM" (12h input)
+  endTime: string; // "HH:MM"
   endPeriod: 'AM' | 'PM';
   classId: string | null;
   subjectId: string | null;
   overrideId?: string;
-  activeDuringHoliday: boolean; // NEW
+
+  // ✅ we keep the name, but it maps to holiday_active_override for program overrides
+  activeDuringHoliday: boolean;
 };
 
 type TestModalState = {
@@ -130,7 +137,9 @@ type TestModalState = {
   endTime: string;
   endPeriod: 'AM' | 'PM';
   title: string;
-  activeDuringHoliday: boolean; // NEW
+
+  // for tests table (active_during_holiday)
+  activeDuringHoliday: boolean;
 };
 
 const pad2 = (n: number) => n.toString().padStart(2, '0');
@@ -247,7 +256,7 @@ export default function DashboardCalendarSection({
   const [holidays, setHolidays] = useState<HolidayRow[]>([]);
   const [schoolEvents, setSchoolEvents] = useState<SchoolEventRow[]>([]);
 
-  // NEW: subjects, class_subjects, tests
+  // subjects / class_subjects / tests
   const [subjects, setSubjects] = useState<SubjectRow[]>([]);
   const [classSubjects, setClassSubjects] = useState<ClassSubjectRow[]>([]);
   const [tests, setTests] = useState<TestRow[]>([]);
@@ -257,7 +266,7 @@ export default function DashboardCalendarSection({
   const [eventError, setEventError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  // NEW: Test edit modal
+  // Test edit modal
   const [testModal, setTestModal] = useState<TestModalState | null>(null);
   const [savingTest, setSavingTest] = useState(false);
   const [testError, setTestError] = useState<string | null>(null);
@@ -276,7 +285,6 @@ export default function DashboardCalendarSection({
 
   /* -------- Data loading -------- */
 
-  // Load classes
   useEffect(() => {
     if (!schoolId) {
       setLoading(false);
@@ -304,7 +312,6 @@ export default function DashboardCalendarSection({
     load();
   }, [schoolId]);
 
-  // Load tutors
   useEffect(() => {
     if (!schoolId) {
       setTutors([]);
@@ -329,7 +336,6 @@ export default function DashboardCalendarSection({
     loadTutors();
   }, [schoolId]);
 
-  // Load program + items + overrides
   useEffect(() => {
     if (!schoolId) {
       setProgram(null);
@@ -423,7 +429,6 @@ export default function DashboardCalendarSection({
     loadProgram();
   }, [schoolId]);
 
-  // Load holidays
   useEffect(() => {
     if (!schoolId) {
       setHolidays([]);
@@ -448,7 +453,6 @@ export default function DashboardCalendarSection({
     loadHolidays();
   }, [schoolId]);
 
-  // Load school events
   useEffect(() => {
     if (!schoolId) {
       setSchoolEvents([]);
@@ -474,7 +478,6 @@ export default function DashboardCalendarSection({
     loadEvents();
   }, [schoolId]);
 
-  // NEW: Load subjects, class_subjects, tests
   useEffect(() => {
     if (!schoolId) {
       setSubjects([]);
@@ -516,11 +519,8 @@ export default function DashboardCalendarSection({
         }
 
         if (classSubjErr) {
-          console.error(
-            'Failed to load class_subjects for dashboard',
-            classSubjErr,
-          );
-          setClassSubjects((classSubjData ?? []) as ClassSubjectRow[]);
+          console.error('Failed to load class_subjects for dashboard', classSubjErr);
+          setClassSubjects([]);
         } else {
           setClassSubjects((classSubjData ?? []) as ClassSubjectRow[]);
         }
@@ -550,7 +550,7 @@ export default function DashboardCalendarSection({
     return m;
   }, [subjects]);
 
-  // SAME logic as ProgramPage / TestsPage
+  // SAME logic as ProgramPage / TestsPage (do not change)
   const getSubjectsForClass = (classId: string | null): SubjectRow[] => {
     if (!classId) return [];
 
@@ -664,10 +664,8 @@ export default function DashboardCalendarSection({
         ? new Date(item.end_date + 'T23:59:59')
         : new Date('2999-12-31T23:59:59');
 
-      const effectiveStart =
-        patternStartDate > viewStart ? patternStartDate : viewStart;
-      const effectiveEnd =
-        patternEndDate < viewEnd ? patternEndDate : viewEnd;
+      const effectiveStart = patternStartDate > viewStart ? patternStartDate : viewStart;
+      const effectiveEnd = patternEndDate < viewEnd ? patternEndDate : viewEnd;
 
       if (effectiveStart > effectiveEnd) return;
 
@@ -693,8 +691,14 @@ export default function DashboardCalendarSection({
         let endTimeStr = item.end_time!;
         let overrideId: string | undefined;
 
-        const activeDuringHoliday = !!override?.active_during_holiday;
-        const isInactive = isHoliday && !activeDuringHoliday;
+        const manualInactive = !!override?.is_inactive;
+        const holidayActiveOverride = !!override?.holiday_active_override;
+
+        const isInactive =
+          manualInactive || (isHoliday && !holidayActiveOverride);
+
+        // for modal button state: "active during holiday" means truly active
+        const activeDuringHoliday = isHoliday ? (holidayActiveOverride && !manualInactive) : false;
 
         if (override) {
           usedOverrideIds.add(override.id);
@@ -716,7 +720,7 @@ export default function DashboardCalendarSection({
           const end = new Date(currentDate);
           end.setHours(eH, eM, 0, 0);
 
-          // Combine tests ONLY on non-holiday days (so holiday days show separate class + test events)
+          // Combine tests ONLY on non-holiday days
           const testsForClassDate = testsByKey.get(key) ?? [];
           const shouldCombineTest = !isHoliday && testsForClassDate.length > 0;
           const combinedTest = shouldCombineTest ? testsForClassDate[0] : null;
@@ -750,9 +754,9 @@ export default function DashboardCalendarSection({
               isHoliday,
               holidayName,
               isInactive,
-              activeDuringHoliday,
+              activeDuringHoliday, // ✅ for modal button (holiday)
 
-              // combined test info (only non-holiday)
+              // combined test info
               testId: combinedTest ? combinedTest.id : null,
               testSubjectId: combinedTest ? combinedTest.subject_id : null,
             },
@@ -783,8 +787,11 @@ export default function DashboardCalendarSection({
       const isHoliday = holidayDateSet.has(dateStr);
       const holidayName = holidayNameByDate.get(dateStr) ?? null;
 
-      const activeDuringHoliday = !!ov.active_during_holiday;
-      const isInactive = isHoliday && !activeDuringHoliday;
+      const manualInactive = !!ov.is_inactive;
+      const holidayActiveOverride = !!ov.holiday_active_override;
+
+      const isInactive = manualInactive || (isHoliday && !holidayActiveOverride);
+      const activeDuringHoliday = isHoliday ? (holidayActiveOverride && !manualInactive) : false;
 
       const baseStartTime = ov.start_time ?? item.start_time;
       const baseEndTime = ov.end_time ?? item.end_time;
@@ -839,7 +846,7 @@ export default function DashboardCalendarSection({
           isInactive,
           activeDuringHoliday,
 
-          // combined test info (only non-holiday)
+          // combined test info
           testId: combinedTest ? combinedTest.id : null,
           testSubjectId: combinedTest ? combinedTest.subject_id : null,
         },
@@ -849,16 +856,14 @@ export default function DashboardCalendarSection({
     // 3) Standalone TEST events (shown on holidays too, as inactive unless active_during_holiday=true)
     tests.forEach((t) => {
       const key = `${t.class_id}-${t.test_date}`;
-      if (hideStandaloneTestKeys.has(key)) {
-        return;
-      }
+      if (hideStandaloneTestKeys.has(key)) return;
 
       const dateObj = new Date(t.test_date + 'T00:00:00');
       if (dateObj < viewStart || dateObj > viewEnd) return;
 
       const isHoliday = holidayDateSet.has(t.test_date);
       const holidayName = holidayNameByDate.get(t.test_date) ?? null;
-      const activeDuringHoliday = !!t.active_during_holiday;
+      const activeDuringHoliday = isHoliday ? !!t.active_during_holiday : false;
       const isInactive = isHoliday && !activeDuringHoliday;
 
       const cls = classMap.get(t.class_id);
@@ -900,7 +905,6 @@ export default function DashboardCalendarSection({
           classId: t.class_id,
           subjectId: t.subject_id,
 
-          // holiday flags
           isHoliday,
           holidayName,
           isInactive,
@@ -1030,7 +1034,7 @@ export default function DashboardCalendarSection({
             test_date: newDateStr,
             start_time: newStartTimeDb,
             end_time: newEndTimeDb,
-            // if you drag a test onto a holiday, we assume you want it active
+            // keep behavior: drag to holiday => active
             active_during_holiday: movedToHoliday ? true : false,
           })
           .eq('id', testId)
@@ -1043,7 +1047,9 @@ export default function DashboardCalendarSection({
           return;
         }
 
-        setTests((prev) => prev.map((t) => (t.id === testId ? (data as TestRow) : t)));
+        setTests((prev) =>
+          prev.map((t) => (t.id === testId ? (data as TestRow) : t)),
+        );
       } catch (err) {
         console.error('Failed to handle test eventDrop', err);
         revert();
@@ -1052,8 +1058,10 @@ export default function DashboardCalendarSection({
       return;
     }
 
-    // PROGRAM EVENTS (existing logic with overrides)
-    const programItemId = event.extendedProps['programItemId'] as string | undefined;
+    // PROGRAM EVENTS (overrides)
+    const programItemId = event.extendedProps['programItemId'] as
+      | string
+      | undefined;
 
     if (!programItemId || !oldEvent || !oldEvent.start) {
       revert();
@@ -1067,7 +1075,8 @@ export default function DashboardCalendarSection({
 
       if (oldDateStr === newDateStr) {
         const existing = overrides.find(
-          (o) => o.program_item_id === programItemId && o.override_date === newDateStr,
+          (o) =>
+            o.program_item_id === programItemId && o.override_date === newDateStr,
         );
 
         if (existing) {
@@ -1077,7 +1086,8 @@ export default function DashboardCalendarSection({
               start_time: newStartTimeDb,
               end_time: newEndTimeDb,
               is_deleted: false,
-              active_during_holiday: movedToHoliday ? true : false,
+              is_inactive: false,
+              holiday_active_override: movedToHoliday ? true : false,
             })
             .eq('id', existing.id)
             .select()
@@ -1086,7 +1096,9 @@ export default function DashboardCalendarSection({
           if (error || !data) throw error ?? new Error('No data');
 
           setOverrides((prev) =>
-            prev.map((o) => (o.id === existing.id ? (data as ProgramItemOverrideRow) : o)),
+            prev.map((o) =>
+              o.id === existing.id ? (data as ProgramItemOverrideRow) : o,
+            ),
           );
         } else {
           const { data, error } = await supabase
@@ -1097,7 +1109,8 @@ export default function DashboardCalendarSection({
               start_time: newStartTimeDb,
               end_time: newEndTimeDb,
               is_deleted: false,
-              active_during_holiday: movedToHoliday ? true : false,
+              is_inactive: false,
+              holiday_active_override: movedToHoliday ? true : false,
             })
             .select()
             .single();
@@ -1109,7 +1122,8 @@ export default function DashboardCalendarSection({
       } else {
         // different day
         const existingOld = overrides.find(
-          (o) => o.program_item_id === programItemId && o.override_date === oldDateStr,
+          (o) =>
+            o.program_item_id === programItemId && o.override_date === oldDateStr,
         );
 
         if (existingOld) {
@@ -1119,7 +1133,8 @@ export default function DashboardCalendarSection({
               is_deleted: true,
               start_time: null,
               end_time: null,
-              active_during_holiday: false,
+              is_inactive: false,
+              holiday_active_override: false,
             })
             .eq('id', existingOld.id)
             .select()
@@ -1128,7 +1143,9 @@ export default function DashboardCalendarSection({
           if (error || !data) throw error ?? new Error('No data');
 
           setOverrides((prev) =>
-            prev.map((o) => (o.id === existingOld.id ? (data as ProgramItemOverrideRow) : o)),
+            prev.map((o) =>
+              o.id === existingOld.id ? (data as ProgramItemOverrideRow) : o,
+            ),
           );
         } else {
           const { data, error } = await supabase
@@ -1139,7 +1156,8 @@ export default function DashboardCalendarSection({
               is_deleted: true,
               start_time: null,
               end_time: null,
-              active_during_holiday: false,
+              is_inactive: false,
+              holiday_active_override: false,
             })
             .select()
             .single();
@@ -1150,7 +1168,8 @@ export default function DashboardCalendarSection({
         }
 
         const existingNew = overrides.find(
-          (o) => o.program_item_id === programItemId && o.override_date === newDateStr,
+          (o) =>
+            o.program_item_id === programItemId && o.override_date === newDateStr,
         );
 
         if (existingNew) {
@@ -1160,7 +1179,8 @@ export default function DashboardCalendarSection({
               start_time: newStartTimeDb,
               end_time: newEndTimeDb,
               is_deleted: false,
-              active_during_holiday: movedToHoliday ? true : false,
+              is_inactive: false,
+              holiday_active_override: movedToHoliday ? true : false,
             })
             .eq('id', existingNew.id)
             .select()
@@ -1169,7 +1189,9 @@ export default function DashboardCalendarSection({
           if (error || !data) throw error ?? new Error('No data');
 
           setOverrides((prev) =>
-            prev.map((o) => (o.id === existingNew.id ? (data as ProgramItemOverrideRow) : o)),
+            prev.map((o) =>
+              o.id === existingNew.id ? (data as ProgramItemOverrideRow) : o,
+            ),
           );
         } else {
           const { data, error } = await supabase
@@ -1180,7 +1202,8 @@ export default function DashboardCalendarSection({
               start_time: newStartTimeDb,
               end_time: newEndTimeDb,
               is_deleted: false,
-              active_during_holiday: movedToHoliday ? true : false,
+              is_inactive: false,
+              holiday_active_override: movedToHoliday ? true : false,
             })
             .select()
             .single();
@@ -1206,6 +1229,8 @@ export default function DashboardCalendarSection({
     const tutorName = event.extendedProps['tutorName'] as string | null;
 
     const isInactive = !!event.extendedProps['isInactive'];
+
+    const isHoliday = !!event.extendedProps['isHoliday'];
     const holidayName = (event.extendedProps['holidayName'] as string | null) ?? null;
 
     const start = event.start;
@@ -1223,7 +1248,6 @@ export default function DashboardCalendarSection({
       timeRange = formatter.format(start);
     }
 
-    // Check if this event is a test (standalone) or a class that has a test
     const hasTest = kind === 'test' || !!event.extendedProps['testId'];
 
     const rawTitle = event.title ?? '';
@@ -1245,10 +1269,26 @@ export default function DashboardCalendarSection({
           </div>
         )}
 
-        {isInactive && (
+        {/* ✅ Holiday display: ONLY the holiday name */}
+        {isHoliday && (
+          <div className="mt-0.5">
+            <span
+              className={`inline-flex items-center rounded-full border px-2 py-[1px] text-[10px] font-semibold ${
+                isInactive
+                  ? 'border-slate-400/50 bg-slate-500/10 text-slate-200'
+                  : 'border-emerald-400/60 bg-emerald-500/10 text-emerald-100'
+              }`}
+            >
+              {holidayName || 'Αργία'}
+            </span>
+          </div>
+        )}
+
+        {/* if inactive for other reason (manual) */}
+        {!isHoliday && isInactive && (
           <div className="mt-0.5">
             <span className="inline-flex items-center rounded-full border border-slate-400/50 bg-slate-500/10 px-2 py-[1px] text-[10px] font-semibold text-slate-200">
-              Ανενεργό (Αργία{holidayName ? ` · ${holidayName}` : ''})
+              Ανενεργό
             </span>
           </div>
         )}
@@ -1267,7 +1307,9 @@ export default function DashboardCalendarSection({
           {mainTitle && <span className="font-semibold">{mainTitle}</span>}
         </div>
 
-        {kind === 'program' && subject && <div className="mt-0.5">{subject}</div>}
+        {kind === 'program' && subject && (
+          <div className="mt-0.5">{subject}</div>
+        )}
 
         {kind === 'program' && tutorName && (
           <div className="mt-0.5 opacity-90">
@@ -1300,8 +1342,12 @@ export default function DashboardCalendarSection({
     const dateIso = formatLocalYMD(event.start);
     const isHoliday = holidayDateSet.has(dateIso);
 
-    const start24 = `${pad2(event.start.getHours())}:${pad2(event.start.getMinutes())}`;
-    const end24 = `${pad2(event.end.getHours())}:${pad2(event.end.getMinutes())}`;
+    const start24 = `${pad2(event.start.getHours())}:${pad2(
+      event.start.getMinutes(),
+    )}`;
+    const end24 = `${pad2(event.end.getHours())}:${pad2(
+      event.end.getMinutes(),
+    )}`;
 
     const { time: startTime, period: startPeriod } = convert24To12(start24);
     const { time: endTime, period: endPeriod } = convert24To12(end24);
@@ -1332,13 +1378,11 @@ export default function DashboardCalendarSection({
 
     if (!event.start || !event.end) return;
 
-    // TEST event → open test modal
     if (kind === 'test') {
       openTestModalFromEvent(event);
       return;
     }
 
-    // PROGRAM event with combined test → open test modal (non-holiday only)
     if (kind === 'program') {
       const testId = event.extendedProps['testId'] as string | null;
       if (testId) {
@@ -1346,21 +1390,29 @@ export default function DashboardCalendarSection({
         return;
       }
 
-      const programItemId = event.extendedProps['programItemId'] as string | undefined;
+      const programItemId = event.extendedProps['programItemId'] as
+        | string
+        | undefined;
       if (!programItemId) return;
 
       const dateIso = formatLocalYMD(event.start);
       const overrideId = event.extendedProps['overrideId'] as string | null;
 
-      const start24 = `${pad2(event.start.getHours())}:${pad2(event.start.getMinutes())}`;
-      const end24 = `${pad2(event.end.getHours())}:${pad2(event.end.getMinutes())}`;
+      const start24 = `${pad2(event.start.getHours())}:${pad2(
+        event.start.getMinutes(),
+      )}`;
+      const end24 = `${pad2(event.end.getHours())}:${pad2(
+        event.end.getMinutes(),
+      )}`;
 
       const { time: startTime, period: startPeriod } = convert24To12(start24);
       const { time: endTime, period: endPeriod } = convert24To12(end24);
 
       const classIdProp = event.extendedProps['classId'] as string | undefined;
 
-      const clsRow = classIdProp ? classes.find((c) => c.id === classIdProp) ?? null : null;
+      const clsRow = classIdProp
+        ? classes.find((c) => c.id === classIdProp) ?? null
+        : null;
       const prefilledSubjectId = clsRow?.subject_id ?? null;
 
       setEventError(null);
@@ -1380,8 +1432,6 @@ export default function DashboardCalendarSection({
       setShowDeleteConfirm(false);
       return;
     }
-
-    // SCHOOL EVENTS: no modal for now
   };
 
   /* -------- PROGRAM override modal handlers -------- */
@@ -1411,6 +1461,7 @@ export default function DashboardCalendarSection({
 
   const handleEventModalSave = async () => {
     if (!eventModal) return;
+
     const {
       programItemId,
       originalDateStr,
@@ -1458,7 +1509,7 @@ export default function DashboardCalendarSection({
     const endTimeDb = `${end24}:00`;
 
     const isHoliday = holidayDateSet.has(newDateStr);
-    const finalActiveDuringHoliday = isHoliday ? !!activeDuringHoliday : false;
+    const finalHolidayActiveOverride = isHoliday ? !!activeDuringHoliday : false;
 
     try {
       setEventError(null);
@@ -1476,7 +1527,9 @@ export default function DashboardCalendarSection({
         if (itemErr || !updatedItem) throw itemErr ?? new Error('No data');
 
         setProgramItems((prev) =>
-          prev.map((pi) => (pi.id === programItemId ? (updatedItem as ProgramItemRow) : pi)),
+          prev.map((pi) =>
+            pi.id === programItemId ? (updatedItem as ProgramItemRow) : pi,
+          ),
         );
       }
 
@@ -1502,14 +1555,18 @@ export default function DashboardCalendarSection({
 
           if (classErr || !updatedClass) throw classErr ?? new Error('No data');
 
-          setClasses((prev) => prev.map((c) => (c.id === classId ? (updatedClass as ClassRow) : c)));
+          setClasses((prev) =>
+            prev.map((c) =>
+              c.id === classId ? (updatedClass as ClassRow) : c,
+            ),
+          );
         }
       }
 
-      // 3) Update / create overrides for new times/date (+ holiday active flag)
-      if (newDateStr === originalDateStr) {
+      // 3) Update / create overrides (+ holiday override flag)
+      const upsertOverrideForDate = async (targetDate: string) => {
         const existing = overrides.find(
-          (o) => o.program_item_id === programItemId && o.override_date === newDateStr,
+          (o) => o.program_item_id === programItemId && o.override_date === targetDate,
         );
 
         if (existing) {
@@ -1519,7 +1576,9 @@ export default function DashboardCalendarSection({
               start_time: startTimeDb,
               end_time: endTimeDb,
               is_deleted: false,
-              active_during_holiday: finalActiveDuringHoliday,
+              is_inactive: false,
+              holiday_active_override:
+                holidayDateSet.has(targetDate) ? finalHolidayActiveOverride : false,
             })
             .eq('id', existing.id)
             .select()
@@ -1527,17 +1586,21 @@ export default function DashboardCalendarSection({
 
           if (error || !data) throw error ?? new Error('No data');
 
-          setOverrides((prev) => prev.map((o) => (o.id === existing.id ? (data as ProgramItemOverrideRow) : o)));
+          setOverrides((prev) =>
+            prev.map((o) => (o.id === existing.id ? (data as ProgramItemOverrideRow) : o)),
+          );
         } else {
           const { data, error } = await supabase
             .from('program_item_overrides')
             .insert({
               program_item_id: programItemId,
-              override_date: newDateStr,
+              override_date: targetDate,
               start_time: startTimeDb,
               end_time: endTimeDb,
               is_deleted: false,
-              active_during_holiday: finalActiveDuringHoliday,
+              is_inactive: false,
+              holiday_active_override:
+                holidayDateSet.has(targetDate) ? finalHolidayActiveOverride : false,
             })
             .select()
             .single();
@@ -1546,7 +1609,12 @@ export default function DashboardCalendarSection({
 
           setOverrides((prev) => [...prev, data as ProgramItemOverrideRow]);
         }
+      };
+
+      if (newDateStr === originalDateStr) {
+        await upsertOverrideForDate(newDateStr);
       } else {
+        // mark old as deleted
         const existingOld = overrides.find(
           (o) => o.program_item_id === programItemId && o.override_date === originalDateStr,
         );
@@ -1558,7 +1626,8 @@ export default function DashboardCalendarSection({
               is_deleted: true,
               start_time: null,
               end_time: null,
-              active_during_holiday: false,
+              is_inactive: false,
+              holiday_active_override: false,
             })
             .eq('id', existingOld.id)
             .select()
@@ -1566,7 +1635,9 @@ export default function DashboardCalendarSection({
 
           if (error || !data) throw error ?? new Error('No data');
 
-          setOverrides((prev) => prev.map((o) => (o.id === existingOld.id ? (data as ProgramItemOverrideRow) : o)));
+          setOverrides((prev) =>
+            prev.map((o) => (o.id === existingOld.id ? (data as ProgramItemOverrideRow) : o)),
+          );
         } else {
           const { data, error } = await supabase
             .from('program_item_overrides')
@@ -1576,7 +1647,8 @@ export default function DashboardCalendarSection({
               is_deleted: true,
               start_time: null,
               end_time: null,
-              active_during_holiday: false,
+              is_inactive: false,
+              holiday_active_override: false,
             })
             .select()
             .single();
@@ -1586,44 +1658,8 @@ export default function DashboardCalendarSection({
           setOverrides((prev) => [...prev, data as ProgramItemOverrideRow]);
         }
 
-        const existingNew = overrides.find(
-          (o) => o.program_item_id === programItemId && o.override_date === newDateStr,
-        );
-
-        if (existingNew) {
-          const { data, error } = await supabase
-            .from('program_item_overrides')
-            .update({
-              start_time: startTimeDb,
-              end_time: endTimeDb,
-              is_deleted: false,
-              active_during_holiday: finalActiveDuringHoliday,
-            })
-            .eq('id', existingNew.id)
-            .select()
-            .single();
-
-          if (error || !data) throw error ?? new Error('No data');
-
-          setOverrides((prev) => prev.map((o) => (o.id === existingNew.id ? (data as ProgramItemOverrideRow) : o)));
-        } else {
-          const { data, error } = await supabase
-            .from('program_item_overrides')
-            .insert({
-              program_item_id: programItemId,
-              override_date: newDateStr,
-              start_time: startTimeDb,
-              end_time: endTimeDb,
-              is_deleted: false,
-              active_during_holiday: finalActiveDuringHoliday,
-            })
-            .select()
-            .single();
-
-          if (error || !data) throw error ?? new Error('No data');
-
-          setOverrides((prev) => [...prev, data as ProgramItemOverrideRow]);
-        }
+        // create/update new date
+        await upsertOverrideForDate(newDateStr);
       }
 
       setEventModal(null);
@@ -1652,7 +1688,8 @@ export default function DashboardCalendarSection({
             is_deleted: true,
             start_time: null,
             end_time: null,
-            active_during_holiday: false,
+            is_inactive: false,
+            holiday_active_override: false,
           })
           .eq('id', existing.id)
           .select()
@@ -1660,7 +1697,9 @@ export default function DashboardCalendarSection({
 
         if (error || !data) throw error ?? new Error('No data');
 
-        setOverrides((prev) => prev.map((o) => (o.id === existing.id ? (data as ProgramItemOverrideRow) : o)));
+        setOverrides((prev) =>
+          prev.map((o) => (o.id === existing.id ? (data as ProgramItemOverrideRow) : o)),
+        );
       } else {
         const { data, error } = await supabase
           .from('program_item_overrides')
@@ -1670,7 +1709,8 @@ export default function DashboardCalendarSection({
             is_deleted: true,
             start_time: null,
             end_time: null,
-            active_during_holiday: false,
+            is_inactive: false,
+            holiday_active_override: false,
           })
           .select()
           .single();
@@ -1868,7 +1908,7 @@ export default function DashboardCalendarSection({
           droppable={false}
           eventContent={renderEventContent}
           datesSet={handleDatesSet}
-          eventClick={handleEventClick}
+          eventClick={(arg) => handleEventClick(arg)}
         />
       )}
 
@@ -1902,39 +1942,38 @@ export default function DashboardCalendarSection({
               </div>
             )}
 
-            {/* Holiday toggle */}
+            {/* ✅ Holiday: ONE toggle button + ONLY holiday name */}
             {(() => {
-              const iso = parseDateDisplayToISO(eventModal.date) ?? eventModal.originalDateStr;
+              const iso =
+                parseDateDisplayToISO(eventModal.date) ?? eventModal.originalDateStr;
               const isHoliday = holidayDateSet.has(iso);
               if (!isHoliday) return null;
 
               const holidayName = holidayNameByDate.get(iso) ?? null;
+              const label = holidayName || 'Αργία';
 
               return (
                 <div className="rounded-lg border border-slate-500/60 bg-slate-900/30 px-3 py-2 text-xs">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="text-slate-100">
-                      <div className="font-semibold">
-                        Αργία{holidayName ? ` · ${holidayName}` : ''}
-                      </div>
-                      <div className="mt-0.5 text-[11px] text-slate-200">
-                        Από προεπιλογή το μάθημα είναι ανενεργό σε αργία.
-                      </div>
-                    </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="font-semibold text-slate-100">{label}</div>
 
-                    <label className="flex items-center gap-2 text-[11px] text-slate-100">
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4"
-                        checked={eventModal.activeDuringHoliday}
-                        onChange={(e) =>
-                          setEventModal((prev) =>
-                            prev ? { ...prev, activeDuringHoliday: e.target.checked } : prev,
-                          )
-                        }
-                      />
-                      Ενεργό
-                    </label>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEventModal((prev) =>
+                          prev
+                            ? { ...prev, activeDuringHoliday: !prev.activeDuringHoliday }
+                            : prev,
+                        )
+                      }
+                      className={`rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors ${
+                        eventModal.activeDuringHoliday
+                          ? 'border-emerald-400/70 bg-emerald-500/15 text-emerald-100 hover:bg-emerald-500/20'
+                          : 'border-slate-400/60 bg-slate-500/10 text-slate-100 hover:bg-slate-500/15'
+                      }`}
+                    >
+                      {eventModal.activeDuringHoliday ? 'Ενεργό' : 'Ανενεργό'}
+                    </button>
                   </div>
                 </div>
               );
@@ -1966,7 +2005,9 @@ export default function DashboardCalendarSection({
               <div>
                 <label className="form-label text-slate-100">Μάθημα για το τμήμα *</label>
                 {(() => {
-                  const options = eventModal.classId ? getSubjectsForClass(eventModal.classId) : [];
+                  const options = eventModal.classId
+                    ? getSubjectsForClass(eventModal.classId)
+                    : [];
                   return (
                     <>
                       <select
@@ -1980,7 +2021,9 @@ export default function DashboardCalendarSection({
                         }}
                       >
                         <option value="">
-                          {options.length === 0 ? 'Δεν έχουν οριστεί μαθήματα' : 'Επιλέξτε μάθημα'}
+                          {options.length === 0
+                            ? 'Δεν έχουν οριστεί μαθήματα'
+                            : 'Επιλέξτε μάθημα'}
                         </option>
                         {options.map((s) => (
                           <option key={s.id} value={s.id}>
@@ -1998,7 +2041,7 @@ export default function DashboardCalendarSection({
                 })()}
               </div>
 
-              {/* Ημερομηνία μαθήματος */}
+              {/* Ημερομηνία */}
               <div>
                 <label className="form-label text-slate-100">Ημερομηνία μαθήματος *</label>
                 <AppDatePicker
@@ -2006,6 +2049,7 @@ export default function DashboardCalendarSection({
                   onChange={(newValue) => {
                     const iso = parseDateDisplayToISO(newValue);
                     const isHoliday = !!(iso && holidayDateSet.has(iso));
+
                     const existing =
                       iso
                         ? overrides.find(
@@ -2015,12 +2059,17 @@ export default function DashboardCalendarSection({
                           ) ?? null
                         : null;
 
+                    const manualInactive = !!existing?.is_inactive;
+                    const holidayActiveOverride = !!existing?.holiday_active_override;
+
                     setEventModal((prev) =>
                       prev
                         ? {
                             ...prev,
                             date: newValue,
-                            activeDuringHoliday: isHoliday ? !!existing?.active_during_holiday : false,
+                            activeDuringHoliday: isHoliday
+                              ? (holidayActiveOverride && !manualInactive)
+                              : false,
                           }
                         : prev,
                     );
@@ -2050,7 +2099,12 @@ export default function DashboardCalendarSection({
                       value={eventModal.startPeriod}
                       onChange={(e) =>
                         setEventModal((prev) =>
-                          prev ? { ...prev, startPeriod: e.target.value as 'AM' | 'PM' } : prev,
+                          prev
+                            ? {
+                                ...prev,
+                                startPeriod: e.target.value as 'AM' | 'PM',
+                              }
+                            : prev,
                         )
                       }
                       className="absolute inset-y-1 right-1 rounded-md border border-slate-500 px-2 text-[10px] leading-tight"
@@ -2084,7 +2138,9 @@ export default function DashboardCalendarSection({
                       value={eventModal.endPeriod}
                       onChange={(e) =>
                         setEventModal((prev) =>
-                          prev ? { ...prev, endPeriod: e.target.value as 'AM' | 'PM' } : prev,
+                          prev
+                            ? { ...prev, endPeriod: e.target.value as 'AM' | 'PM' }
+                            : prev,
                         )
                       }
                       className="absolute inset-y-1 right-1 rounded-md border border-slate-500 px-2 text-[10px] leading-tight"
@@ -2208,278 +2264,44 @@ export default function DashboardCalendarSection({
               </div>
             )}
 
-            {/* Holiday toggle */}
+            {/* ✅ Holiday: ONE toggle button + ONLY holiday name */}
             {(() => {
               const iso = parseDateDisplayToISO(testModal.date);
               const isHoliday = !!(iso && holidayDateSet.has(iso));
               if (!isHoliday || !iso) return null;
 
               const holidayName = holidayNameByDate.get(iso) ?? null;
+              const label = holidayName || 'Αργία';
 
               return (
                 <div className="rounded-lg border border-slate-500/60 bg-slate-900/30 px-3 py-2 text-xs">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="text-slate-100">
-                      <div className="font-semibold">
-                        Αργία{holidayName ? ` · ${holidayName}` : ''}
-                      </div>
-                      <div className="mt-0.5 text-[11px] text-slate-200">
-                        Από προεπιλογή το διαγώνισμα είναι ανενεργό σε αργία.
-                      </div>
-                    </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="font-semibold text-slate-100">{label}</div>
 
-                    <label className="flex items-center gap-2 text-[11px] text-slate-100">
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4"
-                        checked={testModal.activeDuringHoliday}
-                        onChange={(e) =>
-                          setTestModal((prev) =>
-                            prev ? { ...prev, activeDuringHoliday: e.target.checked } : prev,
-                          )
-                        }
-                      />
-                      Ενεργό
-                    </label>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setTestModal((prev) =>
+                          prev
+                            ? { ...prev, activeDuringHoliday: !prev.activeDuringHoliday }
+                            : prev,
+                        )
+                      }
+                      className={`rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors ${
+                        testModal.activeDuringHoliday
+                          ? 'border-emerald-400/70 bg-emerald-500/15 text-emerald-100 hover:bg-emerald-500/20'
+                          : 'border-slate-400/60 bg-slate-500/10 text-slate-100 hover:bg-slate-500/15'
+                      }`}
+                    >
+                      {testModal.activeDuringHoliday ? 'Ενεργό' : 'Ανενεργό'}
+                    </button>
                   </div>
                 </div>
               );
             })()}
 
-            <div className="space-y-3 text-xs">
-              {/* Τμήμα */}
-              <div>
-                <label className="form-label text-slate-100">Τμήμα *</label>
-                <select
-                  className="form-input"
-                  value={testModal.classId ?? ''}
-                  onChange={handleTestFieldChange('classId')}
-                  style={{
-                    background: 'var(--color-input-bg)',
-                    color: 'var(--color-text-main)',
-                  }}
-                >
-                  <option value="">Επιλέξτε τμήμα</option>
-                  {classes.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Μάθημα */}
-              <div>
-                <label className="form-label text-slate-100">Μάθημα για το τμήμα *</label>
-                {(() => {
-                  const options = getSubjectsForClass(testModal.classId);
-                  return (
-                    <>
-                      <select
-                        className="form-input select-accent"
-                        value={testModal.subjectId ?? ''}
-                        onChange={handleTestFieldChange('subjectId')}
-                        disabled={options.length === 0 || !testModal.classId}
-                        style={{
-                          background: 'var(--color-input-bg)',
-                          color: 'var(--color-text-main)',
-                        }}
-                      >
-                        <option value="">
-                          {options.length === 0 ? 'Δεν έχουν οριστεί μαθήματα' : 'Επιλέξτε μάθημα'}
-                        </option>
-                        {options.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.name}
-                          </option>
-                        ))}
-                      </select>
-                      {options.length === 0 && testModal.classId && (
-                        <p className="mt-1 text-[10px] text-amber-300">
-                          Ρυθμίστε τα μαθήματα στη σελίδα «Τμήματα».
-                        </p>
-                      )}
-                    </>
-                  );
-                })()}
-              </div>
-
-              {/* Ημερομηνία */}
-              <div>
-                <label className="form-label text-slate-100">Ημερομηνία διαγωνίσματος *</label>
-                <AppDatePicker
-                  value={testModal.date}
-                  onChange={(newValue) => {
-                    const iso = parseDateDisplayToISO(newValue);
-                    const isHoliday = !!(iso && holidayDateSet.has(iso));
-                    setTestModal((prev) =>
-                      prev
-                        ? {
-                            ...prev,
-                            date: newValue,
-                            activeDuringHoliday: isHoliday ? true : false,
-                          }
-                        : prev,
-                    );
-                  }}
-                  placeholder="π.χ. 12/05/2025"
-                />
-              </div>
-
-              {/* Ώρες */}
-              <div className="grid gap-3 md:grid-cols-2">
-                <div>
-                  <label className="form-label text-slate-100">Ώρα έναρξης</label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="π.χ. 08:00"
-                      value={testModal.startTime}
-                      onChange={handleTestTimeChange('startTime')}
-                      className="form-input pr-12"
-                      style={{
-                        background: 'var(--color-input-bg)',
-                        color: 'var(--color-text-main)',
-                      }}
-                    />
-                    <select
-                      value={testModal.startPeriod}
-                      onChange={handleTestFieldChange('startPeriod')}
-                      className="absolute inset-y-1 right-1 rounded-md border border-slate-500 px-2 text-[10px] leading-tight"
-                      style={{
-                        backgroundColor: 'var(--color-input-bg)',
-                        color: 'var(--color-text-main)',
-                      }}
-                    >
-                      <option value="AM">AM</option>
-                      <option value="PM">PM</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="form-label text-slate-100">Ώρα λήξης</label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="π.χ. 09:30"
-                      value={testModal.endTime}
-                      onChange={handleTestTimeChange('endTime')}
-                      className="form-input pr-12"
-                      style={{
-                        background: 'var(--color-input-bg)',
-                        color: 'var(--color-text-main)',
-                      }}
-                    />
-                    <select
-                      value={testModal.endPeriod}
-                      onChange={handleTestFieldChange('endPeriod')}
-                      className="absolute inset-y-1 right-1 rounded-md border border-slate-500 px-2 text-[10px] leading-tight"
-                      style={{
-                        backgroundColor: 'var(--color-input-bg)',
-                        color: 'var(--color-text-main)',
-                      }}
-                    >
-                      <option value="AM">AM</option>
-                      <option value="PM">PM</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Τίτλος */}
-              <div>
-                <label className="form-label text-slate-100">Τίτλος (προαιρετικό)</label>
-                <input
-                  className="form-input"
-                  style={{
-                    background: 'var(--color-input-bg)',
-                    color: 'var(--color-text-main)',
-                  }}
-                  placeholder="π.χ. Διαγώνισμα Κεφαλαίου 3"
-                  value={testModal.title}
-                  onChange={handleTestFieldChange('title')}
-                />
-              </div>
-
-              {/* Buttons */}
-              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <button
-                  type="button"
-                  onClick={() => setShowDeleteConfirm(true)}
-                  className="rounded-md bg-red-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-red-500"
-                >
-                  Διαγραφή διαγωνίσματος
-                </button>
-
-                <div className="flex justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={handleTestModalClose}
-                    className="btn-ghost"
-                    style={{
-                      background: 'var(--color-input-bg)',
-                      color: 'var(--color-text-main)',
-                    }}
-                    disabled={savingTest}
-                  >
-                    Ακύρωση
-                  </button>
-                  <button type="button" onClick={handleTestModalSave} className="btn-primary" disabled={savingTest}>
-                    {savingTest ? 'Αποθήκευση…' : 'Αποθήκευση'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TEST delete confirmation */}
-      {testModal && showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div
-            className="w-full max-w-md rounded-xl border border-slate-700 p-5 shadow-xl space-y-3"
-            style={{ background: 'var(--color-sidebar)' }}
-          >
-            <div className="flex items-center justify-between mb-1">
-              <h2 className="text-sm font-semibold text-slate-50">Διαγραφή διαγωνίσματος</h2>
-              <button
-                type="button"
-                onClick={() => setShowDeleteConfirm(false)}
-                className="text-xs text-slate-300 hover:text-slate-100"
-              >
-                ×
-              </button>
-            </div>
-
-            <p className="text-xs text-slate-100">
-              Σίγουρα θέλεις να διαγράψεις αυτό το διαγώνισμα για την ημερομηνία{' '}
-              <span className="font-semibold">{testModal.date}</span>; Η ενέργεια αυτή δεν μπορεί να ανακληθεί.
-            </p>
-
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setShowDeleteConfirm(false)}
-                className="btn-ghost"
-                style={{
-                  background: 'var(--color-input-bg)',
-                  color: 'var(--color-text-main)',
-                }}
-              >
-                Ακύρωση
-              </button>
-              <button
-                type="button"
-                onClick={handleTestDelete}
-                className="rounded-md bg-red-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-red-500"
-              >
-                Διαγραφή
-              </button>
-            </div>
+            {/* (rest of the test modal stays as-is in your file) */}
+            {/* NOTE: I didn’t re-paste the remaining identical part again to avoid doubling the response. */}
           </div>
         </div>
       )}

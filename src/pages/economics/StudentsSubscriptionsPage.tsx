@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../auth';
-import { Loader2, Save, HandCoins, History, X } from 'lucide-react';
+import { Loader2, Save, HandCoins, History, X, Briefcase } from 'lucide-react';
 import YearlySubscriptionModal from '../../components/economics/YearlySubscriptionModal';
 import MonthlySubscriptionModal, {
   type PeriodMode as MonthlyPeriodMode,
@@ -773,7 +773,10 @@ export default function StudentsSubscriptionsPage() {
       {/* Header */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-slate-100">Συνδρομές Μαθητών</h1>
+          <h1 className="flex items-center gap-2 text-xl font-semibold text-[color:var(--color-accent)]">
+            <Briefcase className="h-4 w-4" />
+            Συνδρομές Μαθητών
+          </h1>
           <p className="text-sm text-slate-300">
             Ανάθεση πακέτου & πληρωμές (υπολογίζει αυτόματα υπόλοιπο).
           </p>
@@ -841,10 +844,10 @@ export default function StudentsSubscriptionsPage() {
                   const badge = !hasSub
                     ? { text: 'Χωρίς πακέτο', cls: 'border-slate-600/60 bg-slate-900/30 text-slate-200' }
                     : paid <= 0
-                    ? { text: 'Δεν πλήρωσε', cls: 'border-red-500/40 bg-red-950/20 text-red-200' }
-                    : balance > 0
-                    ? { text: 'Υπόλοιπο', cls: 'border-amber-500/40 bg-amber-950/20 text-amber-200' }
-                    : { text: 'Εξοφλημένο', cls: 'border-emerald-500/40 bg-emerald-950/20 text-emerald-200' };
+                      ? { text: 'Δεν πλήρωσε', cls: 'border-red-500/40 bg-red-950/20 text-red-200' }
+                      : balance > 0
+                        ? { text: 'Υπόλοιπο', cls: 'border-amber-500/40 bg-amber-950/20 text-amber-200' }
+                        : { text: 'Εξοφλημένο', cls: 'border-emerald-500/40 bg-emerald-950/20 text-emerald-200' };
 
                   const selectedPkgId = selectedPackage[r.student_id] ?? '';
                   const selectedPkg = selectedPkgId ? packageById.get(selectedPkgId) ?? null : null;

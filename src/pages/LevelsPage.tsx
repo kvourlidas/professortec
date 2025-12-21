@@ -3,7 +3,7 @@ import { useEffect, useState, useMemo } from 'react';
 import type { FormEvent } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, Layers } from 'lucide-react';
 
 type LevelRow = {
   id: string;
@@ -217,7 +217,10 @@ export default function LevelsPage() {
       {/* Header */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-base font-semibold text-slate-50">Επίπεδα</h1>
+          <h1 className="flex items-center gap-2 text-base font-semibold text-slate-50">
+            <Layers className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
+            Επίπεδα
+          </h1>
           <p className="text-xs text-slate-300">
             Προσθέστε επίπεδα όπως A1, A2, B1, B2 κτλ. για το σχολείο σας.
           </p>

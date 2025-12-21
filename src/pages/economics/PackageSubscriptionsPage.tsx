@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../auth';
-import { Loader2, Plus, Save, Trash2 } from 'lucide-react';
+import { Loader2, Plus, Save, Trash2, Package } from 'lucide-react';
 
 type PackageRow = {
     id: string;
@@ -251,7 +251,10 @@ export default function PackageSubscriptionsPage() {
         <div className="p-6">
             <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
-                    <h1 className="text-xl font-semibold text-slate-100">Πακέτα Συνδρομών</h1>
+                    <h1 className="flex items-center gap-2 text-xl font-semibold text-slate-100">
+                        <Package className="h-5 w-5" style={{ color: 'var(--color-accent)' }} />
+                        Πακέτα Συνδρομών
+                    </h1>
                     <p className="mt-1 text-sm text-slate-300">
                         Δημιούργησε κατηγορίες πακέτων όπως θέλεις (όνομα + τιμή).
                     </p>

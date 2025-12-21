@@ -9,6 +9,8 @@ import EventFormModal, {
   type SchoolEventForEdit,
 } from '../components/events/EventFormModal';
 import EditDeleteButtons from '../components/ui/EditDeleteButtons';
+import { CalendarDays } from 'lucide-react';
+
 
 type SchoolEventRow = {
   id: string;
@@ -299,7 +301,10 @@ export default function EventsPage() {
       {/* Header */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-base font-semibold text-slate-50">ΕΚΔΗΛΩΣΕΙΣ</h1>
+          <h1 className="flex items-center gap-2 text-base font-semibold text-slate-50">
+            <CalendarDays className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
+            Εκδηλώσεις
+          </h1>
           <p className="text-xs text-slate-300">
             Μοναδικές εκδηλώσεις σχολείου που εμφανίζονται και στο ημερολόγιο του Dashboard.
           </p>

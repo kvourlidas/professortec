@@ -5,6 +5,9 @@ import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
 import EditDeleteButtons from '../components/ui/EditDeleteButtons';
 import DatePickerField from '../components/ui/AppDatePicker';
+import { Users } from 'lucide-react';
+
+
 
 type TutorRow = {
   id: string;
@@ -12,8 +15,6 @@ type TutorRow = {
   full_name: string;
   date_of_birth: string | null; // ISO: yyyy-mm-dd
   afm: string | null;
-  salary_gross: number | null;
-  salary_net: number | null;
   phone: string | null;
   email: string | null;
   created_at: string;
@@ -25,8 +26,6 @@ type TutorFormState = {
   fullName: string;
   dateOfBirth: string; // dd/mm/yyyy (UI value for AppDatePicker)
   afm: string;
-  salaryGross: string;
-  salaryNet: string;
   phone: string;
   email: string;
 };
@@ -35,11 +34,12 @@ const emptyForm: TutorFormState = {
   fullName: '',
   dateOfBirth: '',
   afm: '',
-  salaryGross: '',
-  salaryNet: '',
   phone: '',
   email: '',
 };
+
+const TUTOR_SELECT =
+  'id, school_id, full_name, date_of_birth, afm, phone, email, created_at';
 
 // helper: convert "yyyy-mm-dd" -> "dd/mm/yyyy" (for table display)
 function formatDateToGreek(dateStr: string | null): string {
@@ -120,9 +120,7 @@ export default function TutorsPage() {
 
       const { data, error } = await supabase
         .from('tutors')
-        .select(
-          'id, school_id, full_name, date_of_birth, afm, salary_gross, salary_net, phone, email, created_at',
-        )
+        .select(TUTOR_SELECT)
         .eq('school_id', schoolId)
         .order('created_at', { ascending: true });
 
@@ -139,9 +137,7 @@ export default function TutorsPage() {
     load();
   }, [schoolId]);
 
-  const resetForm = () => {
-    setForm(emptyForm);
-  };
+  const resetForm = () => setForm(emptyForm);
 
   const openCreateModal = () => {
     resetForm();
@@ -158,11 +154,8 @@ export default function TutorsPage() {
 
     setForm({
       fullName: row.full_name ?? '',
-      // convert ISO from DB → dd/mm/yyyy for the picker
       dateOfBirth: row.date_of_birth ? isoToDisplay(row.date_of_birth) : '',
       afm: row.afm ?? '',
-      salaryGross: row.salary_gross != null ? String(row.salary_gross) : '',
-      salaryNet: row.salary_net != null ? String(row.salary_net) : '',
       phone: row.phone ?? '',
       email: row.email ?? '',
     });
@@ -180,9 +173,9 @@ export default function TutorsPage() {
 
   const handleFormChange =
     (field: keyof TutorFormState) =>
-    (e: ChangeEvent<HTMLInputElement>) => {
-      setForm((prev) => ({ ...prev, [field]: e.target.value }));
-    };
+      (e: ChangeEvent<HTMLInputElement>) => {
+        setForm((prev) => ({ ...prev, [field]: e.target.value }));
+      };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -198,11 +191,6 @@ export default function TutorsPage() {
     setSaving(true);
     setError(null);
 
-    const salaryGross =
-      form.salaryGross.trim() !== '' ? Number(form.salaryGross) : null;
-    const salaryNet =
-      form.salaryNet.trim() !== '' ? Number(form.salaryNet) : null;
-
     // convert dd/mm/yyyy from AppDatePicker -> ISO for DB
     const isoDob = displayToIso(form.dateOfBirth);
 
@@ -211,8 +199,6 @@ export default function TutorsPage() {
       full_name: fullNameTrimmed,
       date_of_birth: isoDob || null,
       afm: form.afm.trim() || null,
-      salary_gross: Number.isNaN(salaryGross) ? null : salaryGross,
-      salary_net: Number.isNaN(salaryNet) ? null : salaryNet,
       phone: form.phone.trim() || null,
       email: form.email.trim() || null,
     };
@@ -221,9 +207,7 @@ export default function TutorsPage() {
       const { data, error } = await supabase
         .from('tutors')
         .insert(payload)
-        .select(
-          'id, school_id, full_name, date_of_birth, afm, salary_gross, salary_net, phone, email, created_at',
-        )
+        .select(TUTOR_SELECT)
         .maybeSingle();
 
       setSaving(false);
@@ -243,16 +227,12 @@ export default function TutorsPage() {
           full_name: payload.full_name,
           date_of_birth: payload.date_of_birth,
           afm: payload.afm,
-          salary_gross: payload.salary_gross,
-          salary_net: payload.salary_net,
           phone: payload.phone,
           email: payload.email,
         })
         .eq('id', editingTutor.id)
         .eq('school_id', schoolId)
-        .select(
-          'id, school_id, full_name, date_of_birth, afm, salary_gross, salary_net, phone, email, created_at',
-        )
+        .select(TUTOR_SELECT)
         .maybeSingle();
 
       setSaving(false);
@@ -308,7 +288,7 @@ export default function TutorsPage() {
     setDeleteTarget(null);
   };
 
-  // 🔍 Filter tutors by any field
+  // 🔍 Filter tutors by any field (NO salaries πλέον)
   const filteredTutors = useMemo(() => {
     const q = normalizeText(search.trim());
     if (!q) return tutors;
@@ -319,8 +299,6 @@ export default function TutorsPage() {
         t.afm,
         t.phone,
         t.email,
-        t.salary_gross,
-        t.salary_net,
         t.date_of_birth,
         t.date_of_birth ? formatDateToGreek(t.date_of_birth) : '',
       ]
@@ -353,10 +331,11 @@ export default function TutorsPage() {
       {/* Header */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-base font-semibold text-slate-50">Καθηγητές</h1>
-          <p className="text-xs text-slate-300">
-            Διαχείριση καθηγητών, στοιχείων και μισθοδοσίας.
-          </p>
+          <h1 className="flex items-center gap-2 text-base font-semibold text-slate-50">
+            <Users className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
+            Καθηγητές
+          </h1>
+          <p className="text-xs text-slate-300">Διαχείριση καθηγητών και στοιχείων επικοινωνίας.</p>
           {schoolId && (
             <p className="mt-1 text-[11px] text-slate-400">
               Σύνολο καθηγητών:{' '}
@@ -408,7 +387,7 @@ export default function TutorsPage() {
         </div>
       )}
 
-      {/* ✅ Tutors table (same styling + pagination) */}
+      {/* ✅ Tutors table */}
       <div className="rounded-xl border border-slate-400/60 bg-slate-950/7 backdrop-blur-md shadow-lg overflow-hidden ring-1 ring-inset ring-slate-300/15">
         <div className="overflow-x-auto">
           {loading ? (
@@ -428,8 +407,6 @@ export default function TutorsPage() {
                   <th className="border-b border-slate-600 px-4 py-2 text-left">Ονοματεπώνυμο</th>
                   <th className="border-b border-slate-600 px-4 py-2 text-left">Ημερομηνία γέννησης</th>
                   <th className="border-b border-slate-600 px-4 py-2 text-left">ΑΦΜ</th>
-                  <th className="border-b border-slate-600 px-4 py-2 text-right">Μισθός μικτά</th>
-                  <th className="border-b border-slate-600 px-4 py-2 text-right">Μισθός καθαρά</th>
                   <th className="border-b border-slate-600 px-4 py-2 text-left">Τηλέφωνο</th>
                   <th className="border-b border-slate-600 px-4 py-2 text-left">Email</th>
                   <th className="border-b border-slate-600 px-4 py-2 text-right">Ενέργειες</th>
@@ -464,18 +441,6 @@ export default function TutorsPage() {
                         </span>
                       </td>
 
-                      <td className="border-b border-slate-700 px-4 py-2 text-right">
-                        <span className="text-xs" style={{ color: 'var(--color-text-td)' }}>
-                          {t.salary_gross != null ? t.salary_gross.toFixed(2) : '—'}
-                        </span>
-                      </td>
-
-                      <td className="border-b border-slate-700 px-4 py-2 text-right">
-                        <span className="text-xs" style={{ color: 'var(--color-text-td)' }}>
-                          {t.salary_net != null ? t.salary_net.toFixed(2) : '—'}
-                        </span>
-                      </td>
-
                       <td className="border-b border-slate-700 px-4 py-2 text-left">
                         <span className="text-xs" style={{ color: 'var(--color-text-td)' }}>
                           {t.phone || '—'}
@@ -504,7 +469,7 @@ export default function TutorsPage() {
           )}
         </div>
 
-        {/* ✅ Pagination footer (same as Students/Classes) */}
+        {/* ✅ Pagination footer */}
         {!loading && filteredTutors.length > 0 && (
           <div className="flex items-center justify-between gap-3 border-t border-slate-800/70 px-4 py-3">
             <div className="text-[11px] text-slate-300">
@@ -583,10 +548,9 @@ export default function TutorsPage() {
                 />
               </div>
 
-              {/* Ημερομηνία γέννησης με AppDatePicker */}
               <DatePickerField
                 label="Ημερομηνία γέννησης"
-                value={form.dateOfBirth} // dd/mm/yyyy
+                value={form.dateOfBirth}
                 onChange={(value) => setForm((prev) => ({ ...prev, dateOfBirth: value }))}
                 placeholder="π.χ. 24/12/1985"
                 id="tutor-dob"
@@ -604,39 +568,6 @@ export default function TutorsPage() {
                   value={form.afm}
                   onChange={handleFormChange('afm')}
                 />
-              </div>
-
-              <div className="grid gap-3 md:grid-cols-2">
-                <div>
-                  <label className="form-label text-slate-100">Μισθός μικτά</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    className="form-input"
-                    style={{
-                      background: 'var(--color-input-bg)',
-                      color: 'var(--color-text-main)',
-                    }}
-                    placeholder="π.χ. 1200.00"
-                    value={form.salaryGross}
-                    onChange={handleFormChange('salaryGross')}
-                  />
-                </div>
-                <div>
-                  <label className="form-label text-slate-100">Μισθός καθαρά</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    className="form-input"
-                    style={{
-                      background: 'var(--color-input-bg)',
-                      color: 'var(--color-text-main)',
-                    }}
-                    placeholder="π.χ. 900.00"
-                    value={form.salaryNet}
-                    onChange={handleFormChange('salaryNet')}
-                  />
-                </div>
               </div>
 
               <div>

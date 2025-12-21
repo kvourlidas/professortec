@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from 'react';
 import type { FormEvent } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
-import { Pencil, Trash2, Plus } from 'lucide-react';
+import { Pencil, Trash2, Plus, NotebookText } from 'lucide-react';
 import SubjectTutorsModal from '../components/subjects/SubjectTutorsModal';
 
 type LevelRow = {
@@ -366,7 +366,11 @@ export default function SubjectsPage() {
       {/* Header */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-base font-semibold text-slate-50">Μαθήματα</h1>
+          <h1 className="flex items-center gap-2 text-base font-semibold text-slate-50">
+            <NotebookText className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
+            Μαθήματα
+          </h1>
+
           <p className="text-xs text-slate-300">
             Διαχείριση μαθημάτων και των επιπέδων τους.
           </p>

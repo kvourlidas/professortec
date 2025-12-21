@@ -10,7 +10,7 @@ import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
 import AppDatePicker from '../components/ui/AppDatePicker';
 import EditDeleteButtons from '../components/ui/EditDeleteButtons';
-import { ArrowRight, ArrowLeft, Loader2, Search } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Loader2, Search, ClipboardList } from 'lucide-react';
 import { Users, Percent } from 'lucide-react';
 
 type ClassRow = {
@@ -450,25 +450,25 @@ export default function TestsPage() {
 
   const handleFieldChange =
     (field: keyof AddTestForm) =>
-    (e: ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
-      const value = e.target.value;
-      setForm((prev) => {
-        if (field === 'classId') {
-          return { ...prev, classId: value || null, subjectId: null };
-        }
-        if (field === 'subjectId') {
-          return { ...prev, subjectId: value || null };
-        }
-        return { ...prev, [field]: value as any };
-      });
-    };
+      (e: ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
+        const value = e.target.value;
+        setForm((prev) => {
+          if (field === 'classId') {
+            return { ...prev, classId: value || null, subjectId: null };
+          }
+          if (field === 'subjectId') {
+            return { ...prev, subjectId: value || null };
+          }
+          return { ...prev, [field]: value as any };
+        });
+      };
 
   const handleTimeChange =
     (field: 'startTime' | 'endTime') =>
-    (e: ChangeEvent<HTMLInputElement>) => {
-      const formatted = formatTimeInput(e.target.value);
-      setForm((prev) => ({ ...prev, [field]: formatted }));
-    };
+      (e: ChangeEvent<HTMLInputElement>) => {
+        const formatted = formatTimeInput(e.target.value);
+        setForm((prev) => ({ ...prev, [field]: formatted }));
+      };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -575,26 +575,26 @@ export default function TestsPage() {
 
   const handleEditFieldChange =
     (field: keyof EditTestForm) =>
-    (e: ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
-      const value = e.target.value;
-      setEditForm((prev) => {
-        if (!prev) return prev;
-        if (field === 'classId') {
-          return { ...prev, classId: value || null, subjectId: null };
-        }
-        if (field === 'subjectId') {
-          return { ...prev, subjectId: value || null };
-        }
-        return { ...prev, [field]: value as any };
-      });
-    };
+      (e: ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
+        const value = e.target.value;
+        setEditForm((prev) => {
+          if (!prev) return prev;
+          if (field === 'classId') {
+            return { ...prev, classId: value || null, subjectId: null };
+          }
+          if (field === 'subjectId') {
+            return { ...prev, subjectId: value || null };
+          }
+          return { ...prev, [field]: value as any };
+        });
+      };
 
   const handleEditTimeChange =
     (field: 'startTime' | 'endTime') =>
-    (e: ChangeEvent<HTMLInputElement>) => {
-      const formatted = formatTimeInput(e.target.value);
-      setEditForm((prev) => (prev ? { ...prev, [field]: formatted } : prev));
-    };
+      (e: ChangeEvent<HTMLInputElement>) => {
+        const formatted = formatTimeInput(e.target.value);
+        setEditForm((prev) => (prev ? { ...prev, [field]: formatted } : prev));
+      };
 
   const handleEditSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -940,7 +940,10 @@ export default function TestsPage() {
       {/* Header */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-base font-semibold text-slate-50">Διαγωνίσματα</h1>
+          <h1 className="flex items-center gap-2 text-base font-semibold text-slate-50">
+            <ClipboardList className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
+            Διαγωνίσματα
+          </h1>
           <p className="text-xs text-slate-300">
             Καταχώρησε διαγωνίσματα ανά τμήμα και μάθημα, ώστε να εμφανίζονται στο ημερολόγιο.
           </p>
