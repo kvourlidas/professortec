@@ -10,7 +10,6 @@ import { useAuth } from '../auth';
 import AppDatePicker from '../components/ui/AppDatePicker';
 import { CalendarDays } from 'lucide-react';
 
-
 type ClassRow = {
   id: string;
   school_id: string;
@@ -219,6 +218,16 @@ function formatTimeDisplay(t: string | null): string {
   return t.slice(0, 5);
 }
 
+// ✅ normalize greek/latin (remove accents, toLowerCase)
+function normalizeText(value: string | null | undefined): string {
+  if (!value) return '';
+  return value
+    .toString()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
 export default function ProgramPage() {
   const { profile } = useAuth();
   const schoolId = profile?.school_id ?? null;
@@ -237,6 +246,9 @@ export default function ProgramPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [dragClassId, setDragClassId] = useState<string | null>(null);
+
+  // ✅ NEW: search for available classes (left card)
+  const [classSearch, setClassSearch] = useState('');
 
   // add-slot modal
   const [addModalOpen, setAddModalOpen] = useState(false);
@@ -275,6 +287,24 @@ export default function ProgramPage() {
     subjects.forEach((s) => m.set(s.id, s));
     return m;
   }, [subjects]);
+
+  // ✅ NEW: filtered classes list for left card
+  const filteredClasses = useMemo(() => {
+    const q = normalizeText(classSearch.trim());
+    if (!q) return classes;
+
+    return classes.filter((cls) => {
+      const subj = cls.subject_id ? subjectById.get(cls.subject_id) : null;
+      const levelName = subj?.level_id ? (levelNameById.get(subj.level_id) ?? '') : '';
+      const tutorName = cls.tutor_id ? (tutorNameById.get(cls.tutor_id) ?? '') : '';
+
+      const composite = [cls.title, cls.subject, levelName, tutorName]
+        .filter(Boolean)
+        .join(' ');
+
+      return normalizeText(composite).includes(q);
+    });
+  }, [classes, classSearch, subjectById, levelNameById, tutorNameById]);
 
   const currentEditClass = useMemo(() => {
     if (!editForm) return null;
@@ -409,15 +439,12 @@ export default function ProgramPage() {
             console.warn('class_subjects load error', classSubjErr);
             setClassSubjects([]);
           } else {
-            setClassSubjects(
-              (classSubjectData ?? []) as ClassSubjectRow[],
-            );
+            setClassSubjects((classSubjectData ?? []) as ClassSubjectRow[]);
           }
         } catch (e) {
           console.warn('class_subjects not available', e);
           setClassSubjects([]);
         }
-
 
         // 4. Προαιρετικά relations: subject_tutors
         try {
@@ -430,9 +457,7 @@ export default function ProgramPage() {
             console.warn('subject_tutors load error', subjTutorErr);
             setSubjectTutors([]);
           } else {
-            setSubjectTutors(
-              (subjectTutorData ?? []) as SubjectTutorRow[],
-            );
+            setSubjectTutors((subjectTutorData ?? []) as SubjectTutorRow[]);
           }
         } catch (e) {
           console.warn('subject_tutors not available', e);
@@ -510,8 +535,6 @@ export default function ProgramPage() {
     return result;
   };
 
-
-
   // => ΌΛΟΙ οι καθηγητές που ανήκουν σε ένα μάθημα
   const getTutorsForSubject = (subjectId: string | null): TutorRow[] => {
     if (!subjectId) return [];
@@ -555,26 +578,26 @@ export default function ProgramPage() {
 
   const handleAddTimeChange =
     (field: 'startTime' | 'endTime') =>
-      (e: ChangeEvent<HTMLInputElement>) => {
-        const formatted = formatTimeInput(e.target.value);
-        setAddForm((prev) => ({ ...prev, [field]: formatted }));
-      };
+    (e: ChangeEvent<HTMLInputElement>) => {
+      const formatted = formatTimeInput(e.target.value);
+      setAddForm((prev) => ({ ...prev, [field]: formatted }));
+    };
 
   const handleAddFieldChange =
     (field: keyof AddSlotForm) =>
-      (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        const value = e.target.value;
-        setAddForm((prev) => {
-          if (field === 'subjectId') {
-            // όταν αλλάζει μάθημα, καθάρισε τον καθηγητή
-            return { ...prev, subjectId: value || null, tutorId: null };
-          }
-          if (field === 'tutorId') {
-            return { ...prev, tutorId: value || null };
-          }
-          return { ...prev, [field]: value as any };
-        });
-      };
+    (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+      const value = e.target.value;
+      setAddForm((prev) => {
+        if (field === 'subjectId') {
+          // όταν αλλάζει μάθημα, καθάρισε τον καθηγητή
+          return { ...prev, subjectId: value || null, tutorId: null };
+        }
+        if (field === 'tutorId') {
+          return { ...prev, tutorId: value || null };
+        }
+        return { ...prev, [field]: value as any };
+      });
+    };
 
   const handleConfirmAddSlot = async () => {
     if (!program) return;
@@ -693,29 +716,27 @@ export default function ProgramPage() {
 
   const handleEditTimeChange =
     (field: 'startTime' | 'endTime') =>
-      (e: ChangeEvent<HTMLInputElement>) => {
-        const formatted = formatTimeInput(e.target.value);
-        setEditForm((prev) =>
-          prev ? { ...prev, [field]: formatted } : prev,
-        );
-      };
+    (e: ChangeEvent<HTMLInputElement>) => {
+      const formatted = formatTimeInput(e.target.value);
+      setEditForm((prev) => (prev ? { ...prev, [field]: formatted } : prev));
+    };
 
   const handleEditFieldChange =
     (field: keyof EditSlotForm) =>
-      (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        const value = e.target.value;
-        setEditForm((prev) => {
-          if (!prev) return prev;
-          if (field === 'subjectId') {
-            // όταν αλλάζει μάθημα, καθάρισε τον καθηγητή
-            return { ...prev, subjectId: value || null, tutorId: null };
-          }
-          if (field === 'tutorId') {
-            return { ...prev, tutorId: value || null };
-          }
-          return { ...prev, [field]: value as any };
-        });
-      };
+    (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+      const value = e.target.value;
+      setEditForm((prev) => {
+        if (!prev) return prev;
+        if (field === 'subjectId') {
+          // όταν αλλάζει μάθημα, καθάρισε τον καθηγητή
+          return { ...prev, subjectId: value || null, tutorId: null };
+        }
+        if (field === 'tutorId') {
+          return { ...prev, tutorId: value || null };
+        }
+        return { ...prev, [field]: value as any };
+      });
+    };
 
   const handleConfirmEditSlot = async () => {
     if (!program || !editForm) return;
@@ -801,10 +822,7 @@ export default function ProgramPage() {
       // optimistic update
       setProgramItems((prev) => prev.filter((i) => i.id !== id));
 
-      const { error } = await supabase
-        .from('program_items')
-        .delete()
-        .eq('id', id);
+      const { error } = await supabase.from('program_items').delete().eq('id', id);
 
       if (error) {
         console.error('Failed to delete program_item', error);
@@ -841,9 +859,7 @@ export default function ProgramPage() {
           {program && (
             <p className="mt-1 text-[11px] text-slate-400">
               Ενεργό πρόγραμμα:{' '}
-              <span className="font-medium text-slate-100">
-                {program.name}
-              </span>
+              <span className="font-medium text-slate-100">{program.name}</span>
             </p>
           )}
         </div>
@@ -870,6 +886,19 @@ export default function ProgramPage() {
             <h2 className="mb-2 text-xs font-semibold text-slate-50">
               Διαθέσιμα τμήματα
             </h2>
+
+            {/* ✅ NEW: search input */}
+            <input
+              className="form-input mb-2 w-full"
+              style={{
+                background: 'var(--color-input-bg)',
+                color: 'var(--color-text-main)',
+              }}
+              placeholder="Αναζήτηση τμήματος..."
+              value={classSearch}
+              onChange={(e) => setClassSearch(e.target.value)}
+            />
+
             <p className="mb-2 text-[11px] text-slate-400">
               Σύρετε ένα τμήμα σε μια μέρα ή επιλέξτε μέρα από το dropdown για
               να το προσθέσετε.
@@ -880,9 +909,11 @@ export default function ProgramPage() {
                 Δεν υπάρχουν ακόμη τμήματα. Δημιουργήστε πρώτα τμήματα στη
                 σελίδα «Τμήματα».
               </p>
+            ) : filteredClasses.length === 0 ? (
+              <p className="text-[11px] text-slate-300">Δεν βρέθηκαν τμήματα.</p>
             ) : (
               <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1">
-                {classes.map((cls) => (
+                {filteredClasses.map((cls) => (
                   <div
                     key={cls.id}
                     className="flex items-center justify-between gap-2 rounded-md border border-slate-600 bg-slate-900/60 px-2 py-2 text-[11px] text-slate-100"
@@ -893,18 +924,15 @@ export default function ProgramPage() {
                     }
                   >
                     <div className="flex-1">
-                      <div className="font-semibold">
-                        {cls.title || 'Τμήμα'}
-                      </div>
+                      <div className="font-semibold">{cls.title || 'Τμήμα'}</div>
                       <div className="text-[10px] text-slate-300">
                         {(() => {
                           const subj = cls.subject_id
                             ? subjectById.get(cls.subject_id)
                             : null;
-                          const levelName =
-                            subj?.level_id
-                              ? levelNameById.get(subj.level_id) ?? ''
-                              : '';
+                          const levelName = subj?.level_id
+                            ? levelNameById.get(subj.level_id) ?? ''
+                            : '';
                           const tutorName = cls.tutor_id
                             ? tutorNameById.get(cls.tutor_id) ?? ''
                             : '';
@@ -977,29 +1005,24 @@ export default function ProgramPage() {
                         </div>
                       ) : (
                         itemsByDay[day.value].map((item) => {
-                          const cls = classes.find(
-                            (c) => c.id === item.class_id,
-                          );
+                          const cls = classes.find((c) => c.id === item.class_id);
                           if (!cls) return null;
 
                           const subjForItem =
                             item.subject_id
                               ? subjectById.get(item.subject_id)
                               : cls.subject_id
-                                ? subjectById.get(cls.subject_id)
-                                : null;
-                          const subjName =
-                            subjForItem?.name ?? cls.subject ?? '';
-                          const levelNameForItem =
-                            subjForItem?.level_id
-                              ? levelNameById.get(subjForItem.level_id) ?? ''
-                              : '';
-                          const tutorNameForItem =
-                            item.tutor_id
-                              ? tutorNameById.get(item.tutor_id) ?? ''
-                              : cls.tutor_id
-                                ? tutorNameById.get(cls.tutor_id) ?? ''
-                                : '';
+                              ? subjectById.get(cls.subject_id)
+                              : null;
+                          const subjName = subjForItem?.name ?? cls.subject ?? '';
+                          const levelNameForItem = subjForItem?.level_id
+                            ? levelNameById.get(subjForItem.level_id) ?? ''
+                            : '';
+                          const tutorNameForItem = item.tutor_id
+                            ? tutorNameById.get(item.tutor_id) ?? ''
+                            : cls.tutor_id
+                            ? tutorNameById.get(cls.tutor_id) ?? ''
+                            : '';
 
                           const infoParts: string[] = [];
                           if (subjName) infoParts.push(subjName);
@@ -1026,9 +1049,7 @@ export default function ProgramPage() {
 
                           const timeRange =
                             item.start_time && item.end_time
-                              ? `${formatTimeDisplay(
-                                item.start_time,
-                              )} – ${formatTimeDisplay(item.end_time)}`
+                              ? `${formatTimeDisplay(item.start_time)} – ${formatTimeDisplay(item.end_time)}`
                               : '';
 
                           return (
@@ -1056,9 +1077,7 @@ export default function ProgramPage() {
                                       id: item.id,
                                       classLabel,
                                       dayLabel:
-                                        DAY_LABEL_BY_VALUE[
-                                        item.day_of_week
-                                        ] ?? '',
+                                        DAY_LABEL_BY_VALUE[item.day_of_week] ?? '',
                                       timeRange,
                                     });
                                   }}
@@ -1113,8 +1132,7 @@ export default function ProgramPage() {
                   disabled
                   value={
                     addForm.classId
-                      ? classes.find((c) => c.id === addForm.classId)?.title ??
-                      ''
+                      ? classes.find((c) => c.id === addForm.classId)?.title ?? ''
                       : ''
                   }
                   className="form-input disabled:opacity-80"
@@ -1190,9 +1208,7 @@ export default function ProgramPage() {
                         className="form-input select-accent"
                         value={addForm.tutorId ?? ''}
                         onChange={handleAddFieldChange('tutorId')}
-                        disabled={
-                          !addForm.subjectId || options.length === 0
-                        }
+                        disabled={!addForm.subjectId || options.length === 0}
                         style={{
                           background: 'var(--color-input-bg)',
                           color: 'var(--color-text-main)',
@@ -1217,9 +1233,7 @@ export default function ProgramPage() {
               <div className="grid gap-3 md:grid-cols-2">
                 {/* Ώρα έναρξης */}
                 <div>
-                  <label className="form-label text-slate-100">
-                    Ώρα έναρξης
-                  </label>
+                  <label className="form-label text-slate-100">Ώρα έναρξης</label>
                   <div className="relative">
                     <input
                       type="text"
@@ -1250,9 +1264,7 @@ export default function ProgramPage() {
 
                 {/* Ώρα λήξης */}
                 <div>
-                  <label className="form-label text-slate-100">
-                    Ώρα λήξης
-                  </label>
+                  <label className="form-label text-slate-100">Ώρα λήξης</label>
                   <div className="relative">
                     <input
                       type="text"
@@ -1440,9 +1452,7 @@ export default function ProgramPage() {
                         className="form-input select-accent"
                         value={editForm.tutorId ?? ''}
                         onChange={handleEditFieldChange('tutorId')}
-                        disabled={
-                          !editForm.subjectId || options.length === 0
-                        }
+                        disabled={!editForm.subjectId || options.length === 0}
                         style={{
                           background: 'var(--color-input-bg)',
                           color: 'var(--color-text-main)',
@@ -1467,9 +1477,7 @@ export default function ProgramPage() {
               <div className="grid gap-3 md:grid-cols-2">
                 {/* Ώρα έναρξης */}
                 <div>
-                  <label className="form-label text-slate-100">
-                    Ώρα έναρξης
-                  </label>
+                  <label className="form-label text-slate-100">Ώρα έναρξης</label>
                   <div className="relative">
                     <input
                       type="text"
@@ -1500,9 +1508,7 @@ export default function ProgramPage() {
 
                 {/* Ώρα λήξης */}
                 <div>
-                  <label className="form-label text-slate-100">
-                    Ώρα λήξης
-                  </label>
+                  <label className="form-label text-slate-100">Ώρα λήξης</label>
                   <div className="relative">
                     <input
                       type="text"
