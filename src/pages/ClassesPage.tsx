@@ -106,7 +106,7 @@ export default function ClassesPage() {
         .from('classes')
         .select('id, school_id, title, subject, subject_id, tutor_id')
         .eq('school_id', schoolId)
-        .order('created_at', { ascending: false });
+        .order('title', { ascending: true });
 
       if (error) {
         console.error(error);

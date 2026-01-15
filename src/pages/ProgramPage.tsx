@@ -578,26 +578,26 @@ export default function ProgramPage() {
 
   const handleAddTimeChange =
     (field: 'startTime' | 'endTime') =>
-    (e: ChangeEvent<HTMLInputElement>) => {
-      const formatted = formatTimeInput(e.target.value);
-      setAddForm((prev) => ({ ...prev, [field]: formatted }));
-    };
+      (e: ChangeEvent<HTMLInputElement>) => {
+        const formatted = formatTimeInput(e.target.value);
+        setAddForm((prev) => ({ ...prev, [field]: formatted }));
+      };
 
   const handleAddFieldChange =
     (field: keyof AddSlotForm) =>
-    (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-      const value = e.target.value;
-      setAddForm((prev) => {
-        if (field === 'subjectId') {
-          // όταν αλλάζει μάθημα, καθάρισε τον καθηγητή
-          return { ...prev, subjectId: value || null, tutorId: null };
-        }
-        if (field === 'tutorId') {
-          return { ...prev, tutorId: value || null };
-        }
-        return { ...prev, [field]: value as any };
-      });
-    };
+      (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const value = e.target.value;
+        setAddForm((prev) => {
+          if (field === 'subjectId') {
+            // όταν αλλάζει μάθημα, καθάρισε τον καθηγητή
+            return { ...prev, subjectId: value || null, tutorId: null };
+          }
+          if (field === 'tutorId') {
+            return { ...prev, tutorId: value || null };
+          }
+          return { ...prev, [field]: value as any };
+        });
+      };
 
   const handleConfirmAddSlot = async () => {
     if (!program) return;
@@ -716,27 +716,27 @@ export default function ProgramPage() {
 
   const handleEditTimeChange =
     (field: 'startTime' | 'endTime') =>
-    (e: ChangeEvent<HTMLInputElement>) => {
-      const formatted = formatTimeInput(e.target.value);
-      setEditForm((prev) => (prev ? { ...prev, [field]: formatted } : prev));
-    };
+      (e: ChangeEvent<HTMLInputElement>) => {
+        const formatted = formatTimeInput(e.target.value);
+        setEditForm((prev) => (prev ? { ...prev, [field]: formatted } : prev));
+      };
 
   const handleEditFieldChange =
     (field: keyof EditSlotForm) =>
-    (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-      const value = e.target.value;
-      setEditForm((prev) => {
-        if (!prev) return prev;
-        if (field === 'subjectId') {
-          // όταν αλλάζει μάθημα, καθάρισε τον καθηγητή
-          return { ...prev, subjectId: value || null, tutorId: null };
-        }
-        if (field === 'tutorId') {
-          return { ...prev, tutorId: value || null };
-        }
-        return { ...prev, [field]: value as any };
-      });
-    };
+      (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const value = e.target.value;
+        setEditForm((prev) => {
+          if (!prev) return prev;
+          if (field === 'subjectId') {
+            // όταν αλλάζει μάθημα, καθάρισε τον καθηγητή
+            return { ...prev, subjectId: value || null, tutorId: null };
+          }
+          if (field === 'tutorId') {
+            return { ...prev, tutorId: value || null };
+          }
+          return { ...prev, [field]: value as any };
+        });
+      };
 
   const handleConfirmEditSlot = async () => {
     if (!program || !editForm) return;
@@ -882,7 +882,7 @@ export default function ProgramPage() {
       ) : (
         <div className="flex flex-col gap-4 lg:flex-row">
           {/* Left: διαθέσιμα τμήματα */}
-          <section className="rounded-lg border border-slate-700 bg-[color:var(--color-sidebar)] p-3 lg:w-[360px]">
+          <section className="rounded-2xl border border-slate-300/25 bg-slate-900/30 p-4 shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/5 lg:w-[360px]">
             <h2 className="mb-2 text-xs font-semibold text-slate-50">
               Διαθέσιμα τμήματα
             </h2>
@@ -916,7 +916,7 @@ export default function ProgramPage() {
                 {filteredClasses.map((cls) => (
                   <div
                     key={cls.id}
-                    className="flex items-center justify-between gap-2 rounded-md border border-slate-600 bg-slate-900/60 px-2 py-2 text-[11px] text-slate-100"
+                    className="flex items-center justify-between gap-2 rounded-xl border border-slate-300/20 bg-slate-950/20 px-3 py-2 text-[11px] text-slate-100 shadow-sm backdrop-blur-md hover:bg-slate-900/25 hover:border-slate-200/25 transition-colors"
                     draggable
                     onDragStart={() => setDragClassId(cls.id)}
                     onDragEnd={() =>
@@ -983,24 +983,35 @@ export default function ProgramPage() {
           </section>
 
           {/* Right: εβδομαδιαίο schema */}
-          <section className="flex-1 rounded-lg border border-slate-700 bg-[color:var(--color-sidebar)] p-3">
+          <section className="flex-1 rounded-2xl border border-slate-300/25 bg-slate-900/30 p-4 shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/5">
             <div className="overflow-x-auto">
               <div className="min-w-[720px] grid grid-cols-1 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
                 {DAY_OPTIONS.map((day) => (
                   <div
                     key={day.value}
-                    className="flex flex-col rounded-md border border-slate-600 bg-slate-900/40"
+                    className="flex flex-col rounded-2xl border border-slate-300/25 bg-slate-900/30 shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/5"
+                    style={{ backgroundImage: 'none' }} // ✅ kill any bg-image
                     onDragOver={(e) => {
                       if (dragClassId) e.preventDefault();
                     }}
                     onDrop={() => handleDropOnDay(day.value)}
                   >
-                    <div className="border-b border-slate-600 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-200">
+                    <div
+                      className="border-b border-white/10 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-100"
+                      style={{
+                        backgroundColor: 'rgba(2, 6, 23, 0.22)', // ✅ slightly darker strip
+                        backgroundImage: 'none',
+                      }}
+                    >
                       {day.label}
                     </div>
-                    <div className="flex-1 space-y-2 p-2 text-[11px] programs-card">
+
+                    <div
+                      className="flex-1 space-y-2 p-2.5 text-[11px] programs-card"
+                      style={{ backgroundColor: 'transparent', backgroundImage: 'none' }} // ✅ kill gradient
+                    >
                       {itemsByDay[day.value]?.length === 0 ? (
-                        <div className="rounded border border-dashed border-slate-600 px-2 py-6 text-[10px] text-center text-[#ffc947]">
+                        <div className="rounded-xl border border-dashed border-white/20 bg-white/5 px-2 py-6 text-[10px] text-center text-[#ffc947] shadow-inner backdrop-blur-lg">
                           Σύρετε τμήμα εδώ ή προσθέστε από αριστερά.
                         </div>
                       ) : (
@@ -1012,8 +1023,8 @@ export default function ProgramPage() {
                             item.subject_id
                               ? subjectById.get(item.subject_id)
                               : cls.subject_id
-                              ? subjectById.get(cls.subject_id)
-                              : null;
+                                ? subjectById.get(cls.subject_id)
+                                : null;
                           const subjName = subjForItem?.name ?? cls.subject ?? '';
                           const levelNameForItem = subjForItem?.level_id
                             ? levelNameById.get(subjForItem.level_id) ?? ''
@@ -1021,8 +1032,8 @@ export default function ProgramPage() {
                           const tutorNameForItem = item.tutor_id
                             ? tutorNameById.get(item.tutor_id) ?? ''
                             : cls.tutor_id
-                            ? tutorNameById.get(cls.tutor_id) ?? ''
-                            : '';
+                              ? tutorNameById.get(cls.tutor_id) ?? ''
+                              : '';
 
                           const infoParts: string[] = [];
                           if (subjName) infoParts.push(subjName);
@@ -1055,7 +1066,7 @@ export default function ProgramPage() {
                           return (
                             <div
                               key={item.id}
-                              className="rounded-md border border-slate-600 bg-slate-800/80 px-2 py-2 text-[11px] text-slate-100 flex flex-col gap-1 cursor-pointer hover:border-[var(--color-accent)]/80"
+                              className="rounded-xl border border-slate-300/20 bg-slate-950/25 px-3 py-2 text-[11px] text-slate-100 flex flex-col gap-1 cursor-pointer shadow-sm backdrop-blur-md hover:bg-slate-900/25 hover:border-[var(--color-accent)]/60 transition-colors"
                               onClick={() => openEditSlotModal(item)}
                             >
                               <div className="flex items-start justify-between gap-1">

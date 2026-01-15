@@ -341,12 +341,12 @@ const GradesPage = () => {
                 {/* LEFT COLUMN: Students + Tutors */}
                 <div className="w-full lg:w-1/2 xl:w-2/5 flex flex-col gap-4">
                     {/* Students card */}
-                    <div className="rounded-xl border border-slate-700 bg-slate-900/70 p-4 shadow-sm">
+                    <div className="rounded-2xl border border-slate-300/25 bg-slate-900/30 p-4 shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/5">
                         <div className="mb-4">
                             <label className="mb-1 block text-xs font-medium text-slate-400">
                                 Αναζήτηση μαθητή
                             </label>
-                            <div className="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-950/70 px-3 py-2 focus-within:ring-1 focus-within:ring-sky-500">
+                            <div className="flex items-center gap-2 rounded-xl border border-slate-300/20 bg-slate-950/30 px-3 py-2 shadow-sm focus-within:ring-1 focus-within:ring-sky-500">
                                 <Search className="h-4 w-4 text-slate-400" />
                                 <input
                                     type="text"
@@ -358,7 +358,7 @@ const GradesPage = () => {
                             </div>
                         </div>
 
-                        <div className="mt-2 max-h-[260px] overflow-y-auto rounded-lg border border-slate-800/80 bg-slate-950/40 custom-scrollbar">
+                        <div className="mt-2 max-h-[260px] overflow-y-auto rounded-xl border border-slate-300/20 bg-slate-950/20 shadow-inner ring-1 ring-inset ring-white/5 custom-scrollbar">
                             {loadingStudents ? (
                                 <div className="flex items-center justify-center py-8 text-xs text-slate-400">
                                     Φόρτωση μαθητών...
@@ -369,7 +369,7 @@ const GradesPage = () => {
                                 </div>
                             ) : (
                                 <table className="min-w-full text-left text-xs">
-                                    <thead className="sticky top-0 z-10 bg-slate-900/95">
+                                    <thead className="sticky top-0 z-10 bg-[#223449] border-b border-white/10">
                                         <tr>
                                             <th className="px-4 py-3 font-semibold text-slate-300">
                                                 Μαθητής
@@ -382,7 +382,7 @@ const GradesPage = () => {
 
                                     <tbody>
                                         {filteredStudents.map((s) => (
-                                            <tr key={s.id} className="border-t border-slate-800/80">
+                                            <tr key={s.id} className="border-t border-slate-300/10 hover:bg-slate-900/20 transition-colors">
                                                 <td className="px-4 py-2 align-middle text-[11px] font-medium text-slate-100">
                                                     {s.full_name}
                                                 </td>
@@ -408,12 +408,12 @@ const GradesPage = () => {
                     </div>
 
                     {/* Tutors card */}
-                    <div className="rounded-xl border border-slate-700 bg-slate-900/70 p-4 shadow-sm custom-scrollbar">
+                    <div className="rounded-2xl border border-slate-300/25 bg-slate-900/30 p-4 shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/5 custom-scrollbar">
                         <div className="mb-4">
                             <label className="mb-1 block text-xs font-medium text-slate-400">
                                 Αναζήτηση καθηγητή
                             </label>
-                            <div className="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-950/70 px-3 py-2 focus-within:ring-1 focus-within:ring-sky-500">
+                            <div className="flex items-center gap-2 rounded-xl border border-slate-300/20 bg-slate-950/30 px-3 py-2 shadow-sm focus-within:ring-1 focus-within:ring-sky-500">
                                 <Search className="h-4 w-4 text-slate-400" />
                                 <input
                                     type="text"
@@ -425,7 +425,7 @@ const GradesPage = () => {
                             </div>
                         </div>
 
-                        <div className="mt-2 max-h-[260px] overflow-y-auto rounded-lg border border-slate-800/80 bg-slate-950/40 custom-scrollbar">
+                        <div className="mt-2 max-h-[260px] overflow-y-auto rounded-xl border border-slate-300/20 bg-slate-950/20 shadow-inner ring-1 ring-inset ring-white/5 custom-scrollbar">
                             {loadingTutors ? (
                                 <div className="flex items-center justify-center py-8 text-xs text-slate-400">
                                     Φόρτωση καθηγητών...
@@ -436,7 +436,7 @@ const GradesPage = () => {
                                 </div>
                             ) : (
                                 <table className="min-w-full text-left text-xs">
-                                    <thead className="sticky top-0 z-10 bg-slate-900/95">
+                                    <thead className="sticky top-0 z-10 bg-[#223449] border-b border-white/10">
                                         <tr>
                                             <th className="px-4 py-3 font-semibold text-slate-300">
                                                 Καθηγητής

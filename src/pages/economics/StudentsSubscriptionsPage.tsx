@@ -762,7 +762,7 @@ export default function StudentsSubscriptionsPage() {
     if (isHourlyPackageName(pkgName)) {
       const s = (startsOn[studentId] ?? '').trim() || isoToDisplayDate(sub?.starts_on);
       const hrs = sub ? Number((sub as any).used_hours ?? 0) : 0;
-      return s ? `Από ${s} · ${money(hrs)} ώρες` : '—';
+      return s ? `Από ${s} · ${money(Math.abs(hrs))} ώρες` : '—';
     }
 
     return '—';
@@ -773,8 +773,8 @@ export default function StudentsSubscriptionsPage() {
       {/* Header */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="flex items-center gap-2 text-xl font-semibold text-[color:var(--color-accent)]">
-            <Briefcase className="h-4 w-4" />
+          <h1 className="flex items-center gap-2 text-xl font-semibold text-slate-50">
+            <Briefcase className="h-4 w-4 text-[color:var(--color-accent)]" />
             Συνδρομές Μαθητών
           </h1>
           <p className="text-sm text-slate-300">
@@ -834,20 +834,41 @@ export default function StudentsSubscriptionsPage() {
 
                   const hasSub = !!r.sub;
                   const paid = r.paid;
-                  const balance = r.balance;
 
+                  // detect hourly (use saved pkg name; safe)
+                  const pkgNameForLogic = r.sub?.package_name ?? '';
+                  const isHourly = isHourlyPackageName(pkgNameForLogic);
+
+                  // billed amount: for hourly we prefer charge_amount (can be negative from view)
+                  const billedRaw = r.sub ? Number((r.sub as any).charge_amount ?? r.sub.price ?? 0) : 0;
+                  const billed = !hasSub ? 0 : isHourly ? Math.abs(billedRaw) : billedRaw;
+
+                  // ✅ SIMPLE hourly balance rule: what he owes
+                  const computedBalance = !hasSub ? 0 : isHourly ? Math.max(0, billed - paid) : Number(r.balance ?? 0);
+
+                  // 👇 ADD THIS LINE HERE (EXACTLY HERE)
+                  const displayPrice = !hasSub
+                    ? 0
+                    : isHourly
+                      ? Number(r.sub?.price ?? 0) // hourly RATE from packages
+                      : billed;
+
+                  // UI classes
                   const paidCls =
                     !hasSub ? 'text-slate-400' : paid > 0 ? 'text-emerald-200' : 'text-slate-300';
-                  const balanceCls =
-                    !hasSub ? 'text-slate-400' : balance > 0 ? 'text-amber-200' : 'text-emerald-200';
 
+                  const balanceCls =
+                    !hasSub ? 'text-slate-400' : computedBalance > 0 ? 'text-amber-200' : 'text-emerald-200';
+
+                  // Status badge (SIMPLE)
                   const badge = !hasSub
                     ? { text: 'Χωρίς πακέτο', cls: 'border-slate-600/60 bg-slate-900/30 text-slate-200' }
-                    : paid <= 0
-                      ? { text: 'Δεν πλήρωσε', cls: 'border-red-500/40 bg-red-950/20 text-red-200' }
-                      : balance > 0
+                    : paid <= 0 && billed > 0
+                      ? { text: 'Ανεξόφλητο', cls: 'border-red-500/40 bg-red-950/20 text-red-200' }
+                      : computedBalance > 0
                         ? { text: 'Υπόλοιπο', cls: 'border-amber-500/40 bg-amber-950/20 text-amber-200' }
                         : { text: 'Εξοφλημένο', cls: 'border-emerald-500/40 bg-emerald-950/20 text-emerald-200' };
+
 
                   const selectedPkgId = selectedPackage[r.student_id] ?? '';
                   const selectedPkg = selectedPkgId ? packageById.get(selectedPkgId) ?? null : null;
@@ -857,9 +878,6 @@ export default function StudentsSubscriptionsPage() {
                     selectedPkg?.name ?? r.sub?.package_name,
                     r.sub,
                   );
-
-                  // ✅ show computed billed amount (hourly uses charge_amount)
-                  const billedAmount = r.sub ? Number((r.sub as any).charge_amount ?? r.sub.price ?? 0) : 0;
 
                   return (
                     <tr key={r.student_id} className={`${rowBg} hover:bg-slate-800/40 transition-colors`}>
@@ -909,15 +927,16 @@ export default function StudentsSubscriptionsPage() {
                       </td>
 
                       <td className="border-b border-slate-700 px-4 py-2 align-middle text-right text-slate-100">
-                        {r.sub ? `${money(billedAmount)} ${CURRENCY_SYMBOL}` : '—'}
+                        {r.sub ? `${money(displayPrice)} ${CURRENCY_SYMBOL}${isHourly ? ' / ώρα' : ''}` : '—'}
                       </td>
+
 
                       <td className={`border-b border-slate-700 px-4 py-2 align-middle text-right ${paidCls}`}>
                         {r.sub ? `${money(paid)} ${CURRENCY_SYMBOL}` : '—'}
                       </td>
 
                       <td className={`border-b border-slate-700 px-4 py-2 align-middle text-right ${balanceCls}`}>
-                        {r.sub ? `${money(balance)} ${CURRENCY_SYMBOL}` : '—'}
+                        {r.sub ? `${money(computedBalance)} ${CURRENCY_SYMBOL}` : '—'}
                       </td>
 
                       <td className="border-b border-slate-700 px-4 py-2 align-middle">

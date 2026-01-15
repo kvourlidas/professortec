@@ -127,7 +127,7 @@ export default function SubjectsPage() {
         .from('subjects')
         .select('id, school_id, name, level_id, created_at')
         .eq('school_id', schoolId)
-        .order('created_at', { ascending: true });
+        .order('name', { ascending: true });
 
       if (error) {
         console.error(error);
@@ -258,7 +258,9 @@ export default function SubjectsPage() {
         return;
       }
 
-      setSubjects((prev) => [...prev, data as SubjectRow]);
+      setSubjects((prev) =>
+        [...prev, data as SubjectRow].sort((a, b) => a.name.localeCompare(b.name, 'el')),
+      );
       closeModal();
     } else if (modalMode === 'edit' && editingSubject) {
       const { data, error } = await supabase

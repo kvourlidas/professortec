@@ -7,7 +7,6 @@ import EditDeleteButtons from '../components/ui/EditDeleteButtons';
 import DatePickerField from '../components/ui/AppDatePicker';
 import { Users } from 'lucide-react';
 
-
 type LevelRow = {
   id: string;
   school_id: string;
@@ -22,6 +21,7 @@ type StudentRow = {
   date_of_birth: string | null;
   phone: string | null;
   email: string | null;
+  special_notes: string | null; // ✅ NEW
   level_id: string | null;
 
   father_name: string | null;
@@ -38,7 +38,7 @@ type StudentRow = {
 };
 
 const STUDENT_SELECT = `
-  id, school_id, full_name, date_of_birth, phone, email, level_id,
+  id, school_id, full_name, date_of_birth, phone, email, special_notes, level_id,
   father_name, father_date_of_birth, father_phone, father_email,
   mother_name, mother_date_of_birth, mother_phone, mother_email,
   created_at
@@ -113,6 +113,7 @@ export default function StudentsPage() {
   const [dateOfBirth, setDateOfBirth] = useState(''); // dd/mm/yyyy
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
+  const [specialNotes, setSpecialNotes] = useState(''); // ✅ NEW
   const [levelId, setLevelId] = useState('');
 
   // Father
@@ -180,7 +181,7 @@ export default function StudentsPage() {
         .from('students')
         .select(STUDENT_SELECT)
         .eq('school_id', schoolId)
-        .order('created_at', { ascending: true });
+        .order('full_name', { ascending: true });
 
       if (dbError) {
         console.error(dbError);
@@ -200,6 +201,7 @@ export default function StudentsPage() {
     setDateOfBirth('');
     setPhone('');
     setEmail('');
+    setSpecialNotes(''); // ✅ NEW
     setLevelId('');
 
     setFatherName('');
@@ -232,6 +234,7 @@ export default function StudentsPage() {
     setDateOfBirth(student.date_of_birth ? isoToDisplay(student.date_of_birth) : '');
     setPhone(student.phone ?? '');
     setEmail(student.email ?? '');
+    setSpecialNotes(student.special_notes ?? ''); // ✅ NEW
     setLevelId(student.level_id ?? '');
 
     setFatherName(student.father_name ?? '');
@@ -275,6 +278,7 @@ export default function StudentsPage() {
       date_of_birth: displayToIso(dateOfBirth) || null,
       phone: phone.trim() || null,
       email: email.trim() || null,
+      special_notes: specialNotes.trim() || null, // ✅ NEW
       level_id: levelId || null,
 
       father_name: fatherName.trim() || null,
@@ -311,6 +315,7 @@ export default function StudentsPage() {
             date_of_birth: payload.date_of_birth,
             phone: payload.phone,
             email: payload.email,
+            special_notes: payload.special_notes, // ✅ NEW
             level_id: payload.level_id,
 
             father_name: payload.father_name,
@@ -390,6 +395,7 @@ export default function StudentsPage() {
         levelName,
         s.phone,
         s.email,
+        s.special_notes, // ✅ NEW (searchable)
         s.date_of_birth,
         s.date_of_birth ? formatDateToGreek(s.date_of_birth) : '',
 
@@ -524,6 +530,12 @@ export default function StudentsPage() {
                   </th>
                   <th className="border-b border-slate-700 px-4 py-2 text-left">Τηλέφωνο</th>
                   <th className="border-b border-slate-700 px-4 py-2 text-left">Email</th>
+
+                  {/* ✅ NEW COLUMN */}
+                  <th className="border-b border-slate-700 px-4 py-2 text-left">
+                    Ειδικές σημειώσεις
+                  </th>
+
                   <th className="border-b border-slate-700 px-4 py-2 text-right">Ενέργειες</th>
                 </tr>
               </thead>
@@ -544,7 +556,10 @@ export default function StudentsPage() {
                       className={`${rowBg} backdrop-blur-sm hover:bg-slate-800/40 transition-colors`}
                     >
                       <td className="border-b border-slate-800/70 px-4 py-2 text-left">
-                        <span className="text-xs font-medium" style={{ color: 'var(--color-text-td)' }}>
+                        <span
+                          className="text-xs font-medium"
+                          style={{ color: 'var(--color-text-td)' }}
+                        >
                           {s.full_name}
                         </span>
                       </td>
@@ -570,6 +585,13 @@ export default function StudentsPage() {
                       <td className="border-b border-slate-800/70 px-4 py-2 text-left">
                         <span className="text-xs" style={{ color: 'var(--color-text-td)' }}>
                           {s.email || '—'}
+                        </span>
+                      </td>
+
+                      {/* ✅ NEW CELL */}
+                      <td className="border-b border-slate-800/70 px-4 py-2 text-left">
+                        <span className="text-xs" style={{ color: 'var(--color-text-td)' }}>
+                          {s.special_notes && s.special_notes.trim() ? s.special_notes : '—'}
                         </span>
                       </td>
 
@@ -648,7 +670,8 @@ export default function StudentsPage() {
               <div>
                 <h2 className="text-sm font-semibold text-slate-50">Πληροφορίες γονέων</h2>
                 <p className="mt-0.5 text-[11px] text-slate-300">
-                  Μαθητής: <span className="text-slate-100 font-medium">{infoStudent.full_name}</span>
+                  Μαθητής:{' '}
+                  <span className="text-slate-100 font-medium">{infoStudent.full_name}</span>
                 </p>
               </div>
 
@@ -710,20 +733,22 @@ export default function StudentsPage() {
               <button
                 type="button"
                 onClick={() => setModalTab('student')}
-                className={`px-3 py-1 rounded-full border text-xs ${modalTab === 'student'
+                className={`px-3 py-1 rounded-full border text-xs ${
+                  modalTab === 'student'
                     ? 'bg-blue-600 border-blue-500 text-white'
                     : 'bg-slate-800 border-slate-600 text-slate-200'
-                  }`}
+                }`}
               >
                 Μαθητής
               </button>
               <button
                 type="button"
                 onClick={() => setModalTab('parents')}
-                className={`px-3 py-1 rounded-full border text-xs ${modalTab === 'parents'
+                className={`px-3 py-1 rounded-full border text-xs ${
+                  modalTab === 'parents'
                     ? 'bg-blue-600 border-blue-500 text-white'
                     : 'bg-slate-800 border-slate-600 text-slate-200'
-                  }`}
+                }`}
               >
                 Γονείς
               </button>
@@ -788,6 +813,18 @@ export default function StudentsPage() {
                       placeholder="π.χ. student@example.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
+                    />
+                  </div>
+
+                  {/* ✅ NEW FIELD */}
+                  <div>
+                    <label className="form-label text-slate-100">Ειδικές σημειώσεις</label>
+                    <input
+                      className="form-input"
+                      style={{ background: 'var(--color-input-bg)', color: 'var(--color-text-main)' }}
+                      placeholder="π.χ. αλλεργίες / παρατηρήσεις / ειδικές ανάγκες"
+                      value={specialNotes}
+                      onChange={(e) => setSpecialNotes(e.target.value)}
                     />
                   </div>
                 </>

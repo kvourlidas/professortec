@@ -475,11 +475,16 @@
 }
 
 .programs-card {
-  background:
-    radial-gradient(circle at top left, rgba(37, 99, 235, 0.22), transparent),
-    var(--color-sidebar);
-  border-color: rgba(37, 99, 235, 0.55);
+  /* glassy, single tone (slightly darker than page bg) */
+  background: rgba(15, 23, 42, 0.22);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+
+  /* subtle inner depth like your left card */
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
+
 
 /* 🔹 Dark slim scrollbar for lists */
 .custom-scrollbar {

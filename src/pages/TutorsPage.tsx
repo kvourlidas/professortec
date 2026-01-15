@@ -122,7 +122,7 @@ export default function TutorsPage() {
         .from('tutors')
         .select(TUTOR_SELECT)
         .eq('school_id', schoolId)
-        .order('created_at', { ascending: true });
+        .order('full_name', { ascending: true });
 
       if (error) {
         console.error(error);

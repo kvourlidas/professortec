@@ -12,6 +12,7 @@ import {
   Pencil,
   ChevronRight,
   ChevronLeft,
+  Search, // ✅ add this
 } from 'lucide-react';
 import ConfirmActionModal from '../../components/ui/ConfirmActionModal';
 
@@ -422,8 +423,8 @@ export default function TutorsPaymentsPage() {
         notes: bonusDesc?.trim()
           ? bonusDesc.trim()
           : bonusKind === 'percent'
-          ? `Μπόνους ${money(bonusValue)}%`
-          : `Μπόνους ${money(bonusValue)} ${CURRENCY_SYMBOL}`,
+            ? `Μπόνους ${money(bonusValue)}%`
+            : `Μπόνους ${money(bonusValue)} ${CURRENCY_SYMBOL}`,
       });
 
       setBonusValue(0);
@@ -558,20 +559,26 @@ export default function TutorsPaymentsPage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
         {/* LEFT */}
         <div className="lg:col-span-4">
-          <div className="rounded-xl border border-slate-800/80 bg-slate-950/40 p-3">
+          <div className="rounded-2xl border border-slate-300/25 bg-slate-900/30 p-4 shadow-lg backdrop-blur-md ring-1 ring-inset ring-white/5">
             <div className="flex items-center justify-between">
               <div className="text-sm font-semibold text-slate-100">Καθηγητές</div>
               <div className="text-[11px] text-slate-400">{tutors.length}</div>
             </div>
 
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Αναζήτηση..."
-              className="mt-2 w-full rounded-lg border border-slate-800/80 bg-slate-900/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500"
-            />
+            <div className="mt-4">
+              <label className="mb-1 block text-xs font-medium text-slate-400">Αναζήτηση καθηγητή</label>
+              <div className="flex items-center gap-2 rounded-xl border border-slate-300/20 bg-slate-950/30 px-3 py-2 shadow-sm focus-within:ring-1 focus-within:ring-sky-500">
+                <Search className="h-4 w-4 text-slate-400" />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Πληκτρολόγησε όνομα καθηγητή..."
+                  className="h-7 w-full bg-transparent text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none"
+                />
+              </div>
+            </div>
 
-            <div className="mt-3 max-h-[520px] overflow-y-auto rounded-lg border border-slate-800/80 bg-slate-950/40 custom-scrollbar">
+            <div className="mt-3 max-h-[520px] overflow-y-auto rounded-xl border border-slate-300/20 bg-slate-950/20 shadow-inner ring-1 ring-inset ring-white/5 custom-scrollbar">
               {filteredTutors.map((t) => {
                 const p = profilesMap[t.id];
                 const active = t.id === selectedTutorId;
@@ -580,8 +587,8 @@ export default function TutorsPaymentsPage() {
                   <div
                     key={t.id}
                     className={[
-                      'flex w-full items-start justify-between gap-3 border-b border-slate-900/60 px-3 py-2 text-left',
-                      active ? 'bg-slate-900/70' : 'hover:bg-slate-900/40',
+                      'flex w-full items-start justify-between gap-3 border-t border-slate-300/10 px-3 py-2 text-left transition-colors',
+                      active ? 'bg-slate-900/20' : 'hover:bg-slate-900/20',
                     ].join(' ')}
                   >
                     <div className="min-w-0">
