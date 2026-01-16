@@ -4,7 +4,6 @@ import DashboardMetricsSection from '../components/dashboard/DashboardMetricsSec
 import DashboardMonthlyTestsAvgGradesSection from '../components/dashboard/DashboardMonthlyTestsAvgGradesSection';
 import DashboardNotesSection from '../components/dashboard/DashboardNotesSection';
 import DashboardCalendarSection from '../components/dashboard/DashboardCalendarSection';
-import DashboardStudentsByClassCard from '../components/dashboard/DashboardStudentsByClassCard';
 
 export default function DashboardPage() {
   const { profile } = useAuth();
@@ -12,11 +11,10 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Top row: 3 compact widgets */}
-      <div className="grid gap-4 lg:grid-cols-3">
+      {/* Top row: 2 widgets */}
+      <div className="grid gap-4 lg:grid-cols-2">
         <DashboardMetricsSection schoolId={schoolId} />
         <DashboardMonthlyTestsAvgGradesSection schoolId={schoolId} />
-        <DashboardStudentsByClassCard schoolId={schoolId} />
       </div>
 
       <DashboardNotesSection schoolId={schoolId} />

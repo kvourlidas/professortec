@@ -21,6 +21,13 @@ type StudentTestGradeRow = {
   test_name: string | null;
   test_date: string | null; // date
   grade: number | null;
+  // ✅ we assume this exists to filter by subject
+  subject_id?: string | null;
+};
+
+type SubjectRow = {
+  id: string;
+  title: string | null;
 };
 
 type ChartRow = {
@@ -187,16 +194,23 @@ export default function DashboardMonthlyTestsAvgGradesSection({ schoolId }: Prop
   const [openMonth, setOpenMonth] = useState(false);
   const [openYear, setOpenYear] = useState(false);
 
+  // ✅ Subjects multi-select
+  const [subjects, setSubjects] = useState<SubjectRow[]>([]);
+  const [selectedSubjectIds, setSelectedSubjectIds] = useState<string[]>([]);
+  const [openSubjects, setOpenSubjects] = useState(false);
+
   const monthWrapRef = useRef<HTMLDivElement | null>(null);
   const yearWrapRef = useRef<HTMLDivElement | null>(null);
+  const subjectsWrapRef = useRef<HTMLDivElement | null>(null);
 
   useOutsideClose(
-    [monthWrapRef, yearWrapRef],
+    [monthWrapRef, yearWrapRef, subjectsWrapRef],
     () => {
       setOpenMonth(false);
       setOpenYear(false);
+      setOpenSubjects(false);
     },
-    openMonth || openYear,
+    openMonth || openYear || openSubjects,
   );
 
   const [loading, setLoading] = useState(false);
@@ -219,10 +233,59 @@ export default function DashboardMonthlyTestsAvgGradesSection({ schoolId }: Prop
     return MONTHS.find((m) => m.idx === month)?.label ?? 'Μήνας';
   }, [month]);
 
-  const headerSubtitle = useMemo(() => {
-    return `${monthLabel} ${year} • ${rows.length} τεστ`;
-  }, [monthLabel, year, rows.length]);
+  const subjectsLabel = useMemo(() => {
+    if (selectedSubjectIds.length === 0) return 'Όλα τα μαθήματα';
+    const selected = subjects
+      .filter((s) => selectedSubjectIds.includes(s.id))
+      .map((s) => (s.title ?? '').trim())
+      .filter(Boolean);
 
+    if (selected.length === 0) return 'Επιλεγμένα μαθήματα';
+    if (selected.length <= 2) return selected.join(', ');
+    return `${selected[0]}, ${selected[1]} +${selected.length - 2}`;
+  }, [selectedSubjectIds, subjects]);
+
+  const headerSubtitle = useMemo(() => {
+    const subjPart =
+      selectedSubjectIds.length === 0 ? 'Όλα τα μαθήματα' : 'Φιλτραρισμένα μαθήματα';
+    return `${monthLabel} ${year} • ${rows.length} τεστ • ${subjPart}`;
+  }, [monthLabel, year, rows.length, selectedSubjectIds.length]);
+
+  // ✅ Load subjects (from Subjects page table)
+  useEffect(() => {
+    if (!schoolId) {
+      setSubjects([]);
+      setSelectedSubjectIds([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadSubjects = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('subjects')
+          .select('id,title')
+          .eq('school_id', schoolId)
+          .order('title', { ascending: true });
+
+        if (error) throw error;
+        if (cancelled) return;
+        setSubjects((data ?? []) as SubjectRow[]);
+      } catch (e: any) {
+        // don't hard-fail chart if subjects can't load
+        console.error(e);
+        if (!cancelled) setSubjects([]);
+      }
+    };
+
+    loadSubjects();
+    return () => {
+      cancelled = true;
+    };
+  }, [schoolId]);
+
+  // ✅ Load grades with subject filter
   useEffect(() => {
     if (!schoolId) {
       setRows([]);
@@ -236,13 +299,18 @@ export default function DashboardMonthlyTestsAvgGradesSection({ schoolId }: Prop
       setError(null);
 
       try {
-        const { data, error } = await supabase
+        let q = supabase
           .from('student_test_grades')
-          .select('test_id,test_name,test_date,grade')
+          .select('test_id,test_name,test_date,grade,subject_id')
           .eq('school_id', schoolId)
           .gte('test_date', range.from)
           .lte('test_date', range.to);
 
+        if (selectedSubjectIds.length > 0) {
+          q = q.in('subject_id', selectedSubjectIds);
+        }
+
+        const { data, error } = await q;
         if (error) throw error;
 
         const list = (data ?? []) as StudentTestGradeRow[];
@@ -309,7 +377,7 @@ export default function DashboardMonthlyTestsAvgGradesSection({ schoolId }: Prop
     return () => {
       cancelled = true;
     };
-  }, [schoolId, range.from, range.to]);
+  }, [schoolId, range.from, range.to, selectedSubjectIds]);
 
   // if grades are typically 0-20, keep it nice
   const yDomain = useMemo(() => {
@@ -328,13 +396,87 @@ export default function DashboardMonthlyTestsAvgGradesSection({ schoolId }: Prop
           <div className="mt-0.5 text-xs text-slate-400">{headerSubtitle}</div>
         </div>
 
-        {/* Month + Year controls */}
+        {/* Month + Year + Subjects controls */}
         <div className="flex items-center gap-2">
+          {/* Subjects */}
+          <div ref={subjectsWrapRef}>
+            <DropdownShell
+              label={subjectsLabel}
+              open={openSubjects}
+              onToggle={() => {
+                setOpenMonth(false);
+                setOpenYear(false);
+                setOpenSubjects((v) => !v);
+              }}
+              widthClass="w-[200px]"
+            >
+              <div className="max-h-72 overflow-auto p-2">
+                {/* All / Clear */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedSubjectIds([]);
+                    setOpenSubjects(false);
+                  }}
+                  className="
+                    w-full text-left px-3 py-2 text-[11px]
+                    rounded-lg transition
+                    text-white/85 hover:bg-white/8
+                  "
+                >
+                  Όλα τα μαθήματα
+                </button>
+
+                <div className="my-2 h-px bg-white/10" />
+
+                {subjects.length === 0 ? (
+                  <div className="px-3 py-2 text-[11px] text-white/60">
+                    Δεν υπάρχουν μαθήματα.
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    {subjects.map((s) => {
+                      const active = selectedSubjectIds.includes(s.id);
+                      return (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedSubjectIds((prev) => {
+                              if (prev.includes(s.id)) return prev.filter((x) => x !== s.id);
+                              return [...prev, s.id];
+                            });
+                          }}
+                          className={`
+                            w-full text-left px-3 py-2 text-[11px]
+                            rounded-lg transition flex items-center justify-between gap-3
+                            ${active ? 'bg-white/10 text-white' : 'text-white/85 hover:bg-white/8'}
+                          `}
+                        >
+                          <span className="truncate">{(s.title ?? 'Μάθημα').trim() || 'Μάθημα'}</span>
+                          <span
+                            className={`
+                              h-4 w-4 rounded border
+                              ${active ? 'bg-white/80 border-white/30' : 'bg-transparent border-white/20'}
+                            `}
+                            aria-hidden="true"
+                          />
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </DropdownShell>
+          </div>
+
+          {/* Month */}
           <div ref={monthWrapRef}>
             <DropdownShell
               label={monthLabel}
               open={openMonth}
               onToggle={() => {
+                setOpenSubjects(false);
                 setOpenYear(false);
                 setOpenMonth((v) => !v);
               }}
@@ -365,11 +507,13 @@ export default function DashboardMonthlyTestsAvgGradesSection({ schoolId }: Prop
             </DropdownShell>
           </div>
 
+          {/* Year */}
           <div ref={yearWrapRef}>
             <DropdownShell
               label={String(year)}
               open={openYear}
               onToggle={() => {
+                setOpenSubjects(false);
                 setOpenMonth(false);
                 setOpenYear((v) => !v);
               }}
@@ -416,7 +560,6 @@ export default function DashboardMonthlyTestsAvgGradesSection({ schoolId }: Prop
         ) : (
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={rows} margin={{ top: 6, right: 10, left: -6, bottom: 0 }}>
-              {/* minimal grid */}
               <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
 
               <XAxis
@@ -434,12 +577,9 @@ export default function DashboardMonthlyTestsAvgGradesSection({ schoolId }: Prop
                 domain={yDomain}
               />
 
-              {/* ✅ remove the white hover highlight:
-                  - cursor={false} disables the "hover band"
-                  - custom content for tooltip */}
+              {/* remove the white hover highlight */}
               <Tooltip cursor={false} content={<BarTooltip />} />
 
-              {/* ✅ single color, minimal rounded bars */}
               <Bar
                 dataKey="avg"
                 fill={BAR_FILL}
