@@ -13,16 +13,21 @@ type StudentRow = {
   full_name: string | null;
 };
 
+type PackageType = 'hourly' | 'monthly' | 'yearly';
+
 type PackageRow = {
   id: string;
   school_id: string;
   name: string;
-  price: number; // may come as string from PostgREST, we always Number() it when needed
+  price: number; // monthly: price per month, yearly: total, hourly: rate per hour
   currency: string;
   is_active: boolean;
   sort_order: number;
+  package_type?: PackageType | null; // ✅ NEW
+  hours?: number | null;            // ✅ optional (for hourly packages)
   created_at?: string | null;
 };
+
 
 // NOTE: For hourly, price = hourly rate, but charge_amount = rate * used_hours
 type SubscriptionRow = {
@@ -78,6 +83,21 @@ function parseMoney(input: string) {
   const n = Number(cleaned);
   return Number.isFinite(n) ? Math.max(0, n) : 0;
 }
+
+function parsePct(input: string) {
+  const cleaned = (input ?? '')
+    .trim()
+    .replace(',', '.')
+    .replace(/[^0-9.]/g, '');
+  const n = Number(cleaned);
+  if (!Number.isFinite(n)) return 0;
+  return Math.min(100, Math.max(0, n));
+}
+
+function round2(n: number) {
+  return Number(Number(n ?? 0).toFixed(2));
+}
+
 
 /* ------------------- DATE HELPERS ------------------- */
 
@@ -215,6 +235,9 @@ export default function StudentsSubscriptionsPage() {
 
   const [selectedPackage, setSelectedPackage] = useState<Record<string, string>>({});
   const [paymentInput, setPaymentInput] = useState<Record<string, string>>({});
+  // ✅ per-student pricing controls (optional)
+  const [customPriceInput, setCustomPriceInput] = useState<Record<string, string>>({}); // absolute override
+  const [discountPctInput, setDiscountPctInput] = useState<Record<string, string>>({}); // 0..100
   const [savingStudentId, setSavingStudentId] = useState<string | null>(null);
   const [payingStudentId, setPayingStudentId] = useState<string | null>(null);
 
@@ -298,6 +321,20 @@ export default function StudentsSubscriptionsPage() {
   }, []);
 
   const monthLabel = (m: string) => monthOptions.find((x) => x.value === m)?.label ?? '';
+  const getFinalPriceForStudent = (studentId: string) => {
+    const pkgId = (selectedPackage[studentId] ?? '').trim();
+    const pkg = pkgId ? packageById.get(pkgId) ?? null : null;
+
+    // base price: custom override (if provided) else selected package price (else 0)
+    const custom = (customPriceInput[studentId] ?? '').trim();
+    const base = custom ? parseMoney(custom) : Number(pkg?.price ?? 0);
+
+    const pct = parsePct(discountPctInput[studentId] ?? '');
+    const final = base * (1 - pct / 100);
+
+    return round2(Math.max(0, final));
+  };
+
 
   const loadPackages = async () => {
     if (!schoolId) return;
@@ -448,6 +485,18 @@ export default function StudentsSubscriptionsPage() {
     });
 
     setPaymentInput((prev) => {
+      const next = { ...prev };
+      for (const r of view) if (!(r.student_id in next)) next[r.student_id] = '';
+      return next;
+    });
+
+    setCustomPriceInput((prev) => {
+      const next = { ...prev };
+      for (const r of view) if (!(r.student_id in next)) next[r.student_id] = '';
+      return next;
+    });
+
+    setDiscountPctInput((prev) => {
       const next = { ...prev };
       for (const r of view) if (!(r.student_id in next)) next[r.student_id] = '';
       return next;
@@ -655,7 +704,7 @@ export default function StudentsSubscriptionsPage() {
       student_id: studentId,
       package_id: pkg.id,
       package_name: pkg.name,
-      price: Number(Number((pkg as any).price ?? 0).toFixed(2)), // hourly rate or fixed price
+      price: getFinalPriceForStudent(studentId), // ✅ per-student final price (override/discount)
       currency: pkg.currency ?? 'EUR',
       status: 'active' as const,
       starts_on: startsISO,
@@ -851,8 +900,8 @@ export default function StudentsSubscriptionsPage() {
                     ? 0
                     : isHourly
                       ? Number(r.sub?.price ?? 0) // hourly RATE from packages
-                      : billed;
-
+                      : Number(r.sub?.price ?? billed);
+                      
                   // UI classes
                   const paidCls =
                     !hasSub ? 'text-slate-400' : paid > 0 ? 'text-emerald-200' : 'text-slate-300';
@@ -893,6 +942,8 @@ export default function StudentsSubscriptionsPage() {
                             const prevId = selectedPackage[r.student_id] ?? '';
 
                             setSelectedPackage((prev) => ({ ...prev, [r.student_id]: nextId }));
+                            setCustomPriceInput((p) => ({ ...p, [r.student_id]: '' }));
+                            setDiscountPctInput((p) => ({ ...p, [r.student_id]: '' }));
 
                             // clearing selection
                             if (!nextId) {
@@ -918,6 +969,55 @@ export default function StudentsSubscriptionsPage() {
                             </option>
                           ))}
                         </select>
+                        {/* ✅ per-student pricing (optional) */}
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <input
+                            value={customPriceInput[r.student_id] ?? ''}
+                            onChange={(e) =>
+                              setCustomPriceInput((p) => ({
+                                ...p,
+                                [r.student_id]: e.target.value.replace(',', '.').replace(/[^0-9.]/g, ''),
+                              }))
+                            }
+                            disabled={!selectedPkgId}
+                            inputMode="decimal"
+                            placeholder={
+                              selectedPkg
+                                ? `Τιμή (${money(selectedPkg.price)} ${CURRENCY_SYMBOL})`
+                                : 'Τιμή'
+                            }
+                            className={[
+                              'w-28 rounded-md border border-slate-700/70 bg-slate-950/40 px-2 py-1.5 text-[11px] text-slate-100 outline-none focus:border-[color:var(--color-accent)]/70',
+                              !selectedPkgId ? 'opacity-60 cursor-not-allowed' : '',
+                            ].join(' ')}
+                            title="Προαιρετικό: όρισε custom τιμή για αυτόν τον μαθητή"
+                          />
+
+                          <input
+                            value={discountPctInput[r.student_id] ?? ''}
+                            onChange={(e) =>
+                              setDiscountPctInput((p) => ({
+                                ...p,
+                                [r.student_id]: e.target.value.replace(',', '.').replace(/[^0-9.]/g, ''),
+                              }))
+                            }
+                            disabled={!selectedPkgId}
+                            inputMode="decimal"
+                            placeholder="Έκπτωση %"
+                            className={[
+                              'w-20 rounded-md border border-slate-700/70 bg-slate-950/40 px-2 py-1.5 text-[11px] text-slate-100 outline-none focus:border-[color:var(--color-accent)]/70',
+                              !selectedPkgId ? 'opacity-60 cursor-not-allowed' : '',
+                            ].join(' ')}
+                            title="Προαιρετικό: ποσοστιαία έκπτωση 0–100"
+                          />
+
+                          <div className="text-[11px] text-slate-300">
+                            Τελική:{' '}
+                            <span className="text-slate-100 font-semibold">
+                              {selectedPkgId ? `${money(getFinalPriceForStudent(r.student_id))} ${CURRENCY_SYMBOL}` : '—'}
+                            </span>
+                          </div>
+                        </div>
                       </td>
 
                       <td className="border-b border-slate-700 px-4 py-2 align-middle">
