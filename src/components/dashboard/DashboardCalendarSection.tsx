@@ -1,4 +1,6 @@
+// PART 1/3
 // src/components/dashboard/DashboardCalendarSection.tsx
+
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 
@@ -13,7 +15,12 @@ import type {
   EventClickArg,
 } from '@fullcalendar/core';
 import elLocale from '@fullcalendar/core/locales/el';
+
 import AppDatePicker from '../ui/AppDatePicker';
+import EventFormModal, {
+  type EventFormState,
+  type SchoolEventForEdit,
+} from '../events/EventFormModal';
 
 /* ------------ Types ------------ */
 
@@ -123,7 +130,7 @@ type CalendarEventModal = {
   subjectId: string | null;
   overrideId?: string;
 
-  // ✅ we keep the name, but it maps to holiday_active_override for program overrides
+  // maps to holiday_active_override for program overrides
   activeDuringHoliday: boolean;
 };
 
@@ -138,7 +145,7 @@ type TestModalState = {
   endPeriod: 'AM' | 'PM';
   title: string;
 
-  // for tests table (active_during_holiday)
+  // tests table (active_during_holiday)
   activeDuringHoliday: boolean;
 };
 
@@ -162,11 +169,7 @@ function convert12To24(time: string, period: 'AM' | 'PM'): string | null {
   if (Number.isNaN(h) || Number.isNaN(m)) return null;
 
   h = h % 12;
-  if (period === 'PM') {
-    h += 12;
-  } else if (period === 'AM' && h === 12) {
-    h = 0;
-  }
+  if (period === 'PM') h += 12;
 
   return `${pad2(h)}:${pad2(m)}`;
 }
@@ -179,9 +182,8 @@ function convert24To12(
   const [hStr, mStr = '00'] = time.split(':');
   let h = Number(hStr);
   const m = Number(mStr);
-  if (Number.isNaN(h) || Number.isNaN(m)) {
-    return { time: '', period: 'AM' };
-  }
+  if (Number.isNaN(h) || Number.isNaN(m)) return { time: '', period: 'AM' };
+
   const period: 'AM' | 'PM' = h >= 12 ? 'PM' : 'AM';
   h = h % 12;
   if (h === 0) h = 12;
@@ -255,6 +257,23 @@ export default function DashboardCalendarSection({
 
   const [holidays, setHolidays] = useState<HolidayRow[]>([]);
   const [schoolEvents, setSchoolEvents] = useState<SchoolEventRow[]>([]);
+
+  // SCHOOL EVENT modal (same as EventsPage)
+  const [schoolEventModalOpen, setSchoolEventModalOpen] = useState(false);
+  const [schoolEventModalMode, setSchoolEventModalMode] = useState<
+    'create' | 'edit'
+  >('edit');
+  const [schoolEventEditing, setSchoolEventEditing] =
+    useState<SchoolEventForEdit | null>(null);
+  const [schoolEventSaving, setSchoolEventSaving] = useState(false);
+  const [schoolEventError, setSchoolEventError] = useState<string | null>(null);
+
+  // Delete confirm (same style as EventsPage)
+  const [schoolEventDeleteTarget, setSchoolEventDeleteTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [schoolEventDeleting, setSchoolEventDeleting] = useState(false);
 
   // subjects / class_subjects / tests
   const [subjects, setSubjects] = useState<SubjectRow[]>([]);
@@ -519,7 +538,10 @@ export default function DashboardCalendarSection({
         }
 
         if (classSubjErr) {
-          console.error('Failed to load class_subjects for dashboard', classSubjErr);
+          console.error(
+            'Failed to load class_subjects for dashboard',
+            classSubjErr,
+          );
           setClassSubjects([]);
         } else {
           setClassSubjects((classSubjData ?? []) as ClassSubjectRow[]);
@@ -562,9 +584,7 @@ export default function DashboardCalendarSection({
       .filter((cs) => cs.class_id === classId && cs.subject_id)
       .forEach((cs) => attachedIds.add(cs.subject_id));
 
-    if (cls?.subject_id) {
-      attachedIds.add(cls.subject_id);
-    }
+    if (cls?.subject_id) attachedIds.add(cls.subject_id);
 
     const attachedSubjects: SubjectRow[] = [];
     attachedIds.forEach((id) => {
@@ -573,9 +593,7 @@ export default function DashboardCalendarSection({
     });
 
     if (attachedSubjects.length >= 2) {
-      return attachedSubjects.sort((a, b) =>
-        a.name.localeCompare(b.name, 'el-GR'),
-      );
+      return attachedSubjects.sort((a, b) => a.name.localeCompare(b.name, 'el-GR'));
     }
 
     let levelId: string | null = null;
@@ -584,12 +602,9 @@ export default function DashboardCalendarSection({
       levelId = mainSubj?.level_id ?? null;
     }
 
-    let extraSubjects: SubjectRow[];
-    if (levelId) {
-      extraSubjects = subjects.filter((s) => s.level_id === levelId);
-    } else {
-      extraSubjects = subjects;
-    }
+    const extraSubjects = levelId
+      ? subjects.filter((s) => s.level_id === levelId)
+      : subjects;
 
     const merged = new Map<string, SubjectRow>();
     extraSubjects.forEach((s) => merged.set(s.id, s));
@@ -610,9 +625,7 @@ export default function DashboardCalendarSection({
 
     const tutorMap: Record<string, string> = {};
     tutors.forEach((t) => {
-      if (t.id && t.full_name) {
-        tutorMap[t.id] = t.full_name;
-      }
+      if (t.id && t.full_name) tutorMap[t.id] = t.full_name;
     });
 
     const classMap = new Map<string, ClassRow>();
@@ -664,9 +677,9 @@ export default function DashboardCalendarSection({
         ? new Date(item.end_date + 'T23:59:59')
         : new Date('2999-12-31T23:59:59');
 
-      const effectiveStart = patternStartDate > viewStart ? patternStartDate : viewStart;
+      const effectiveStart =
+        patternStartDate > viewStart ? patternStartDate : viewStart;
       const effectiveEnd = patternEndDate < viewEnd ? patternEndDate : viewEnd;
-
       if (effectiveStart > effectiveEnd) return;
 
       let currentDate = getNextDateForDow(effectiveStart, dow);
@@ -683,7 +696,6 @@ export default function DashboardCalendarSection({
         const holidayName = holidayNameByDate.get(dateStr) ?? null;
 
         const key = `${item.class_id}-${dateStr}`;
-
         const override = overrideMap.get(`${item.id}-${dateStr}`);
 
         let isDeleted = false;
@@ -694,18 +706,15 @@ export default function DashboardCalendarSection({
         const manualInactive = !!override?.is_inactive;
         const holidayActiveOverride = !!override?.holiday_active_override;
 
-        const isInactive =
-          manualInactive || (isHoliday && !holidayActiveOverride);
-
-        // for modal button state: "active during holiday" means truly active
-        const activeDuringHoliday = isHoliday ? (holidayActiveOverride && !manualInactive) : false;
+        const isInactive = manualInactive || (isHoliday && !holidayActiveOverride);
+        const activeDuringHoliday = isHoliday
+          ? holidayActiveOverride && !manualInactive
+          : false;
 
         if (override) {
           usedOverrideIds.add(override.id);
           overrideId = override.id;
-          if (override.is_deleted) {
-            isDeleted = true;
-          }
+          if (override.is_deleted) isDeleted = true;
           if (override.start_time) startTimeStr = override.start_time;
           if (override.end_time) endTimeStr = override.end_time;
         }
@@ -716,7 +725,6 @@ export default function DashboardCalendarSection({
 
           const start = new Date(currentDate);
           start.setHours(sH, sM, 0, 0);
-
           const end = new Date(currentDate);
           end.setHours(eH, eM, 0, 0);
 
@@ -728,9 +736,7 @@ export default function DashboardCalendarSection({
           const titleBase = cls.title;
           const title = combinedTest ? `${titleBase} · Διαγώνισμα` : titleBase;
 
-          if (combinedTest) {
-            hideStandaloneTestKeys.add(key);
-          }
+          if (combinedTest) hideStandaloneTestKeys.add(key);
 
           out.push({
             id: `${item.id}-${dateStr}`,
@@ -747,18 +753,14 @@ export default function DashboardCalendarSection({
               classId: cls.id,
               subject: cls.subject,
               tutorName,
-              overrideDate: override ? dateStr : null,
-              overrideId: overrideId ?? null,
-
-              // holiday flags
+              overrideDate: dateStr,
+              overrideId,
               isHoliday,
               holidayName,
               isInactive,
-              activeDuringHoliday, // ✅ for modal button (holiday)
-
-              // combined test info
-              testId: combinedTest ? combinedTest.id : null,
-              testSubjectId: combinedTest ? combinedTest.subject_id : null,
+              activeDuringHoliday,
+              testId: combinedTest?.id ?? null,
+              testSubjectId: combinedTest?.subject_id ?? null,
             },
           });
         }
@@ -791,7 +793,9 @@ export default function DashboardCalendarSection({
       const holidayActiveOverride = !!ov.holiday_active_override;
 
       const isInactive = manualInactive || (isHoliday && !holidayActiveOverride);
-      const activeDuringHoliday = isHoliday ? (holidayActiveOverride && !manualInactive) : false;
+      const activeDuringHoliday = isHoliday
+        ? holidayActiveOverride && !manualInactive
+        : false;
 
       const baseStartTime = ov.start_time ?? item.start_time;
       const baseEndTime = ov.end_time ?? item.end_time;
@@ -809,8 +813,6 @@ export default function DashboardCalendarSection({
         cls.tutor_id && tutorMap[cls.tutor_id] ? tutorMap[cls.tutor_id] : null;
 
       const key = `${item.class_id}-${dateStr}`;
-
-      // Combine tests ONLY on non-holiday days
       const testsForClassDate = testsByKey.get(key) ?? [];
       const shouldCombineTest = !isHoliday && testsForClassDate.length > 0;
       const combinedTest = shouldCombineTest ? testsForClassDate[0] : null;
@@ -818,9 +820,7 @@ export default function DashboardCalendarSection({
       const titleBase = cls.title;
       const title = combinedTest ? `${titleBase} · Διαγώνισμα` : titleBase;
 
-      if (combinedTest) {
-        hideStandaloneTestKeys.add(key);
-      }
+      if (combinedTest) hideStandaloneTestKeys.add(key);
 
       out.push({
         id: `${item.id}-${dateStr}-override`,
@@ -839,21 +839,17 @@ export default function DashboardCalendarSection({
           tutorName,
           overrideDate: dateStr,
           overrideId: ov.id,
-
-          // holiday flags
           isHoliday,
           holidayName,
           isInactive,
           activeDuringHoliday,
-
-          // combined test info
-          testId: combinedTest ? combinedTest.id : null,
-          testSubjectId: combinedTest ? combinedTest.subject_id : null,
+          testId: combinedTest?.id ?? null,
+          testSubjectId: combinedTest?.subject_id ?? null,
         },
       });
     });
 
-    // 3) Standalone TEST events (shown on holidays too, as inactive unless active_during_holiday=true)
+    // 3) Standalone TEST events
     tests.forEach((t) => {
       const key = `${t.class_id}-${t.test_date}`;
       if (hideStandaloneTestKeys.has(key)) return;
@@ -877,7 +873,6 @@ export default function DashboardCalendarSection({
 
       const start = new Date(dateObj);
       start.setHours(sH, sM, 0, 0);
-
       const end = new Date(dateObj);
       end.setHours(eH, eM, 0, 0);
 
@@ -904,7 +899,6 @@ export default function DashboardCalendarSection({
           testId: t.id,
           classId: t.class_id,
           subjectId: t.subject_id,
-
           isHoliday,
           holidayName,
           isInactive,
@@ -913,7 +907,7 @@ export default function DashboardCalendarSection({
       });
     });
 
-    // 4) SCHOOL EVENTS (keep hidden on holidays like before)
+    // 4) SCHOOL EVENTS (kept hidden on holidays)
     schoolEvents.forEach((ev) => {
       const start = new Date(ev.date + 'T' + ev.start_time);
       const end = new Date(ev.date + 'T' + ev.end_time);
@@ -926,6 +920,9 @@ export default function DashboardCalendarSection({
         title: ev.name,
         start,
         end,
+        editable: true,
+        startEditable: true,
+        durationEditable: true,
         extendedProps: {
           kind: 'schoolEvent',
           eventId: ev.id,
@@ -1034,7 +1031,7 @@ export default function DashboardCalendarSection({
             test_date: newDateStr,
             start_time: newStartTimeDb,
             end_time: newEndTimeDb,
-            // keep behavior: drag to holiday => active
+            // behavior: drag to holiday => active
             active_during_holiday: movedToHoliday ? true : false,
           })
           .eq('id', testId)
@@ -1120,7 +1117,7 @@ export default function DashboardCalendarSection({
           setOverrides((prev) => [...prev, data as ProgramItemOverrideRow]);
         }
       } else {
-        // different day
+        // different day: mark old as deleted and create/update new
         const existingOld = overrides.find(
           (o) =>
             o.program_item_id === programItemId && o.override_date === oldDateStr,
@@ -1231,7 +1228,8 @@ export default function DashboardCalendarSection({
     const isInactive = !!event.extendedProps['isInactive'];
 
     const isHoliday = !!event.extendedProps['isHoliday'];
-    const holidayName = (event.extendedProps['holidayName'] as string | null) ?? null;
+    const holidayName =
+      (event.extendedProps['holidayName'] as string | null) ?? null;
 
     const start = event.start;
     const end = event.end;
@@ -1242,11 +1240,8 @@ export default function DashboardCalendarSection({
     });
 
     let timeRange = '';
-    if (start && end) {
-      timeRange = `${formatter.format(start)} – ${formatter.format(end)}`;
-    } else if (start) {
-      timeRange = formatter.format(start);
-    }
+    if (start && end) timeRange = `${formatter.format(start)} – ${formatter.format(end)}`;
+    else if (start) timeRange = formatter.format(start);
 
     const hasTest = kind === 'test' || !!event.extendedProps['testId'];
 
@@ -1269,22 +1264,20 @@ export default function DashboardCalendarSection({
           </div>
         )}
 
-        {/* ✅ Holiday display: ONLY the holiday name */}
+        {/* Holiday label: only holiday name */}
         {isHoliday && (
           <div className="mt-0.5">
             <span
-              className={`inline-flex items-center rounded-full border px-2 py-[1px] text-[10px] font-semibold ${
-                isInactive
+              className={`inline-flex items-center rounded-full border px-2 py-[1px] text-[10px] font-semibold ${isInactive
                   ? 'border-slate-400/50 bg-slate-500/10 text-slate-200'
                   : 'border-emerald-400/60 bg-emerald-500/10 text-emerald-100'
-              }`}
+                }`}
             >
               {holidayName || 'Αργία'}
             </span>
           </div>
         )}
 
-        {/* if inactive for other reason (manual) */}
         {!isHoliday && isInactive && (
           <div className="mt-0.5">
             <span className="inline-flex items-center rounded-full border border-slate-400/50 bg-slate-500/10 px-2 py-[1px] text-[10px] font-semibold text-slate-200">
@@ -1297,8 +1290,8 @@ export default function DashboardCalendarSection({
           {hasTest && (
             <span
               className="inline-flex items-center rounded-full px-2 py-[1px] text-[10px] font-semibold
-               text-red-100 bg-gradient-to-r from-red-500/30 via-red-600/30 to-red-700/30
-               border border-red-500/60 shadow-sm"
+              text-red-100 bg-gradient-to-r from-red-500/30 via-red-600/30 to-red-700/30
+              border border-red-500/60 shadow-sm"
             >
               Διαγώνισμα
             </span>
@@ -1307,9 +1300,7 @@ export default function DashboardCalendarSection({
           {mainTitle && <span className="font-semibold">{mainTitle}</span>}
         </div>
 
-        {kind === 'program' && subject && (
-          <div className="mt-0.5">{subject}</div>
-        )}
+        {kind === 'program' && subject && <div className="mt-0.5">{subject}</div>}
 
         {kind === 'program' && tutorName && (
           <div className="mt-0.5 opacity-90">
@@ -1320,7 +1311,147 @@ export default function DashboardCalendarSection({
     );
   };
 
-  /* -------- Click handling (PROGRAM + TEST) -------- */
+  /* -------- SCHOOL EVENT modal helpers -------- */
+
+  const openEditSchoolEventModal = (eventId: string) => {
+    const row = schoolEvents.find((e) => e.id === eventId) ?? null;
+    if (!row) return;
+
+    setSchoolEventError(null);
+    setSchoolEventModalMode('edit');
+    setSchoolEventEditing({
+      id: row.id,
+      name: row.name,
+      description: row.description ?? '',
+      date: row.date,
+      start_time: row.start_time,
+      end_time: row.end_time,
+    });
+    setSchoolEventModalOpen(true);
+  };
+
+  const closeSchoolEventModal = () => {
+    if (schoolEventSaving) return;
+    setSchoolEventModalOpen(false);
+    setSchoolEventEditing(null);
+    setSchoolEventSaving(false);
+    setSchoolEventError(null);
+  };
+
+  const handleSaveSchoolEvent = async (form: EventFormState) => {
+    setSchoolEventError(null);
+
+    if (!schoolId) {
+      setSchoolEventError('Το προφίλ σας δεν είναι συνδεδεμένο με σχολείο (school_id).');
+      return;
+    }
+
+    if (!form.name.trim()) {
+      setSchoolEventError('Το όνομα του event είναι υποχρεωτικό.');
+      return;
+    }
+    if (!form.date) {
+      setSchoolEventError('Η ημερομηνία είναι υποχρεωτική.');
+      return;
+    }
+    if (!form.startTime || !form.endTime) {
+      setSchoolEventError('Η ώρα έναρξης και λήξης είναι υποχρεωτικές.');
+      return;
+    }
+
+    const payload = {
+      school_id: schoolId,
+      name: form.name.trim(),
+      description: form.description?.trim() || null,
+      date: form.date,
+      start_time: `${form.startTime}:00`,
+      end_time: `${form.endTime}:00`,
+    };
+
+    setSchoolEventSaving(true);
+
+    if (schoolEventModalMode === 'create') {
+      const { data, error } = await supabase
+        .from('school_events')
+        .insert(payload)
+        .select('*')
+        .maybeSingle();
+
+      setSchoolEventSaving(false);
+
+      if (error || !data) {
+        console.error(error);
+        setSchoolEventError('Αποτυχία δημιουργίας event.');
+        return;
+      }
+
+      setSchoolEvents((prev) => [data as SchoolEventRow, ...prev]);
+      closeSchoolEventModal();
+      return;
+    }
+
+    if (!schoolEventEditing) {
+      setSchoolEventSaving(false);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('school_events')
+      .update({
+        name: payload.name,
+        description: payload.description,
+        date: payload.date,
+        start_time: payload.start_time,
+        end_time: payload.end_time,
+      })
+      .eq('id', schoolEventEditing.id)
+      .select('*')
+      .maybeSingle();
+
+    setSchoolEventSaving(false);
+
+    if (error || !data) {
+      console.error(error);
+      setSchoolEventError('Αποτυχία ενημέρωσης event.');
+      return;
+    }
+
+    setSchoolEvents((prev) =>
+      prev.map((ev) =>
+        ev.id === schoolEventEditing.id ? (data as SchoolEventRow) : ev,
+      ),
+    );
+    closeSchoolEventModal();
+  };
+
+  const handleConfirmDeleteSchoolEvent = async () => {
+    if (!schoolEventDeleteTarget || !schoolId) return;
+
+    setSchoolEventError(null);
+    setSchoolEventDeleting(true);
+
+    const { error } = await supabase
+      .from('school_events')
+      .delete()
+      .eq('id', schoolEventDeleteTarget.id)
+      .eq('school_id', schoolId);
+
+    setSchoolEventDeleting(false);
+
+    if (error) {
+      console.error(error);
+      setSchoolEventError('Αποτυχία διαγραφής εκδήλωσης.');
+      return;
+    }
+
+    setSchoolEvents((prev) =>
+      prev.filter((ev) => ev.id !== schoolEventDeleteTarget.id),
+    );
+    setSchoolEventDeleteTarget(null);
+    closeSchoolEventModal();
+  };
+
+  /* -------- Click handling (PROGRAM + TEST + SCHOOL EVENT) -------- */
 
   const openTestModalFromEvent = (event: any) => {
     const testId = event.extendedProps['testId'] as string | null | undefined;
@@ -1342,12 +1473,8 @@ export default function DashboardCalendarSection({
     const dateIso = formatLocalYMD(event.start);
     const isHoliday = holidayDateSet.has(dateIso);
 
-    const start24 = `${pad2(event.start.getHours())}:${pad2(
-      event.start.getMinutes(),
-    )}`;
-    const end24 = `${pad2(event.end.getHours())}:${pad2(
-      event.end.getMinutes(),
-    )}`;
+    const start24 = `${pad2(event.start.getHours())}:${pad2(event.start.getMinutes())}`;
+    const end24 = `${pad2(event.end.getHours())}:${pad2(event.end.getMinutes())}`;
 
     const { time: startTime, period: startPeriod } = convert24To12(start24);
     const { time: endTime, period: endPeriod } = convert24To12(end24);
@@ -1365,7 +1492,10 @@ export default function DashboardCalendarSection({
       title: testRow?.title ?? '',
       activeDuringHoliday: isHoliday ? !!testRow?.active_during_holiday : false,
     });
+
+    // ensure program delete confirm is not shown
     setShowDeleteConfirm(false);
+    setEventModal(null);
   };
 
   const handleEventClick = (arg: EventClickArg) => {
@@ -1378,44 +1508,50 @@ export default function DashboardCalendarSection({
 
     if (!event.start || !event.end) return;
 
+    // always close others first to avoid “empty overlay”
+    setEventModal(null);
+    setTestModal(null);
+    setShowDeleteConfirm(false);
+    setEventError(null);
+    setTestError(null);
+
+    if (kind === 'schoolEvent') {
+      const eventId = event.extendedProps['eventId'] as string | undefined;
+      if (eventId) openEditSchoolEventModal(eventId);
+      return;
+    }
+
+    // test (standalone)
     if (kind === 'test') {
       openTestModalFromEvent(event);
       return;
     }
 
+    // program
     if (kind === 'program') {
-      const testId = event.extendedProps['testId'] as string | null;
-      if (testId) {
+      // combined test inside class slot
+      const combinedTestId = event.extendedProps['testId'] as string | null;
+      if (combinedTestId) {
         openTestModalFromEvent(event);
         return;
       }
 
-      const programItemId = event.extendedProps['programItemId'] as
-        | string
-        | undefined;
+      const programItemId = event.extendedProps['programItemId'] as string | undefined;
       if (!programItemId) return;
 
       const dateIso = formatLocalYMD(event.start);
       const overrideId = event.extendedProps['overrideId'] as string | null;
 
-      const start24 = `${pad2(event.start.getHours())}:${pad2(
-        event.start.getMinutes(),
-      )}`;
-      const end24 = `${pad2(event.end.getHours())}:${pad2(
-        event.end.getMinutes(),
-      )}`;
+      const start24 = `${pad2(event.start.getHours())}:${pad2(event.start.getMinutes())}`;
+      const end24 = `${pad2(event.end.getHours())}:${pad2(event.end.getMinutes())}`;
 
       const { time: startTime, period: startPeriod } = convert24To12(start24);
       const { time: endTime, period: endPeriod } = convert24To12(end24);
 
       const classIdProp = event.extendedProps['classId'] as string | undefined;
-
-      const clsRow = classIdProp
-        ? classes.find((c) => c.id === classIdProp) ?? null
-        : null;
+      const clsRow = classIdProp ? classes.find((c) => c.id === classIdProp) ?? null : null;
       const prefilledSubjectId = clsRow?.subject_id ?? null;
 
-      setEventError(null);
       setEventModal({
         programItemId,
         originalDateStr: dateIso,
@@ -1429,8 +1565,8 @@ export default function DashboardCalendarSection({
         overrideId: overrideId ?? undefined,
         activeDuringHoliday: !!event.extendedProps['activeDuringHoliday'],
       });
+
       setShowDeleteConfirm(false);
-      return;
     }
   };
 
@@ -1438,26 +1574,22 @@ export default function DashboardCalendarSection({
 
   const handleProgramFieldChange =
     (field: 'classId' | 'subjectId') =>
-    (e: ChangeEvent<HTMLSelectElement>) => {
-      const value = e.target.value;
-      setEventModal((prev) => {
-        if (!prev) return prev;
-        if (field === 'classId') {
-          return { ...prev, classId: value || null, subjectId: null };
-        }
-        if (field === 'subjectId') {
-          return { ...prev, subjectId: value || null };
-        }
-        return prev;
-      });
-    };
+      (e: ChangeEvent<HTMLSelectElement>) => {
+        const value = e.target.value;
+        setEventModal((prev) => {
+          if (!prev) return prev;
+          if (field === 'classId') return { ...prev, classId: value || null, subjectId: null };
+          if (field === 'subjectId') return { ...prev, subjectId: value || null };
+          return prev;
+        });
+      };
 
   const handleEventTimeChange =
     (field: 'startTime' | 'endTime') =>
-    (e: ChangeEvent<HTMLInputElement>) => {
-      const formatted = formatTimeInput(e.target.value);
-      setEventModal((prev) => (prev ? { ...prev, [field]: formatted } : prev));
-    };
+      (e: ChangeEvent<HTMLInputElement>) => {
+        const formatted = formatTimeInput(e.target.value);
+        setEventModal((prev) => (prev ? { ...prev, [field]: formatted } : prev));
+      };
 
   const handleEventModalSave = async () => {
     if (!eventModal) return;
@@ -1516,7 +1648,7 @@ export default function DashboardCalendarSection({
 
       // 1) Update program_items.class_id if changed
       const item = programItems.find((pi) => pi.id === programItemId);
-      if (item && classId && classId !== item.class_id) {
+      if (item && classId !== item.class_id) {
         const { data: updatedItem, error: itemErr } = await supabase
           .from('program_items')
           .update({ class_id: classId })
@@ -1527,40 +1659,32 @@ export default function DashboardCalendarSection({
         if (itemErr || !updatedItem) throw itemErr ?? new Error('No data');
 
         setProgramItems((prev) =>
-          prev.map((pi) =>
-            pi.id === programItemId ? (updatedItem as ProgramItemRow) : pi,
-          ),
+          prev.map((pi) => (pi.id === programItemId ? (updatedItem as ProgramItemRow) : pi)),
         );
       }
 
-      // 2) Update class subject if changed
-      if (classId) {
-        const cls = classes.find((c) => c.id === classId) ?? null;
-        const oldSubjectId = cls?.subject_id ?? null;
-        const finalSubjectId = subjectId ?? subjectOptions[0]?.id ?? null;
+      // 2) Update class subject if changed (keeps your existing behavior)
+      const subjectOptionsNow = getSubjectsForClass(classId);
+      const cls = classes.find((c) => c.id === classId) ?? null;
+      const oldSubjectId = cls?.subject_id ?? null;
+      const finalSubjectId = subjectId ?? subjectOptionsNow[0]?.id ?? null;
 
-        if (finalSubjectId && finalSubjectId !== oldSubjectId) {
-          const subjRow = subjectById.get(finalSubjectId);
-          const subjectName = subjRow?.name ?? null;
+      if (finalSubjectId && finalSubjectId !== oldSubjectId) {
+        const subjRow = subjectById.get(finalSubjectId);
+        const subjectName = subjRow?.name ?? null;
 
-          const { data: updatedClass, error: classErr } = await supabase
-            .from('classes')
-            .update({
-              subject_id: finalSubjectId,
-              subject: subjectName,
-            })
-            .eq('id', classId)
-            .select('id, school_id, title, subject, subject_id, tutor_id')
-            .maybeSingle();
+        const { data: updatedClass, error: classErr } = await supabase
+          .from('classes')
+          .update({ subject_id: finalSubjectId, subject: subjectName })
+          .eq('id', classId)
+          .select('id, school_id, title, subject, subject_id, tutor_id')
+          .maybeSingle();
 
-          if (classErr || !updatedClass) throw classErr ?? new Error('No data');
+        if (classErr || !updatedClass) throw classErr ?? new Error('No data');
 
-          setClasses((prev) =>
-            prev.map((c) =>
-              c.id === classId ? (updatedClass as ClassRow) : c,
-            ),
-          );
-        }
+        setClasses((prev) =>
+          prev.map((c) => (c.id === classId ? (updatedClass as ClassRow) : c)),
+        );
       }
 
       // 3) Update / create overrides (+ holiday override flag)
@@ -1577,8 +1701,9 @@ export default function DashboardCalendarSection({
               end_time: endTimeDb,
               is_deleted: false,
               is_inactive: false,
-              holiday_active_override:
-                holidayDateSet.has(targetDate) ? finalHolidayActiveOverride : false,
+              holiday_active_override: holidayDateSet.has(targetDate)
+                ? finalHolidayActiveOverride
+                : false,
             })
             .eq('id', existing.id)
             .select()
@@ -1589,26 +1714,28 @@ export default function DashboardCalendarSection({
           setOverrides((prev) =>
             prev.map((o) => (o.id === existing.id ? (data as ProgramItemOverrideRow) : o)),
           );
-        } else {
-          const { data, error } = await supabase
-            .from('program_item_overrides')
-            .insert({
-              program_item_id: programItemId,
-              override_date: targetDate,
-              start_time: startTimeDb,
-              end_time: endTimeDb,
-              is_deleted: false,
-              is_inactive: false,
-              holiday_active_override:
-                holidayDateSet.has(targetDate) ? finalHolidayActiveOverride : false,
-            })
-            .select()
-            .single();
-
-          if (error || !data) throw error ?? new Error('No data');
-
-          setOverrides((prev) => [...prev, data as ProgramItemOverrideRow]);
+          return;
         }
+
+        const { data, error } = await supabase
+          .from('program_item_overrides')
+          .insert({
+            program_item_id: programItemId,
+            override_date: targetDate,
+            start_time: startTimeDb,
+            end_time: endTimeDb,
+            is_deleted: false,
+            is_inactive: false,
+            holiday_active_override: holidayDateSet.has(targetDate)
+              ? finalHolidayActiveOverride
+              : false,
+          })
+          .select()
+          .single();
+
+        if (error || !data) throw error ?? new Error('No data');
+
+        setOverrides((prev) => [...prev, data as ProgramItemOverrideRow]);
       };
 
       if (newDateStr === originalDateStr) {
@@ -1658,7 +1785,6 @@ export default function DashboardCalendarSection({
           setOverrides((prev) => [...prev, data as ProgramItemOverrideRow]);
         }
 
-        // create/update new date
         await upsertOverrideForDate(newDateStr);
       }
 
@@ -1737,26 +1863,22 @@ export default function DashboardCalendarSection({
 
   const handleTestFieldChange =
     (field: keyof TestModalState) =>
-    (e: ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
-      const value = e.target.value;
-      setTestModal((prev) => {
-        if (!prev) return prev;
-        if (field === 'classId') {
-          return { ...prev, classId: value || null, subjectId: null };
-        }
-        if (field === 'subjectId') {
-          return { ...prev, subjectId: value || null };
-        }
-        return { ...prev, [field]: value as any };
-      });
-    };
+      (e: ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
+        const value = e.target.value;
+        setTestModal((prev) => {
+          if (!prev) return prev;
+          if (field === 'classId') return { ...prev, classId: value || null, subjectId: null };
+          if (field === 'subjectId') return { ...prev, subjectId: value || null };
+          return { ...prev, [field]: value as any };
+        });
+      };
 
   const handleTestTimeChange =
     (field: 'startTime' | 'endTime') =>
-    (e: ChangeEvent<HTMLInputElement>) => {
-      const formatted = formatTimeInput(e.target.value);
-      setTestModal((prev) => (prev ? { ...prev, [field]: formatted } : prev));
-    };
+      (e: ChangeEvent<HTMLInputElement>) => {
+        const formatted = formatTimeInput(e.target.value);
+        setTestModal((prev) => (prev ? { ...prev, [field]: formatted } : prev));
+      };
 
   const handleTestModalSave = async () => {
     if (!testModal) return;
@@ -1853,7 +1975,6 @@ export default function DashboardCalendarSection({
     try {
       setTestError(null);
       const { error } = await supabase.from('tests').delete().eq('id', testId);
-
       if (error) throw error;
 
       setTests((prev) => prev.filter((t) => t.id !== testId));
@@ -1866,19 +1987,130 @@ export default function DashboardCalendarSection({
     }
   };
 
-  /* -------- Render -------- */
+  // PART 1/3 ends here
+  // (Return JSX + all modal markup is in PART 2/3 and PART 3/3)
+ // PART 2+3 (merged) — helpers + the ONLY return (and closes the component)
 
-  return (
-    <section className="space-y-3">
-      <h2 className="text-sm font-semibold text-slate-50">
-        Πρόγραμμα Τμημάτων & Εκδηλώσεις
-      </h2>
+// Close PROGRAM modal
+const handleEventModalClose = () => {
+  setEventModal(null);
+  setEventError(null);
+  setShowDeleteConfirm(false);
+};
 
-      {loading ? (
-        <div className="py-6 text-xs text-slate-200 border border-slate-700 rounded-md flex items-center justify-center">
-          Φόρτωση προγράμματος…
-        </div>
-      ) : (
+// PROGRAM: open confirm for “cancel for this day”
+const handleProgramAskDeleteForDay = () => {
+  setShowDeleteConfirm(true);
+};
+
+const handleProgramCancelDeleteConfirm = () => {
+  setShowDeleteConfirm(false);
+};
+
+// TEST: “Ακύρωση για αυτή τη μέρα” => force active_during_holiday=false
+const handleTestCancelForDay = async () => {
+  if (!testModal) return;
+
+  const testDateISO = parseDateDisplayToISO(testModal.date);
+  if (!testDateISO) {
+    setTestError('Μη έγκυρη ημερομηνία.');
+    return;
+  }
+
+  try {
+    setSavingTest(true);
+    setTestError(null);
+
+    const { data, error } = await supabase
+      .from('tests')
+      .update({ active_during_holiday: false })
+      .eq('id', testModal.testId)
+      .select('*')
+      .maybeSingle();
+
+    setSavingTest(false);
+
+    if (error || !data) {
+      console.error(error);
+      setTestError('Αποτυχία ακύρωσης για τη μέρα.');
+      return;
+    }
+
+    setTests((prev) =>
+      prev.map((t) => (t.id === testModal.testId ? (data as TestRow) : t)),
+    );
+    setTestModal(null);
+    setShowDeleteConfirm(false);
+  } catch (e) {
+    console.error(e);
+    setSavingTest(false);
+    setTestError('Αποτυχία ακύρωσης για τη μέρα.');
+  }
+};
+
+// PROGRAM: is current date holiday?
+const programModalIsHoliday = useMemo(() => {
+  if (!eventModal) return false;
+  const iso = parseDateDisplayToISO(eventModal.date);
+  if (!iso) return false;
+  return holidayDateSet.has(iso);
+}, [eventModal, holidayDateSet]);
+
+const programModalHolidayName = useMemo(() => {
+  if (!eventModal) return null;
+  const iso = parseDateDisplayToISO(eventModal.date);
+  if (!iso) return null;
+  return holidayNameByDate.get(iso) ?? null;
+}, [eventModal, holidayNameByDate]);
+
+// TEST: is current date holiday?
+const testModalIsHoliday = useMemo(() => {
+  if (!testModal) return false;
+  const iso = parseDateDisplayToISO(testModal.date);
+  if (!iso) return false;
+  return holidayDateSet.has(iso);
+}, [testModal, holidayDateSet]);
+
+const testModalHolidayName = useMemo(() => {
+  if (!testModal) return null;
+  const iso = parseDateDisplayToISO(testModal.date);
+  if (!iso) return null;
+  return holidayNameByDate.get(iso) ?? null;
+}, [testModal, holidayNameByDate]);
+
+// Subjects options for current modals
+const programSubjectOptions = useMemo(() => {
+  if (!eventModal?.classId) return [];
+  return getSubjectsForClass(eventModal.classId);
+}, [eventModal?.classId, classes, classSubjects, subjects, subjectById]);
+
+const testSubjectOptions = useMemo(() => {
+  if (!testModal?.classId) return [];
+  return getSubjectsForClass(testModal.classId);
+}, [testModal?.classId, classes, classSubjects, subjects, subjectById]);
+
+// SCHOOL EVENT: trigger external delete confirm
+const requestDeleteSchoolEventFromModal = () => {
+  if (!schoolEventEditing) return;
+  setSchoolEventDeleteTarget({
+    id: schoolEventEditing.id,
+    name: schoolEventEditing.name,
+  });
+};
+
+// ✅ the ONLY return
+return (
+  <section className="space-y-3">
+    <h2 className="text-sm font-semibold text-slate-50">
+      Πρόγραμμα Τμημάτων & Εκδηλώσεις
+    </h2>
+
+    {loading ? (
+      <div className="py-6 text-xs text-slate-200 border border-slate-700 rounded-md flex items-center justify-center">
+        Φόρτωση προγράμματος…
+      </div>
+    ) : (
+      <>
         <FullCalendar
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
           initialView="timeGridWeek"
@@ -1894,11 +2126,7 @@ export default function DashboardCalendarSection({
           allDaySlot={false}
           slotDuration="00:15:00"
           slotLabelInterval={{ hours: 1 }}
-          slotLabelFormat={{
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false,
-          }}
+          slotLabelFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
           nowIndicator={true}
           events={events}
           editable={true}
@@ -1908,89 +2136,102 @@ export default function DashboardCalendarSection({
           droppable={false}
           eventContent={renderEventContent}
           datesSet={handleDatesSet}
-          eventClick={(arg) => handleEventClick(arg)}
+          eventClick={handleEventClick}
         />
-      )}
 
-      {/* PROGRAM override / edit modal */}
-      {eventModal && !showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div
-            className="w-full max-w-md rounded-xl border border-slate-700 p-5 shadow-xl space-y-3"
-            style={{ background: 'var(--color-sidebar)' }}
-          >
-            <div className="flex items-center justify-between mb-1">
-              <h2 className="text-sm font-semibold text-slate-50">
-                Επεξεργασία μαθήματος
-              </h2>
-              <button
-                type="button"
-                onClick={() => {
-                  setEventModal(null);
-                  setShowDeleteConfirm(false);
-                  setEventError(null);
-                }}
-                className="text-xs text-slate-300 hover:text-slate-100"
-              >
-                Κλείσιμο
-              </button>
-            </div>
+        {/* SCHOOL EVENT modal */}
+        <EventFormModal
+          open={schoolEventModalOpen}
+          mode={schoolEventModalMode}
+          editingEvent={schoolEventEditing}
+          error={schoolEventError}
+          saving={schoolEventSaving}
+          onClose={closeSchoolEventModal}
+          onSubmit={handleSaveSchoolEvent}
+        />
 
-            {eventError && (
-              <div className="rounded border border-red-500 bg-red-900/40 px-3 py-1.5 text-[11px] text-red-100">
-                {eventError}
-              </div>
-            )}
+        {/* Delete confirm for School Event */}
+        {schoolEventDeleteTarget && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div
+              className="w-full max-w-md rounded-xl border border-slate-700 px-5 py-4 shadow-xl"
+              style={{ background: 'var(--color-sidebar)' }}
+            >
+              <h3 className="mb-2 text-sm font-semibold text-slate-50">
+                Διαγραφή εκδήλωσης
+              </h3>
 
-            {/* ✅ Holiday: ONE toggle button + ONLY holiday name */}
-            {(() => {
-              const iso =
-                parseDateDisplayToISO(eventModal.date) ?? eventModal.originalDateStr;
-              const isHoliday = holidayDateSet.has(iso);
-              if (!isHoliday) return null;
+              <p className="mb-4 text-xs text-slate-200">
+                Σίγουρα θέλετε να διαγράψετε την εκδήλωση{' '}
+                <span className="font-semibold text-[color:var(--color-accent)]">
+                  «{schoolEventDeleteTarget.name}»
+                </span>
+                ; Η ενέργεια αυτή δεν μπορεί να ανακληθεί.
+              </p>
 
-              const holidayName = holidayNameByDate.get(iso) ?? null;
-              const label = holidayName || 'Αργία';
-
-              return (
-                <div className="rounded-lg border border-slate-500/60 bg-slate-900/30 px-3 py-2 text-xs">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="font-semibold text-slate-100">{label}</div>
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setEventModal((prev) =>
-                          prev
-                            ? { ...prev, activeDuringHoliday: !prev.activeDuringHoliday }
-                            : prev,
-                        )
-                      }
-                      className={`rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors ${
-                        eventModal.activeDuringHoliday
-                          ? 'border-emerald-400/70 bg-emerald-500/15 text-emerald-100 hover:bg-emerald-500/20'
-                          : 'border-slate-400/60 bg-slate-500/10 text-slate-100 hover:bg-slate-500/15'
-                      }`}
-                    >
-                      {eventModal.activeDuringHoliday ? 'Ενεργό' : 'Ανενεργό'}
-                    </button>
-                  </div>
-                </div>
-              );
-            })()}
-
-            <div className="space-y-3 text-xs">
-              {/* Τμήμα */}
-              <div>
-                <label className="form-label text-slate-100">Τμήμα *</label>
-                <select
-                  className="form-input"
-                  value={eventModal.classId ?? ''}
-                  onChange={handleProgramFieldChange('classId')}
+              <div className="flex justify-end gap-2 text-xs">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (schoolEventDeleting) return;
+                    setSchoolEventDeleteTarget(null);
+                  }}
+                  className="btn-ghost px-3 py-1"
                   style={{
                     background: 'var(--color-input-bg)',
                     color: 'var(--color-text-main)',
                   }}
+                  disabled={schoolEventDeleting}
+                >
+                  Ακύρωση
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleConfirmDeleteSchoolEvent}
+                  disabled={schoolEventDeleting}
+                  className="rounded-md px-3 py-1 text-xs font-semibold text-white"
+                  style={{ backgroundColor: '#dc2626' }}
+                >
+                  {schoolEventDeleting ? 'Διαγραφή…' : 'Διαγραφή'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* PROGRAM modal */}
+        {eventModal && !showDeleteConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div
+              className="w-full max-w-md rounded-xl border border-slate-700 p-5 shadow-xl space-y-3"
+              style={{ background: 'var(--color-sidebar)' }}
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-slate-50">
+                  Επεξεργασία μαθήματος
+                </h3>
+                <button
+                  type="button"
+                  className="text-xs text-slate-200 hover:text-white"
+                  onClick={handleEventModalClose}
+                >
+                  Κλείσιμο
+                </button>
+              </div>
+
+              {eventError && (
+                <div className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-100">
+                  {eventError}
+                </div>
+              )}
+
+              <div className="space-y-1">
+                <label className="text-xs text-slate-200">Τμήμα *</label>
+                <select
+                  value={eventModal.classId ?? ''}
+                  onChange={handleProgramFieldChange('classId')}
+                  className="w-full rounded-md border border-slate-600 bg-[var(--color-input-bg)] px-3 py-2 text-xs text-slate-50 outline-none"
                 >
                   <option value="">Επιλέξτε τμήμα</option>
                   {classes.map((c) => (
@@ -2001,117 +2242,56 @@ export default function DashboardCalendarSection({
                 </select>
               </div>
 
-              {/* Μάθημα */}
-              <div>
-                <label className="form-label text-slate-100">Μάθημα για το τμήμα *</label>
-                {(() => {
-                  const options = eventModal.classId
-                    ? getSubjectsForClass(eventModal.classId)
-                    : [];
-                  return (
-                    <>
-                      <select
-                        className="form-input select-accent"
-                        value={eventModal.subjectId ?? ''}
-                        onChange={handleProgramFieldChange('subjectId')}
-                        disabled={options.length === 0 || !eventModal.classId}
-                        style={{
-                          background: 'var(--color-input-bg)',
-                          color: 'var(--color-text-main)',
-                        }}
-                      >
-                        <option value="">
-                          {options.length === 0
-                            ? 'Δεν έχουν οριστεί μαθήματα'
-                            : 'Επιλέξτε μάθημα'}
-                        </option>
-                        {options.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.name}
-                          </option>
-                        ))}
-                      </select>
-                      {options.length === 0 && eventModal.classId && (
-                        <p className="mt-1 text-[10px] text-amber-300">
-                          Ρυθμίστε τα μαθήματα στη σελίδα «Τμήματα».
-                        </p>
-                      )}
-                    </>
-                  );
-                })()}
+              <div className="space-y-1">
+                <label className="text-xs text-slate-200">Μάθημα *</label>
+                <select
+                  value={eventModal.subjectId ?? ''}
+                  onChange={handleProgramFieldChange('subjectId')}
+                  className="w-full rounded-md border border-slate-600 bg-[var(--color-input-bg)] px-3 py-2 text-xs text-slate-50 outline-none"
+                  disabled={!eventModal.classId || programSubjectOptions.length === 0}
+                >
+                  <option value="">
+                    {programSubjectOptions.length === 0
+                      ? 'Δεν υπάρχουν μαθήματα'
+                      : 'Επιλέξτε μάθημα'}
+                  </option>
+                  {programSubjectOptions.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
-              {/* Ημερομηνία */}
-              <div>
-                <label className="form-label text-slate-100">Ημερομηνία μαθήματος *</label>
+              <div className="space-y-1">
+                <label className="text-xs text-slate-200">Ημερομηνία *</label>
                 <AppDatePicker
                   value={eventModal.date}
-                  onChange={(newValue) => {
-                    const iso = parseDateDisplayToISO(newValue);
-                    const isHoliday = !!(iso && holidayDateSet.has(iso));
-
-                    const existing =
-                      iso
-                        ? overrides.find(
-                            (o) =>
-                              o.program_item_id === eventModal.programItemId &&
-                              o.override_date === iso,
-                          ) ?? null
-                        : null;
-
-                    const manualInactive = !!existing?.is_inactive;
-                    const holidayActiveOverride = !!existing?.holiday_active_override;
-
-                    setEventModal((prev) =>
-                      prev
-                        ? {
-                            ...prev,
-                            date: newValue,
-                            activeDuringHoliday: isHoliday
-                              ? (holidayActiveOverride && !manualInactive)
-                              : false,
-                          }
-                        : prev,
-                    );
-                  }}
-                  placeholder="π.χ. 12/05/2025"
+                  onChange={(v) =>
+                    setEventModal((p) => (p ? { ...p, date: v } : p))
+                  }
+                  placeholder="dd/mm/yyyy"
                 />
               </div>
 
-              {/* Ώρες */}
-              <div className="grid gap-3 md:grid-cols-2">
-                <div>
-                  <label className="form-label text-slate-100">Ώρα έναρξης</label>
-                  <div className="relative">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-xs text-slate-200">Ώρα έναρξης *</label>
+                  <div className="flex gap-2">
                     <input
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="π.χ. 08:00"
                       value={eventModal.startTime}
                       onChange={handleEventTimeChange('startTime')}
-                      className="form-input pr-12"
-                      style={{
-                        background: 'var(--color-input-bg)',
-                        color: 'var(--color-text-main)',
-                      }}
+                      className="w-full rounded-md border border-slate-600 bg-[var(--color-input-bg)] px-3 py-2 text-xs text-slate-50 outline-none"
+                      placeholder="09:00"
                     />
                     <select
                       value={eventModal.startPeriod}
                       onChange={(e) =>
-                        setEventModal((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                startPeriod: e.target.value as 'AM' | 'PM',
-                              }
-                            : prev,
+                        setEventModal((p) =>
+                          p ? { ...p, startPeriod: e.target.value as 'AM' | 'PM' } : p,
                         )
                       }
-                      className="absolute inset-y-1 right-1 rounded-md border border-slate-500 px-2 text-[10px] leading-tight"
-                      style={{
-                        backgroundColor: 'var(--color-input-bg)',
-                        color: 'var(--color-text-main)',
-                      }}
+                      className="rounded-md border border-slate-600 bg-[var(--color-input-bg)] px-2 py-2 text-xs text-slate-50 outline-none"
                     >
                       <option value="AM">AM</option>
                       <option value="PM">PM</option>
@@ -2119,35 +2299,23 @@ export default function DashboardCalendarSection({
                   </div>
                 </div>
 
-                <div>
-                  <label className="form-label text-slate-100">Ώρα λήξης</label>
-                  <div className="relative">
+                <div className="space-y-1">
+                  <label className="text-xs text-slate-200">Ώρα λήξης *</label>
+                  <div className="flex gap-2">
                     <input
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="π.χ. 09:30"
                       value={eventModal.endTime}
                       onChange={handleEventTimeChange('endTime')}
-                      className="form-input pr-12"
-                      style={{
-                        background: 'var(--color-input-bg)',
-                        color: 'var(--color-text-main)',
-                      }}
+                      className="w-full rounded-md border border-slate-600 bg-[var(--color-input-bg)] px-3 py-2 text-xs text-slate-50 outline-none"
+                      placeholder="10:00"
                     />
                     <select
                       value={eventModal.endPeriod}
                       onChange={(e) =>
-                        setEventModal((prev) =>
-                          prev
-                            ? { ...prev, endPeriod: e.target.value as 'AM' | 'PM' }
-                            : prev,
+                        setEventModal((p) =>
+                          p ? { ...p, endPeriod: e.target.value as 'AM' | 'PM' } : p,
                         )
                       }
-                      className="absolute inset-y-1 right-1 rounded-md border border-slate-500 px-2 text-[10px] leading-tight"
-                      style={{
-                        backgroundColor: 'var(--color-input-bg)',
-                        color: 'var(--color-text-main)',
-                      }}
+                      className="rounded-md border border-slate-600 bg-[var(--color-input-bg)] px-2 py-2 text-xs text-slate-50 outline-none"
                     >
                       <option value="AM">AM</option>
                       <option value="PM">PM</option>
@@ -2156,25 +2324,49 @@ export default function DashboardCalendarSection({
                 </div>
               </div>
 
-              {/* Buttons */}
-              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              {programModalIsHoliday && (
+                <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-100">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="font-semibold">
+                        {programModalHolidayName || 'Αργία'}
+                      </div>
+                      <div className="opacity-90">
+                        Θέλετε το μάθημα να γίνει παρόλο που είναι αργία;
+                      </div>
+                    </div>
+
+                    <label className="inline-flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={!!eventModal.activeDuringHoliday}
+                        onChange={(e) =>
+                          setEventModal((p) =>
+                            p ? { ...p, activeDuringHoliday: e.target.checked } : p,
+                          )
+                        }
+                      />
+                      <span>Ενεργό</span>
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-between gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowDeleteConfirm(true)}
-                  className="rounded-md bg-red-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-red-500"
+                  onClick={handleProgramAskDeleteForDay}
+                  className="rounded-md px-3 py-2 text-xs font-semibold text-white"
+                  style={{ backgroundColor: '#dc2626' }}
                 >
-                  Διαγραφή μόνο για αυτή την ημέρα
+                  Ακύρωση για αυτή τη μέρα
                 </button>
 
-                <div className="flex justify-end gap-2">
+                <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={() => {
-                      setEventModal(null);
-                      setShowDeleteConfirm(false);
-                      setEventError(null);
-                    }}
-                    className="btn-ghost"
+                    onClick={handleEventModalClose}
+                    className="btn-ghost rounded-md px-3 py-2 text-xs"
                     style={{
                       background: 'var(--color-input-bg)',
                       color: 'var(--color-text-main)',
@@ -2182,129 +2374,263 @@ export default function DashboardCalendarSection({
                   >
                     Ακύρωση
                   </button>
-                  <button type="button" onClick={handleEventModalSave} className="btn-primary">
-                    Αποθήκευση
+
+                  <button
+                    type="button"
+                    onClick={handleEventModalSave}
+                    className="rounded-md px-3 py-2 text-xs font-semibold text-white"
+                    style={{ backgroundColor: '#2563eb' }}
+                  >
+                    Ενημέρωση
                   </button>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Delete confirmation – for PROGRAM events */}
-      {eventModal && showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div
-            className="w-full max-w-md rounded-xl border border-slate-700 p-5 shadow-xl space-y-3"
-            style={{ background: 'var(--color-sidebar)' }}
-          >
-            <div className="flex items-center justify-between mb-1">
-              <h2 className="text-sm font-semibold text-slate-50">Διαγραφή μαθήματος</h2>
-              <button
-                type="button"
-                onClick={() => setShowDeleteConfirm(false)}
-                className="text-xs text-slate-300 hover:text-slate-100"
-              >
-                ×
-              </button>
-            </div>
+        {/* PROGRAM Delete confirmation */}
+        {eventModal && showDeleteConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div
+              className="w-full max-w-md rounded-xl border border-slate-700 p-5 shadow-xl space-y-3"
+              style={{ background: 'var(--color-sidebar)' }}
+            >
+              <h3 className="text-sm font-semibold text-slate-50">
+                Ακύρωση μαθήματος για αυτή τη μέρα
+              </h3>
 
-            <p className="text-xs text-slate-100">
-              Σίγουρα θέλεις να διαγράψεις το μάθημα για την ημερομηνία{' '}
-              <span className="font-semibold">{formatDateDisplay(eventModal.originalDateStr)}</span>; Η ενέργεια αυτή
-              επηρεάζει μόνο αυτή την ημέρα και δεν μπορεί να ανακληθεί.
-            </p>
+              <p className="text-xs text-slate-200">
+                Θέλετε σίγουρα να ακυρώσετε το μάθημα μόνο για τη συγκεκριμένη ημερομηνία;
+              </p>
 
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setShowDeleteConfirm(false)}
-                className="btn-ghost"
-                style={{
-                  background: 'var(--color-input-bg)',
-                  color: 'var(--color-text-main)',
-                }}
-              >
-                Ακύρωση
-              </button>
-              <button
-                type="button"
-                onClick={handleEventModalDeleteForDay}
-                className="rounded-md bg-red-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-red-500"
-              >
-                Διαγραφή
-              </button>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={handleProgramCancelDeleteConfirm}
+                  className="btn-ghost rounded-md px-3 py-2 text-xs"
+                  style={{
+                    background: 'var(--color-input-bg)',
+                    color: 'var(--color-text-main)',
+                  }}
+                >
+                  Όχι
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleEventModalDeleteForDay}
+                  className="rounded-md px-3 py-2 text-xs font-semibold text-white"
+                  style={{ backgroundColor: '#dc2626' }}
+                >
+                  Ναι, ακύρωση
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* TEST edit modal */}
-      {testModal && !showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div
-            className="w-full max-w-md rounded-xl border border-slate-700 p-5 shadow-xl space-y-3"
-            style={{ background: 'var(--color-sidebar)' }}
-          >
-            <div className="flex items-center justify-between mb-1">
-              <h2 className="text-sm font-semibold text-slate-50">Επεξεργασία διαγωνίσματος</h2>
-              <button
-                type="button"
-                onClick={handleTestModalClose}
-                className="text-xs text-slate-300 hover:text-slate-100"
-              >
-                Κλείσιμο
-              </button>
-            </div>
-
-            {testError && (
-              <div className="rounded border border-red-500 bg-red-900/40 px-3 py-1.5 text-[11px] text-red-100">
-                {testError}
+        {/* TEST edit modal */}
+        {testModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div
+              className="w-full max-w-md rounded-xl border border-slate-700 p-5 shadow-xl space-y-3"
+              style={{ background: 'var(--color-sidebar)' }}
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-slate-50">
+                  Επεξεργασία διαγωνίσματος
+                </h3>
+                <button
+                  type="button"
+                  className="text-xs text-slate-200 hover:text-white"
+                  onClick={handleTestModalClose}
+                >
+                  Κλείσιμο
+                </button>
               </div>
-            )}
 
-            {/* ✅ Holiday: ONE toggle button + ONLY holiday name */}
-            {(() => {
-              const iso = parseDateDisplayToISO(testModal.date);
-              const isHoliday = !!(iso && holidayDateSet.has(iso));
-              if (!isHoliday || !iso) return null;
+              {testError && (
+                <div className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-100">
+                  {testError}
+                </div>
+              )}
 
-              const holidayName = holidayNameByDate.get(iso) ?? null;
-              const label = holidayName || 'Αργία';
+              <div className="space-y-1">
+                <label className="text-xs text-slate-200">Τμήμα *</label>
+                <select
+                  value={testModal.classId ?? ''}
+                  onChange={handleTestFieldChange('classId')}
+                  className="w-full rounded-md border border-slate-600 bg-[var(--color-input-bg)] px-3 py-2 text-xs text-slate-50 outline-none"
+                >
+                  <option value="">Επιλέξτε τμήμα</option>
+                  {classes.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-              return (
-                <div className="rounded-lg border border-slate-500/60 bg-slate-900/30 px-3 py-2 text-xs">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="font-semibold text-slate-100">{label}</div>
+              <div className="space-y-1">
+                <label className="text-xs text-slate-200">Μάθημα *</label>
+                <select
+                  value={testModal.subjectId ?? ''}
+                  onChange={handleTestFieldChange('subjectId')}
+                  className="w-full rounded-md border border-slate-600 bg-[var(--color-input-bg)] px-3 py-2 text-xs text-slate-50 outline-none"
+                  disabled={!testModal.classId || testSubjectOptions.length === 0}
+                >
+                  <option value="">
+                    {testSubjectOptions.length === 0 ? 'Δεν υπάρχουν μαθήματα' : 'Επιλέξτε μάθημα'}
+                  </option>
+                  {testSubjectOptions.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setTestModal((prev) =>
-                          prev
-                            ? { ...prev, activeDuringHoliday: !prev.activeDuringHoliday }
-                            : prev,
+              <div className="space-y-1">
+                <label className="text-xs text-slate-200">Ημερομηνία *</label>
+                <AppDatePicker
+                  value={testModal.date}
+                  onChange={(v) => setTestModal((p) => (p ? { ...p, date: v } : p))}
+                  placeholder="dd/mm/yyyy"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-xs text-slate-200">Ώρα έναρξης *</label>
+                  <div className="flex gap-2">
+                    <input
+                      value={testModal.startTime}
+                      onChange={handleTestTimeChange('startTime')}
+                      className="w-full rounded-md border border-slate-600 bg-[var(--color-input-bg)] px-3 py-2 text-xs text-slate-50 outline-none"
+                      placeholder="09:00"
+                    />
+                    <select
+                      value={testModal.startPeriod}
+                      onChange={(e) =>
+                        setTestModal((p) =>
+                          p ? { ...p, startPeriod: e.target.value as 'AM' | 'PM' } : p,
                         )
                       }
-                      className={`rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors ${
-                        testModal.activeDuringHoliday
-                          ? 'border-emerald-400/70 bg-emerald-500/15 text-emerald-100 hover:bg-emerald-500/20'
-                          : 'border-slate-400/60 bg-slate-500/10 text-slate-100 hover:bg-slate-500/15'
-                      }`}
+                      className="rounded-md border border-slate-600 bg-[var(--color-input-bg)] px-2 py-2 text-xs text-slate-50 outline-none"
                     >
-                      {testModal.activeDuringHoliday ? 'Ενεργό' : 'Ανενεργό'}
-                    </button>
+                      <option value="AM">AM</option>
+                      <option value="PM">PM</option>
+                    </select>
                   </div>
                 </div>
-              );
-            })()}
 
-            {/* (rest of the test modal stays as-is in your file) */}
-            {/* NOTE: I didn’t re-paste the remaining identical part again to avoid doubling the response. */}
+                <div className="space-y-1">
+                  <label className="text-xs text-slate-200">Ώρα λήξης *</label>
+                  <div className="flex gap-2">
+                    <input
+                      value={testModal.endTime}
+                      onChange={handleTestTimeChange('endTime')}
+                      className="w-full rounded-md border border-slate-600 bg-[var(--color-input-bg)] px-3 py-2 text-xs text-slate-50 outline-none"
+                      placeholder="10:00"
+                    />
+                    <select
+                      value={testModal.endPeriod}
+                      onChange={(e) =>
+                        setTestModal((p) =>
+                          p ? { ...p, endPeriod: e.target.value as 'AM' | 'PM' } : p,
+                        )
+                      }
+                      className="rounded-md border border-slate-600 bg-[var(--color-input-bg)] px-2 py-2 text-xs text-slate-50 outline-none"
+                    >
+                      <option value="AM">AM</option>
+                      <option value="PM">PM</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {testModalIsHoliday && (
+                <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-100">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="font-semibold">
+                        {testModalHolidayName || 'Αργία'}
+                      </div>
+                      <div className="opacity-90">
+                        Θέλετε το διαγώνισμα να γίνει παρόλο που είναι αργία;
+                      </div>
+                    </div>
+
+                    <label className="inline-flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={!!testModal.activeDuringHoliday}
+                        onChange={(e) =>
+                          setTestModal((p) =>
+                            p ? { ...p, activeDuringHoliday: e.target.checked } : p,
+                          )
+                        }
+                      />
+                      <span>Ενεργό</span>
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-between gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={handleTestCancelForDay}
+                  disabled={savingTest}
+                  className="rounded-md px-3 py-2 text-xs font-semibold text-white"
+                  style={{ backgroundColor: '#dc2626' }}
+                >
+                  Ακύρωση για αυτή τη μέρα
+                </button>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleTestModalClose}
+                    disabled={savingTest}
+                    className="btn-ghost rounded-md px-3 py-2 text-xs"
+                    style={{
+                      background: 'var(--color-input-bg)',
+                      color: 'var(--color-text-main)',
+                    }}
+                  >
+                    Ακύρωση
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleTestModalSave}
+                    disabled={savingTest}
+                    className="rounded-md px-3 py-2 text-xs font-semibold text-white"
+                    style={{ backgroundColor: '#2563eb' }}
+                  >
+                    {savingTest ? 'Αποθήκευση…' : 'Ενημέρωση'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleTestDelete}
+                    disabled={savingTest}
+                    className="rounded-md px-3 py-2 text-xs font-semibold text-white"
+                    style={{ backgroundColor: '#7f1d1d' }}
+                  >
+                    Διαγραφή
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-      )}
-    </section>
-  );
+        )}
+      </>
+    )}
+  </section>
+);
+
+// ✅ THIS was missing in your file — without it you get the red error at the end
 }
