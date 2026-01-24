@@ -134,6 +134,10 @@ export default function StudentsPage() {
   const pageSize = 10;
   const [page, setPage] = useState(1);
 
+  const [password, setPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+
+
   useEffect(() => {
     setPage(1);
   }, [search]);
@@ -222,6 +226,8 @@ export default function StudentsPage() {
     setEditingStudent(null);
     setModalTab('student');
     setModalOpen(true);
+    setPassword('');
+    setNewPassword('');
   };
 
   const openEditModal = (student: StudentRow) => {
@@ -246,18 +252,22 @@ export default function StudentsPage() {
     setMotherDob(student.mother_date_of_birth ? isoToDisplay(student.mother_date_of_birth) : '');
     setMotherPhone(student.mother_phone ?? '');
     setMotherEmail(student.mother_email ?? '');
+    setNewPassword('');
 
     setModalOpen(true);
   };
 
-  const closeModal = () => {
-    if (saving) return;
+  const closeModal = (force = false) => {
+    if (saving && !force) return;
     setModalOpen(false);
     setEditingStudent(null);
     setModalMode('create');
     setModalTab('student');
     resetForm();
+    setPassword('');
+    setNewPassword('');
   };
+
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -294,6 +304,15 @@ export default function StudentsPage() {
 
     try {
       if (modalMode === 'create') {
+        // ✅ Validation for mobile login account
+        if (password.trim().length < 6) {
+          setError('Ο κωδικός πρέπει να έχει τουλάχιστον 6 χαρακτήρες.');
+          return;
+        }
+        if (!payload.email && !payload.phone) {
+          setError('Βάλε Email ή Τηλέφωνο για να μπορεί να κάνει login στο mobile app.');
+          return;
+        }
         const { data, error: dbError } = await supabase
           .from('students')
           .insert(payload)
@@ -304,9 +323,36 @@ export default function StudentsPage() {
           setError('Αποτυχία δημιουργίας μαθητή.');
           return;
         }
+        const createdStudent = data[0] as StudentRow;
+        const pwd = password; // copy BEFORE closeModal resets state
 
-        setStudents((prev) => [...prev, data[0] as StudentRow]);
-        closeModal();
+        // ✅ show immediately + close immediately
+        setStudents((prev) =>
+          [...prev, createdStudent].sort((a, b) =>
+            (a.full_name ?? '').localeCompare(b.full_name ?? '', 'el')
+          )
+        );
+        closeModal(true);
+
+        // ✅ then create auth user in background (modal already closed)
+        const emailToUse = payload.email;
+        const phoneToUse = payload.phone;
+
+        const { error: fnErr } = await supabase.functions.invoke('create-student-user', {
+          body: {
+            school_id: schoolId,
+            student_id: createdStudent.id,
+            email: emailToUse,
+            phone: phoneToUse,
+            password: pwd,
+          },
+        });
+
+        if (fnErr) {
+          console.error('create-student-user error:', fnErr);
+          // no UI message, student already visible, owner can set password later from edit
+        }
+
       } else if (modalMode === 'edit' && editingStudent) {
         const { data, error: dbError } = await supabase
           .from('students')
@@ -340,7 +386,30 @@ export default function StudentsPage() {
 
         const updated = data[0] as StudentRow;
         setStudents((prev) => prev.map((s) => (s.id === editingStudent.id ? updated : s)));
-        closeModal();
+
+        // ✅ If owner typed a new password, update Auth password too
+        const np = newPassword.trim();
+        if (np) {
+          if (np.length < 6) {
+            // optional: block + show error
+            setError('Ο νέος κωδικός πρέπει να έχει τουλάχιστον 6 χαρακτήρες.');
+          } else {
+            const { error: pwErr } = await supabase.functions.invoke('set-student-password', {
+              body: {
+                school_id: schoolId,
+                student_id: editingStudent.id,
+                new_password: np,
+              },
+            });
+
+            if (pwErr) {
+              console.error('set-student-password error:', pwErr);
+              // no UI message (as requested)
+            }
+          }
+        }
+
+        closeModal(true);
       }
     } finally {
       setSaving(false);
@@ -722,7 +791,7 @@ export default function StudentsPage() {
               </h2>
               <button
                 type="button"
-                onClick={closeModal}
+                onClick={() => closeModal()}
                 className="text-xs text-slate-300 hover:text-slate-100"
               >
                 Κλείσιμο
@@ -733,22 +802,20 @@ export default function StudentsPage() {
               <button
                 type="button"
                 onClick={() => setModalTab('student')}
-                className={`px-3 py-1 rounded-full border text-xs ${
-                  modalTab === 'student'
-                    ? 'bg-blue-600 border-blue-500 text-white'
-                    : 'bg-slate-800 border-slate-600 text-slate-200'
-                }`}
+                className={`px-3 py-1 rounded-full border text-xs ${modalTab === 'student'
+                  ? 'bg-blue-600 border-blue-500 text-white'
+                  : 'bg-slate-800 border-slate-600 text-slate-200'
+                  }`}
               >
                 Μαθητής
               </button>
               <button
                 type="button"
                 onClick={() => setModalTab('parents')}
-                className={`px-3 py-1 rounded-full border text-xs ${
-                  modalTab === 'parents'
-                    ? 'bg-blue-600 border-blue-500 text-white'
-                    : 'bg-slate-800 border-slate-600 text-slate-200'
-                }`}
+                className={`px-3 py-1 rounded-full border text-xs ${modalTab === 'parents'
+                  ? 'bg-blue-600 border-blue-500 text-white'
+                  : 'bg-slate-800 border-slate-600 text-slate-200'
+                  }`}
               >
                 Γονείς
               </button>
@@ -827,6 +894,43 @@ export default function StudentsPage() {
                       onChange={(e) => setSpecialNotes(e.target.value)}
                     />
                   </div>
+
+                  {modalMode === 'create' && (
+                    <div>
+                      <label className="form-label text-slate-100">Κωδικός *</label>
+                      <input
+                        type="password"
+                        className="form-input"
+                        style={{ background: 'var(--color-input-bg)', color: 'var(--color-text-main)' }}
+                        placeholder="Τουλάχιστον 6 χαρακτήρες"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        minLength={6}
+                      />
+                      <p className="mt-1 text-[11px] text-slate-400">
+                        Θα δημιουργηθεί λογαριασμός για login στο mobile app.
+                      </p>
+                    </div>
+                  )}
+                  {modalMode === 'edit' && (
+                    <div>
+                      <label className="form-label text-slate-100">Νέος κωδικός (προαιρετικό)</label>
+                      <input
+                        type="password"
+                        className="form-input"
+                        style={{ background: 'var(--color-input-bg)', color: 'var(--color-text-main)' }}
+                        placeholder="Άφησέ το κενό αν δεν θες αλλαγή"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        minLength={6}
+                      />
+                      <p className="mt-1 text-[11px] text-slate-400">
+                        Δεν μπορείς να δεις τον τρέχοντα κωδικό. Μόνο να ορίσεις νέο.
+                      </p>
+                    </div>
+                  )}
+
                 </>
               ) : (
                 <>
@@ -931,7 +1035,7 @@ export default function StudentsPage() {
               <div className="mt-4 flex justify-end gap-2">
                 <button
                   type="button"
-                  onClick={closeModal}
+                  onClick={() => closeModal()}
                   className="btn-ghost"
                   style={{ background: 'var(--color-input-bg)', color: 'var(--color-text-main)' }}
                   disabled={saving}

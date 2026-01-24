@@ -1,16 +1,17 @@
-import { useState, useEffect } from 'react';
+// src/pages/LoginPage.tsx
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+
+  // ✅ use the new web-only sign in + shared authError
+  const { user, signInWeb, authError, clearAuthError } = useAuth();
 
   const [email, setEmail] = useState('');
   const [pw, setPw] = useState('');
-  const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
   // If already logged in, go to dashboard
@@ -20,52 +21,44 @@ export default function LoginPage() {
     }
   }, [user, navigate]);
 
+  // clear the auth error when user edits fields
+  useEffect(() => {
+    if (authError) clearAuthError();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [email, pw]);
+
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError(null);
+    clearAuthError();
     setPending(true);
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password: pw,
-    });
+    const ok = await signInWeb(email.trim(), pw);
 
     setPending(false);
 
-    if (error) {
-      console.error('Login error', error);
-      setError(error.message || 'Failed to login');
-      return;
-    }
+    // if student (or wrong creds), signInWeb returns false and sets authError
+    if (!ok) return;
 
-    if (data.user) {
-      navigate('/dashboard', { replace: true });
-    }
+    navigate('/dashboard', { replace: true });
   };
 
-     return (
+  return (
     <div
       className="min-h-screen flex items-center justify-center px-4"
       style={{
-        // diagonal gradient: light (top-left) → dark (bottom-right)
-        background:
-          'linear-gradient(135deg, #4b5c70 0%, #253649 45%, #020617 100%)',
+        background: 'linear-gradient(135deg, #4b5c70 0%, #253649 45%, #020617 100%)',
       }}
     >
-      {/* outer gradient border */}
       <div className="login-card w-full max-w-md">
-        {/* inner transparent card */}
         <div className="login-card-inner">
-          <h1 className="text-xl font-semibold text-center text-slate-50">
-            Tutor Admin
-          </h1>
+          <h1 className="text-xl font-semibold text-center text-slate-50">Tutor Admin</h1>
           <p className="mt-2 mb-6 text-center text-xs text-slate-300">
             Σύνδεση διαχειριστή φροντιστηρίου
           </p>
 
-          {error && (
+          {authError && (
             <div className="mb-4 rounded-lg border border-red-500/60 bg-red-900/70 px-3 py-2 text-xs text-red-100">
-              {error}
+              {authError}
             </div>
           )}
 
@@ -77,6 +70,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                autoComplete="email"
                 className="form-input"
                 style={{
                   background: 'var(--color-input-bg)',
@@ -92,6 +86,7 @@ export default function LoginPage() {
                 value={pw}
                 onChange={(e) => setPw(e.target.value)}
                 required
+                autoComplete="current-password"
                 className="form-input"
                 style={{
                   background: 'var(--color-input-bg)',
@@ -100,11 +95,7 @@ export default function LoginPage() {
               />
             </div>
 
-            <button
-              type="submit"
-              disabled={pending}
-              className="btn-primary w-full mt-2"
-            >
+            <button type="submit" disabled={pending} className="btn-primary w-full mt-2">
               {pending ? 'Σύνδεση…' : 'Σύνδεση'}
             </button>
           </form>
