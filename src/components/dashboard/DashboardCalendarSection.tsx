@@ -55,6 +55,8 @@ type ProgramItemRow = {
   end_time: string | null;
   start_date: string | null;
   end_date: string | null;
+  subject_id: string | null;
+  tutor_id: string | null;
 };
 
 type ProgramItemOverrideRow = {
@@ -100,6 +102,12 @@ type SubjectRow = {
 type ClassSubjectRow = {
   class_id: string;
   subject_id: string;
+  school_id?: string | null;
+};
+
+type SubjectTutorLinkRow = {
+  subject_id: string;
+  tutor_id: string;
   school_id?: string | null;
 };
 
@@ -279,6 +287,8 @@ export default function DashboardCalendarSection({
   const [subjects, setSubjects] = useState<SubjectRow[]>([]);
   const [classSubjects, setClassSubjects] = useState<ClassSubjectRow[]>([]);
   const [tests, setTests] = useState<TestRow[]>([]);
+  const [subjectTutorLinks, setSubjectTutorLinks] = useState<SubjectTutorLinkRow[]>([]);
+
 
   // PROGRAM event modal
   const [eventModal, setEventModal] = useState<CalendarEventModal | null>(null);
@@ -502,6 +512,7 @@ export default function DashboardCalendarSection({
       setSubjects([]);
       setClassSubjects([]);
       setTests([]);
+      setSubjectTutorLinks([]);
       return;
     }
 
@@ -511,6 +522,7 @@ export default function DashboardCalendarSection({
           { data: subjData, error: subjErr },
           { data: classSubjData, error: classSubjErr },
           { data: testsData, error: testsErr },
+          { data: stData, error: stErr },
         ] = await Promise.all([
           supabase
             .from('subjects')
@@ -528,6 +540,10 @@ export default function DashboardCalendarSection({
             )
             .eq('school_id', schoolId)
             .order('test_date', { ascending: true }),
+          supabase
+            .from('subject_tutors')
+            .select('subject_id, tutor_id, school_id')
+            .eq('school_id', schoolId),
         ]);
 
         if (subjErr) {
@@ -552,6 +568,12 @@ export default function DashboardCalendarSection({
           setTests([]);
         } else {
           setTests((testsData ?? []) as TestRow[]);
+        }
+        if (stErr) {
+          console.error('Failed to load subject_tutors for dashboard', stErr);
+          setSubjectTutorLinks([]);
+        } else {
+          setSubjectTutorLinks((stData ?? []) as SubjectTutorLinkRow[]);
         }
       } catch (e) {
         console.error('Dashboard extra load error (subjects/tests)', e);
@@ -627,6 +649,30 @@ export default function DashboardCalendarSection({
     tutors.forEach((t) => {
       if (t.id && t.full_name) tutorMap[t.id] = t.full_name;
     });
+    // ✅ subject_id -> [tutorName...]
+    const tutorNamesBySubjectId = new Map<string, string[]>();
+
+    subjectTutorLinks.forEach((link) => {
+      const name = link.tutor_id ? tutorMap[link.tutor_id] : null;
+      if (!link.subject_id || !name) return;
+
+      const arr = tutorNamesBySubjectId.get(link.subject_id) ?? [];
+      arr.push(name);
+      tutorNamesBySubjectId.set(link.subject_id, arr);
+    });
+
+    // stable order so we always pick same “first” tutor
+    tutorNamesBySubjectId.forEach((arr, key) => {
+      arr.sort((a, b) => a.localeCompare(b, 'el-GR'));
+      tutorNamesBySubjectId.set(key, arr);
+    });
+
+    const getTutorNameForSubject = (subjectId: string | null): string | null => {
+      if (!subjectId) return null;
+      const arr = tutorNamesBySubjectId.get(subjectId);
+      if (!arr || arr.length === 0) return null;
+      return arr[0]; // ✅ pick first (stable)
+    };
 
     const classMap = new Map<string, ClassRow>();
     classes.forEach((c) => classMap.set(c.id, c));
@@ -684,8 +730,18 @@ export default function DashboardCalendarSection({
 
       let currentDate = getNextDateForDow(effectiveStart, dow);
 
+      const subjectIdForSlot = item.subject_id ?? cls.subject_id ?? null;
+
+      // Priority:
+      // 1) explicit tutor on the slot (program_items.tutor_id)
+      // 2) tutor(s) assigned to the subject (subject_tutors)
+      // 3) fallback class tutor (classes.tutor_id)
       const tutorName =
-        cls.tutor_id && tutorMap[cls.tutor_id] ? tutorMap[cls.tutor_id] : null;
+        (item.tutor_id && tutorMap[item.tutor_id]) ||
+        getTutorNameForSubject(subjectIdForSlot) ||
+        (cls.tutor_id && tutorMap[cls.tutor_id]) ||
+        null;
+
 
       while (currentDate <= effectiveEnd) {
         const dateStr = formatLocalYMD(currentDate);
@@ -751,7 +807,11 @@ export default function DashboardCalendarSection({
               kind: 'program',
               programItemId: item.id,
               classId: cls.id,
-              subject: cls.subject,
+              subjectId: item.subject_id ?? null,
+              subject:
+                (item.subject_id ? subjectById.get(item.subject_id)?.name : null) ??
+                cls.subject ??
+                null,
               tutorName,
               overrideDate: dateStr,
               overrideId,
@@ -809,8 +869,13 @@ export default function DashboardCalendarSection({
       const end = new Date(overrideDateObj);
       end.setHours(eH, eM, 0, 0);
 
+      const subjectIdForSlot = item.subject_id ?? cls.subject_id ?? null;
+
       const tutorName =
-        cls.tutor_id && tutorMap[cls.tutor_id] ? tutorMap[cls.tutor_id] : null;
+        (item.tutor_id && tutorMap[item.tutor_id]) ||
+        getTutorNameForSubject(subjectIdForSlot) ||
+        (cls.tutor_id && tutorMap[cls.tutor_id]) ||
+        null;
 
       const key = `${item.class_id}-${dateStr}`;
       const testsForClassDate = testsByKey.get(key) ?? [];
@@ -835,7 +900,11 @@ export default function DashboardCalendarSection({
           kind: 'program',
           programItemId: item.id,
           classId: cls.id,
-          subject: cls.subject,
+          subjectId: item.subject_id ?? null,
+          subject:
+            (item.subject_id ? subjectById.get(item.subject_id)?.name : null) ??
+            cls.subject ??
+            null,
           tutorName,
           overrideDate: dateStr,
           overrideId: ov.id,
@@ -937,6 +1006,7 @@ export default function DashboardCalendarSection({
     programItems,
     classes,
     tutors,
+    subjectTutorLinks,
     overrides,
     holidays,
     holidayDateSet,
@@ -1269,8 +1339,8 @@ export default function DashboardCalendarSection({
           <div className="mt-0.5">
             <span
               className={`inline-flex items-center rounded-full border px-2 py-[1px] text-[10px] font-semibold ${isInactive
-                  ? 'border-slate-400/50 bg-slate-500/10 text-slate-200'
-                  : 'border-emerald-400/60 bg-emerald-500/10 text-emerald-100'
+                ? 'border-slate-400/50 bg-slate-500/10 text-slate-200'
+                : 'border-emerald-400/60 bg-emerald-500/10 text-emerald-100'
                 }`}
             >
               {holidayName || 'Αργία'}
@@ -1550,7 +1620,9 @@ export default function DashboardCalendarSection({
 
       const classIdProp = event.extendedProps['classId'] as string | undefined;
       const clsRow = classIdProp ? classes.find((c) => c.id === classIdProp) ?? null : null;
-      const prefilledSubjectId = clsRow?.subject_id ?? null;
+      const prefilledSubjectId =
+        (event.extendedProps['subjectId'] as string | null | undefined) ??
+        null;
 
       setEventModal({
         programItemId,
@@ -1663,27 +1735,24 @@ export default function DashboardCalendarSection({
         );
       }
 
-      // 2) Update class subject if changed (keeps your existing behavior)
-      const subjectOptionsNow = getSubjectsForClass(classId);
-      const cls = classes.find((c) => c.id === classId) ?? null;
-      const oldSubjectId = cls?.subject_id ?? null;
-      const finalSubjectId = subjectId ?? subjectOptionsNow[0]?.id ?? null;
+      // 2) ✅ Update program_items.subject_id (NOT classes.subject_id)
+      const currentItem = programItems.find((pi) => pi.id === programItemId) ?? null;
+      const finalSubjectId = subjectId ?? null;
 
-      if (finalSubjectId && finalSubjectId !== oldSubjectId) {
-        const subjRow = subjectById.get(finalSubjectId);
-        const subjectName = subjRow?.name ?? null;
+      if (currentItem && finalSubjectId !== (currentItem.subject_id ?? null)) {
+        const { data: updatedItem2, error: itemErr2 } = await supabase
+          .from('program_items')
+          .update({ subject_id: finalSubjectId })
+          .eq('id', programItemId)
+          .select('*')
+          .single();
 
-        const { data: updatedClass, error: classErr } = await supabase
-          .from('classes')
-          .update({ subject_id: finalSubjectId, subject: subjectName })
-          .eq('id', classId)
-          .select('id, school_id, title, subject, subject_id, tutor_id')
-          .maybeSingle();
+        if (itemErr2 || !updatedItem2) throw itemErr2 ?? new Error('No data');
 
-        if (classErr || !updatedClass) throw classErr ?? new Error('No data');
-
-        setClasses((prev) =>
-          prev.map((c) => (c.id === classId ? (updatedClass as ClassRow) : c)),
+        setProgramItems((prev) =>
+          prev.map((pi) =>
+            pi.id === programItemId ? (updatedItem2 as ProgramItemRow) : pi,
+          ),
         );
       }
 
@@ -1989,648 +2058,648 @@ export default function DashboardCalendarSection({
 
   // PART 1/3 ends here
   // (Return JSX + all modal markup is in PART 2/3 and PART 3/3)
- // PART 2+3 (merged) — helpers + the ONLY return (and closes the component)
+  // PART 2+3 (merged) — helpers + the ONLY return (and closes the component)
 
-// Close PROGRAM modal
-const handleEventModalClose = () => {
-  setEventModal(null);
-  setEventError(null);
-  setShowDeleteConfirm(false);
-};
+  // Close PROGRAM modal
+  const handleEventModalClose = () => {
+    setEventModal(null);
+    setEventError(null);
+    setShowDeleteConfirm(false);
+  };
 
-// PROGRAM: open confirm for “cancel for this day”
-const handleProgramAskDeleteForDay = () => {
-  setShowDeleteConfirm(true);
-};
+  // PROGRAM: open confirm for “cancel for this day”
+  const handleProgramAskDeleteForDay = () => {
+    setShowDeleteConfirm(true);
+  };
 
-const handleProgramCancelDeleteConfirm = () => {
-  setShowDeleteConfirm(false);
-};
+  const handleProgramCancelDeleteConfirm = () => {
+    setShowDeleteConfirm(false);
+  };
 
-// TEST: “Ακύρωση για αυτή τη μέρα” => force active_during_holiday=false
-const handleTestCancelForDay = async () => {
-  if (!testModal) return;
+  // TEST: “Ακύρωση για αυτή τη μέρα” => force active_during_holiday=false
+  const handleTestCancelForDay = async () => {
+    if (!testModal) return;
 
-  const testDateISO = parseDateDisplayToISO(testModal.date);
-  if (!testDateISO) {
-    setTestError('Μη έγκυρη ημερομηνία.');
-    return;
-  }
-
-  try {
-    setSavingTest(true);
-    setTestError(null);
-
-    const { data, error } = await supabase
-      .from('tests')
-      .update({ active_during_holiday: false })
-      .eq('id', testModal.testId)
-      .select('*')
-      .maybeSingle();
-
-    setSavingTest(false);
-
-    if (error || !data) {
-      console.error(error);
-      setTestError('Αποτυχία ακύρωσης για τη μέρα.');
+    const testDateISO = parseDateDisplayToISO(testModal.date);
+    if (!testDateISO) {
+      setTestError('Μη έγκυρη ημερομηνία.');
       return;
     }
 
-    setTests((prev) =>
-      prev.map((t) => (t.id === testModal.testId ? (data as TestRow) : t)),
-    );
-    setTestModal(null);
-    setShowDeleteConfirm(false);
-  } catch (e) {
-    console.error(e);
-    setSavingTest(false);
-    setTestError('Αποτυχία ακύρωσης για τη μέρα.');
-  }
-};
+    try {
+      setSavingTest(true);
+      setTestError(null);
 
-// PROGRAM: is current date holiday?
-const programModalIsHoliday = useMemo(() => {
-  if (!eventModal) return false;
-  const iso = parseDateDisplayToISO(eventModal.date);
-  if (!iso) return false;
-  return holidayDateSet.has(iso);
-}, [eventModal, holidayDateSet]);
+      const { data, error } = await supabase
+        .from('tests')
+        .update({ active_during_holiday: false })
+        .eq('id', testModal.testId)
+        .select('*')
+        .maybeSingle();
 
-const programModalHolidayName = useMemo(() => {
-  if (!eventModal) return null;
-  const iso = parseDateDisplayToISO(eventModal.date);
-  if (!iso) return null;
-  return holidayNameByDate.get(iso) ?? null;
-}, [eventModal, holidayNameByDate]);
+      setSavingTest(false);
 
-// TEST: is current date holiday?
-const testModalIsHoliday = useMemo(() => {
-  if (!testModal) return false;
-  const iso = parseDateDisplayToISO(testModal.date);
-  if (!iso) return false;
-  return holidayDateSet.has(iso);
-}, [testModal, holidayDateSet]);
+      if (error || !data) {
+        console.error(error);
+        setTestError('Αποτυχία ακύρωσης για τη μέρα.');
+        return;
+      }
 
-const testModalHolidayName = useMemo(() => {
-  if (!testModal) return null;
-  const iso = parseDateDisplayToISO(testModal.date);
-  if (!iso) return null;
-  return holidayNameByDate.get(iso) ?? null;
-}, [testModal, holidayNameByDate]);
+      setTests((prev) =>
+        prev.map((t) => (t.id === testModal.testId ? (data as TestRow) : t)),
+      );
+      setTestModal(null);
+      setShowDeleteConfirm(false);
+    } catch (e) {
+      console.error(e);
+      setSavingTest(false);
+      setTestError('Αποτυχία ακύρωσης για τη μέρα.');
+    }
+  };
 
-// Subjects options for current modals
-const programSubjectOptions = useMemo(() => {
-  if (!eventModal?.classId) return [];
-  return getSubjectsForClass(eventModal.classId);
-}, [eventModal?.classId, classes, classSubjects, subjects, subjectById]);
+  // PROGRAM: is current date holiday?
+  const programModalIsHoliday = useMemo(() => {
+    if (!eventModal) return false;
+    const iso = parseDateDisplayToISO(eventModal.date);
+    if (!iso) return false;
+    return holidayDateSet.has(iso);
+  }, [eventModal, holidayDateSet]);
 
-const testSubjectOptions = useMemo(() => {
-  if (!testModal?.classId) return [];
-  return getSubjectsForClass(testModal.classId);
-}, [testModal?.classId, classes, classSubjects, subjects, subjectById]);
+  const programModalHolidayName = useMemo(() => {
+    if (!eventModal) return null;
+    const iso = parseDateDisplayToISO(eventModal.date);
+    if (!iso) return null;
+    return holidayNameByDate.get(iso) ?? null;
+  }, [eventModal, holidayNameByDate]);
 
-// SCHOOL EVENT: trigger external delete confirm
-const requestDeleteSchoolEventFromModal = () => {
-  if (!schoolEventEditing) return;
-  setSchoolEventDeleteTarget({
-    id: schoolEventEditing.id,
-    name: schoolEventEditing.name,
-  });
-};
+  // TEST: is current date holiday?
+  const testModalIsHoliday = useMemo(() => {
+    if (!testModal) return false;
+    const iso = parseDateDisplayToISO(testModal.date);
+    if (!iso) return false;
+    return holidayDateSet.has(iso);
+  }, [testModal, holidayDateSet]);
 
-// ✅ the ONLY return
-return (
-  <section className="space-y-3">
-    <h2 className="text-sm font-semibold text-slate-50">
-      Πρόγραμμα Τμημάτων & Εκδηλώσεις
-    </h2>
+  const testModalHolidayName = useMemo(() => {
+    if (!testModal) return null;
+    const iso = parseDateDisplayToISO(testModal.date);
+    if (!iso) return null;
+    return holidayNameByDate.get(iso) ?? null;
+  }, [testModal, holidayNameByDate]);
 
-    {loading ? (
-      <div className="py-6 text-xs text-slate-200 border border-slate-700 rounded-md flex items-center justify-center">
-        Φόρτωση προγράμματος…
-      </div>
-    ) : (
-      <>
-        <FullCalendar
-          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-          initialView="timeGridWeek"
-          locale={elLocale}
-          headerToolbar={{
-            left: 'prev,next today',
-            center: 'title',
-            right: 'dayGridMonth,timeGridWeek,timeGridDay',
-          }}
-          height="auto"
-          slotMinTime="08:00:00"
-          slotMaxTime="22:00:00"
-          allDaySlot={false}
-          slotDuration="00:15:00"
-          slotLabelInterval={{ hours: 1 }}
-          slotLabelFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
-          nowIndicator={true}
-          events={events}
-          editable={true}
-          eventStartEditable={true}
-          eventDurationEditable={true}
-          eventDrop={handleEventDrop}
-          droppable={false}
-          eventContent={renderEventContent}
-          datesSet={handleDatesSet}
-          eventClick={handleEventClick}
-        />
+  // Subjects options for current modals
+  const programSubjectOptions = useMemo(() => {
+    if (!eventModal?.classId) return [];
+    return getSubjectsForClass(eventModal.classId);
+  }, [eventModal?.classId, classes, classSubjects, subjects, subjectById]);
 
-        {/* SCHOOL EVENT modal */}
-        <EventFormModal
-          open={schoolEventModalOpen}
-          mode={schoolEventModalMode}
-          editingEvent={schoolEventEditing}
-          error={schoolEventError}
-          saving={schoolEventSaving}
-          onClose={closeSchoolEventModal}
-          onSubmit={handleSaveSchoolEvent}
-        />
+  const testSubjectOptions = useMemo(() => {
+    if (!testModal?.classId) return [];
+    return getSubjectsForClass(testModal.classId);
+  }, [testModal?.classId, classes, classSubjects, subjects, subjectById]);
 
-        {/* Delete confirm for School Event */}
-        {schoolEventDeleteTarget && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-            <div
-              className="w-full max-w-md rounded-xl border border-slate-700 px-5 py-4 shadow-xl"
-              style={{ background: 'var(--color-sidebar)' }}
-            >
-              <h3 className="mb-2 text-sm font-semibold text-slate-50">
-                Διαγραφή εκδήλωσης
-              </h3>
+  // SCHOOL EVENT: trigger external delete confirm
+  const requestDeleteSchoolEventFromModal = () => {
+    if (!schoolEventEditing) return;
+    setSchoolEventDeleteTarget({
+      id: schoolEventEditing.id,
+      name: schoolEventEditing.name,
+    });
+  };
 
-              <p className="mb-4 text-xs text-slate-200">
-                Σίγουρα θέλετε να διαγράψετε την εκδήλωση{' '}
-                <span className="font-semibold text-[color:var(--color-accent)]">
-                  «{schoolEventDeleteTarget.name}»
-                </span>
-                ; Η ενέργεια αυτή δεν μπορεί να ανακληθεί.
-              </p>
+  // ✅ the ONLY return
+  return (
+    <section className="space-y-3">
+      <h2 className="text-sm font-semibold text-slate-50">
+        Πρόγραμμα Τμημάτων & Εκδηλώσεις
+      </h2>
 
-              <div className="flex justify-end gap-2 text-xs">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (schoolEventDeleting) return;
-                    setSchoolEventDeleteTarget(null);
-                  }}
-                  className="btn-ghost px-3 py-1"
-                  style={{
-                    background: 'var(--color-input-bg)',
-                    color: 'var(--color-text-main)',
-                  }}
-                  disabled={schoolEventDeleting}
-                >
-                  Ακύρωση
-                </button>
+      {loading ? (
+        <div className="py-6 text-xs text-slate-200 border border-slate-700 rounded-md flex items-center justify-center">
+          Φόρτωση προγράμματος…
+        </div>
+      ) : (
+        <>
+          <FullCalendar
+            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+            initialView="timeGridWeek"
+            locale={elLocale}
+            headerToolbar={{
+              left: 'prev,next today',
+              center: 'title',
+              right: 'dayGridMonth,timeGridWeek,timeGridDay',
+            }}
+            height="auto"
+            slotMinTime="08:00:00"
+            slotMaxTime="22:00:00"
+            allDaySlot={false}
+            slotDuration="00:15:00"
+            slotLabelInterval={{ hours: 1 }}
+            slotLabelFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
+            nowIndicator={true}
+            events={events}
+            editable={true}
+            eventStartEditable={true}
+            eventDurationEditable={true}
+            eventDrop={handleEventDrop}
+            droppable={false}
+            eventContent={renderEventContent}
+            datesSet={handleDatesSet}
+            eventClick={handleEventClick}
+          />
 
-                <button
-                  type="button"
-                  onClick={handleConfirmDeleteSchoolEvent}
-                  disabled={schoolEventDeleting}
-                  className="rounded-md px-3 py-1 text-xs font-semibold text-white"
-                  style={{ backgroundColor: '#dc2626' }}
-                >
-                  {schoolEventDeleting ? 'Διαγραφή…' : 'Διαγραφή'}
-                </button>
+          {/* SCHOOL EVENT modal */}
+          <EventFormModal
+            open={schoolEventModalOpen}
+            mode={schoolEventModalMode}
+            editingEvent={schoolEventEditing}
+            error={schoolEventError}
+            saving={schoolEventSaving}
+            onClose={closeSchoolEventModal}
+            onSubmit={handleSaveSchoolEvent}
+          />
+
+          {/* Delete confirm for School Event */}
+          {schoolEventDeleteTarget && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+              <div
+                className="w-full max-w-md rounded-xl border border-slate-700 px-5 py-4 shadow-xl"
+                style={{ background: 'var(--color-sidebar)' }}
+              >
+                <h3 className="mb-2 text-sm font-semibold text-slate-50">
+                  Διαγραφή εκδήλωσης
+                </h3>
+
+                <p className="mb-4 text-xs text-slate-200">
+                  Σίγουρα θέλετε να διαγράψετε την εκδήλωση{' '}
+                  <span className="font-semibold text-[color:var(--color-accent)]">
+                    «{schoolEventDeleteTarget.name}»
+                  </span>
+                  ; Η ενέργεια αυτή δεν μπορεί να ανακληθεί.
+                </p>
+
+                <div className="flex justify-end gap-2 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (schoolEventDeleting) return;
+                      setSchoolEventDeleteTarget(null);
+                    }}
+                    className="btn-ghost px-3 py-1"
+                    style={{
+                      background: 'var(--color-input-bg)',
+                      color: 'var(--color-text-main)',
+                    }}
+                    disabled={schoolEventDeleting}
+                  >
+                    Ακύρωση
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleConfirmDeleteSchoolEvent}
+                    disabled={schoolEventDeleting}
+                    className="rounded-md px-3 py-1 text-xs font-semibold text-white"
+                    style={{ backgroundColor: '#dc2626' }}
+                  >
+                    {schoolEventDeleting ? 'Διαγραφή…' : 'Διαγραφή'}
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* PROGRAM modal */}
-        {eventModal && !showDeleteConfirm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div
-              className="w-full max-w-md rounded-xl border border-slate-700 p-5 shadow-xl space-y-3"
-              style={{ background: 'var(--color-sidebar)' }}
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-slate-50">
-                  Επεξεργασία μαθήματος
-                </h3>
-                <button
-                  type="button"
-                  className="text-xs text-slate-200 hover:text-white"
-                  onClick={handleEventModalClose}
-                >
-                  Κλείσιμο
-                </button>
-              </div>
-
-              {eventError && (
-                <div className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-100">
-                  {eventError}
+          {/* PROGRAM modal */}
+          {eventModal && !showDeleteConfirm && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+              <div
+                className="w-full max-w-md rounded-xl border border-slate-700 p-5 shadow-xl space-y-3"
+                style={{ background: 'var(--color-sidebar)' }}
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-slate-50">
+                    Επεξεργασία μαθήματος
+                  </h3>
+                  <button
+                    type="button"
+                    className="text-xs text-slate-200 hover:text-white"
+                    onClick={handleEventModalClose}
+                  >
+                    Κλείσιμο
+                  </button>
                 </div>
-              )}
 
-              <div className="space-y-1">
-                <label className="text-xs text-slate-200">Τμήμα *</label>
-                <select
-                  value={eventModal.classId ?? ''}
-                  onChange={handleProgramFieldChange('classId')}
-                  className="w-full rounded-md border border-slate-600 bg-[var(--color-input-bg)] px-3 py-2 text-xs text-slate-50 outline-none"
-                >
-                  <option value="">Επιλέξτε τμήμα</option>
-                  {classes.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs text-slate-200">Μάθημα *</label>
-                <select
-                  value={eventModal.subjectId ?? ''}
-                  onChange={handleProgramFieldChange('subjectId')}
-                  className="w-full rounded-md border border-slate-600 bg-[var(--color-input-bg)] px-3 py-2 text-xs text-slate-50 outline-none"
-                  disabled={!eventModal.classId || programSubjectOptions.length === 0}
-                >
-                  <option value="">
-                    {programSubjectOptions.length === 0
-                      ? 'Δεν υπάρχουν μαθήματα'
-                      : 'Επιλέξτε μάθημα'}
-                  </option>
-                  {programSubjectOptions.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs text-slate-200">Ημερομηνία *</label>
-                <AppDatePicker
-                  value={eventModal.date}
-                  onChange={(v) =>
-                    setEventModal((p) => (p ? { ...p, date: v } : p))
-                  }
-                  placeholder="dd/mm/yyyy"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <label className="text-xs text-slate-200">Ώρα έναρξης *</label>
-                  <div className="flex gap-2">
-                    <input
-                      value={eventModal.startTime}
-                      onChange={handleEventTimeChange('startTime')}
-                      className="w-full rounded-md border border-slate-600 bg-[var(--color-input-bg)] px-3 py-2 text-xs text-slate-50 outline-none"
-                      placeholder="09:00"
-                    />
-                    <select
-                      value={eventModal.startPeriod}
-                      onChange={(e) =>
-                        setEventModal((p) =>
-                          p ? { ...p, startPeriod: e.target.value as 'AM' | 'PM' } : p,
-                        )
-                      }
-                      className="rounded-md border border-slate-600 bg-[var(--color-input-bg)] px-2 py-2 text-xs text-slate-50 outline-none"
-                    >
-                      <option value="AM">AM</option>
-                      <option value="PM">PM</option>
-                    </select>
+                {eventError && (
+                  <div className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-100">
+                    {eventError}
                   </div>
+                )}
+
+                <div className="space-y-1">
+                  <label className="text-xs text-slate-200">Τμήμα *</label>
+                  <select
+                    value={eventModal.classId ?? ''}
+                    onChange={handleProgramFieldChange('classId')}
+                    className="w-full rounded-md border border-slate-600 bg-[var(--color-input-bg)] px-3 py-2 text-xs text-slate-50 outline-none"
+                  >
+                    <option value="">Επιλέξτε τμήμα</option>
+                    {classes.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.title}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs text-slate-200">Ώρα λήξης *</label>
-                  <div className="flex gap-2">
-                    <input
-                      value={eventModal.endTime}
-                      onChange={handleEventTimeChange('endTime')}
-                      className="w-full rounded-md border border-slate-600 bg-[var(--color-input-bg)] px-3 py-2 text-xs text-slate-50 outline-none"
-                      placeholder="10:00"
-                    />
-                    <select
-                      value={eventModal.endPeriod}
-                      onChange={(e) =>
-                        setEventModal((p) =>
-                          p ? { ...p, endPeriod: e.target.value as 'AM' | 'PM' } : p,
-                        )
-                      }
-                      className="rounded-md border border-slate-600 bg-[var(--color-input-bg)] px-2 py-2 text-xs text-slate-50 outline-none"
-                    >
-                      <option value="AM">AM</option>
-                      <option value="PM">PM</option>
-                    </select>
-                  </div>
+                  <label className="text-xs text-slate-200">Μάθημα *</label>
+                  <select
+                    value={eventModal.subjectId ?? ''}
+                    onChange={handleProgramFieldChange('subjectId')}
+                    className="w-full rounded-md border border-slate-600 bg-[var(--color-input-bg)] px-3 py-2 text-xs text-slate-50 outline-none"
+                    disabled={!eventModal.classId || programSubjectOptions.length === 0}
+                  >
+                    <option value="">
+                      {programSubjectOptions.length === 0
+                        ? 'Δεν υπάρχουν μαθήματα'
+                        : 'Επιλέξτε μάθημα'}
+                    </option>
+                    {programSubjectOptions.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              </div>
 
-              {programModalIsHoliday && (
-                <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-100">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="font-semibold">
-                        {programModalHolidayName || 'Αργία'}
-                      </div>
-                      <div className="opacity-90">
-                        Θέλετε το μάθημα να γίνει παρόλο που είναι αργία;
-                      </div>
-                    </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-slate-200">Ημερομηνία *</label>
+                  <AppDatePicker
+                    value={eventModal.date}
+                    onChange={(v) =>
+                      setEventModal((p) => (p ? { ...p, date: v } : p))
+                    }
+                    placeholder="dd/mm/yyyy"
+                  />
+                </div>
 
-                    <label className="inline-flex items-center gap-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-xs text-slate-200">Ώρα έναρξης *</label>
+                    <div className="flex gap-2">
                       <input
-                        type="checkbox"
-                        checked={!!eventModal.activeDuringHoliday}
+                        value={eventModal.startTime}
+                        onChange={handleEventTimeChange('startTime')}
+                        className="w-full rounded-md border border-slate-600 bg-[var(--color-input-bg)] px-3 py-2 text-xs text-slate-50 outline-none"
+                        placeholder="09:00"
+                      />
+                      <select
+                        value={eventModal.startPeriod}
                         onChange={(e) =>
                           setEventModal((p) =>
-                            p ? { ...p, activeDuringHoliday: e.target.checked } : p,
+                            p ? { ...p, startPeriod: e.target.value as 'AM' | 'PM' } : p,
                           )
                         }
+                        className="rounded-md border border-slate-600 bg-[var(--color-input-bg)] px-2 py-2 text-xs text-slate-50 outline-none"
+                      >
+                        <option value="AM">AM</option>
+                        <option value="PM">PM</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs text-slate-200">Ώρα λήξης *</label>
+                    <div className="flex gap-2">
+                      <input
+                        value={eventModal.endTime}
+                        onChange={handleEventTimeChange('endTime')}
+                        className="w-full rounded-md border border-slate-600 bg-[var(--color-input-bg)] px-3 py-2 text-xs text-slate-50 outline-none"
+                        placeholder="10:00"
                       />
-                      <span>Ενεργό</span>
-                    </label>
+                      <select
+                        value={eventModal.endPeriod}
+                        onChange={(e) =>
+                          setEventModal((p) =>
+                            p ? { ...p, endPeriod: e.target.value as 'AM' | 'PM' } : p,
+                          )
+                        }
+                        className="rounded-md border border-slate-600 bg-[var(--color-input-bg)] px-2 py-2 text-xs text-slate-50 outline-none"
+                      >
+                        <option value="AM">AM</option>
+                        <option value="PM">PM</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
-              )}
 
-              <div className="flex justify-between gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={handleProgramAskDeleteForDay}
-                  className="rounded-md px-3 py-2 text-xs font-semibold text-white"
-                  style={{ backgroundColor: '#dc2626' }}
-                >
-                  Ακύρωση για αυτή τη μέρα
-                </button>
+                {programModalIsHoliday && (
+                  <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-100">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="font-semibold">
+                          {programModalHolidayName || 'Αργία'}
+                        </div>
+                        <div className="opacity-90">
+                          Θέλετε το μάθημα να γίνει παρόλο που είναι αργία;
+                        </div>
+                      </div>
 
-                <div className="flex gap-2">
+                      <label className="inline-flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={!!eventModal.activeDuringHoliday}
+                          onChange={(e) =>
+                            setEventModal((p) =>
+                              p ? { ...p, activeDuringHoliday: e.target.checked } : p,
+                            )
+                          }
+                        />
+                        <span>Ενεργό</span>
+                      </label>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-between gap-2 pt-2">
                   <button
                     type="button"
-                    onClick={handleEventModalClose}
+                    onClick={handleProgramAskDeleteForDay}
+                    className="rounded-md px-3 py-2 text-xs font-semibold text-white"
+                    style={{ backgroundColor: '#dc2626' }}
+                  >
+                    Ακύρωση για αυτή τη μέρα
+                  </button>
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleEventModalClose}
+                      className="btn-ghost rounded-md px-3 py-2 text-xs"
+                      style={{
+                        background: 'var(--color-input-bg)',
+                        color: 'var(--color-text-main)',
+                      }}
+                    >
+                      Ακύρωση
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleEventModalSave}
+                      className="rounded-md px-3 py-2 text-xs font-semibold text-white"
+                      style={{ backgroundColor: '#2563eb' }}
+                    >
+                      Ενημέρωση
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* PROGRAM Delete confirmation */}
+          {eventModal && showDeleteConfirm && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+              <div
+                className="w-full max-w-md rounded-xl border border-slate-700 p-5 shadow-xl space-y-3"
+                style={{ background: 'var(--color-sidebar)' }}
+              >
+                <h3 className="text-sm font-semibold text-slate-50">
+                  Ακύρωση μαθήματος για αυτή τη μέρα
+                </h3>
+
+                <p className="text-xs text-slate-200">
+                  Θέλετε σίγουρα να ακυρώσετε το μάθημα μόνο για τη συγκεκριμένη ημερομηνία;
+                </p>
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={handleProgramCancelDeleteConfirm}
                     className="btn-ghost rounded-md px-3 py-2 text-xs"
                     style={{
                       background: 'var(--color-input-bg)',
                       color: 'var(--color-text-main)',
                     }}
                   >
-                    Ακύρωση
+                    Όχι
                   </button>
 
                   <button
                     type="button"
-                    onClick={handleEventModalSave}
+                    onClick={handleEventModalDeleteForDay}
                     className="rounded-md px-3 py-2 text-xs font-semibold text-white"
-                    style={{ backgroundColor: '#2563eb' }}
+                    style={{ backgroundColor: '#dc2626' }}
                   >
-                    Ενημέρωση
+                    Ναι, ακύρωση
                   </button>
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* PROGRAM Delete confirmation */}
-        {eventModal && showDeleteConfirm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div
-              className="w-full max-w-md rounded-xl border border-slate-700 p-5 shadow-xl space-y-3"
-              style={{ background: 'var(--color-sidebar)' }}
-            >
-              <h3 className="text-sm font-semibold text-slate-50">
-                Ακύρωση μαθήματος για αυτή τη μέρα
-              </h3>
-
-              <p className="text-xs text-slate-200">
-                Θέλετε σίγουρα να ακυρώσετε το μάθημα μόνο για τη συγκεκριμένη ημερομηνία;
-              </p>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={handleProgramCancelDeleteConfirm}
-                  className="btn-ghost rounded-md px-3 py-2 text-xs"
-                  style={{
-                    background: 'var(--color-input-bg)',
-                    color: 'var(--color-text-main)',
-                  }}
-                >
-                  Όχι
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleEventModalDeleteForDay}
-                  className="rounded-md px-3 py-2 text-xs font-semibold text-white"
-                  style={{ backgroundColor: '#dc2626' }}
-                >
-                  Ναι, ακύρωση
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* TEST edit modal */}
-        {testModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div
-              className="w-full max-w-md rounded-xl border border-slate-700 p-5 shadow-xl space-y-3"
-              style={{ background: 'var(--color-sidebar)' }}
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-slate-50">
-                  Επεξεργασία διαγωνίσματος
-                </h3>
-                <button
-                  type="button"
-                  className="text-xs text-slate-200 hover:text-white"
-                  onClick={handleTestModalClose}
-                >
-                  Κλείσιμο
-                </button>
-              </div>
-
-              {testError && (
-                <div className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-100">
-                  {testError}
+          {/* TEST edit modal */}
+          {testModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+              <div
+                className="w-full max-w-md rounded-xl border border-slate-700 p-5 shadow-xl space-y-3"
+                style={{ background: 'var(--color-sidebar)' }}
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-slate-50">
+                    Επεξεργασία διαγωνίσματος
+                  </h3>
+                  <button
+                    type="button"
+                    className="text-xs text-slate-200 hover:text-white"
+                    onClick={handleTestModalClose}
+                  >
+                    Κλείσιμο
+                  </button>
                 </div>
-              )}
 
-              <div className="space-y-1">
-                <label className="text-xs text-slate-200">Τμήμα *</label>
-                <select
-                  value={testModal.classId ?? ''}
-                  onChange={handleTestFieldChange('classId')}
-                  className="w-full rounded-md border border-slate-600 bg-[var(--color-input-bg)] px-3 py-2 text-xs text-slate-50 outline-none"
-                >
-                  <option value="">Επιλέξτε τμήμα</option>
-                  {classes.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs text-slate-200">Μάθημα *</label>
-                <select
-                  value={testModal.subjectId ?? ''}
-                  onChange={handleTestFieldChange('subjectId')}
-                  className="w-full rounded-md border border-slate-600 bg-[var(--color-input-bg)] px-3 py-2 text-xs text-slate-50 outline-none"
-                  disabled={!testModal.classId || testSubjectOptions.length === 0}
-                >
-                  <option value="">
-                    {testSubjectOptions.length === 0 ? 'Δεν υπάρχουν μαθήματα' : 'Επιλέξτε μάθημα'}
-                  </option>
-                  {testSubjectOptions.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs text-slate-200">Ημερομηνία *</label>
-                <AppDatePicker
-                  value={testModal.date}
-                  onChange={(v) => setTestModal((p) => (p ? { ...p, date: v } : p))}
-                  placeholder="dd/mm/yyyy"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <label className="text-xs text-slate-200">Ώρα έναρξης *</label>
-                  <div className="flex gap-2">
-                    <input
-                      value={testModal.startTime}
-                      onChange={handleTestTimeChange('startTime')}
-                      className="w-full rounded-md border border-slate-600 bg-[var(--color-input-bg)] px-3 py-2 text-xs text-slate-50 outline-none"
-                      placeholder="09:00"
-                    />
-                    <select
-                      value={testModal.startPeriod}
-                      onChange={(e) =>
-                        setTestModal((p) =>
-                          p ? { ...p, startPeriod: e.target.value as 'AM' | 'PM' } : p,
-                        )
-                      }
-                      className="rounded-md border border-slate-600 bg-[var(--color-input-bg)] px-2 py-2 text-xs text-slate-50 outline-none"
-                    >
-                      <option value="AM">AM</option>
-                      <option value="PM">PM</option>
-                    </select>
+                {testError && (
+                  <div className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-100">
+                    {testError}
                   </div>
+                )}
+
+                <div className="space-y-1">
+                  <label className="text-xs text-slate-200">Τμήμα *</label>
+                  <select
+                    value={testModal.classId ?? ''}
+                    onChange={handleTestFieldChange('classId')}
+                    className="w-full rounded-md border border-slate-600 bg-[var(--color-input-bg)] px-3 py-2 text-xs text-slate-50 outline-none"
+                  >
+                    <option value="">Επιλέξτε τμήμα</option>
+                    {classes.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.title}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs text-slate-200">Ώρα λήξης *</label>
-                  <div className="flex gap-2">
-                    <input
-                      value={testModal.endTime}
-                      onChange={handleTestTimeChange('endTime')}
-                      className="w-full rounded-md border border-slate-600 bg-[var(--color-input-bg)] px-3 py-2 text-xs text-slate-50 outline-none"
-                      placeholder="10:00"
-                    />
-                    <select
-                      value={testModal.endPeriod}
-                      onChange={(e) =>
-                        setTestModal((p) =>
-                          p ? { ...p, endPeriod: e.target.value as 'AM' | 'PM' } : p,
-                        )
-                      }
-                      className="rounded-md border border-slate-600 bg-[var(--color-input-bg)] px-2 py-2 text-xs text-slate-50 outline-none"
-                    >
-                      <option value="AM">AM</option>
-                      <option value="PM">PM</option>
-                    </select>
-                  </div>
+                  <label className="text-xs text-slate-200">Μάθημα *</label>
+                  <select
+                    value={testModal.subjectId ?? ''}
+                    onChange={handleTestFieldChange('subjectId')}
+                    className="w-full rounded-md border border-slate-600 bg-[var(--color-input-bg)] px-3 py-2 text-xs text-slate-50 outline-none"
+                    disabled={!testModal.classId || testSubjectOptions.length === 0}
+                  >
+                    <option value="">
+                      {testSubjectOptions.length === 0 ? 'Δεν υπάρχουν μαθήματα' : 'Επιλέξτε μάθημα'}
+                    </option>
+                    {testSubjectOptions.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              </div>
 
-              {testModalIsHoliday && (
-                <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-100">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="font-semibold">
-                        {testModalHolidayName || 'Αργία'}
-                      </div>
-                      <div className="opacity-90">
-                        Θέλετε το διαγώνισμα να γίνει παρόλο που είναι αργία;
-                      </div>
-                    </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-slate-200">Ημερομηνία *</label>
+                  <AppDatePicker
+                    value={testModal.date}
+                    onChange={(v) => setTestModal((p) => (p ? { ...p, date: v } : p))}
+                    placeholder="dd/mm/yyyy"
+                  />
+                </div>
 
-                    <label className="inline-flex items-center gap-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-xs text-slate-200">Ώρα έναρξης *</label>
+                    <div className="flex gap-2">
                       <input
-                        type="checkbox"
-                        checked={!!testModal.activeDuringHoliday}
+                        value={testModal.startTime}
+                        onChange={handleTestTimeChange('startTime')}
+                        className="w-full rounded-md border border-slate-600 bg-[var(--color-input-bg)] px-3 py-2 text-xs text-slate-50 outline-none"
+                        placeholder="09:00"
+                      />
+                      <select
+                        value={testModal.startPeriod}
                         onChange={(e) =>
                           setTestModal((p) =>
-                            p ? { ...p, activeDuringHoliday: e.target.checked } : p,
+                            p ? { ...p, startPeriod: e.target.value as 'AM' | 'PM' } : p,
                           )
                         }
+                        className="rounded-md border border-slate-600 bg-[var(--color-input-bg)] px-2 py-2 text-xs text-slate-50 outline-none"
+                      >
+                        <option value="AM">AM</option>
+                        <option value="PM">PM</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs text-slate-200">Ώρα λήξης *</label>
+                    <div className="flex gap-2">
+                      <input
+                        value={testModal.endTime}
+                        onChange={handleTestTimeChange('endTime')}
+                        className="w-full rounded-md border border-slate-600 bg-[var(--color-input-bg)] px-3 py-2 text-xs text-slate-50 outline-none"
+                        placeholder="10:00"
                       />
-                      <span>Ενεργό</span>
-                    </label>
+                      <select
+                        value={testModal.endPeriod}
+                        onChange={(e) =>
+                          setTestModal((p) =>
+                            p ? { ...p, endPeriod: e.target.value as 'AM' | 'PM' } : p,
+                          )
+                        }
+                        className="rounded-md border border-slate-600 bg-[var(--color-input-bg)] px-2 py-2 text-xs text-slate-50 outline-none"
+                      >
+                        <option value="AM">AM</option>
+                        <option value="PM">PM</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
-              )}
 
-              <div className="flex justify-between gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={handleTestCancelForDay}
-                  disabled={savingTest}
-                  className="rounded-md px-3 py-2 text-xs font-semibold text-white"
-                  style={{ backgroundColor: '#dc2626' }}
-                >
-                  Ακύρωση για αυτή τη μέρα
-                </button>
+                {testModalIsHoliday && (
+                  <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-100">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="font-semibold">
+                          {testModalHolidayName || 'Αργία'}
+                        </div>
+                        <div className="opacity-90">
+                          Θέλετε το διαγώνισμα να γίνει παρόλο που είναι αργία;
+                        </div>
+                      </div>
 
-                <div className="flex gap-2">
+                      <label className="inline-flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={!!testModal.activeDuringHoliday}
+                          onChange={(e) =>
+                            setTestModal((p) =>
+                              p ? { ...p, activeDuringHoliday: e.target.checked } : p,
+                            )
+                          }
+                        />
+                        <span>Ενεργό</span>
+                      </label>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-between gap-2 pt-2">
                   <button
                     type="button"
-                    onClick={handleTestModalClose}
-                    disabled={savingTest}
-                    className="btn-ghost rounded-md px-3 py-2 text-xs"
-                    style={{
-                      background: 'var(--color-input-bg)',
-                      color: 'var(--color-text-main)',
-                    }}
-                  >
-                    Ακύρωση
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleTestModalSave}
-                    disabled={savingTest}
-                    className="rounded-md px-3 py-2 text-xs font-semibold text-white"
-                    style={{ backgroundColor: '#2563eb' }}
-                  >
-                    {savingTest ? 'Αποθήκευση…' : 'Ενημέρωση'}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleTestDelete}
+                    onClick={handleTestCancelForDay}
                     disabled={savingTest}
                     className="rounded-md px-3 py-2 text-xs font-semibold text-white"
-                    style={{ backgroundColor: '#7f1d1d' }}
+                    style={{ backgroundColor: '#dc2626' }}
                   >
-                    Διαγραφή
+                    Ακύρωση για αυτή τη μέρα
                   </button>
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleTestModalClose}
+                      disabled={savingTest}
+                      className="btn-ghost rounded-md px-3 py-2 text-xs"
+                      style={{
+                        background: 'var(--color-input-bg)',
+                        color: 'var(--color-text-main)',
+                      }}
+                    >
+                      Ακύρωση
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleTestModalSave}
+                      disabled={savingTest}
+                      className="rounded-md px-3 py-2 text-xs font-semibold text-white"
+                      style={{ backgroundColor: '#2563eb' }}
+                    >
+                      {savingTest ? 'Αποθήκευση…' : 'Ενημέρωση'}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleTestDelete}
+                      disabled={savingTest}
+                      className="rounded-md px-3 py-2 text-xs font-semibold text-white"
+                      style={{ backgroundColor: '#7f1d1d' }}
+                    >
+                      Διαγραφή
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
-      </>
-    )}
-  </section>
-);
+          )}
+        </>
+      )}
+    </section>
+  );
 
-// ✅ THIS was missing in your file — without it you get the red error at the end
+  // ✅ THIS was missing in your file — without it you get the red error at the end
 }

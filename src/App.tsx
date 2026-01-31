@@ -15,13 +15,31 @@ import TestsPage from './pages/TestsPage';
 import GradesPage from './pages/GradesPage';
 
 // ✅ Economics pages
-import EconomicsAnalysisPage from './pages/economics/EconomicsAnalysisPage'; // ✅ NEW
+import EconomicsAnalysisPage from './pages/economics/EconomicsAnalysisPage';
 import PackageSubscriptionsPage from './pages/economics/PackageSubscriptionsPage';
 import StudentsSubscriptionsPage from './pages/economics/StudentsSubscriptionsPage';
 import TutorsPaymentsPage from './pages/economics/TutorsPaymentsPage';
 
+// ✅ Student App pages
+import StudentFeedbackPage from './pages/student-app/StudentFeedbackPage';
+import StudentMessagesPage from './pages/student-app/StudentMessagesPage'; // ✅ NEW
+
 import { useAuth } from './auth';
 import Layout from './components/Layout';
+
+/**
+ * ✅ If your app is hosted under a subpath (basename),
+ * set BASE accordingly (e.g. '/admin').
+ *
+ * If you don't use a basename, keep it ''.
+ */
+const BASE = ''; // <-- change to '/admin' if needed
+
+function p(path: string) {
+  // ensures BASE + path works without double slashes
+  if (!BASE) return path;
+  return `${BASE}${path.startsWith('/') ? '' : '/'}${path}`;
+}
 
 function ProtectedRoute({ children }: { children: ReactElement }) {
   const { user, loading } = useAuth();
@@ -35,7 +53,7 @@ function ProtectedRoute({ children }: { children: ReactElement }) {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={p('/login')} replace />;
   }
 
   return <Layout>{children}</Layout>;
@@ -44,10 +62,10 @@ function ProtectedRoute({ children }: { children: ReactElement }) {
 export default function App() {
   return (
     <Routes>
-      <Route path="/login" element={<LoginPage />} />
+      <Route path={p('/login')} element={<LoginPage />} />
 
       <Route
-        path="/dashboard"
+        path={p('/dashboard')}
         element={
           <ProtectedRoute>
             <DashboardPage />
@@ -56,7 +74,7 @@ export default function App() {
       />
 
       <Route
-        path="/classes"
+        path={p('/classes')}
         element={
           <ProtectedRoute>
             <ClassesPage />
@@ -65,7 +83,7 @@ export default function App() {
       />
 
       <Route
-        path="/levels"
+        path={p('/levels')}
         element={
           <ProtectedRoute>
             <LevelsPage />
@@ -74,7 +92,7 @@ export default function App() {
       />
 
       <Route
-        path="/students"
+        path={p('/students')}
         element={
           <ProtectedRoute>
             <StudentsPage />
@@ -83,7 +101,7 @@ export default function App() {
       />
 
       <Route
-        path="/tutors"
+        path={p('/tutors')}
         element={
           <ProtectedRoute>
             <TutorsPage />
@@ -92,7 +110,7 @@ export default function App() {
       />
 
       <Route
-        path="/subjects"
+        path={p('/subjects')}
         element={
           <ProtectedRoute>
             <SubjectsPage />
@@ -102,7 +120,7 @@ export default function App() {
 
       {/* Program main page */}
       <Route
-        path="/program"
+        path={p('/program')}
         element={
           <ProtectedRoute>
             <ProgramPage />
@@ -112,7 +130,7 @@ export default function App() {
 
       {/* Tests page under Προγράμματα */}
       <Route
-        path="/program/tests"
+        path={p('/program/tests')}
         element={
           <ProtectedRoute>
             <TestsPage />
@@ -122,7 +140,7 @@ export default function App() {
 
       {/* Events page under Προγράμματα */}
       <Route
-        path="/program/events"
+        path={p('/program/events')}
         element={
           <ProtectedRoute>
             <EventsPage />
@@ -132,7 +150,7 @@ export default function App() {
 
       {/* Holidays page under Προγράμματα */}
       <Route
-        path="/program/holidays"
+        path={p('/program/holidays')}
         element={
           <ProtectedRoute>
             <HolidaysPage />
@@ -142,7 +160,7 @@ export default function App() {
 
       {/* Grades */}
       <Route
-        path="/grades"
+        path={p('/grades')}
         element={
           <ProtectedRoute>
             <GradesPage />
@@ -150,9 +168,29 @@ export default function App() {
         }
       />
 
-      {/* ✅ Economics -> Analysis (NEW) */}
+      {/* ✅ Student App -> Feedback */}
       <Route
-        path="/economics/analysis"
+        path={p('/student-app/feedback')}
+        element={
+          <ProtectedRoute>
+            <StudentFeedbackPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* ✅ Student App -> Messages (NEW) */}
+      <Route
+        path={p('/student-app/messages')}
+        element={
+          <ProtectedRoute>
+            <StudentMessagesPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* ✅ Economics -> Analysis */}
+      <Route
+        path={p('/economics/analysis')}
         element={
           <ProtectedRoute>
             <EconomicsAnalysisPage />
@@ -162,7 +200,7 @@ export default function App() {
 
       {/* ✅ Economics -> Package Subscriptions */}
       <Route
-        path="/economics/package-subscriptions"
+        path={p('/economics/package-subscriptions')}
         element={
           <ProtectedRoute>
             <PackageSubscriptionsPage />
@@ -172,7 +210,7 @@ export default function App() {
 
       {/* ✅ Economics -> Students Subscriptions */}
       <Route
-        path="/economics/student-subscriptions"
+        path={p('/economics/student-subscriptions')}
         element={
           <ProtectedRoute>
             <StudentsSubscriptionsPage />
@@ -182,7 +220,7 @@ export default function App() {
 
       {/* ✅ Economics -> Tutors Payments */}
       <Route
-        path="/economics/tutors-payments"
+        path={p('/economics/tutors-payments')}
         element={
           <ProtectedRoute>
             <TutorsPaymentsPage />
@@ -190,7 +228,7 @@ export default function App() {
         }
       />
 
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="*" element={<Navigate to={p('/dashboard')} replace />} />
     </Routes>
   );
 }

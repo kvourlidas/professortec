@@ -1,4 +1,3 @@
-// src/_nav.ts
 import type { LucideIcon } from 'lucide-react';
 import {
   LayoutDashboard,
@@ -17,6 +16,8 @@ import {
   WalletCards,
   HandCoins,
   TrendingUp,
+  Smartphone,
+  MessageSquareText, // ✅ already imported
 } from 'lucide-react';
 
 export type NavItem = {
@@ -93,6 +94,24 @@ export const navItems: NavItem[] = [
     label: 'Βαθμοί',
     to: '/grades',
     icon: BarChart3,
+  },
+
+  // ✅ Student App
+  {
+    label: 'Εφαρμογή μαθητών',
+    icon: Smartphone,
+    children: [
+      {
+        label: 'Feedback μαθητών',
+        to: '/student-app/feedback',
+        icon: MessageSquareText,
+      },
+      {
+        label: 'Μηνύματα μαθητών',           // ✅ NEW
+        to: '/student-app/messages',         // ✅ NEW
+        icon: MessageSquareText,             // (same icon is fine)
+      },
+    ],
   },
 
   // ✅ Economics
