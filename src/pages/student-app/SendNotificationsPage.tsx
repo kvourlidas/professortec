@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Bell, Send, Sparkles, History, RefreshCw } from 'lucide-react';
+import { Bell, Send, Sparkles, History, RefreshCw, ChevronDown, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 
 type Kind = 'general' | 'message' | 'schedule' | 'test';
@@ -11,38 +11,40 @@ const KIND_LABELS: Record<Kind, string> = {
   test: 'Διαγώνισμα',
 };
 
-type NotificationRow = {
-  id: string;
-  title: string;
-  body: string;
-  kind: string;
-  created_at: string;
+const KIND_COLORS: Record<Kind, string> = {
+  general: 'border-slate-600/50 bg-slate-800/60 text-slate-300',
+  message: 'border-blue-500/40 bg-blue-500/10 text-blue-300',
+  schedule: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300',
+  test: 'border-amber-500/40 bg-amber-500/10 text-amber-300',
 };
+
+type NotificationRow = { id: string; title: string; body: string; kind: string; created_at: string };
 
 function formatDt(iso: string) {
   try {
-    return new Date(iso).toLocaleString('el-GR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  } catch {
-    return iso;
-  }
+    return new Date(iso).toLocaleString('el-GR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+  } catch { return iso; }
+}
+
+const inputCls = "h-10 w-full rounded-xl border border-slate-700/70 bg-slate-900/60 px-3.5 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30";
+
+function FormField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{label}</label>
+      {children}
+    </div>
+  );
 }
 
 export default function SendNotificationsPage() {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [kind, setKind] = useState<Kind>('general');
-
   const [loadingSend, setLoadingSend] = useState(false);
   const [resultMsg, setResultMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // history
   const [historyLoading, setHistoryLoading] = useState(true);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [historyItems, setHistoryItems] = useState<NotificationRow[]>([]);
@@ -50,244 +52,188 @@ export default function SendNotificationsPage() {
   const kindLabelSelected = useMemo(() => KIND_LABELS[kind], [kind]);
 
   const loadHistory = async () => {
-    setHistoryError(null);
-    setHistoryLoading(true);
-
+    setHistoryError(null); setHistoryLoading(true);
     try {
-      const { data, error } = await supabase.rpc('get_school_notifications_history', {
-        p_limit: 15,
-      });
-
-      if (error) {
-        console.error('history rpc error', error);
-        setHistoryError(error.message || 'Αποτυχία φόρτωσης ιστορικού.');
-        setHistoryItems([]);
-        return;
-      }
-
+      const { data, error } = await supabase.rpc('get_school_notifications_history', { p_limit: 15 });
+      if (error) { console.error(error); setHistoryError(error.message || 'Αποτυχία φόρτωσης ιστορικού.'); setHistoryItems([]); return; }
       setHistoryItems((data as NotificationRow[]) ?? []);
     } catch (e: any) {
-      console.error('history rpc crash', e);
-      setHistoryError(e?.message ?? 'Κάτι πήγε στραβά στο ιστορικό.');
-      setHistoryItems([]);
-    } finally {
-      setHistoryLoading(false);
-    }
+      console.error(e); setHistoryError(e?.message ?? 'Κάτι πήγε στραβά.'); setHistoryItems([]);
+    } finally { setHistoryLoading(false); }
   };
 
-  useEffect(() => {
-    loadHistory();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  useEffect(() => { loadHistory(); }, []);
 
   const send = async () => {
-    setResultMsg(null);
-    setErrorMsg(null);
-
-    if (!title.trim() || !body.trim()) {
-      setErrorMsg('Συμπλήρωσε τίτλο και μήνυμα.');
-      return;
-    }
-
+    setResultMsg(null); setErrorMsg(null);
+    if (!title.trim() || !body.trim()) { setErrorMsg('Συμπλήρωσε τίτλο και μήνυμα.'); return; }
     setLoadingSend(true);
     try {
-      const { data, error } = await supabase.rpc('send_school_notification', {
-        p_title: title.trim(),
-        p_body: body.trim(),
-        p_kind: kind,
-        p_data: { screen: 'home' },
-      });
-
-      if (error) {
-        console.error(error);
-        setErrorMsg(error.message || 'Αποτυχία αποστολής.');
-        return;
-      }
-
+      const { data, error } = await supabase.rpc('send_school_notification', { p_title: title.trim(), p_body: body.trim(), p_kind: kind, p_data: { screen: 'home' } });
+      if (error) { console.error(error); setErrorMsg(error.message || 'Αποτυχία αποστολής.'); return; }
       const count = Number(data ?? 0);
-      setResultMsg(`✅ Στάλθηκε σε ${count} μαθητές.`);
-      setTitle('');
-      setBody('');
-      setKind('general');
-
-      // refresh history after sending
+      setResultMsg(`Στάλθηκε σε ${count} μαθητές.`);
+      setTitle(''); setBody(''); setKind('general');
       await loadHistory();
     } catch (e: any) {
-      console.error(e);
-      setErrorMsg(e?.message ?? 'Κάτι πήγε στραβά.');
-    } finally {
-      setLoadingSend(false);
-    }
+      console.error(e); setErrorMsg(e?.message ?? 'Κάτι πήγε στραβά.');
+    } finally { setLoadingSend(false); }
   };
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-6">
-      {/* Header */}
-      <div className="mb-5 flex items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-700/60 bg-slate-900/40">
-              <Bell className="h-5 w-5 text-sky-300" />
-            </div>
-            <h1 className="text-xl font-extrabold text-slate-100">Ειδοποιήσεις μαθητών</h1>
-          </div>
-          <p className="mt-2 text-sm font-semibold text-slate-300/90">
-            Στείλε ανακοίνωση σε όλους τους μαθητές της σχολής σου (mobile app).
-          </p>
-        </div>
+    <div className="space-y-6 px-1">
 
-        <div className="hidden sm:flex items-center gap-2 rounded-2xl border border-slate-700/60 bg-slate-900/40 px-3 py-2">
-          <Sparkles className="h-4 w-4 text-sky-300" />
-          <span className="text-xs font-bold text-slate-200">School broadcast</span>
+      {/* ── Header ── */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+            style={{ background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 60%, transparent))' }}>
+            <Bell className="h-4.5 w-4.5 text-black" />
+          </div>
+          <div>
+            <h1 className="text-base font-semibold tracking-tight text-slate-50">Ειδοποιήσεις μαθητών</h1>
+            <p className="mt-0.5 text-xs text-slate-400">Στείλε ανακοίνωση σε όλους τους μαθητές της σχολής σου (mobile app).</p>
+          </div>
+        </div>
+        <div className="hidden sm:inline-flex items-center gap-2 rounded-xl border border-slate-700/60 bg-slate-800/40 px-3 py-1.5">
+          <Sparkles className="h-3.5 w-3.5" style={{ color: 'var(--color-accent)' }} />
+          <span className="text-[11px] font-semibold text-slate-300">School broadcast</span>
         </div>
       </div>
 
-      {/* 2 columns */}
+      {/* ── 2-column grid ── */}
       <div className="grid gap-4 lg:grid-cols-2">
-        {/* LEFT: Send form */}
-        <div className="rounded-3xl border border-slate-700/60 bg-slate-900/35 p-5 shadow-[0_18px_60px_rgba(0,0,0,0.35)]">
-          <div className="grid gap-4">
-            <div className="grid gap-2">
-              <label className="text-sm font-extrabold text-slate-200">Τίτλος</label>
-              <input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="π.χ. Ανακοίνωση"
-                className="h-11 w-full rounded-2xl border border-slate-700/70 bg-slate-950/35 px-4 text-sm font-semibold text-slate-100 outline-none placeholder:text-slate-500 focus:border-sky-400/60"
-              />
-            </div>
 
-            <div className="grid gap-2">
-              <label className="text-sm font-extrabold text-slate-200">Μήνυμα</label>
+        {/* ── LEFT: Send form ── */}
+        <div className="overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-2xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]">
+          {/* Accent bar */}
+          <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 30%, transparent))' }} />
+
+          <div className="flex items-center gap-3 border-b border-slate-700/60 bg-slate-900/30 px-5 py-3.5">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg"
+              style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>
+              <Send className="h-3.5 w-3.5" style={{ color: 'var(--color-accent)' }} />
+            </div>
+            <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'color-mix(in srgb, var(--color-accent) 80%, white)' }}>
+              Νέα ειδοποίηση
+            </span>
+          </div>
+
+          <div className="space-y-4 p-5">
+            <FormField label="Τίτλος">
+              <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="π.χ. Ανακοίνωση" />
+            </FormField>
+
+            <FormField label="Μήνυμα">
               <textarea
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                placeholder="Γράψε το μήνυμα…"
-                rows={6}
-                className="w-full resize-none rounded-2xl border border-slate-700/70 bg-slate-950/35 px-4 py-3 text-sm font-semibold text-slate-100 outline-none placeholder:text-slate-500 focus:border-sky-400/60"
+                value={body} onChange={(e) => setBody(e.target.value)}
+                placeholder="Γράψε το μήνυμα…" rows={6}
+                className="w-full resize-none rounded-xl border border-slate-700/70 bg-slate-900/60 px-3.5 py-2.5 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30"
               />
-            </div>
+            </FormField>
 
-            <div className="grid gap-2">
-              <label className="text-sm font-extrabold text-slate-200">Τύπος</label>
-
+            <FormField label="Τύπος">
               <div className="relative">
-                <select
-                  value={kind}
-                  onChange={(e) => setKind(e.target.value as Kind)}
-                  className="h-11 w-full appearance-none rounded-2xl border border-slate-700/70 bg-slate-950/35 px-4 pr-10 text-sm font-semibold text-slate-100 outline-none focus:border-sky-400/60"
-                >
-                  <option value="general">{KIND_LABELS.general}</option>
-                  <option value="message">{KIND_LABELS.message}</option>
-                  <option value="schedule">{KIND_LABELS.schedule}</option>
-                  <option value="test">{KIND_LABELS.test}</option>
+                <select value={kind} onChange={(e) => setKind(e.target.value as Kind)}
+                  className="h-10 w-full appearance-none rounded-xl border border-slate-700/70 bg-slate-900/60 pl-3.5 pr-9 text-xs text-slate-100 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30">
+                  {(Object.entries(KIND_LABELS) as [Kind, string][]).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                 </select>
-
-                <svg
-                  className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z"
-                    clipRule="evenodd"
-                  />
-                </svg>
+                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
               </div>
+              <p className="text-[10px] text-slate-500">
+                Επιλεγμένο: <span className="font-semibold text-slate-300">{kindLabelSelected}</span>
+              </p>
+            </FormField>
 
-              <div className="text-xs font-semibold text-slate-400">
-                Επιλεγμένο: <span className="text-slate-200 font-extrabold">{kindLabelSelected}</span>
-              </div>
-            </div>
-
-            <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="text-xs font-semibold text-slate-400">
-                Θα σταλεί σε <span className="text-slate-200 font-extrabold">όλους</span> τους μαθητές της σχολής σου.
-              </div>
-
-              <button
-                onClick={send}
-                disabled={loadingSend}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-sky-400/30 bg-sky-500/15 px-5 py-3 text-sm font-extrabold text-sky-100 hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                <Send className="h-4 w-4" />
-                {loadingSend ? 'Αποστολή…' : 'Στείλε ειδοποίηση'}
+            <div className="flex flex-col gap-3 pt-1 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-[11px] text-slate-500">
+                Θα σταλεί σε <span className="font-semibold text-slate-300">όλους</span> τους μαθητές.
+              </p>
+              <button onClick={send} disabled={loadingSend}
+                className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-xs font-semibold text-black shadow-sm transition hover:brightness-110 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60"
+                style={{ backgroundColor: 'var(--color-accent)' }}>
+                {loadingSend ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Αποστολή…</> : <><Send className="h-3.5 w-3.5" />Στείλε ειδοποίηση</>}
               </button>
             </div>
 
-            {errorMsg ? (
-              <div className="rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-100">
-                {errorMsg}
+            {errorMsg && (
+              <div className="flex items-start gap-2.5 rounded-xl border border-red-500/30 bg-red-950/40 px-3.5 py-2.5 text-xs text-red-200">
+                <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />{errorMsg}
               </div>
-            ) : null}
-
-            {resultMsg ? (
-              <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm font-bold text-emerald-100">
-                {resultMsg}
+            )}
+            {resultMsg && (
+              <div className="flex items-start gap-2.5 rounded-xl border border-emerald-500/30 bg-emerald-950/30 px-3.5 py-2.5 text-xs text-emerald-200">
+                <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />{resultMsg}
               </div>
-            ) : null}
+            )}
           </div>
         </div>
 
-        {/* RIGHT: History */}
-        <div className="rounded-3xl border border-slate-700/60 bg-slate-900/35 p-5 shadow-[0_18px_60px_rgba(0,0,0,0.35)]">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-700/60 bg-slate-900/40">
-                <History className="h-5 w-5 text-sky-300" />
+        {/* ── RIGHT: History ── */}
+        <div className="overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-2xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]">
+          <div className="flex items-center justify-between gap-3 border-b border-slate-700/60 bg-slate-900/30 px-5 py-3.5">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-800/50">
+                <History className="h-3.5 w-3.5 text-slate-400" />
               </div>
               <div>
-                <div className="text-sm font-extrabold text-slate-100">Ιστορικό αποστολών</div>
-                <div className="text-xs font-semibold text-slate-400">Τελευταίες 15 ειδοποιήσεις</div>
+                <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'color-mix(in srgb, var(--color-accent) 80%, white)' }}>
+                  Ιστορικό αποστολών
+                </span>
+                <p className="text-[10px] text-slate-500">Τελευταίες 15 ειδοποιήσεις</p>
               </div>
             </div>
-
-            <button
-              type="button"
-              onClick={loadHistory}
-              className="inline-flex items-center gap-2 rounded-2xl border border-slate-700/60 bg-slate-950/25 px-3 py-2 text-xs font-extrabold text-slate-200 hover:bg-slate-950/35"
-            >
-              <RefreshCw className="h-4 w-4 text-slate-300" />
+            <button type="button" onClick={loadHistory}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700/60 bg-slate-800/50 px-2.5 py-1.5 text-[11px] font-medium text-slate-300 transition hover:border-slate-600 hover:bg-slate-700/60">
+              <RefreshCw className="h-3 w-3" />
               Ανανέωση
             </button>
           </div>
 
-          {historyError ? (
-            <div className="rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-100">
-              {historyError}
+          {historyError && (
+            <div className="mx-5 mt-4 flex items-start gap-2.5 rounded-xl border border-red-500/30 bg-red-950/40 px-3.5 py-2.5 text-xs text-red-200">
+              <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />{historyError}
             </div>
-          ) : null}
+          )}
 
-          <div className="max-h-[520px] overflow-y-auto pr-1">
+          <div className="max-h-[520px] overflow-y-auto p-5">
             {historyLoading ? (
-              <div className="flex items-center gap-3 rounded-2xl border border-slate-700/60 bg-slate-950/20 px-4 py-3">
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
-                <div className="text-sm font-bold text-slate-200">Φόρτωση…</div>
-              </div>
-            ) : historyItems.length === 0 ? (
-              <div className="rounded-2xl border border-slate-700/60 bg-slate-950/20 px-4 py-4 text-sm font-semibold text-slate-300">
-                Δεν υπάρχουν αποστολές ακόμα.
-              </div>
-            ) : (
-              <div className="grid gap-3">
-                {historyItems.map((n) => (
-                  <div key={n.id} className="rounded-2xl border border-slate-700/60 bg-slate-950/20 px-4 py-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-extrabold text-slate-100">{n.title}</div>
-                        <div className="mt-1 line-clamp-2 text-sm font-semibold text-slate-300">{n.body}</div>
-                      </div>
-
-                      <div className="flex shrink-0 flex-col items-end gap-1">
-                        <span className="rounded-full border border-slate-700/60 bg-slate-900/40 px-2 py-1 text-[11px] font-extrabold text-slate-200">
-                          {KIND_LABELS[(n.kind as Kind) ?? 'general'] ?? n.kind}
-                        </span>
-                        <span className="text-[11px] font-semibold text-slate-400">{formatDt(n.created_at)}</span>
-                      </div>
-                    </div>
+              <div className="space-y-2">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="animate-pulse rounded-xl border border-slate-800/60 bg-slate-900/30 px-4 py-3">
+                    <div className="h-3 w-2/3 rounded-full bg-slate-800" />
+                    <div className="mt-2 h-2.5 w-full rounded-full bg-slate-800/70" />
                   </div>
                 ))}
+              </div>
+            ) : historyItems.length === 0 ? (
+              <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-700/50 bg-slate-800/50">
+                  <Bell className="h-5 w-5 text-slate-500" />
+                </div>
+                <p className="text-xs text-slate-500">Δεν υπάρχουν αποστολές ακόμα.</p>
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {historyItems.map((n) => {
+                  const k = (n.kind as Kind) ?? 'general';
+                  return (
+                    <div key={n.id} className="rounded-xl border border-slate-700/50 bg-slate-900/30 px-4 py-3 transition hover:bg-slate-800/30">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs font-semibold text-slate-100">{n.title}</p>
+                          <p className="mt-1 line-clamp-2 text-[11px] text-slate-400">{n.body}</p>
+                        </div>
+                        <div className="flex shrink-0 flex-col items-end gap-1.5">
+                          <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${KIND_COLORS[k] ?? KIND_COLORS.general}`}>
+                            {KIND_LABELS[k] ?? n.kind}
+                          </span>
+                          <span className="text-[10px] text-slate-500 tabular-nums">{formatDt(n.created_at)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

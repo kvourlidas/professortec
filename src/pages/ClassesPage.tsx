@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
 import ClassFormModal from '../components/classes/ClassFormModal';
 import EditDeleteButtons from '../components/ui/EditDeleteButtons';
-import { Plus, School } from 'lucide-react';
+import { Plus, School, Search, Users, BookOpen, GraduationCap, ChevronLeft, ChevronRight } from 'lucide-react';
 import ClassStudentsModal from '../components/classes/ClassStudentsModal';
 
 
@@ -13,7 +13,7 @@ type ClassRow = {
   title: string;
   subject: string | null;
   subject_id: string | null;
-  tutor_id: string | null; // still exists in DB but not used in UI
+  tutor_id: string | null;
 };
 
 type SubjectRow = {
@@ -34,10 +34,9 @@ type ModalMode = 'create' | 'edit';
 type ClassFormState = {
   title: string;
   levelId: string;
-  subjectIds: string[]; // multiple subjects from one level
+  subjectIds: string[];
 };
 
-// normalize greek/latin text (remove accents, toLowerCase)
 function normalizeText(value: string | number | null | undefined): string {
   if (value === null || value === undefined) return '';
   return value
@@ -65,26 +64,15 @@ export default function ClassesPage() {
 
   const [search, setSearch] = useState('');
 
-  // ✅ Pagination (same as StudentsPage)
   const pageSize = 10;
   const [page, setPage] = useState(1);
 
-  useEffect(() => {
-    setPage(1);
-  }, [search]);
+  useEffect(() => { setPage(1); }, [search]);
 
-  // delete confirmation modal state
-  const [deleteTarget, setDeleteTarget] = useState<{
-    id: string;
-    title: string;
-  } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // modal μαθητών
-  const [studentsModalClass, setStudentsModalClass] = useState<{
-    id: string;
-    title: string;
-  } | null>(null);
+  const [studentsModalClass, setStudentsModalClass] = useState<{ id: string; title: string } | null>(null);
 
   const levelNameById = useMemo(() => {
     const m = new Map<string, string>();
@@ -93,28 +81,19 @@ export default function ClassesPage() {
   }, [levels]);
 
   useEffect(() => {
-    if (!schoolId) {
-      setLoading(false);
-      return;
-    }
+    if (!schoolId) { setLoading(false); return; }
 
     const loadClasses = async () => {
       setLoading(true);
       setError(null);
-
       const { data, error } = await supabase
         .from('classes')
         .select('id, school_id, title, subject, subject_id, tutor_id')
         .eq('school_id', schoolId)
         .order('title', { ascending: true });
 
-      if (error) {
-        console.error(error);
-        setError('Αποτυχία φόρτωσης τμημάτων.');
-      } else {
-        setClasses((data ?? []) as ClassRow[]);
-      }
-
+      if (error) { console.error(error); setError('Αποτυχία φόρτωσης τμημάτων.'); }
+      else { setClasses((data ?? []) as ClassRow[]); }
       setLoading(false);
     };
 
@@ -124,207 +103,90 @@ export default function ClassesPage() {
           { data: subjData, error: subjErr },
           { data: levelData, error: lvlErr },
         ] = await Promise.all([
-          supabase
-            .from('subjects')
-            .select('id, school_id, name, level_id')
-            .eq('school_id', schoolId)
-            .order('name', { ascending: true }),
-          supabase
-            .from('levels')
-            .select('id, school_id, name')
-            .eq('school_id', schoolId)
-            .order('name', { ascending: true }),
+          supabase.from('subjects').select('id, school_id, name, level_id').eq('school_id', schoolId).order('name', { ascending: true }),
+          supabase.from('levels').select('id, school_id, name').eq('school_id', schoolId).order('name', { ascending: true }),
         ]);
-
         if (subjErr) console.error(subjErr);
         if (lvlErr) console.error(lvlErr);
-
         if (subjData) setSubjects(subjData as SubjectRow[]);
         if (levelData) setLevels(levelData as LevelRow[]);
-      } catch (err) {
-        console.error('Lookup load error', err);
-      }
+      } catch (err) { console.error('Lookup load error', err); }
     };
 
     loadClasses();
     loadLookups();
   }, [schoolId]);
 
-  const openCreateModal = () => {
-    setError(null);
-    setModalMode('create');
-    setEditingClass(null);
-    setModalOpen(true);
-  };
-
-  const openEditModal = (row: ClassRow) => {
-    setError(null);
-    setModalMode('edit');
-    setEditingClass(row);
-    setModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setModalOpen(false);
-    setEditingClass(null);
-    setSaving(false);
-  };
+  const openCreateModal = () => { setError(null); setModalMode('create'); setEditingClass(null); setModalOpen(true); };
+  const openEditModal = (row: ClassRow) => { setError(null); setModalMode('edit'); setEditingClass(row); setModalOpen(true); };
+  const closeModal = () => { setModalOpen(false); setEditingClass(null); setSaving(false); };
 
   const handleSaveClass = async (form: ClassFormState) => {
     setError(null);
+    if (!schoolId) { setError('Το προφίλ σας δεν είναι συνδεδεμένο με σχολείο (school_id).'); return; }
+    if (!form.title.trim()) { setError('Το όνομα του τμήματος είναι υποχρεωτικό.'); return; }
+    if (!form.levelId) { setError('Πρέπει να επιλέξετε επίπεδο.'); return; }
+    if (!form.subjectIds || form.subjectIds.length === 0) { setError('Πρέπει να επιλέξετε τουλάχιστον ένα μάθημα για το τμήμα.'); return; }
 
-    if (!schoolId) {
-      setError('Το προφίλ σας δεν είναι συνδεδεμένο με σχολείο (school_id).');
-      return;
-    }
-
-    if (!form.title.trim()) {
-      setError('Το όνομα του τμήματος είναι υποχρεωτικό.');
-      return;
-    }
-
-    if (!form.levelId) {
-      setError('Πρέπει να επιλέξετε επίπεδο.');
-      return;
-    }
-
-    if (!form.subjectIds || form.subjectIds.length === 0) {
-      setError('Πρέπει να επιλέξετε τουλάχιστον ένα μάθημα για το τμήμα.');
-      return;
-    }
-
-    // ensure all subjects belong to selected level
     const invalidSubject = form.subjectIds.some((id) => {
       const subj = subjects.find((s) => s.id === id);
       return !subj || subj.level_id !== form.levelId;
     });
+    if (invalidSubject) { setError('Όλα τα μαθήματα πρέπει να ανήκουν στο ίδιο επίπεδο.'); return; }
 
-    if (invalidSubject) {
-      setError('Όλα τα μαθήματα πρέπει να ανήκουν στο ίδιο επίπεδο.');
-      return;
-    }
-
-    // display text: "Maths, Physics"
-    const selectedSubjectRows = subjects.filter((s) =>
-      form.subjectIds.includes(s.id),
-    );
-    const subjectText =
-      selectedSubjectRows.map((s) => s.name).join(', ') || null;
-
-    // primary subject_id = first selected
+    const selectedSubjectRows = subjects.filter((s) => form.subjectIds.includes(s.id));
+    const subjectText = selectedSubjectRows.map((s) => s.name).join(', ') || null;
     const primarySubjectId = form.subjectIds[0] ?? null;
-
-    const payload = {
-      school_id: schoolId,
-      title: form.title.trim(),
-      subject: subjectText,
-      subject_id: primarySubjectId,
-    };
+    const payload = { school_id: schoolId, title: form.title.trim(), subject: subjectText, subject_id: primarySubjectId };
 
     setSaving(true);
 
     if (modalMode === 'create') {
-      const { data, error } = await supabase
-        .from('classes')
-        .insert(payload)
-        .select('*')
-        .maybeSingle();
-
+      const { data, error } = await supabase.from('classes').insert(payload).select('*').maybeSingle();
       setSaving(false);
-
-      if (error || !data) {
-        console.error(error);
-        setError('Αποτυχία δημιουργίας τμήματος.');
-        return;
-      }
-
+      if (error || !data) { console.error(error); setError('Αποτυχία δημιουργίας τμήματος.'); return; }
       setClasses((prev) => [data as ClassRow, ...prev]);
       closeModal();
     } else {
-      if (!editingClass) {
-        setSaving(false);
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from('classes')
-        .update({
-          title: payload.title,
-          subject: payload.subject,
-          subject_id: payload.subject_id,
-        })
-        .eq('id', editingClass.id)
-        .select('*')
-        .maybeSingle();
-
+      if (!editingClass) { setSaving(false); return; }
+      const { data, error } = await supabase.from('classes').update({ title: payload.title, subject: payload.subject, subject_id: payload.subject_id }).eq('id', editingClass.id).select('*').maybeSingle();
       setSaving(false);
-
-      if (error || !data) {
-        console.error(error);
-        setError('Αποτυχία ενημέρωσης τμήματος.');
-        return;
-      }
-
-      setClasses((prev) =>
-        prev.map((c) => (c.id === editingClass.id ? (data as ClassRow) : c)),
-      );
+      if (error || !data) { console.error(error); setError('Αποτυχία ενημέρωσης τμήματος.'); return; }
+      setClasses((prev) => prev.map((c) => (c.id === editingClass.id ? (data as ClassRow) : c)));
       closeModal();
     }
   };
 
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
-
     setError(null);
     setDeleting(true);
-
-    const { error } = await supabase
-      .from('classes')
-      .delete()
-      .eq('id', deleteTarget.id);
-
+    const { error } = await supabase.from('classes').delete().eq('id', deleteTarget.id);
     setDeleting(false);
-
-    if (error) {
-      console.error(error);
-      setError('Αποτυχία διαγραφής τμήματος.');
-      return;
-    }
-
+    if (error) { console.error(error); setError('Αποτυχία διαγραφής τμήματος.'); return; }
     setClasses((prev) => prev.filter((c) => c.id !== deleteTarget.id));
     setDeleteTarget(null);
   };
 
-  const handleCancelDelete = () => {
-    setDeleteTarget(null);
-  };
+  const handleCancelDelete = () => { setDeleteTarget(null); };
 
   const filteredClasses = useMemo(() => {
     const q = normalizeText(search.trim());
     if (!q) return classes;
-
     return classes.filter((c) => {
       let levelName = '';
       if (c.subject_id) {
         const subjRow = subjects.find((s) => s.id === c.subject_id);
-        if (subjRow?.level_id) {
-          levelName = levelNameById.get(subjRow.level_id) ?? '';
-        }
+        if (subjRow?.level_id) levelName = levelNameById.get(subjRow.level_id) ?? '';
       }
-
       const composite = [c.title, c.subject, levelName].filter(Boolean).join(' ');
       return normalizeText(composite).includes(q);
     });
   }, [classes, search, subjects, levelNameById]);
 
-  // ✅ Pagination helpers (same as StudentsPage)
-  const pageCount = useMemo(() => {
-    return Math.max(1, Math.ceil(filteredClasses.length / pageSize));
-  }, [filteredClasses.length]);
+  const pageCount = useMemo(() => Math.max(1, Math.ceil(filteredClasses.length / pageSize)), [filteredClasses.length]);
 
-  useEffect(() => {
-    setPage((p) => Math.min(Math.max(1, p), pageCount));
-  }, [pageCount]);
+  useEffect(() => { setPage((p) => Math.min(Math.max(1, p), pageCount)); }, [pageCount]);
 
   const pagedClasses = useMemo(() => {
     const start = (page - 1) * pageSize;
@@ -335,150 +197,218 @@ export default function ClassesPage() {
   const showingTo = Math.min(page * pageSize, filteredClasses.length);
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="flex items-center gap-2 text-base font-semibold text-slate-50">
-            <School className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
-            Τμήματα
-          </h1>
-          <p className="text-xs text-slate-300">
-            Διαχείριση τμημάτων με μάθημα και επίπεδο.
-          </p>
-          <p className="mt-1 text-[11px] text-slate-400">
-            Σύνολο τμημάτων:{' '}
-            <span className="font-medium text-slate-100">{classes.length}</span>
-            {search.trim() && (
-              <>
-                {' · '}
-                <span className="text-slate-300">
-                  Εμφανίζονται: {filteredClasses.length}
+    <div className="space-y-6 px-1">
+
+      {/* ── Page Header ── */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-start gap-3">
+          {/* Icon badge */}
+          <div
+            className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+            style={{ background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 60%, transparent))' }}
+          >
+            <GraduationCap className="h-4.5 w-4.5 text-black" />
+          </div>
+
+          <div>
+            <h1 className="text-base font-semibold tracking-tight text-slate-50">Τμήματα</h1>
+            <p className="mt-0.5 text-xs text-slate-400">Διαχείριση τμημάτων με μάθημα και επίπεδο.</p>
+
+            {/* Stats row */}
+            <div className="mt-2 flex items-center gap-3">
+              <span className="inline-flex items-center gap-1 rounded-full border border-slate-700/60 bg-slate-800/50 px-2.5 py-0.5 text-[11px] text-slate-300">
+                <School className="h-3 w-3 text-slate-400" />
+                {classes.length} σύνολο
+              </span>
+              {search.trim() && (
+                <span
+                  className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px]"
+                  style={{
+                    borderColor: 'color-mix(in srgb, var(--color-accent) 40%, transparent)',
+                    background: 'color-mix(in srgb, var(--color-accent) 10%, transparent)',
+                    color: 'var(--color-accent)',
+                  }}
+                >
+                  <Search className="h-3 w-3" />
+                  {filteredClasses.length} αποτελέσματα
                 </span>
-              </>
-            )}
-          </p>
+              )}
+            </div>
+          </div>
         </div>
 
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-          <input
-            className="form-input w-full sm:w-56"
-            style={{
-              background: 'var(--color-input-bg)',
-              color: 'var(--color-text-main)',
-            }}
-            placeholder="Αναζήτηση..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+        {/* Search + CTA */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2.5">
+          {/* Search */}
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
+            <input
+              className="h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 pl-9 pr-3 text-xs text-slate-100 placeholder-slate-500 outline-none ring-0 backdrop-blur transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30 sm:w-52"
+              placeholder="Αναζήτηση τμήματος..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+
+          {/* Add button */}
           <button
             type="button"
             onClick={openCreateModal}
-            className="btn-primary text-black"
-            style={{
-              backgroundColor: 'var(--color-accent)',
-            }}
+            className="inline-flex h-9 items-center gap-2 rounded-lg px-4 text-xs font-semibold text-black shadow-sm transition hover:brightness-110 active:scale-[0.98]"
+            style={{ backgroundColor: 'var(--color-accent)' }}
           >
+            <Plus className="h-3.5 w-3.5" />
             Προσθήκη Τμήματος
           </button>
         </div>
       </div>
 
+      {/* ── Alerts ── */}
       {error && (
-        <div className="rounded border border-red-500 bg-red-900/40 px-4 py-2 text-xs text-red-100">
+        <div className="flex items-start gap-3 rounded-xl border border-red-500/40 bg-red-950/40 px-4 py-3 text-xs text-red-200 backdrop-blur">
+          <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-red-400" />
           {error}
         </div>
       )}
-
       {!schoolId && (
-        <div className="rounded border border-amber-500 bg-amber-900/40 px-4 py-2 text-xs text-amber-100">
+        <div className="flex items-start gap-3 rounded-xl border border-amber-500/40 bg-amber-950/30 px-4 py-3 text-xs text-amber-200 backdrop-blur">
+          <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-amber-400" />
           Το προφίλ σας δεν είναι συνδεδεμένο με σχολείο (school_id είναι null).
         </div>
       )}
 
-      {/* ✅ TABLE (same styling as StudentsPage) */}
-      <div className="rounded-xl border border-slate-400/60 bg-slate-950/7 backdrop-blur-md shadow-lg overflow-hidden ring-1 ring-inset ring-slate-300/15">
-        <div className="overflow-x-auto">
-          {loading ? (
-            <div className="px-4 py-6 text-sm text-slate-200">Φόρτωση τμημάτων…</div>
-          ) : classes.length === 0 ? (
-            <div className="px-4 py-6 text-sm text-slate-200">
-              Δεν υπάρχουν ακόμη τμήματα. Πατήστε «Προσθήκη τμήματος» για να δημιουργήσετε το πρώτο.
+      {/* ── Table card ── */}
+      <div className="overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-2xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]">
+
+        {loading ? (
+          /* Loading skeleton */
+          <div className="space-y-0 divide-y divide-slate-800/60">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="flex items-center gap-4 px-5 py-3.5 animate-pulse">
+                <div className="h-3 w-1/4 rounded-full bg-slate-800" />
+                <div className="h-3 w-1/5 rounded-full bg-slate-800/80" />
+                <div className="h-3 w-16 rounded-full bg-slate-800/60" />
+              </div>
+            ))}
+          </div>
+
+        ) : classes.length === 0 ? (
+          /* Empty state */
+          <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-700/50 bg-slate-800/50">
+              <School className="h-6 w-6 text-slate-500" />
             </div>
-          ) : filteredClasses.length === 0 ? (
-            <div className="px-4 py-6 text-sm text-slate-200">
-              Δεν βρέθηκαν τμήματα με αυτά τα κριτήρια αναζήτησης.
+            <div>
+              <p className="text-sm font-medium text-slate-200">Δεν υπάρχουν ακόμη τμήματα</p>
+              <p className="mt-1 text-xs text-slate-500">Πατήστε «Προσθήκη Τμήματος» για να δημιουργήσετε το πρώτο.</p>
             </div>
-          ) : (
-            <table className="min-w-full border-collapse text-xs classes-table">
+          </div>
+
+        ) : filteredClasses.length === 0 ? (
+          /* No search results */
+          <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-700/50 bg-slate-800/50">
+              <Search className="h-6 w-6 text-slate-500" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-slate-200">Δεν βρέθηκαν τμήματα</p>
+              <p className="mt-1 text-xs text-slate-500">Δοκιμάστε διαφορετικά κριτήρια αναζήτησης.</p>
+            </div>
+          </div>
+
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full border-collapse text-xs">
               <thead>
-                <tr
-                  className="text-[11px] uppercase tracking-wide"
-                  style={{
-                    color: 'var(--color-text-main)',
-                    fontFamily:
-                      '"Poppins", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-                  }}
-                >
-                  <th className="border-b border-slate-600 px-4 py-2">ΟΝΟΜΑ ΤΜΗΜΑΤΟΣ</th>
-                  <th className="border-b border-slate-600 px-4 py-2">ΜΑΘΗΜΑ</th>
-                  <th className="border-b border-slate-600 px-4 py-2">ΕΠΙΠΕΔΟ</th>
-                  <th className="border-b border-slate-600 px-4 py-2">ΜΑΘΗΤΕΣ</th>
-                  <th className="border-b border-slate-600 px-4 py-2 th-right">ΕΝΕΡΓΕΙΕΣ</th>
+                <tr className="border-b border-slate-700/60 bg-slate-900/40">
+                  {[
+                    { icon: <School className="h-3 w-3" />, label: 'ΟΝΟΜΑ ΤΜΗΜΑΤΟΣ' },
+                    { icon: <BookOpen className="h-3 w-3" />, label: 'ΜΑΘΗΜΑ' },
+                    { icon: <GraduationCap className="h-3 w-3" />, label: 'ΕΠΙΠΕΔΟ' },
+                    { icon: <Users className="h-3 w-3" />, label: 'ΜΑΘΗΤΕΣ' },
+                  ].map(({ icon, label }) => (
+                    <th
+                      key={label}
+                      className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest"
+                      style={{ color: 'color-mix(in srgb, var(--color-accent) 80%, white)' }}
+                    >
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="opacity-60">{icon}</span>
+                        {label}
+                      </span>
+                    </th>
+                  ))}
+                  <th className="px-5 py-3 text-right text-[10px] font-semibold uppercase tracking-widest"
+                    style={{ color: 'color-mix(in srgb, var(--color-accent) 80%, white)' }}>
+                    ΕΝΕΡΓΕΙΕΣ
+                  </th>
                 </tr>
               </thead>
 
-              <tbody>
-                {pagedClasses.map((c, idx) => {
+              <tbody className="divide-y divide-slate-800/50">
+                {pagedClasses.map((c) => {
                   let levelName = '—';
                   if (c.subject_id) {
                     const subjRow = subjects.find((s) => s.id === c.subject_id);
-                    if (subjRow?.level_id) {
-                      levelName = levelNameById.get(subjRow.level_id) ?? '—';
-                    }
+                    if (subjRow?.level_id) levelName = levelNameById.get(subjRow.level_id) ?? '—';
                   }
-
-                  const absoluteIndex = (page - 1) * pageSize + idx;
-                  const rowBg = absoluteIndex % 2 === 0 ? 'bg-slate-950/45' : 'bg-slate-900/25';
 
                   return (
                     <tr
                       key={c.id}
-                      className={`${rowBg} backdrop-blur-sm hover:bg-slate-800/40 transition-colors`}
+                      className="group transition-colors hover:bg-white/[0.025]"
                     >
-                      <td className="border-b border-slate-700 px-4 py-2 align-top">
-                        <span
-                          className="text-xs font-medium text-slate-50"
-                          style={{ color: 'var(--color-text-td)' }}
-                        >
+                      {/* Title */}
+                      <td className="px-5 py-3.5">
+                        <span className="font-medium text-slate-100 group-hover:text-white transition-colors">
                           {c.title}
                         </span>
                       </td>
 
-                      <td className="border-b border-slate-700 px-4 py-2 align-top">
-                        <span className="text-xs text-slate-100" style={{ color: 'var(--color-text-td)' }}>
-                          {c.subject || '—'}
-                        </span>
+                      {/* Subject */}
+                      <td className="px-5 py-3.5">
+                        {c.subject ? (
+                          <span
+                            className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium"
+                            style={{
+                              background: 'color-mix(in srgb, var(--color-accent) 12%, transparent)',
+                              color: 'var(--color-accent)',
+                              border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)',
+                            }}
+                          >
+                            {c.subject}
+                          </span>
+                        ) : (
+                          <span className="text-slate-600">—</span>
+                        )}
                       </td>
 
-                      <td className="border-b border-slate-700 px-4 py-2 align-top">
-                        <span className="text-xs text-slate-100" style={{ color: 'var(--color-text-td)' }}>
-                          {levelName}
-                        </span>
+                      {/* Level */}
+                      <td className="px-5 py-3.5">
+                        {levelName !== '—' ? (
+                          <span className="inline-flex items-center rounded-full border border-slate-600/50 bg-slate-800/60 px-2.5 py-0.5 text-[11px] text-slate-300">
+                            {levelName}
+                          </span>
+                        ) : (
+                          <span className="text-slate-600">—</span>
+                        )}
                       </td>
 
-                      <td className="border-b border-slate-700 px-4 py-2 align-top">
+                      {/* Students button */}
+                      <td className="px-5 py-3.5">
                         <button
                           type="button"
                           onClick={() => setStudentsModalClass({ id: c.id, title: c.title })}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-500 text-emerald-400 hover:bg-emerald-500/10"
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/50 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-400 transition hover:border-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300"
                         >
-                          <Plus size={14} />
+                          <Users className="h-3 w-3" />
+                          Προβολή
                         </button>
                       </td>
 
-                      <td className="border-b border-slate-700 px-4 py-2 align-top">
-                        <div className="flex items-center justify-end gap-2">
+                      {/* Actions */}
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center justify-end gap-1">
                           <EditDeleteButtons
                             onEdit={() => openEditModal(c)}
                             onDelete={() => setDeleteTarget({ id: c.id, title: c.title })}
@@ -490,47 +420,47 @@ export default function ClassesPage() {
                 })}
               </tbody>
             </table>
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* ✅ Pagination footer (same as StudentsPage) */}
+        {/* ── Pagination footer ── */}
         {!loading && filteredClasses.length > 0 && (
-          <div className="flex items-center justify-between gap-3 border-t border-slate-800/70 px-4 py-3">
-            <div className="text-[11px] text-slate-300">
-              Εμφάνιση <span className="text-slate-100">{showingFrom}</span>-
-              <span className="text-slate-100">{showingTo}</span> από{' '}
-              <span className="text-slate-100">{filteredClasses.length}</span>
-            </div>
+          <div className="flex items-center justify-between gap-3 border-t border-slate-800/70 bg-slate-900/20 px-5 py-3">
+            <p className="text-[11px] text-slate-500">
+              <span className="text-slate-300">{showingFrom}–{showingTo}</span>{' '}
+              από <span className="text-slate-300">{filteredClasses.length}</span> τμήματα
+            </p>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page <= 1}
-                className="rounded-md border border-slate-700 bg-slate-900/30 px-3 py-1.5 text-[11px] text-slate-200 hover:bg-slate-800/40 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-900/30 text-slate-400 transition hover:border-slate-600 hover:bg-slate-800/50 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-30"
               >
-                Προηγ.
+                <ChevronLeft className="h-3.5 w-3.5" />
               </button>
 
-              <div className="rounded-md border border-slate-700 bg-slate-900/20 px-3 py-1.5 text-[11px] text-slate-200">
-                Σελίδα <span className="text-slate-50">{page}</span> /{' '}
-                <span className="text-slate-50">{pageCount}</span>
+              <div className="rounded-lg border border-slate-700/60 bg-slate-900/20 px-3 py-1 text-[11px] text-slate-300">
+                <span className="font-medium text-slate-50">{page}</span>
+                <span className="mx-1 text-slate-600">/</span>
+                <span className="text-slate-400">{pageCount}</span>
               </div>
 
               <button
                 type="button"
                 onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
                 disabled={page >= pageCount}
-                className="rounded-md border border-slate-700 bg-slate-900/30 px-3 py-1.5 text-[11px] text-slate-200 hover:bg-slate-800/40 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-900/30 text-slate-400 transition hover:border-slate-600 hover:bg-slate-800/50 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-30"
               >
-                Επόμ.
+                <ChevronRight className="h-3.5 w-3.5" />
               </button>
             </div>
           </div>
         )}
       </div>
 
-      {/* Modal for create/edit */}
+      {/* ── Modals (unchanged) ── */}
       <ClassFormModal
         open={modalOpen}
         mode={modalMode}
@@ -543,7 +473,6 @@ export default function ClassesPage() {
         onSubmit={handleSaveClass}
       />
 
-      {/* Modal μαθητών */}
       <ClassStudentsModal
         open={!!studentsModalClass}
         onClose={() => setStudentsModalClass(null)}
@@ -551,47 +480,45 @@ export default function ClassesPage() {
         classTitle={studentsModalClass?.title}
       />
 
-      {/* Delete confirmation modal */}
+      {/* ── Delete confirmation modal ── */}
       {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div
-            className="relative w-full max-w-md rounded-xl border border-slate-700 p-5 shadow-xl"
+            className="relative w-full max-w-sm overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl"
             style={{ background: 'var(--color-sidebar)' }}
           >
-            <button
-              type="button"
-              onClick={handleCancelDelete}
-              className="absolute right-4 top-3 text-slate-400 hover:text-slate-200 text-sm"
-              aria-label="Κλείσιμο"
-            >
-              ×
-            </button>
+            {/* Danger stripe at top */}
+            <div className="h-1 w-full bg-gradient-to-r from-red-600 via-red-500 to-rose-500" />
 
-            <h3 className="mb-2 text-sm font-semibold text-slate-50">Διαγραφή τμήματος</h3>
-            <p className="text-xs text-slate-200">
-              Σίγουρα θέλεις να διαγράψεις το τμήμα{' '}
-              <span className="font-semibold" style={{ color: 'var(--color-accent)' }}>
-                «{deleteTarget.title}»
-              </span>
-              ; Η ενέργεια αυτή δεν μπορεί να ανακληθεί.
-            </p>
+            <div className="p-6">
+              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/15 ring-1 ring-red-500/30">
+                <School className="h-5 w-5 text-red-400" />
+              </div>
 
-            <div className="mt-5 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={handleCancelDelete}
-                className="px-4 py-1.5 rounded-md border border-slate-600 bg-[color:var(--color-input-bg)] text-xs font-medium text-slate-100 hover:bg-slate-700/80"
-              >
-                Ακύρωση
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmDelete}
-                disabled={deleting}
-                className="px-4 py-1.5 rounded-md bg-red-600 hover:bg-red-500 text-xs font-semibold text-white disabled:opacity-60"
-              >
-                {deleting ? 'Διαγραφή…' : 'Διαγραφή'}
-              </button>
+              <h3 className="mb-1 text-sm font-semibold text-slate-50">Διαγραφή τμήματος</h3>
+              <p className="text-xs leading-relaxed text-slate-400">
+                Σίγουρα θέλεις να διαγράψεις το τμήμα{' '}
+                <span className="font-semibold text-slate-100">«{deleteTarget.title}»</span>;
+                {' '}Η ενέργεια αυτή δεν μπορεί να ανακληθεί.
+              </p>
+
+              <div className="mt-6 flex justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={handleCancelDelete}
+                  className="rounded-lg border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-slate-700/60"
+                >
+                  Ακύρωση
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDelete}
+                  disabled={deleting}
+                  className="rounded-lg bg-red-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-red-500 active:scale-[0.97] disabled:opacity-60"
+                >
+                  {deleting ? 'Διαγραφή…' : 'Διαγραφή'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

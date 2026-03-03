@@ -1,39 +1,26 @@
 // src/pages/StudentsPage.tsx
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { FormEvent } from 'react';
-import { Users } from 'lucide-react';
+import {
+  Users, Search, UserPlus, ChevronLeft, ChevronRight,
+  User, Phone, Mail, Calendar, FileText, Lock, Loader2,
+  X, Info, GraduationCap, Layers, UserCheck,
+} from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
 import EditDeleteButtons from '../components/ui/EditDeleteButtons';
 import DatePickerField from '../components/ui/AppDatePicker';
 
-type LevelRow = {
-  id: string;
-  school_id: string;
-  name: string;
-  created_at: string;
-};
+type LevelRow = { id: string; school_id: string; name: string; created_at: string };
 
 type StudentRow = {
-  id: string;
-  school_id: string;
-  full_name: string;
-  date_of_birth: string | null;
-  phone: string | null;
-  email: string | null;
-  special_notes: string | null;
-  level_id: string | null;
-
-  father_name: string | null;
-  father_date_of_birth: string | null;
-  father_phone: string | null;
-  father_email: string | null;
-
-  mother_name: string | null;
-  mother_date_of_birth: string | null;
-  mother_phone: string | null;
-  mother_email: string | null;
-
+  id: string; school_id: string; full_name: string;
+  date_of_birth: string | null; phone: string | null; email: string | null;
+  special_notes: string | null; level_id: string | null;
+  father_name: string | null; father_date_of_birth: string | null;
+  father_phone: string | null; father_email: string | null;
+  mother_name: string | null; mother_date_of_birth: string | null;
+  mother_phone: string | null; mother_email: string | null;
   created_at: string;
 };
 
@@ -44,7 +31,6 @@ const STUDENT_SELECT = `
   created_at
 `;
 
-// helper: convert "yyyy-mm-dd" -> "dd/mm/yyyy"
 function formatDateToGreek(dateStr: string | null): string {
   if (!dateStr) return '—';
   const parts = dateStr.split('-');
@@ -53,7 +39,6 @@ function formatDateToGreek(dateStr: string | null): string {
   return `${d}/${m}/${y}`;
 }
 
-// AppDatePicker helpers (dd/mm/yyyy) <-> ISO (yyyy-mm-dd)
 function isoToDisplay(iso: string | null): string {
   if (!iso) return '';
   const [y, m, d] = iso.split('-');
@@ -67,50 +52,64 @@ function displayToIso(display: string): string {
   if (parts.length !== 3) return '';
   const [d, m, y] = parts;
   if (!d || !m || !y) return '';
-  const dd = d.padStart(2, '0');
-  const mm = m.padStart(2, '0');
-  return `${y}-${mm}-${dd}`;
+  return `${y}-${d.padStart(2, '0')}-${m.padStart(2, '0')}`;
 }
 
-// helper: normalize greek/latin text (remove accents, toLowerCase)
 function normalizeText(value: string | null | undefined): string {
   if (!value) return '';
-  return value
-    .toString()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
+  return value.toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
 
 type ModalMode = 'create' | 'edit';
 type TabKey = 'student' | 'parents';
-
 const FETCH_TIMEOUT_MS = 8000;
 
 function withTimeout<T>(p: PromiseLike<T>, ms: number): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const t = setTimeout(() => reject(new Error('timeout')), ms);
-    p.then(
-      (v) => {
-        clearTimeout(t);
-        resolve(v);
-      },
-      (e) => {
-        clearTimeout(t);
-        reject(e);
-      }
-    );
+    p.then((v) => { clearTimeout(t); resolve(v); }, (e) => { clearTimeout(t); reject(e); });
   });
 }
 
 function safeParseJSON<T>(raw: string | null): T | null {
   if (!raw) return null;
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    return null;
-  }
+  try { return JSON.parse(raw) as T; } catch { return null; }
 }
+
+// ── Reusable field components ──────────────────────────────────────────────
+
+function FormField({ label, icon, hint, children }: {
+  label: string; icon?: React.ReactNode; hint?: string; children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+        {icon && <span className="opacity-70">{icon}</span>}
+        {label}
+      </label>
+      {children}
+      {hint && <p className="text-[10px] text-slate-500">{hint}</p>}
+    </div>
+  );
+}
+
+const inputCls = "h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30";
+const selectCls = inputCls;
+
+function InfoField({ label, value }: { label: string; value: string | null | undefined }) {
+  return (
+    <div className="rounded-lg border border-slate-700/50 bg-slate-900/30 px-3 py-2">
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{label}</div>
+      <div className="mt-0.5 text-xs text-slate-200">{value?.trim() ? value : '—'}</div>
+    </div>
+  );
+}
+
+function InfoDateField({ label, iso }: { label: string; iso: string | null }) {
+  return <InfoField label={label} value={iso ? formatDateToGreek(iso) : '—'} />;
+}
+
+// ── Page ───────────────────────────────────────────────────────────────────
 
 export default function StudentsPage() {
   const { profile } = useAuth();
@@ -121,60 +120,47 @@ export default function StudentsPage() {
 
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [levels, setLevels] = useState<LevelRow[]>([]);
-  const [loading, setLoading] = useState(true); // initial load ONLY (when no cache)
-  const [refreshing, setRefreshing] = useState(false); // mention in UI but do not block table
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // create/edit modal
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<ModalMode>('create');
   const [editingStudent, setEditingStudent] = useState<StudentRow | null>(null);
   const [saving, setSaving] = useState(false);
   const [modalTab, setModalTab] = useState<TabKey>('student');
 
-  // info modal (parents only)
   const [infoStudent, setInfoStudent] = useState<StudentRow | null>(null);
-
-  // delete confirmation modal
   const [deleteTarget, setDeleteTarget] = useState<StudentRow | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // Student fields
   const [fullName, setFullName] = useState('');
-  const [dateOfBirth, setDateOfBirth] = useState(''); // dd/mm/yyyy
+  const [dateOfBirth, setDateOfBirth] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [specialNotes, setSpecialNotes] = useState('');
   const [levelId, setLevelId] = useState('');
 
-  // Father
   const [fatherName, setFatherName] = useState('');
-  const [fatherDob, setFatherDob] = useState(''); // dd/mm/yyyy
+  const [fatherDob, setFatherDob] = useState('');
   const [fatherPhone, setFatherPhone] = useState('');
   const [fatherEmail, setFatherEmail] = useState('');
 
-  // Mother
   const [motherName, setMotherName] = useState('');
-  const [motherDob, setMotherDob] = useState(''); // dd/mm/yyyy
+  const [motherDob, setMotherDob] = useState('');
   const [motherPhone, setMotherPhone] = useState('');
   const [motherEmail, setMotherEmail] = useState('');
 
   const [search, setSearch] = useState('');
-
-  // Pagination (10 per page)
   const pageSize = 10;
   const [page, setPage] = useState(1);
-
   const [password, setPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
 
-  // Prevent stale requests overwriting state
   const studentsReqRef = useRef(0);
   const levelsReqRef = useRef(0);
 
-  useEffect(() => {
-    setPage(1);
-  }, [search]);
+  useEffect(() => { setPage(1); }, [search]);
 
   const levelNameById = useMemo(() => {
     const m = new Map<string, string>();
@@ -182,166 +168,74 @@ export default function StudentsPage() {
     return m;
   }, [levels]);
 
-  // ✅ HYDRATE FROM CACHE IMMEDIATELY ON MOUNT / SCHOOL CHANGE (THIS FIXES YOUR TAB SWITCH ISSUE)
   useEffect(() => {
     setError(null);
-
-    if (!schoolId) {
-      setStudents([]);
-      setLevels([]);
-      setLoading(false);
-      return;
-    }
-
+    if (!schoolId) { setStudents([]); setLevels([]); setLoading(false); return; }
     hintHydrate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [schoolId]);
 
   const hintHydrate = () => {
     if (!schoolId) return;
-
     const cachedStudents = safeParseJSON<StudentRow[]>(sessionStorage.getItem(studentsCacheKey));
     const cachedLevels = safeParseJSON<LevelRow[]>(sessionStorage.getItem(levelsCacheKey));
-
-    if (cachedStudents && Array.isArray(cachedStudents) && cachedStudents.length > 0) {
-      setStudents(cachedStudents);
-      setLoading(false); // ✅ show table immediately (no stuck loading on return)
-    } else {
-      setLoading(true); // no cache -> allow initial loading state
-    }
-
-    if (cachedLevels && Array.isArray(cachedLevels)) {
-      setLevels(cachedLevels);
-    }
+    if (cachedStudents?.length) { setStudents(cachedStudents); setLoading(false); } else { setLoading(true); }
+    if (cachedLevels) setLevels(cachedLevels);
   };
 
-  const loadLevels = useCallback(
-    async (opts?: { silent?: boolean }) => {
-      if (!schoolId) return;
+  const loadLevels = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!schoolId) return;
+    const reqId = ++levelsReqRef.current;
+    if (opts?.silent) setRefreshing(true);
+    setError(null);
+    try {
+      const res = await withTimeout(
+        supabase.from('levels').select('id, school_id, name, created_at').eq('school_id', schoolId).order('name', { ascending: true }),
+        FETCH_TIMEOUT_MS
+      );
+      if (reqId !== levelsReqRef.current) return;
+      const dbError = (res as any).error; const data = (res as any).data as LevelRow[] | null;
+      if (dbError) { console.error(dbError); setError('Αποτυχία φόρτωσης επιπέδων.'); return; }
+      const next = (data ?? []) as LevelRow[];
+      setLevels(next);
+      sessionStorage.setItem(levelsCacheKey, JSON.stringify(next));
+    } catch (e) { console.error(e); if (reqId !== levelsReqRef.current) return; setError('Αποτυχία φόρτωσης επιπέδων.'); }
+    finally { if (reqId === levelsReqRef.current && opts?.silent) setRefreshing(false); }
+  }, [schoolId, levelsCacheKey]);
 
-      const reqId = ++levelsReqRef.current;
-      const silent = Boolean(opts?.silent);
+  const loadStudents = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!schoolId) { setLoading(false); return; }
+    const reqId = ++studentsReqRef.current;
+    if (opts?.silent) setRefreshing(true); else setLoading(students.length === 0);
+    setError(null);
+    try {
+      const res = await withTimeout(
+        supabase.from('students').select(STUDENT_SELECT).eq('school_id', schoolId).order('full_name', { ascending: true }),
+        FETCH_TIMEOUT_MS
+      );
+      if (reqId !== studentsReqRef.current) return;
+      const dbError = (res as any).error; const data = (res as any).data as StudentRow[] | null;
+      if (dbError) { console.error(dbError); setError('Αποτυχία φόρτωσης μαθητών.'); return; }
+      const next = (data ?? []) as StudentRow[];
+      setStudents(next);
+      sessionStorage.setItem(studentsCacheKey, JSON.stringify(next));
+    } catch (e) { console.error(e); if (reqId !== studentsReqRef.current) return; setError('Αποτυχία φόρτωσης μαθητών.'); }
+    finally { if (reqId === studentsReqRef.current) { if (opts?.silent) setRefreshing(false); setLoading(false); } }
+  }, [schoolId, studentsCacheKey, students.length]);
 
-      if (silent) setRefreshing(true);
-      setError(null);
-
-      try {
-        const res = await withTimeout(
-          supabase
-            .from('levels')
-            .select('id, school_id, name, created_at')
-            .eq('school_id', schoolId)
-            .order('name', { ascending: true }),
-          FETCH_TIMEOUT_MS
-        );
-
-        if (reqId !== levelsReqRef.current) return;
-
-        const dbError = (res as any).error as unknown;
-        const data = (res as any).data as LevelRow[] | null;
-
-        if (dbError) {
-          console.error(dbError);
-          setError('Αποτυχία φόρτωσης επιπέδων.');
-          return;
-        }
-
-        const next = (data ?? []) as LevelRow[];
-        setLevels(next);
-        sessionStorage.setItem(levelsCacheKey, JSON.stringify(next));
-      } catch (e) {
-        console.error(e);
-        if (reqId !== levelsReqRef.current) return;
-        setError('Αποτυχία φόρτωσης επιπέδων.');
-      } finally {
-        if (reqId === levelsReqRef.current && silent) {
-          setRefreshing(false);
-        }
-      }
-    },
-    [schoolId, levelsCacheKey]
-  );
-
-  const loadStudents = useCallback(
-    async (opts?: { silent?: boolean }) => {
-      if (!schoolId) {
-        setLoading(false);
-        return;
-      }
-
-      const reqId = ++studentsReqRef.current;
-      const silent = Boolean(opts?.silent);
-
-      // ✅ on silent refresh do NOT hide table
-      if (silent) setRefreshing(true);
-      else setLoading(students.length === 0); // only show big loading if nothing cached
-
-      setError(null);
-
-      try {
-        const res = await withTimeout(
-          supabase
-            .from('students')
-            .select(STUDENT_SELECT)
-            .eq('school_id', schoolId)
-            .order('full_name', { ascending: true }),
-          FETCH_TIMEOUT_MS
-        );
-
-        if (reqId !== studentsReqRef.current) return;
-
-        const dbError = (res as any).error as unknown;
-        const data = (res as any).data as StudentRow[] | null;
-
-        if (dbError) {
-          console.error(dbError);
-          setError('Αποτυχία φόρτωσης μαθητών.');
-          return; // keep previous list
-        }
-
-        const next = (data ?? []) as StudentRow[];
-        setStudents(next);
-        sessionStorage.setItem(studentsCacheKey, JSON.stringify(next));
-      } catch (e) {
-        console.error(e);
-        if (reqId !== studentsReqRef.current) return;
-        setError('Αποτυχία φόρτωσης μαθητών.');
-      } finally {
-        if (reqId === studentsReqRef.current) {
-          if (silent) setRefreshing(false);
-          setLoading(false);
-        }
-      }
-    },
-    [schoolId, studentsCacheKey, students.length]
-  );
-
-  // initial fetch (after hydrate) + anytime school changes
   useEffect(() => {
     if (!schoolId) return;
     loadLevels({ silent: true });
     loadStudents({ silent: true });
   }, [schoolId, loadLevels, loadStudents]);
 
-  // ✅ refetch when you return to the tab/page WITHOUT blanking UI
   useEffect(() => {
     if (!schoolId) return;
-
-    const refetch = () => {
-      // show cached rows immediately, then refresh silently
-      hintHydrate();
-      loadStudents({ silent: true });
-      loadLevels({ silent: true });
-    };
-
-    const onVisibility = () => {
-      if (document.visibilityState === 'visible') refetch();
-    };
-
+    const refetch = () => { hintHydrate(); loadStudents({ silent: true }); loadLevels({ silent: true }); };
+    const onVisibility = () => { if (document.visibilityState === 'visible') refetch(); };
     window.addEventListener('focus', refetch);
     window.addEventListener('online', refetch);
     document.addEventListener('visibilitychange', onVisibility);
-
     return () => {
       window.removeEventListener('focus', refetch);
       window.removeEventListener('online', refetch);
@@ -351,291 +245,120 @@ export default function StudentsPage() {
   }, [schoolId, loadStudents, loadLevels]);
 
   const resetForm = () => {
-    setFullName('');
-    setDateOfBirth('');
-    setPhone('');
-    setEmail('');
-    setSpecialNotes('');
-    setLevelId('');
-
-    setFatherName('');
-    setFatherDob('');
-    setFatherPhone('');
-    setFatherEmail('');
-
-    setMotherName('');
-    setMotherDob('');
-    setMotherPhone('');
-    setMotherEmail('');
+    setFullName(''); setDateOfBirth(''); setPhone(''); setEmail(''); setSpecialNotes(''); setLevelId('');
+    setFatherName(''); setFatherDob(''); setFatherPhone(''); setFatherEmail('');
+    setMotherName(''); setMotherDob(''); setMotherPhone(''); setMotherEmail('');
   };
 
   const openCreateModal = () => {
-    resetForm();
-    setError(null);
-    setModalMode('create');
-    setEditingStudent(null);
-    setModalTab('student');
-    setModalOpen(true);
-    setPassword('');
-    setNewPassword('');
+    resetForm(); setError(null); setModalMode('create'); setEditingStudent(null);
+    setModalTab('student'); setModalOpen(true); setPassword(''); setNewPassword('');
   };
 
   const openEditModal = (student: StudentRow) => {
-    setError(null);
-    setModalMode('edit');
-    setEditingStudent(student);
-    setModalTab('student');
-
+    setError(null); setModalMode('edit'); setEditingStudent(student); setModalTab('student');
     setFullName(student.full_name ?? '');
     setDateOfBirth(student.date_of_birth ? isoToDisplay(student.date_of_birth) : '');
-    setPhone(student.phone ?? '');
-    setEmail(student.email ?? '');
-    setSpecialNotes(student.special_notes ?? '');
-    setLevelId(student.level_id ?? '');
-
+    setPhone(student.phone ?? ''); setEmail(student.email ?? '');
+    setSpecialNotes(student.special_notes ?? ''); setLevelId(student.level_id ?? '');
     setFatherName(student.father_name ?? '');
     setFatherDob(student.father_date_of_birth ? isoToDisplay(student.father_date_of_birth) : '');
-    setFatherPhone(student.father_phone ?? '');
-    setFatherEmail(student.father_email ?? '');
-
+    setFatherPhone(student.father_phone ?? ''); setFatherEmail(student.father_email ?? '');
     setMotherName(student.mother_name ?? '');
     setMotherDob(student.mother_date_of_birth ? isoToDisplay(student.mother_date_of_birth) : '');
-    setMotherPhone(student.mother_phone ?? '');
-    setMotherEmail(student.mother_email ?? '');
-    setNewPassword('');
-
-    setModalOpen(true);
+    setMotherPhone(student.mother_phone ?? ''); setMotherEmail(student.mother_email ?? '');
+    setNewPassword(''); setModalOpen(true);
   };
 
   const closeModal = (force = false) => {
     if (saving && !force) return;
-    setModalOpen(false);
-    setEditingStudent(null);
-    setModalMode('create');
-    setModalTab('student');
-    resetForm();
-    setPassword('');
-    setNewPassword('');
+    setModalOpen(false); setEditingStudent(null); setModalMode('create');
+    setModalTab('student'); resetForm(); setPassword(''); setNewPassword('');
   };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!schoolId) {
-      setError('Το προφίλ σας δεν είναι συνδεδεμένο με σχολείο.');
-      return;
-    }
-
+    if (!schoolId) { setError('Το προφίλ σας δεν είναι συνδεδεμένο με σχολείο.'); return; }
     const nameTrimmed = fullName.trim();
     if (!nameTrimmed) return;
-
-    setSaving(true);
-    setError(null);
+    setSaving(true); setError(null);
 
     const payload = {
-      school_id: schoolId,
-      full_name: nameTrimmed,
+      school_id: schoolId, full_name: nameTrimmed,
       date_of_birth: displayToIso(dateOfBirth) || null,
-      phone: phone.trim() || null,
-      email: email.trim() || null,
-      special_notes: specialNotes.trim() || null,
-      level_id: levelId || null,
-
+      phone: phone.trim() || null, email: email.trim() || null,
+      special_notes: specialNotes.trim() || null, level_id: levelId || null,
       father_name: fatherName.trim() || null,
       father_date_of_birth: displayToIso(fatherDob) || null,
-      father_phone: fatherPhone.trim() || null,
-      father_email: fatherEmail.trim() || null,
-
+      father_phone: fatherPhone.trim() || null, father_email: fatherEmail.trim() || null,
       mother_name: motherName.trim() || null,
       mother_date_of_birth: displayToIso(motherDob) || null,
-      mother_phone: motherPhone.trim() || null,
-      mother_email: motherEmail.trim() || null,
+      mother_phone: motherPhone.trim() || null, mother_email: motherEmail.trim() || null,
     };
 
     try {
       if (modalMode === 'create') {
-        if (password.trim().length < 6) {
-          setError('Ο κωδικός πρέπει να έχει τουλάχιστον 6 χαρακτήρες.');
-          return;
-        }
-        if (!payload.email && !payload.phone) {
-          setError('Βάλε Email ή Τηλέφωνο για να μπορεί να κάνει login στο mobile app.');
-          return;
-        }
-
+        if (password.trim().length < 6) { setError('Ο κωδικός πρέπει να έχει τουλάχιστον 6 χαρακτήρες.'); return; }
+        if (!payload.email && !payload.phone) { setError('Βάλε Email ή Τηλέφωνο για να μπορεί να κάνει login στο mobile app.'); return; }
         const res = await supabase.from('students').insert(payload).select(STUDENT_SELECT);
-        const dbError = (res as any).error as unknown;
-        const data = (res as any).data as StudentRow[] | null;
-
-        if (dbError || !data || data.length === 0) {
-          console.error(dbError);
-          setError('Αποτυχία δημιουργίας μαθητή.');
-          return;
-        }
-
-        const createdStudent = data[0] as StudentRow;
-        const pwd = password;
-
-        const nextList = [...students, createdStudent].sort((a, b) =>
-          (a.full_name ?? '').localeCompare(b.full_name ?? '', 'el')
-        );
-        setStudents(nextList);
-        sessionStorage.setItem(studentsCacheKey, JSON.stringify(nextList));
-
+        const dbError = (res as any).error; const data = (res as any).data as StudentRow[] | null;
+        if (dbError || !data?.length) { console.error(dbError); setError('Αποτυχία δημιουργίας μαθητή.'); return; }
+        const createdStudent = data[0] as StudentRow; const pwd = password;
+        const nextList = [...students, createdStudent].sort((a, b) => (a.full_name ?? '').localeCompare(b.full_name ?? '', 'el'));
+        setStudents(nextList); sessionStorage.setItem(studentsCacheKey, JSON.stringify(nextList));
         closeModal(true);
-
         const { error: fnErr } = await supabase.functions.invoke('create-student-user', {
-          body: {
-            school_id: schoolId,
-            student_id: createdStudent.id,
-            email: payload.email,
-            phone: payload.phone,
-            password: pwd,
-          },
+          body: { school_id: schoolId, student_id: createdStudent.id, email: payload.email, phone: payload.phone, password: pwd },
         });
-
         if (fnErr) console.error('create-student-user error:', fnErr);
       } else if (modalMode === 'edit' && editingStudent) {
-        const res = await supabase
-          .from('students')
-          .update({
-            full_name: payload.full_name,
-            date_of_birth: payload.date_of_birth,
-            phone: payload.phone,
-            email: payload.email,
-            special_notes: payload.special_notes,
-            level_id: payload.level_id,
-
-            father_name: payload.father_name,
-            father_date_of_birth: payload.father_date_of_birth,
-            father_phone: payload.father_phone,
-            father_email: payload.father_email,
-
-            mother_name: payload.mother_name,
-            mother_date_of_birth: payload.mother_date_of_birth,
-            mother_phone: payload.mother_phone,
-            mother_email: payload.mother_email,
-          })
-          .eq('id', editingStudent.id)
-          .eq('school_id', schoolId)
-          .select(STUDENT_SELECT);
-
-        const dbError = (res as any).error as unknown;
-        const data = (res as any).data as StudentRow[] | null;
-
-        if (dbError || !data || data.length === 0) {
-          console.error(dbError);
-          setError('Αποτυχία ενημέρωσης μαθητή.');
-          return;
-        }
-
+        const res = await supabase.from('students').update({
+          full_name: payload.full_name, date_of_birth: payload.date_of_birth,
+          phone: payload.phone, email: payload.email, special_notes: payload.special_notes, level_id: payload.level_id,
+          father_name: payload.father_name, father_date_of_birth: payload.father_date_of_birth,
+          father_phone: payload.father_phone, father_email: payload.father_email,
+          mother_name: payload.mother_name, mother_date_of_birth: payload.mother_date_of_birth,
+          mother_phone: payload.mother_phone, mother_email: payload.mother_email,
+        }).eq('id', editingStudent.id).eq('school_id', schoolId).select(STUDENT_SELECT);
+        const dbError = (res as any).error; const data = (res as any).data as StudentRow[] | null;
+        if (dbError || !data?.length) { console.error(dbError); setError('Αποτυχία ενημέρωσης μαθητή.'); return; }
         const updated = data[0] as StudentRow;
         const nextList = students.map((s) => (s.id === editingStudent.id ? updated : s));
-        setStudents(nextList);
-        sessionStorage.setItem(studentsCacheKey, JSON.stringify(nextList));
-
+        setStudents(nextList); sessionStorage.setItem(studentsCacheKey, JSON.stringify(nextList));
         const np = newPassword.trim();
         if (np) {
-          if (np.length < 6) {
-            setError('Ο νέος κωδικός πρέπει να έχει τουλάχιστον 6 χαρακτήρες.');
-          } else {
+          if (np.length < 6) { setError('Ο νέος κωδικός πρέπει να έχει τουλάχιστον 6 χαρακτήρες.'); }
+          else {
             const { error: pwErr } = await supabase.functions.invoke('set-student-password', {
-              body: {
-                school_id: schoolId,
-                student_id: editingStudent.id,
-                new_password: np,
-              },
+              body: { school_id: schoolId, student_id: editingStudent.id, new_password: np },
             });
             if (pwErr) console.error('set-student-password error:', pwErr);
           }
         }
-
         closeModal(true);
       }
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const askDeleteStudent = (student: StudentRow) => {
-    setError(null);
-    setDeleteTarget(student);
-  };
-
-  const cancelDeleteStudent = () => {
-    if (deleting) return;
-    setDeleteTarget(null);
-  };
-
-  const confirmDeleteStudent = async () => {
-    if (!deleteTarget) return;
-
-    setDeleting(true);
-    setError(null);
-
-    const { error: dbError } = await supabase
-      .from('students')
-      .delete()
-      .eq('id', deleteTarget.id)
-      .eq('school_id', schoolId ?? '');
-
-    setDeleting(false);
-
-    if (dbError) {
-      console.error(dbError);
-      setError('Αποτυχία διαγραφής μαθητή.');
-      return;
-    }
-
-    const nextList = students.filter((s) => s.id !== deleteTarget.id);
-    setStudents(nextList);
-    sessionStorage.setItem(studentsCacheKey, JSON.stringify(nextList));
-    setDeleteTarget(null);
+    } finally { setSaving(false); }
   };
 
   const filteredStudents = useMemo(() => {
     const q = normalizeText(search.trim());
     if (!q) return students;
-
     return students.filter((s) => {
-      const levelName =
-        s.level_id && levelNameById.get(s.level_id) ? levelNameById.get(s.level_id)! : '';
-
+      const levelName = s.level_id ? (levelNameById.get(s.level_id) ?? '') : '';
       const composite = [
-        s.full_name,
-        levelName,
-        s.phone,
-        s.email,
-        s.special_notes,
-        s.date_of_birth,
-        s.date_of_birth ? formatDateToGreek(s.date_of_birth) : '',
-
-        s.father_name,
-        s.father_phone,
-        s.father_email,
-        s.father_date_of_birth,
+        s.full_name, levelName, s.phone, s.email, s.special_notes,
+        s.date_of_birth, s.date_of_birth ? formatDateToGreek(s.date_of_birth) : '',
+        s.father_name, s.father_phone, s.father_email, s.father_date_of_birth,
         s.father_date_of_birth ? formatDateToGreek(s.father_date_of_birth) : '',
-
-        s.mother_name,
-        s.mother_phone,
-        s.mother_email,
-        s.mother_date_of_birth,
+        s.mother_name, s.mother_phone, s.mother_email, s.mother_date_of_birth,
         s.mother_date_of_birth ? formatDateToGreek(s.mother_date_of_birth) : '',
-      ]
-        .filter(Boolean)
-        .join(' ');
-
+      ].filter(Boolean).join(' ');
       return normalizeText(composite).includes(q);
     });
   }, [students, levelNameById, search]);
 
-  const pageCount = useMemo(
-    () => Math.max(1, Math.ceil(filteredStudents.length / pageSize)),
-    [filteredStudents.length]
-  );
-
-  useEffect(() => {
-    setPage((p) => Math.min(Math.max(1, p), pageCount));
-  }, [pageCount]);
+  const pageCount = useMemo(() => Math.max(1, Math.ceil(filteredStudents.length / pageSize)), [filteredStudents.length]);
+  useEffect(() => { setPage((p) => Math.min(Math.max(1, p), pageCount)); }, [pageCount]);
 
   const pagedStudents = useMemo(() => {
     const start = (page - 1) * pageSize;
@@ -645,172 +368,180 @@ export default function StudentsPage() {
   const showingFrom = filteredStudents.length === 0 ? 0 : (page - 1) * pageSize + 1;
   const showingTo = Math.min(page * pageSize, filteredStudents.length);
 
-  const openInfoModal = (student: StudentRow) => setInfoStudent(student);
-  const closeInfoModal = () => setInfoStudent(null);
-
-  const InfoField = ({ label, value }: { label: string; value: string | null | undefined }) => (
-    <div className="rounded-md border border-slate-700/70 bg-slate-900/25 px-3 py-2">
-      <div className="text-[10px] uppercase tracking-wide text-slate-300">{label}</div>
-      <div className="mt-0.5 text-xs text-slate-100">{value && value.trim() ? value : '—'}</div>
-    </div>
-  );
-
-  const InfoDateField = ({ label, iso }: { label: string; iso: string | null }) => (
-    <InfoField label={label} value={iso ? formatDateToGreek(iso) : '—'} />
-  );
+  // ── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="flex items-center gap-2 text-base font-semibold text-slate-50">
-            <Users className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
-            Μαθητές
-          </h1>
-          <p className="text-xs text-slate-300">Διαχείριση μαθητών του σχολείου σας.</p>
+    <div className="space-y-6 px-1">
 
-          {schoolId && (
-            <p className="mt-1 text-[11px] text-slate-400">
-              Σύνολο μαθητών: <span className="font-medium text-slate-100">{students.length}</span>
-              {search.trim() && (
-                <>
-                  {' · '}
-                  <span className="text-slate-300">Εμφανίζονται: {filteredStudents.length}</span>
-                </>
-              )}
-              {refreshing && <span className="ml-2 text-slate-500">· ενημέρωση…</span>}
-            </p>
-          )}
+      {/* ── Header ── */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-start gap-3">
+          <div
+            className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+            style={{ background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 60%, transparent))' }}
+          >
+            <Users className="h-4.5 w-4.5 text-black" />
+          </div>
+          <div>
+            <h1 className="text-base font-semibold tracking-tight text-slate-50">Μαθητές</h1>
+            <p className="mt-0.5 text-xs text-slate-400">Διαχείριση μαθητών του σχολείου σας.</p>
+            {schoolId && (
+              <div className="mt-2 flex items-center gap-2 flex-wrap">
+                <span className="inline-flex items-center gap-1 rounded-full border border-slate-700/60 bg-slate-800/50 px-2.5 py-0.5 text-[11px] text-slate-300">
+                  <Users className="h-3 w-3 text-slate-400" />
+                  {students.length} σύνολο
+                </span>
+                {search.trim() && (
+                  <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px]"
+                    style={{ borderColor: 'color-mix(in srgb, var(--color-accent) 40%, transparent)', background: 'color-mix(in srgb, var(--color-accent) 10%, transparent)', color: 'var(--color-accent)' }}>
+                    <Search className="h-3 w-3" />
+                    {filteredStudents.length} αποτελέσματα
+                  </span>
+                )}
+                {refreshing && (
+                  <span className="inline-flex items-center gap-1 text-[11px] text-slate-500">
+                    <Loader2 className="h-3 w-3 animate-spin" />ενημέρωση…
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-          <input
-            className="form-input w-full sm:w-56"
-            style={{ background: 'var(--color-input-bg)', color: 'var(--color-text-main)' }}
-            placeholder="Αναζήτηση..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2.5">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
+            <input
+              className="h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 pl-9 pr-3 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30 sm:w-52"
+              placeholder="Αναζήτηση μαθητή..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
           <button
             type="button"
             onClick={openCreateModal}
-            className="btn-primary"
-            style={{ backgroundColor: 'var(--color-accent)', color: '#000' }}
+            className="inline-flex h-9 items-center gap-2 rounded-lg px-4 text-xs font-semibold text-black shadow-sm transition hover:brightness-110 active:scale-[0.98]"
+            style={{ backgroundColor: 'var(--color-accent)' }}
           >
+            <UserPlus className="h-3.5 w-3.5" />
             Προσθήκη μαθητή
           </button>
         </div>
       </div>
 
+      {/* ── Alerts ── */}
       {error && (
-        <div className="rounded border border-red-500 bg-red-900/40 px-4 py-2 text-xs text-red-100">
+        <div className="flex items-start gap-3 rounded-xl border border-red-500/40 bg-red-950/40 px-4 py-3 text-xs text-red-200 backdrop-blur">
+          <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-red-400" />
           {error}
         </div>
       )}
-
       {!schoolId && (
-        <div className="rounded border border-amber-500 bg-amber-900/40 px-4 py-2 text-xs text-amber-100">
+        <div className="flex items-start gap-3 rounded-xl border border-amber-500/40 bg-amber-950/30 px-4 py-3 text-xs text-amber-200 backdrop-blur">
+          <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-amber-400" />
           Το προφίλ σας δεν είναι συνδεδεμένο με σχολείο (school_id είναι null).
         </div>
       )}
 
-      {/* Students table */}
-      <div className="rounded-xl border border-slate-400/60 bg-slate-950/7 backdrop-blur-md shadow-lg overflow-hidden ring-1 ring-inset ring-slate-300/15">
-        <div className="overflow-x-auto">
-          {loading && students.length === 0 ? (
-            <div className="px-4 py-4 text-xs text-slate-300">Φόρτωση μαθητών…</div>
-          ) : students.length === 0 ? (
-            <div className="px-4 py-4 text-xs text-slate-300">
-              Δεν υπάρχουν ακόμη μαθητές. Πατήστε «Προσθήκη μαθητή» για να δημιουργήσετε τον πρώτο.
+      {/* ── Table card ── */}
+      <div className="overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-2xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]">
+        {loading && students.length === 0 ? (
+          <div className="space-y-0 divide-y divide-slate-800/60">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="flex items-center gap-4 px-5 py-3.5 animate-pulse">
+                <div className="h-3 w-1/4 rounded-full bg-slate-800" />
+                <div className="h-3 w-16 rounded-full bg-slate-800/80" />
+                <div className="h-3 w-20 rounded-full bg-slate-800/60" />
+                <div className="h-3 w-24 rounded-full bg-slate-800/50" />
+              </div>
+            ))}
+          </div>
+        ) : students.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-700/50 bg-slate-800/50">
+              <Users className="h-6 w-6 text-slate-500" />
             </div>
-          ) : filteredStudents.length === 0 ? (
-            <div className="px-4 py-4 text-xs text-slate-300">
-              Δεν βρέθηκαν μαθητές με αυτά τα κριτήρια αναζήτησης.
+            <div>
+              <p className="text-sm font-medium text-slate-200">Δεν υπάρχουν ακόμη μαθητές</p>
+              <p className="mt-1 text-xs text-slate-500">Πατήστε «Προσθήκη μαθητή» για να δημιουργήσετε τον πρώτο.</p>
             </div>
-          ) : (
+          </div>
+        ) : filteredStudents.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-700/50 bg-slate-800/50">
+              <Search className="h-6 w-6 text-slate-500" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-slate-200">Δεν βρέθηκαν μαθητές</p>
+              <p className="mt-1 text-xs text-slate-500">Δοκιμάστε διαφορετικά κριτήρια αναζήτησης.</p>
+            </div>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
             <table className="min-w-full border-collapse text-xs">
               <thead>
-                <tr className="text-[11px] uppercase tracking-wide text-slate-200">
-                  <th className="border-b border-slate-700 px-4 py-2 text-left">Ονοματεπώνυμο</th>
-                  <th className="border-b border-slate-700 px-4 py-2 text-left">Επίπεδο</th>
-                  <th className="border-b border-slate-700 px-4 py-2 text-left">
-                    Ημερομηνία γέννησης
+                <tr className="border-b border-slate-700/60 bg-slate-900/40">
+                  {[
+                    { icon: <User className="h-3 w-3" />, label: 'ΟΝΟΜΑΤΕΠΩΝΥΜΟ' },
+                    { icon: <Layers className="h-3 w-3" />, label: 'ΕΠΙΠΕΔΟ' },
+                    { icon: <Calendar className="h-3 w-3" />, label: 'ΗΜ. ΓΕΝΝΗΣΗΣ' },
+                    { icon: <Phone className="h-3 w-3" />, label: 'ΤΗΛΕΦΩΝΟ' },
+                    { icon: <Mail className="h-3 w-3" />, label: 'EMAIL' },
+                    { icon: <FileText className="h-3 w-3" />, label: 'ΣΗΜΕΙΩΣΕΙΣ' },
+                  ].map(({ icon, label }) => (
+                    <th key={label} className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest"
+                      style={{ color: 'color-mix(in srgb, var(--color-accent) 80%, white)' }}>
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="opacity-60">{icon}</span>{label}
+                      </span>
+                    </th>
+                  ))}
+                  <th className="px-5 py-3 text-right text-[10px] font-semibold uppercase tracking-widest"
+                    style={{ color: 'color-mix(in srgb, var(--color-accent) 80%, white)' }}>
+                    ΕΝΕΡΓΕΙΕΣ
                   </th>
-                  <th className="border-b border-slate-700 px-4 py-2 text-left">Τηλέφωνο</th>
-                  <th className="border-b border-slate-700 px-4 py-2 text-left">Email</th>
-                  <th className="border-b border-slate-700 px-4 py-2 text-left">Ειδικές σημειώσεις</th>
-                  <th className="border-b border-slate-700 px-4 py-2 text-right">Ενέργειες</th>
                 </tr>
               </thead>
 
-              <tbody>
-                {pagedStudents.map((s, idx) => {
-                  const levelName =
-                    s.level_id && levelNameById.get(s.level_id)
-                      ? levelNameById.get(s.level_id)
-                      : '—';
-
-                  const absoluteIndex = (page - 1) * pageSize + idx;
-                  const rowBg = absoluteIndex % 2 === 0 ? 'bg-slate-950/45' : 'bg-slate-900/25';
-
+              <tbody className="divide-y divide-slate-800/50">
+                {pagedStudents.map((s) => {
+                  const levelName = s.level_id ? (levelNameById.get(s.level_id) ?? '—') : '—';
                   return (
-                    <tr
-                      key={s.id}
-                      className={`${rowBg} backdrop-blur-sm hover:bg-slate-800/40 transition-colors`}
-                    >
-                      <td className="border-b border-slate-800/70 px-4 py-2 text-left">
-                        <span className="text-xs font-medium" style={{ color: 'var(--color-text-td)' }}>
-                          {s.full_name}
-                        </span>
+                    <tr key={s.id} className="group transition-colors hover:bg-white/[0.025]">
+                      <td className="px-5 py-3.5">
+                        <span className="font-medium text-slate-100 group-hover:text-white transition-colors">{s.full_name}</span>
                       </td>
-
-                      <td className="border-b border-slate-800/70 px-4 py-2 text-left">
-                        <span className="text-xs" style={{ color: 'var(--color-text-td)' }}>
-                          {levelName}
-                        </span>
+                      <td className="px-5 py-3.5">
+                        {levelName !== '—' ? (
+                          <span className="inline-flex items-center rounded-full border border-slate-600/50 bg-slate-800/60 px-2.5 py-0.5 text-[11px] text-slate-300">{levelName}</span>
+                        ) : <span className="text-slate-600">—</span>}
                       </td>
-
-                      <td className="border-b border-slate-800/70 px-4 py-2 text-left">
-                        <span className="text-xs" style={{ color: 'var(--color-text-td)' }}>
-                          {s.date_of_birth ? formatDateToGreek(s.date_of_birth) : '—'}
-                        </span>
+                      <td className="px-5 py-3.5 text-slate-400 tabular-nums">
+                        {s.date_of_birth ? formatDateToGreek(s.date_of_birth) : <span className="text-slate-600">—</span>}
                       </td>
-
-                      <td className="border-b border-slate-800/70 px-4 py-2 text-left">
-                        <span className="text-xs" style={{ color: 'var(--color-text-td)' }}>
-                          {s.phone || '—'}
-                        </span>
+                      <td className="px-5 py-3.5 text-slate-400">
+                        {s.phone || <span className="text-slate-600">—</span>}
                       </td>
-
-                      <td className="border-b border-slate-800/70 px-4 py-2 text-left">
-                        <span className="text-xs" style={{ color: 'var(--color-text-td)' }}>
-                          {s.email || '—'}
-                        </span>
+                      <td className="px-5 py-3.5 text-slate-400">
+                        {s.email || <span className="text-slate-600">—</span>}
                       </td>
-
-                      <td className="border-b border-slate-800/70 px-4 py-2 text-left">
-                        <span className="text-xs" style={{ color: 'var(--color-text-td)' }}>
-                          {s.special_notes && s.special_notes.trim() ? s.special_notes : '—'}
-                        </span>
+                      <td className="px-5 py-3.5 max-w-[160px]">
+                        {s.special_notes?.trim()
+                          ? <span className="truncate block text-slate-400 text-[11px]">{s.special_notes}</span>
+                          : <span className="text-slate-600">—</span>}
                       </td>
-
-                      <td className="border-b border-slate-800/70 px-4 py-2">
-                        <div className="flex items-center justify-end gap-2">
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center justify-end gap-1.5">
                           <button
                             type="button"
-                            onClick={() => openInfoModal(s)}
-                            className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-500/70 bg-slate-900/20 text-slate-200 transition-colors hover:bg-slate-800/40 hover:text-slate-50"
+                            onClick={() => setInfoStudent(s)}
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-600/50 bg-slate-800/40 text-slate-400 transition hover:border-slate-500 hover:bg-slate-700/50 hover:text-slate-200"
                             title="Πληροφορίες γονέων"
-                            aria-label="Πληροφορίες γονέων"
                           >
-                            <span className="text-[13px] font-semibold leading-none">i</span>
+                            <Info className="h-3.5 w-3.5" />
                           </button>
-
-                          <EditDeleteButtons
-                            onEdit={() => openEditModal(s)}
-                            onDelete={() => askDeleteStudent(s)}
-                          />
+                          <EditDeleteButtons onEdit={() => openEditModal(s)} onDelete={() => { setError(null); setDeleteTarget(s); }} />
                         </div>
                       </td>
                     </tr>
@@ -818,362 +549,229 @@ export default function StudentsPage() {
                 })}
               </tbody>
             </table>
-          )}
-        </div>
+          </div>
+        )}
 
+        {/* Pagination */}
         {!loading && filteredStudents.length > 0 && (
-          <div className="flex items-center justify-between gap-3 border-t border-slate-800/70 px-4 py-3">
-            <div className="text-[11px] text-slate-300">
-              Εμφάνιση <span className="text-slate-100">{showingFrom}</span>-
-              <span className="text-slate-100">{showingTo}</span> από{' '}
-              <span className="text-slate-100">{filteredStudents.length}</span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page <= 1}
-                className="rounded-md border border-slate-700 bg-slate-900/30 px-3 py-1.5 text-[11px] text-slate-200 hover:bg-slate-800/40 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Προηγ.
+          <div className="flex items-center justify-between gap-3 border-t border-slate-800/70 bg-slate-900/20 px-5 py-3">
+            <p className="text-[11px] text-slate-500">
+              <span className="text-slate-300">{showingFrom}–{showingTo}</span>{' '}
+              από <span className="text-slate-300">{filteredStudents.length}</span> μαθητές
+            </p>
+            <div className="flex items-center gap-1.5">
+              <button type="button" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-900/30 text-slate-400 transition hover:border-slate-600 hover:bg-slate-800/50 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-30">
+                <ChevronLeft className="h-3.5 w-3.5" />
               </button>
-
-              <div className="rounded-md border border-slate-700 bg-slate-900/20 px-3 py-1.5 text-[11px] text-slate-200">
-                Σελίδα <span className="text-slate-50">{page}</span> /{' '}
-                <span className="text-slate-50">{pageCount}</span>
+              <div className="rounded-lg border border-slate-700/60 bg-slate-900/20 px-3 py-1 text-[11px] text-slate-300">
+                <span className="font-medium text-slate-50">{page}</span>
+                <span className="mx-1 text-slate-600">/</span>
+                <span className="text-slate-400">{pageCount}</span>
               </div>
-
-              <button
-                type="button"
-                onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
-                disabled={page >= pageCount}
-                className="rounded-md border border-slate-700 bg-slate-900/30 px-3 py-1.5 text-[11px] text-slate-200 hover:bg-slate-800/40 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Επόμ.
+              <button type="button" onClick={() => setPage((p) => Math.min(pageCount, p + 1))} disabled={page >= pageCount}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-900/30 text-slate-400 transition hover:border-slate-600 hover:bg-slate-800/50 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-30">
+                <ChevronRight className="h-3.5 w-3.5" />
               </button>
             </div>
           </div>
         )}
       </div>
 
-      {/* Parents Info modal */}
+      {/* ── Parents info modal ── */}
       {infoStudent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div
-            className="w-full max-w-lg rounded-xl border border-slate-700 p-5 shadow-xl"
-            style={{ background: 'var(--color-sidebar)' }}
-          >
-            <div className="mb-3 flex items-center justify-between">
-              <div>
-                <h2 className="text-sm font-semibold text-slate-50">Πληροφορίες γονέων</h2>
-                <p className="mt-0.5 text-[11px] text-slate-300">
-                  Μαθητής:{' '}
-                  <span className="text-slate-100 font-medium">{infoStudent.full_name}</span>
-                </p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl" style={{ background: 'var(--color-sidebar)' }}>
+            <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 30%, transparent))' }} />
+            <div className="flex items-center justify-between px-6 pt-5 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl"
+                  style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>
+                  <UserCheck className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
+                </div>
+                <div>
+                  <h2 className="text-sm font-semibold text-slate-50">Πληροφορίες γονέων</h2>
+                  <p className="text-[11px] text-slate-400 mt-0.5">{infoStudent.full_name}</p>
+                </div>
               </div>
-
-              <button
-                type="button"
-                onClick={closeInfoModal}
-                className="text-xs text-slate-300 hover:text-slate-100"
-              >
-                Κλείσιμο
+              <button type="button" onClick={() => setInfoStudent(null)}
+                className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-800/50 text-slate-400 transition hover:border-slate-600 hover:text-slate-200">
+                <X className="h-3.5 w-3.5" />
               </button>
             </div>
-
-            <div className="space-y-3">
-              <div className="rounded-lg border border-slate-700/70 bg-slate-900/20 p-3">
-                <div className="mb-2 text-xs font-semibold text-slate-100">Πατέρας</div>
-                <div className="grid gap-2 md:grid-cols-2">
-                  <InfoField label="Ονοματεπώνυμο" value={infoStudent.father_name} />
-                  <InfoDateField label="Ημ. γέννησης" iso={infoStudent.father_date_of_birth} />
-                  <InfoField label="Τηλέφωνο" value={infoStudent.father_phone} />
-                  <InfoField label="Email" value={infoStudent.father_email} />
+            <div className="space-y-3 px-6 pb-6">
+              {[
+                { title: 'Πατέρας', name: infoStudent.father_name, dob: infoStudent.father_date_of_birth, phone: infoStudent.father_phone, email: infoStudent.father_email },
+                { title: 'Μητέρα', name: infoStudent.mother_name, dob: infoStudent.mother_date_of_birth, phone: infoStudent.mother_phone, email: infoStudent.mother_email },
+              ].map(({ title, name, dob, phone: p, email: em }) => (
+                <div key={title} className="rounded-xl border border-slate-700/50 bg-slate-900/30 p-4">
+                  <p className="mb-3 text-xs font-semibold text-slate-300">{title}</p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <InfoField label="Ονοματεπώνυμο" value={name} />
+                    <InfoDateField label="Ημ. γέννησης" iso={dob} />
+                    <InfoField label="Τηλέφωνο" value={p} />
+                    <InfoField label="Email" value={em} />
+                  </div>
                 </div>
-              </div>
-
-              <div className="rounded-lg border border-slate-700/70 bg-slate-900/20 p-3">
-                <div className="mb-2 text-xs font-semibold text-slate-100">Μητέρα</div>
-                <div className="grid gap-2 md:grid-cols-2">
-                  <InfoField label="Ονοματεπώνυμο" value={infoStudent.mother_name} />
-                  <InfoDateField label="Ημ. γέννησης" iso={infoStudent.mother_date_of_birth} />
-                  <InfoField label="Τηλέφωνο" value={infoStudent.mother_phone} />
-                  <InfoField label="Email" value={infoStudent.mother_email} />
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </div>
       )}
 
-      {/* Create / Edit modal */}
+      {/* ── Create / Edit modal ── */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div
-            className="w-full max-w-lg rounded-xl border border-slate-700 p-5 shadow-xl"
-            style={{ background: 'var(--color-sidebar)' }}
-          >
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-slate-50">
-                {modalMode === 'create' ? 'Νέος μαθητής' : 'Επεξεργασία μαθητή'}
-              </h2>
-              <button
-                type="button"
-                onClick={() => closeModal()}
-                className="text-xs text-slate-300 hover:text-slate-100"
-              >
-                Κλείσιμο
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl" style={{ background: 'var(--color-sidebar)' }}>
+            <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 30%, transparent))' }} />
+
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-6 pt-5 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl"
+                  style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>
+                  <GraduationCap className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
+                </div>
+                <div>
+                  <h2 className="text-sm font-semibold text-slate-50">
+                    {modalMode === 'create' ? 'Νέος μαθητής' : 'Επεξεργασία μαθητή'}
+                  </h2>
+                  {modalMode === 'edit' && editingStudent && (
+                    <p className="text-[11px] text-slate-400 mt-0.5">{editingStudent.full_name}</p>
+                  )}
+                </div>
+              </div>
+              <button type="button" onClick={() => closeModal()}
+                className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-800/50 text-slate-400 transition hover:border-slate-600 hover:text-slate-200">
+                <X className="h-3.5 w-3.5" />
               </button>
             </div>
 
-            <div className="mb-4 flex gap-2 text-[11px]">
-              <button
-                type="button"
-                onClick={() => setModalTab('student')}
-                className={`px-3 py-1 rounded-full border text-xs ${
-                  modalTab === 'student'
-                    ? 'bg-blue-600 border-blue-500 text-white'
-                    : 'bg-slate-800 border-slate-600 text-slate-200'
-                }`}
-              >
-                Μαθητής
-              </button>
-              <button
-                type="button"
-                onClick={() => setModalTab('parents')}
-                className={`px-3 py-1 rounded-full border text-xs ${
-                  modalTab === 'parents'
-                    ? 'bg-blue-600 border-blue-500 text-white'
-                    : 'bg-slate-800 border-slate-600 text-slate-200'
-                }`}
-              >
-                Γονείς
-              </button>
+            {/* Tab switcher */}
+            <div className="flex gap-1.5 px-6 pb-3">
+              {(['student', 'parents'] as TabKey[]).map((tab) => {
+                const active = modalTab === tab;
+                const label = tab === 'student' ? 'Μαθητής' : 'Γονείς';
+                const Icon = tab === 'student' ? User : UserCheck;
+                return (
+                  <button key={tab} type="button" onClick={() => setModalTab(tab)}
+                    className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition"
+                    style={active ? {
+                      backgroundColor: 'color-mix(in srgb, var(--color-accent) 15%, transparent)',
+                      borderColor: 'color-mix(in srgb, var(--color-accent) 40%, transparent)',
+                      color: 'var(--color-accent)',
+                    } : {
+                      backgroundColor: 'transparent',
+                      borderColor: 'rgb(71 85 105 / 0.5)',
+                      color: 'rgb(148 163 184)',
+                    }}>
+                    <Icon className="h-3 w-3" />{label}
+                  </button>
+                );
+              })}
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-3">
-              {modalTab === 'student' ? (
-                <>
-                  <div>
-                    <label className="form-label text-slate-100">Ονοματεπώνυμο *</label>
-                    <input
-                      className="form-input"
-                      style={{ background: 'var(--color-input-bg)', color: 'var(--color-text-main)' }}
-                      placeholder="π.χ. Γιάννης Παπαδόπουλος"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      required
-                    />
+            {/* Error */}
+            {error && (
+              <div className="mx-6 mb-3 flex items-start gap-2.5 rounded-xl border border-red-500/30 bg-red-950/40 px-3.5 py-2.5 text-xs text-red-200">
+                <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />
+                {error}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit}>
+              <div className="max-h-[60vh] overflow-y-auto px-6 pb-2">
+                {modalTab === 'student' ? (
+                  <div className="space-y-4">
+                    <FormField label="Ονοματεπώνυμο" icon={<User className="h-3 w-3" />}>
+                      <input className={inputCls} placeholder="π.χ. Γιάννης Παπαδόπουλος" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
+                    </FormField>
+
+                    <FormField label="Επίπεδο" icon={<Layers className="h-3 w-3" />}>
+                      <select className={selectCls} value={levelId} onChange={(e) => setLevelId(e.target.value)}>
+                        <option value="">Χωρίς επίπεδο</option>
+                        {levels.map((lvl) => <option key={lvl.id} value={lvl.id}>{lvl.name}</option>)}
+                      </select>
+                    </FormField>
+
+                    <FormField label="Ημερομηνία γέννησης" icon={<Calendar className="h-3 w-3" />}>
+                      <DatePickerField label="" value={dateOfBirth} onChange={setDateOfBirth} placeholder="π.χ. 24/12/2010" id="student-dob" />
+                    </FormField>
+
+                    <FormField label="Τηλέφωνο" icon={<Phone className="h-3 w-3" />}>
+                      <input className={inputCls} placeholder="π.χ. 6900000000" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                    </FormField>
+
+                    <FormField label="Email" icon={<Mail className="h-3 w-3" />}>
+                      <input type="email" className={inputCls} placeholder="π.χ. student@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+                    </FormField>
+
+                    <FormField label="Ειδικές σημειώσεις" icon={<FileText className="h-3 w-3" />}>
+                      <input className={inputCls} placeholder="π.χ. αλλεργίες / παρατηρήσεις" value={specialNotes} onChange={(e) => setSpecialNotes(e.target.value)} />
+                    </FormField>
+
+                    {modalMode === 'create' && (
+                      <FormField label="Κωδικός" icon={<Lock className="h-3 w-3" />} hint="Θα δημιουργηθεί λογαριασμός για login στο mobile app.">
+                        <input type="password" className={inputCls} placeholder="Τουλάχιστον 6 χαρακτήρες" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
+                      </FormField>
+                    )}
+
+                    {modalMode === 'edit' && (
+                      <FormField label="Νέος κωδικός (προαιρετικό)" icon={<Lock className="h-3 w-3" />} hint="Άφησέ το κενό αν δεν θες αλλαγή. Δεν μπορείς να δεις τον τρέχοντα κωδικό.">
+                        <input type="password" className={inputCls} placeholder="Άφησέ το κενό αν δεν θες αλλαγή" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} minLength={6} />
+                      </FormField>
+                    )}
                   </div>
-
-                  <div>
-                    <label className="form-label text-slate-100">Επίπεδο</label>
-                    <select
-                      className="form-input select-accent"
-                      value={levelId}
-                      onChange={(e) => setLevelId(e.target.value)}
-                    >
-                      <option value="">Χωρίς επίπεδο</option>
-                      {levels.map((lvl) => (
-                        <option key={lvl.id} value={lvl.id}>
-                          {lvl.name}
-                        </option>
-                      ))}
-                    </select>
+                ) : (
+                  <div className="space-y-3">
+                    {[
+                      {
+                        title: 'Πατέρας', name: fatherName, setName: setFatherName,
+                        dob: fatherDob, setDob: setFatherDob, dobId: 'father-dob',
+                        phone: fatherPhone, setPhone: setFatherPhone,
+                        email: fatherEmail, setEmail: setFatherEmail,
+                      },
+                      {
+                        title: 'Μητέρα', name: motherName, setName: setMotherName,
+                        dob: motherDob, setDob: setMotherDob, dobId: 'mother-dob',
+                        phone: motherPhone, setPhone: setMotherPhone,
+                        email: motherEmail, setEmail: setMotherEmail,
+                      },
+                    ].map(({ title, name, setName, dob, setDob, dobId, phone: ph, setPhone: setPh, email: em, setEmail: setEm }) => (
+                      <div key={title} className="rounded-xl border border-slate-700/50 bg-slate-900/30 p-4">
+                        <p className="mb-3 text-xs font-semibold text-slate-300">{title}</p>
+                        <div className="space-y-3">
+                          <FormField label="Ονοματεπώνυμο" icon={<User className="h-3 w-3" />}>
+                            <input className={inputCls} placeholder={`π.χ. ${title === 'Πατέρας' ? 'Δημήτρης' : 'Μαρία'} Παπαδόπουλος`} value={name} onChange={(e) => setName(e.target.value)} />
+                          </FormField>
+                          <FormField label="Ημερομηνία γέννησης" icon={<Calendar className="h-3 w-3" />}>
+                            <DatePickerField label="" value={dob} onChange={setDob} placeholder="π.χ. 24/12/1980" id={dobId} />
+                          </FormField>
+                          <FormField label="Τηλέφωνο" icon={<Phone className="h-3 w-3" />}>
+                            <input className={inputCls} placeholder="π.χ. 6900000000" value={ph} onChange={(e) => setPh(e.target.value)} />
+                          </FormField>
+                          <FormField label="Email" icon={<Mail className="h-3 w-3" />}>
+                            <input type="email" className={inputCls} placeholder="π.χ. parent@example.com" value={em} onChange={(e) => setEm(e.target.value)} />
+                          </FormField>
+                        </div>
+                      </div>
+                    ))}
                   </div>
+                )}
+              </div>
 
-                  <DatePickerField
-                    label="Ημερομηνία γέννησης"
-                    value={dateOfBirth}
-                    onChange={setDateOfBirth}
-                    placeholder="π.χ. 24/12/2010"
-                    id="student-dob"
-                  />
-
-                  <div>
-                    <label className="form-label text-slate-100">Τηλέφωνο</label>
-                    <input
-                      className="form-input"
-                      style={{ background: 'var(--color-input-bg)', color: 'var(--color-text-main)' }}
-                      placeholder="π.χ. 6900000000"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="form-label text-slate-100">Email</label>
-                    <input
-                      type="email"
-                      className="form-input"
-                      style={{ background: 'var(--color-input-bg)', color: 'var(--color-text-main)' }}
-                      placeholder="π.χ. student@example.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="form-label text-slate-100">Ειδικές σημειώσεις</label>
-                    <input
-                      className="form-input"
-                      style={{ background: 'var(--color-input-bg)', color: 'var(--color-text-main)' }}
-                      placeholder="π.χ. αλλεργίες / παρατηρήσεις / ειδικές ανάγκες"
-                      value={specialNotes}
-                      onChange={(e) => setSpecialNotes(e.target.value)}
-                    />
-                  </div>
-
-                  {modalMode === 'create' && (
-                    <div>
-                      <label className="form-label text-slate-100">Κωδικός *</label>
-                      <input
-                        type="password"
-                        className="form-input"
-                        style={{ background: 'var(--color-input-bg)', color: 'var(--color-text-main)' }}
-                        placeholder="Τουλάχιστον 6 χαρακτήρες"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        minLength={6}
-                      />
-                      <p className="mt-1 text-[11px] text-slate-400">
-                        Θα δημιουργηθεί λογαριασμός για login στο mobile app.
-                      </p>
-                    </div>
-                  )}
-
-                  {modalMode === 'edit' && (
-                    <div>
-                      <label className="form-label text-slate-100">Νέος κωδικός (προαιρετικό)</label>
-                      <input
-                        type="password"
-                        className="form-input"
-                        style={{ background: 'var(--color-input-bg)', color: 'var(--color-text-main)' }}
-                        placeholder="Άφησέ το κενό αν δεν θες αλλαγή"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        minLength={6}
-                      />
-                      <p className="mt-1 text-[11px] text-slate-400">
-                        Δεν μπορείς να δεις τον τρέχοντα κωδικό. Μόνο να ορίσεις νέο.
-                      </p>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <>
-                  <div className="rounded-lg border border-slate-700/70 bg-slate-900/20 p-3">
-                    <div className="mb-2 text-xs font-semibold text-slate-100">Πατέρας</div>
-
-                    <div>
-                      <label className="form-label text-slate-100">Ονοματεπώνυμο</label>
-                      <input
-                        className="form-input"
-                        style={{ background: 'var(--color-input-bg)', color: 'var(--color-text-main)' }}
-                        placeholder="π.χ. Δημήτρης Παπαδόπουλος"
-                        value={fatherName}
-                        onChange={(e) => setFatherName(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="mt-3">
-                      <DatePickerField
-                        label="Ημερομηνία γέννησης"
-                        value={fatherDob}
-                        onChange={setFatherDob}
-                        placeholder="π.χ. 24/12/1980"
-                        id="father-dob"
-                      />
-                    </div>
-
-                    <div className="mt-3">
-                      <label className="form-label text-slate-100">Τηλέφωνο</label>
-                      <input
-                        className="form-input"
-                        style={{ background: 'var(--color-input-bg)', color: 'var(--color-text-main)' }}
-                        placeholder="π.χ. 6900000000"
-                        value={fatherPhone}
-                        onChange={(e) => setFatherPhone(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="mt-3">
-                      <label className="form-label text-slate-100">Email</label>
-                      <input
-                        type="email"
-                        className="form-input"
-                        style={{ background: 'var(--color-input-bg)', color: 'var(--color-text-main)' }}
-                        placeholder="π.χ. father@example.com"
-                        value={fatherEmail}
-                        onChange={(e) => setFatherEmail(e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="rounded-lg border border-slate-700/70 bg-slate-900/20 p-3">
-                    <div className="mb-2 text-xs font-semibold text-slate-100">Μητέρα</div>
-
-                    <div>
-                      <label className="form-label text-slate-100">Ονοματεπώνυμο</label>
-                      <input
-                        className="form-input"
-                        style={{ background: 'var(--color-input-bg)', color: 'var(--color-text-main)' }}
-                        placeholder="π.χ. Μαρία Παπαδοπούλου"
-                        value={motherName}
-                        onChange={(e) => setMotherName(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="mt-3">
-                      <DatePickerField
-                        label="Ημερομηνία γέννησης"
-                        value={motherDob}
-                        onChange={setMotherDob}
-                        placeholder="π.χ. 10/03/1983"
-                        id="mother-dob"
-                      />
-                    </div>
-
-                    <div className="mt-3">
-                      <label className="form-label text-slate-100">Τηλέφωνο</label>
-                      <input
-                        className="form-input"
-                        style={{ background: 'var(--color-input-bg)', color: 'var(--color-text-main)' }}
-                        placeholder="π.χ. 6900000000"
-                        value={motherPhone}
-                        onChange={(e) => setMotherPhone(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="mt-3">
-                      <label className="form-label text-slate-100">Email</label>
-                      <input
-                        type="email"
-                        className="form-input"
-                        style={{ background: 'var(--color-input-bg)', color: 'var(--color-text-main)' }}
-                        placeholder="π.χ. mother@example.com"
-                        value={motherEmail}
-                        onChange={(e) => setMotherEmail(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                </>
-              )}
-
-              <div className="mt-4 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => closeModal()}
-                  className="btn-ghost"
-                  style={{ background: 'var(--color-input-bg)', color: 'var(--color-text-main)' }}
-                  disabled={saving}
-                >
+              {/* Footer */}
+              <div className="flex justify-end gap-2.5 border-t border-slate-800/70 bg-slate-900/20 px-6 py-4 mt-3">
+                <button type="button" onClick={() => closeModal()} disabled={saving}
+                  className="rounded-lg border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-slate-700/60 disabled:opacity-50">
                   Ακύρωση
                 </button>
-                <button type="submit" className="btn-primary" disabled={saving}>
-                  {saving ? 'Αποθήκευση...' : modalMode === 'create' ? 'Αποθήκευση' : 'Ενημέρωση'}
+                <button type="submit" disabled={saving}
+                  className="inline-flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-semibold text-black shadow-sm transition hover:brightness-110 active:scale-[0.97] disabled:opacity-60"
+                  style={{ backgroundColor: 'var(--color-accent)' }}>
+                  {saving
+                    ? <><Loader2 className="h-3 w-3 animate-spin" />Αποθήκευση...</>
+                    : modalMode === 'create' ? 'Αποθήκευση' : 'Ενημέρωση'}
                 </button>
               </div>
             </form>
@@ -1181,39 +779,40 @@ export default function StudentsPage() {
         </div>
       )}
 
-      {/* Delete confirmation modal */}
+      {/* ── Delete confirmation modal ── */}
       {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div
-            className="w-full max-w-sm rounded-xl border border-slate-700 p-5 shadow-xl"
-            style={{ background: 'var(--color-sidebar)' }}
-          >
-            <h2 className="text-sm font-semibold text-slate-50">Διαγραφή μαθητή</h2>
-            <p className="mt-3 text-xs text-slate-200">
-              Σίγουρα θέλετε να διαγράψετε τον μαθητή{' '}
-              <span className="font-semibold text-[var(--color-accent)]">«{deleteTarget.full_name}»</span>
-              ; Η ενέργεια αυτή δεν μπορεί να αναιρεθεί.
-            </p>
-
-            <div className="mt-4 flex justify-end gap-2 text-xs">
-              <button
-                type="button"
-                onClick={cancelDeleteStudent}
-                className="btn-ghost"
-                style={{ background: 'var(--color-input-bg)', color: 'var(--color-text-main)' }}
-                disabled={deleting}
-              >
-                Ακύρωση
-              </button>
-              <button
-                type="button"
-                onClick={confirmDeleteStudent}
-                className="btn-primary"
-                style={{ backgroundColor: '#dc2626', color: '#fff' }}
-                disabled={deleting}
-              >
-                {deleting ? 'Διαγραφή…' : 'Διαγραφή'}
-              </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="relative w-full max-w-sm overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl" style={{ background: 'var(--color-sidebar)' }}>
+            <div className="h-1 w-full bg-gradient-to-r from-red-600 via-red-500 to-rose-500" />
+            <div className="p-6">
+              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/15 ring-1 ring-red-500/30">
+                <Users className="h-5 w-5 text-red-400" />
+              </div>
+              <h3 className="mb-1 text-sm font-semibold text-slate-50">Διαγραφή μαθητή</h3>
+              <p className="text-xs leading-relaxed text-slate-400">
+                Σίγουρα θέλετε να διαγράψετε τον μαθητή{' '}
+                <span className="font-semibold text-slate-100">«{deleteTarget.full_name}»</span>;
+                {' '}Η ενέργεια αυτή δεν μπορεί να αναιρεθεί.
+              </p>
+              <div className="mt-6 flex justify-end gap-2.5">
+                <button type="button" onClick={() => { if (!deleting) setDeleteTarget(null); }} disabled={deleting}
+                  className="rounded-lg border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-slate-700/60 disabled:opacity-50">
+                  Ακύρωση
+                </button>
+                <button type="button" onClick={async () => {
+                  if (!deleteTarget) return;
+                  setDeleting(true); setError(null);
+                  const { error: dbError } = await supabase.from('students').delete().eq('id', deleteTarget.id).eq('school_id', schoolId ?? '');
+                  setDeleting(false);
+                  if (dbError) { console.error(dbError); setError('Αποτυχία διαγραφής μαθητή.'); return; }
+                  const nextList = students.filter((s) => s.id !== deleteTarget.id);
+                  setStudents(nextList); sessionStorage.setItem(studentsCacheKey, JSON.stringify(nextList));
+                  setDeleteTarget(null);
+                }} disabled={deleting}
+                  className="rounded-lg bg-red-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-red-500 active:scale-[0.97] disabled:opacity-60">
+                  {deleting ? 'Διαγραφή…' : 'Διαγραφή'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
