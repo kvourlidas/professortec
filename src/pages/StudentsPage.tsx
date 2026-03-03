@@ -1,11 +1,11 @@
 // src/pages/StudentsPage.tsx
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { FormEvent } from 'react';
+import { Users } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
 import EditDeleteButtons from '../components/ui/EditDeleteButtons';
 import DatePickerField from '../components/ui/AppDatePicker';
-import { Users } from 'lucide-react';
 
 type LevelRow = {
   id: string;
@@ -21,7 +21,7 @@ type StudentRow = {
   date_of_birth: string | null;
   phone: string | null;
   email: string | null;
-  special_notes: string | null; // ✅ NEW
+  special_notes: string | null;
   level_id: string | null;
 
   father_name: string | null;
@@ -85,13 +85,44 @@ function normalizeText(value: string | null | undefined): string {
 type ModalMode = 'create' | 'edit';
 type TabKey = 'student' | 'parents';
 
+const FETCH_TIMEOUT_MS = 8000;
+
+function withTimeout<T>(p: PromiseLike<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error('timeout')), ms);
+    p.then(
+      (v) => {
+        clearTimeout(t);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(t);
+        reject(e);
+      }
+    );
+  });
+}
+
+function safeParseJSON<T>(raw: string | null): T | null {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+}
+
 export default function StudentsPage() {
   const { profile } = useAuth();
   const schoolId = profile?.school_id ?? null;
 
+  const studentsCacheKey = schoolId ? `pt_students_cache_v1_${schoolId}` : '';
+  const levelsCacheKey = schoolId ? `pt_levels_cache_v1_${schoolId}` : '';
+
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [levels, setLevels] = useState<LevelRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // initial load ONLY (when no cache)
+  const [refreshing, setRefreshing] = useState(false); // mention in UI but do not block table
   const [error, setError] = useState<string | null>(null);
 
   // create/edit modal
@@ -113,7 +144,7 @@ export default function StudentsPage() {
   const [dateOfBirth, setDateOfBirth] = useState(''); // dd/mm/yyyy
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
-  const [specialNotes, setSpecialNotes] = useState(''); // ✅ NEW
+  const [specialNotes, setSpecialNotes] = useState('');
   const [levelId, setLevelId] = useState('');
 
   // Father
@@ -137,6 +168,9 @@ export default function StudentsPage() {
   const [password, setPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
 
+  // Prevent stale requests overwriting state
+  const studentsReqRef = useRef(0);
+  const levelsReqRef = useRef(0);
 
   useEffect(() => {
     setPage(1);
@@ -148,64 +182,180 @@ export default function StudentsPage() {
     return m;
   }, [levels]);
 
-  // Load levels
+  // ✅ HYDRATE FROM CACHE IMMEDIATELY ON MOUNT / SCHOOL CHANGE (THIS FIXES YOUR TAB SWITCH ISSUE)
   useEffect(() => {
-    if (!schoolId) return;
+    setError(null);
 
-    const loadLevels = async () => {
-      const { data, error: dbError } = await supabase
-        .from('levels')
-        .select('*')
-        .eq('school_id', schoolId)
-        .order('name', { ascending: true });
-
-      if (dbError) {
-        console.error(dbError);
-        setError('Αποτυχία φόρτωσης επιπέδων.');
-      } else {
-        setLevels((data ?? []) as LevelRow[]);
-      }
-    };
-
-    loadLevels();
-  }, [schoolId]);
-
-  // Load students
-  useEffect(() => {
     if (!schoolId) {
+      setStudents([]);
+      setLevels([]);
       setLoading(false);
       return;
     }
 
-    const load = async () => {
-      setLoading(true);
+    hintHydrate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [schoolId]);
+
+  const hintHydrate = () => {
+    if (!schoolId) return;
+
+    const cachedStudents = safeParseJSON<StudentRow[]>(sessionStorage.getItem(studentsCacheKey));
+    const cachedLevels = safeParseJSON<LevelRow[]>(sessionStorage.getItem(levelsCacheKey));
+
+    if (cachedStudents && Array.isArray(cachedStudents) && cachedStudents.length > 0) {
+      setStudents(cachedStudents);
+      setLoading(false); // ✅ show table immediately (no stuck loading on return)
+    } else {
+      setLoading(true); // no cache -> allow initial loading state
+    }
+
+    if (cachedLevels && Array.isArray(cachedLevels)) {
+      setLevels(cachedLevels);
+    }
+  };
+
+  const loadLevels = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!schoolId) return;
+
+      const reqId = ++levelsReqRef.current;
+      const silent = Boolean(opts?.silent);
+
+      if (silent) setRefreshing(true);
       setError(null);
 
-      const { data, error: dbError } = await supabase
-        .from('students')
-        .select(STUDENT_SELECT)
-        .eq('school_id', schoolId)
-        .order('full_name', { ascending: true });
+      try {
+        const res = await withTimeout(
+          supabase
+            .from('levels')
+            .select('id, school_id, name, created_at')
+            .eq('school_id', schoolId)
+            .order('name', { ascending: true }),
+          FETCH_TIMEOUT_MS
+        );
 
-      if (dbError) {
-        console.error(dbError);
-        setError('Αποτυχία φόρτωσης μαθητών.');
-        setStudents([]);
-      } else {
-        setStudents((data ?? []) as StudentRow[]);
+        if (reqId !== levelsReqRef.current) return;
+
+        const dbError = (res as any).error as unknown;
+        const data = (res as any).data as LevelRow[] | null;
+
+        if (dbError) {
+          console.error(dbError);
+          setError('Αποτυχία φόρτωσης επιπέδων.');
+          return;
+        }
+
+        const next = (data ?? []) as LevelRow[];
+        setLevels(next);
+        sessionStorage.setItem(levelsCacheKey, JSON.stringify(next));
+      } catch (e) {
+        console.error(e);
+        if (reqId !== levelsReqRef.current) return;
+        setError('Αποτυχία φόρτωσης επιπέδων.');
+      } finally {
+        if (reqId === levelsReqRef.current && silent) {
+          setRefreshing(false);
+        }
       }
-      setLoading(false);
+    },
+    [schoolId, levelsCacheKey]
+  );
+
+  const loadStudents = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!schoolId) {
+        setLoading(false);
+        return;
+      }
+
+      const reqId = ++studentsReqRef.current;
+      const silent = Boolean(opts?.silent);
+
+      // ✅ on silent refresh do NOT hide table
+      if (silent) setRefreshing(true);
+      else setLoading(students.length === 0); // only show big loading if nothing cached
+
+      setError(null);
+
+      try {
+        const res = await withTimeout(
+          supabase
+            .from('students')
+            .select(STUDENT_SELECT)
+            .eq('school_id', schoolId)
+            .order('full_name', { ascending: true }),
+          FETCH_TIMEOUT_MS
+        );
+
+        if (reqId !== studentsReqRef.current) return;
+
+        const dbError = (res as any).error as unknown;
+        const data = (res as any).data as StudentRow[] | null;
+
+        if (dbError) {
+          console.error(dbError);
+          setError('Αποτυχία φόρτωσης μαθητών.');
+          return; // keep previous list
+        }
+
+        const next = (data ?? []) as StudentRow[];
+        setStudents(next);
+        sessionStorage.setItem(studentsCacheKey, JSON.stringify(next));
+      } catch (e) {
+        console.error(e);
+        if (reqId !== studentsReqRef.current) return;
+        setError('Αποτυχία φόρτωσης μαθητών.');
+      } finally {
+        if (reqId === studentsReqRef.current) {
+          if (silent) setRefreshing(false);
+          setLoading(false);
+        }
+      }
+    },
+    [schoolId, studentsCacheKey, students.length]
+  );
+
+  // initial fetch (after hydrate) + anytime school changes
+  useEffect(() => {
+    if (!schoolId) return;
+    loadLevels({ silent: true });
+    loadStudents({ silent: true });
+  }, [schoolId, loadLevels, loadStudents]);
+
+  // ✅ refetch when you return to the tab/page WITHOUT blanking UI
+  useEffect(() => {
+    if (!schoolId) return;
+
+    const refetch = () => {
+      // show cached rows immediately, then refresh silently
+      hintHydrate();
+      loadStudents({ silent: true });
+      loadLevels({ silent: true });
     };
 
-    load();
-  }, [schoolId]);
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') refetch();
+    };
+
+    window.addEventListener('focus', refetch);
+    window.addEventListener('online', refetch);
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      window.removeEventListener('focus', refetch);
+      window.removeEventListener('online', refetch);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [schoolId, loadStudents, loadLevels]);
 
   const resetForm = () => {
     setFullName('');
     setDateOfBirth('');
     setPhone('');
     setEmail('');
-    setSpecialNotes(''); // ✅ NEW
+    setSpecialNotes('');
     setLevelId('');
 
     setFatherName('');
@@ -240,7 +390,7 @@ export default function StudentsPage() {
     setDateOfBirth(student.date_of_birth ? isoToDisplay(student.date_of_birth) : '');
     setPhone(student.phone ?? '');
     setEmail(student.email ?? '');
-    setSpecialNotes(student.special_notes ?? ''); // ✅ NEW
+    setSpecialNotes(student.special_notes ?? '');
     setLevelId(student.level_id ?? '');
 
     setFatherName(student.father_name ?? '');
@@ -268,7 +418,6 @@ export default function StudentsPage() {
     setNewPassword('');
   };
 
-
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!schoolId) {
@@ -288,7 +437,7 @@ export default function StudentsPage() {
       date_of_birth: displayToIso(dateOfBirth) || null,
       phone: phone.trim() || null,
       email: email.trim() || null,
-      special_notes: specialNotes.trim() || null, // ✅ NEW
+      special_notes: specialNotes.trim() || null,
       level_id: levelId || null,
 
       father_name: fatherName.trim() || null,
@@ -304,7 +453,6 @@ export default function StudentsPage() {
 
     try {
       if (modalMode === 'create') {
-        // ✅ Validation for mobile login account
         if (password.trim().length < 6) {
           setError('Ο κωδικός πρέπει να έχει τουλάχιστον 6 χαρακτήρες.');
           return;
@@ -313,55 +461,48 @@ export default function StudentsPage() {
           setError('Βάλε Email ή Τηλέφωνο για να μπορεί να κάνει login στο mobile app.');
           return;
         }
-        const { data, error: dbError } = await supabase
-          .from('students')
-          .insert(payload)
-          .select(STUDENT_SELECT);
+
+        const res = await supabase.from('students').insert(payload).select(STUDENT_SELECT);
+        const dbError = (res as any).error as unknown;
+        const data = (res as any).data as StudentRow[] | null;
 
         if (dbError || !data || data.length === 0) {
           console.error(dbError);
           setError('Αποτυχία δημιουργίας μαθητή.');
           return;
         }
+
         const createdStudent = data[0] as StudentRow;
-        const pwd = password; // copy BEFORE closeModal resets state
+        const pwd = password;
 
-        // ✅ show immediately + close immediately
-        setStudents((prev) =>
-          [...prev, createdStudent].sort((a, b) =>
-            (a.full_name ?? '').localeCompare(b.full_name ?? '', 'el')
-          )
+        const nextList = [...students, createdStudent].sort((a, b) =>
+          (a.full_name ?? '').localeCompare(b.full_name ?? '', 'el')
         );
-        closeModal(true);
+        setStudents(nextList);
+        sessionStorage.setItem(studentsCacheKey, JSON.stringify(nextList));
 
-        // ✅ then create auth user in background (modal already closed)
-        const emailToUse = payload.email;
-        const phoneToUse = payload.phone;
+        closeModal(true);
 
         const { error: fnErr } = await supabase.functions.invoke('create-student-user', {
           body: {
             school_id: schoolId,
             student_id: createdStudent.id,
-            email: emailToUse,
-            phone: phoneToUse,
+            email: payload.email,
+            phone: payload.phone,
             password: pwd,
           },
         });
 
-        if (fnErr) {
-          console.error('create-student-user error:', fnErr);
-          // no UI message, student already visible, owner can set password later from edit
-        }
-
+        if (fnErr) console.error('create-student-user error:', fnErr);
       } else if (modalMode === 'edit' && editingStudent) {
-        const { data, error: dbError } = await supabase
+        const res = await supabase
           .from('students')
           .update({
             full_name: payload.full_name,
             date_of_birth: payload.date_of_birth,
             phone: payload.phone,
             email: payload.email,
-            special_notes: payload.special_notes, // ✅ NEW
+            special_notes: payload.special_notes,
             level_id: payload.level_id,
 
             father_name: payload.father_name,
@@ -378,6 +519,9 @@ export default function StudentsPage() {
           .eq('school_id', schoolId)
           .select(STUDENT_SELECT);
 
+        const dbError = (res as any).error as unknown;
+        const data = (res as any).data as StudentRow[] | null;
+
         if (dbError || !data || data.length === 0) {
           console.error(dbError);
           setError('Αποτυχία ενημέρωσης μαθητή.');
@@ -385,13 +529,13 @@ export default function StudentsPage() {
         }
 
         const updated = data[0] as StudentRow;
-        setStudents((prev) => prev.map((s) => (s.id === editingStudent.id ? updated : s)));
+        const nextList = students.map((s) => (s.id === editingStudent.id ? updated : s));
+        setStudents(nextList);
+        sessionStorage.setItem(studentsCacheKey, JSON.stringify(nextList));
 
-        // ✅ If owner typed a new password, update Auth password too
         const np = newPassword.trim();
         if (np) {
           if (np.length < 6) {
-            // optional: block + show error
             setError('Ο νέος κωδικός πρέπει να έχει τουλάχιστον 6 χαρακτήρες.');
           } else {
             const { error: pwErr } = await supabase.functions.invoke('set-student-password', {
@@ -401,11 +545,7 @@ export default function StudentsPage() {
                 new_password: np,
               },
             });
-
-            if (pwErr) {
-              console.error('set-student-password error:', pwErr);
-              // no UI message (as requested)
-            }
+            if (pwErr) console.error('set-student-password error:', pwErr);
           }
         }
 
@@ -446,11 +586,12 @@ export default function StudentsPage() {
       return;
     }
 
-    setStudents((prev) => prev.filter((s) => s.id !== deleteTarget.id));
+    const nextList = students.filter((s) => s.id !== deleteTarget.id);
+    setStudents(nextList);
+    sessionStorage.setItem(studentsCacheKey, JSON.stringify(nextList));
     setDeleteTarget(null);
   };
 
-  // 🔍 Filter students (student + parents fields are searchable)
   const filteredStudents = useMemo(() => {
     const q = normalizeText(search.trim());
     if (!q) return students;
@@ -464,7 +605,7 @@ export default function StudentsPage() {
         levelName,
         s.phone,
         s.email,
-        s.special_notes, // ✅ NEW (searchable)
+        s.special_notes,
         s.date_of_birth,
         s.date_of_birth ? formatDateToGreek(s.date_of_birth) : '',
 
@@ -487,9 +628,10 @@ export default function StudentsPage() {
     });
   }, [students, levelNameById, search]);
 
-  const pageCount = useMemo(() => Math.max(1, Math.ceil(filteredStudents.length / pageSize)), [
-    filteredStudents.length,
-  ]);
+  const pageCount = useMemo(
+    () => Math.max(1, Math.ceil(filteredStudents.length / pageSize)),
+    [filteredStudents.length]
+  );
 
   useEffect(() => {
     setPage((p) => Math.min(Math.max(1, p), pageCount));
@@ -503,10 +645,7 @@ export default function StudentsPage() {
   const showingFrom = filteredStudents.length === 0 ? 0 : (page - 1) * pageSize + 1;
   const showingTo = Math.min(page * pageSize, filteredStudents.length);
 
-  const openInfoModal = (student: StudentRow) => {
-    setInfoStudent(student);
-  };
-
+  const openInfoModal = (student: StudentRow) => setInfoStudent(student);
   const closeInfoModal = () => setInfoStudent(null);
 
   const InfoField = ({ label, value }: { label: string; value: string | null | undefined }) => (
@@ -530,16 +669,17 @@ export default function StudentsPage() {
             Μαθητές
           </h1>
           <p className="text-xs text-slate-300">Διαχείριση μαθητών του σχολείου σας.</p>
+
           {schoolId && (
             <p className="mt-1 text-[11px] text-slate-400">
-              Σύνολο μαθητών:{' '}
-              <span className="font-medium text-slate-100">{students.length}</span>
+              Σύνολο μαθητών: <span className="font-medium text-slate-100">{students.length}</span>
               {search.trim() && (
                 <>
                   {' · '}
                   <span className="text-slate-300">Εμφανίζονται: {filteredStudents.length}</span>
                 </>
               )}
+              {refreshing && <span className="ml-2 text-slate-500">· ενημέρωση…</span>}
             </p>
           )}
         </div>
@@ -578,7 +718,7 @@ export default function StudentsPage() {
       {/* Students table */}
       <div className="rounded-xl border border-slate-400/60 bg-slate-950/7 backdrop-blur-md shadow-lg overflow-hidden ring-1 ring-inset ring-slate-300/15">
         <div className="overflow-x-auto">
-          {loading ? (
+          {loading && students.length === 0 ? (
             <div className="px-4 py-4 text-xs text-slate-300">Φόρτωση μαθητών…</div>
           ) : students.length === 0 ? (
             <div className="px-4 py-4 text-xs text-slate-300">
@@ -599,12 +739,7 @@ export default function StudentsPage() {
                   </th>
                   <th className="border-b border-slate-700 px-4 py-2 text-left">Τηλέφωνο</th>
                   <th className="border-b border-slate-700 px-4 py-2 text-left">Email</th>
-
-                  {/* ✅ NEW COLUMN */}
-                  <th className="border-b border-slate-700 px-4 py-2 text-left">
-                    Ειδικές σημειώσεις
-                  </th>
-
+                  <th className="border-b border-slate-700 px-4 py-2 text-left">Ειδικές σημειώσεις</th>
                   <th className="border-b border-slate-700 px-4 py-2 text-right">Ενέργειες</th>
                 </tr>
               </thead>
@@ -625,10 +760,7 @@ export default function StudentsPage() {
                       className={`${rowBg} backdrop-blur-sm hover:bg-slate-800/40 transition-colors`}
                     >
                       <td className="border-b border-slate-800/70 px-4 py-2 text-left">
-                        <span
-                          className="text-xs font-medium"
-                          style={{ color: 'var(--color-text-td)' }}
-                        >
+                        <span className="text-xs font-medium" style={{ color: 'var(--color-text-td)' }}>
                           {s.full_name}
                         </span>
                       </td>
@@ -657,7 +789,6 @@ export default function StudentsPage() {
                         </span>
                       </td>
 
-                      {/* ✅ NEW CELL */}
                       <td className="border-b border-slate-800/70 px-4 py-2 text-left">
                         <span className="text-xs" style={{ color: 'var(--color-text-td)' }}>
                           {s.special_notes && s.special_notes.trim() ? s.special_notes : '—'}
@@ -666,7 +797,6 @@ export default function StudentsPage() {
 
                       <td className="border-b border-slate-800/70 px-4 py-2">
                         <div className="flex items-center justify-end gap-2">
-                          {/* Parents info button: circle + "i" */}
                           <button
                             type="button"
                             onClick={() => openInfoModal(s)}
@@ -691,7 +821,6 @@ export default function StudentsPage() {
           )}
         </div>
 
-        {/* Pagination footer */}
         {!loading && filteredStudents.length > 0 && (
           <div className="flex items-center justify-between gap-3 border-t border-slate-800/70 px-4 py-3">
             <div className="text-[11px] text-slate-300">
@@ -728,7 +857,7 @@ export default function StudentsPage() {
         )}
       </div>
 
-      {/* Parents Info modal (ONLY parents info) */}
+      {/* Parents Info modal */}
       {infoStudent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div
@@ -778,7 +907,7 @@ export default function StudentsPage() {
         </div>
       )}
 
-      {/* Create / Edit modal (tabs: student + parents) */}
+      {/* Create / Edit modal */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div
@@ -802,20 +931,22 @@ export default function StudentsPage() {
               <button
                 type="button"
                 onClick={() => setModalTab('student')}
-                className={`px-3 py-1 rounded-full border text-xs ${modalTab === 'student'
-                  ? 'bg-blue-600 border-blue-500 text-white'
-                  : 'bg-slate-800 border-slate-600 text-slate-200'
-                  }`}
+                className={`px-3 py-1 rounded-full border text-xs ${
+                  modalTab === 'student'
+                    ? 'bg-blue-600 border-blue-500 text-white'
+                    : 'bg-slate-800 border-slate-600 text-slate-200'
+                }`}
               >
                 Μαθητής
               </button>
               <button
                 type="button"
                 onClick={() => setModalTab('parents')}
-                className={`px-3 py-1 rounded-full border text-xs ${modalTab === 'parents'
-                  ? 'bg-blue-600 border-blue-500 text-white'
-                  : 'bg-slate-800 border-slate-600 text-slate-200'
-                  }`}
+                className={`px-3 py-1 rounded-full border text-xs ${
+                  modalTab === 'parents'
+                    ? 'bg-blue-600 border-blue-500 text-white'
+                    : 'bg-slate-800 border-slate-600 text-slate-200'
+                }`}
               >
                 Γονείς
               </button>
@@ -883,7 +1014,6 @@ export default function StudentsPage() {
                     />
                   </div>
 
-                  {/* ✅ NEW FIELD */}
                   <div>
                     <label className="form-label text-slate-100">Ειδικές σημειώσεις</label>
                     <input
@@ -913,6 +1043,7 @@ export default function StudentsPage() {
                       </p>
                     </div>
                   )}
+
                   {modalMode === 'edit' && (
                     <div>
                       <label className="form-label text-slate-100">Νέος κωδικός (προαιρετικό)</label>
@@ -930,7 +1061,6 @@ export default function StudentsPage() {
                       </p>
                     </div>
                   )}
-
                 </>
               ) : (
                 <>
@@ -1061,9 +1191,7 @@ export default function StudentsPage() {
             <h2 className="text-sm font-semibold text-slate-50">Διαγραφή μαθητή</h2>
             <p className="mt-3 text-xs text-slate-200">
               Σίγουρα θέλετε να διαγράψετε τον μαθητή{' '}
-              <span className="font-semibold text-[var(--color-accent)]">
-                «{deleteTarget.full_name}»
-              </span>
+              <span className="font-semibold text-[var(--color-accent)]">«{deleteTarget.full_name}»</span>
               ; Η ενέργεια αυτή δεν μπορεί να αναιρεθεί.
             </p>
 

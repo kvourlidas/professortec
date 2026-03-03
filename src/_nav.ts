@@ -17,7 +17,8 @@ import {
   HandCoins,
   TrendingUp,
   Smartphone,
-  MessageSquareText, // ✅ already imported
+  MessageSquareText,
+  Bell,
 } from 'lucide-react';
 
 export type NavItem = {
@@ -107,9 +108,14 @@ export const navItems: NavItem[] = [
         icon: MessageSquareText,
       },
       {
-        label: 'Μηνύματα μαθητών',           // ✅ NEW
-        to: '/student-app/messages',         // ✅ NEW
-        icon: MessageSquareText,             // (same icon is fine)
+        label: 'Μηνύματα μαθητών',
+        to: '/student-app/messages',
+        icon: MessageSquareText,
+      },
+      {
+        label: 'Ειδοποιήσεις μαθητών',
+        to: '/student-app/notifications',
+        icon: Bell,
       },
     ],
   },

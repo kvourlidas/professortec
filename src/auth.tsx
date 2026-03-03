@@ -1,4 +1,3 @@
-// src/auth.tsx
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { supabase } from './lib/supabaseClient';
@@ -21,13 +20,26 @@ type AuthContextValue = {
   authError: string | null;
   clearAuthError: () => void;
 
-  // Web-only sign in (blocks students BEFORE UI gets a user)
   signInWeb: (email: string, password: string) => Promise<boolean>;
-
   signOut: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+
+const BOOT_TIMEOUT_MS = 8000;
+
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`${label} timeout after ${ms}ms`)), ms);
+    p.then((v) => {
+      clearTimeout(t);
+      resolve(v);
+    }).catch((e) => {
+      clearTimeout(t);
+      reject(e);
+    });
+  });
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -40,7 +52,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const WEB_ALLOWED_ROLES: Role[] = ['super_admin', 'school_owner', 'teacher'];
   const isWebAllowed = (p: Profile | null) => Boolean(p?.role && WEB_ALLOWED_ROLES.includes(p.role));
 
-  // Prevent overlapping hydrations from causing flicker
   const hydratingRef = useRef(false);
 
   const clearState = () => {
@@ -56,10 +67,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  /**
-   * Validates the session user against profiles role
-   * and only THEN commits user/profile into state.
-   */
   const hydrateFromUser = async (u: User | null): Promise<boolean> => {
     if (!u) {
       clearState();
@@ -74,7 +81,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (pErr) {
       console.error('Error loading profile', pErr);
-      // treat as not allowed on web
       await hardSignOut();
       return false;
     }
@@ -82,18 +88,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const p = pData as Profile | null;
 
     if (!isWebAllowed(p)) {
-      // Student or missing profile => never allow web session
       await hardSignOut();
       return false;
     }
 
-    // ✅ Only now we commit state (no "split second" student login)
     setUser(u);
     setProfile(p);
     return true;
   };
 
-  // ✅ Web-only sign in
   const signInWeb = async (email: string, password: string): Promise<boolean> => {
     setAuthError(null);
 
@@ -104,47 +107,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return false;
     }
 
-    const ok = await hydrateFromUser(data.user);
-    if (!ok) {
-      // show generic error (student is treated as wrong credentials)
-      setAuthError('Λάθος στοιχεία σύνδεσης.');
+    try {
+      const ok = await withTimeout(hydrateFromUser(data.user), BOOT_TIMEOUT_MS, 'hydrateFromUser');
+      if (!ok) {
+        setAuthError('Λάθος στοιχεία σύνδεσης.');
+        return false;
+      }
+      return true;
+    } catch (e) {
+      console.error(e);
+      setAuthError('Πρόβλημα σύνδεσης. Δοκίμασε ξανά.');
+      await hardSignOut();
       return false;
     }
-
-    return true;
   };
 
-  // First load: validate existing session WITHOUT briefly setting user
   useEffect(() => {
     let ignore = false;
 
-    const load = async () => {
+    const boot = async () => {
       setLoading(true);
 
-      const {
-        data: { user: u },
-      } = await supabase.auth.getUser();
+      try {
+        // ✅ getSession is instant if stored; getUser can cause more network dependency.
+        const { data } = await withTimeout(supabase.auth.getSession(), BOOT_TIMEOUT_MS, 'getSession');
+        if (ignore) return;
 
-      if (ignore) return;
+        const u = data.session?.user ?? null;
 
-      // IMPORTANT: do NOT setUser(u) here before validation
-      await hydrateFromUser(u ?? null);
-
-      if (!ignore) setLoading(false);
+        // hydrate profile with timeout so loader never hangs forever
+        await withTimeout(hydrateFromUser(u), BOOT_TIMEOUT_MS, 'hydrateFromUser');
+      } catch (e) {
+        console.error('Auth boot failed:', e);
+        // do NOT keep app stuck loading
+        clearState();
+      } finally {
+        if (!ignore) setLoading(false);
+      }
     };
 
-    load();
+    boot();
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      // Avoid parallel hydrations causing UI flicker
+    const { data: sub } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (hydratingRef.current) return;
       hydratingRef.current = true;
 
       try {
-        // IMPORTANT: do NOT setUser(session.user) before validation
-        await hydrateFromUser(session?.user ?? null);
+        setLoading(true);
+        await withTimeout(hydrateFromUser(session?.user ?? null), BOOT_TIMEOUT_MS, 'hydrateFromUser');
+      } catch (e) {
+        console.error('Auth state change hydrate failed:', e);
+        clearState();
       } finally {
         hydratingRef.current = false;
         setLoading(false);
@@ -153,7 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       ignore = true;
-      subscription.unsubscribe();
+      sub.subscription.unsubscribe();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
