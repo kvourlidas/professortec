@@ -3,9 +3,11 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --color-background: #253649; /* page background */
-    --color-surface: #ffffff;    /* cards / modals */
+  /* ─── DARK MODE (default) ─── */
+  :root,
+  .dark {
+    --color-background: #253649;
+    --color-surface: #1f2d3d;
     --color-primary: #2563eb;
     --color-primary-soft: #dbeafe;
     --color-accent: #ffc947;
@@ -19,8 +21,42 @@
     --color-sidebar-muted: #1f2937;
     --color-sidebar-border: #111827;
 
-    /* FullCalendar theme variables */
+    --color-header-bg: rgba(15, 23, 42, 0.70);
+    --color-sidebar-bg: rgba(15, 23, 42, 0.75);
+    --color-border: rgba(51, 65, 85, 0.6);
+    --color-border-soft: rgba(51, 65, 85, 0.5);
+
+    /* FullCalendar */
     --fc-border-color: rgba(148, 163, 184, 0.7);
+    --fc-page-bg-color: var(--color-sidebar);
+    --fc-neutral-bg-color: var(--color-sidebar);
+    --fc-neutral-text-color: var(--color-text-main);
+  }
+
+  /* ─── LIGHT MODE ─── */
+  :root:not(.dark) {
+    --color-background: #f1f5f9;
+    --color-surface: #ffffff;
+    --color-primary: #2563eb;
+    --color-primary-soft: #dbeafe;
+    --color-accent: #f59e0b;
+    --color-input-bg: #f8fafc;
+
+    --color-text-main: #0f172a;
+    --color-text-td: #1e293b;
+    --color-text-muted: #64748b;
+
+    --color-sidebar: #ffffff;
+    --color-sidebar-muted: #f8fafc;
+    --color-sidebar-border: #e2e8f0;
+
+    --color-header-bg: rgba(255, 255, 255, 0.85);
+    --color-sidebar-bg: rgba(255, 255, 255, 0.92);
+    --color-border: rgba(203, 213, 225, 0.8);
+    --color-border-soft: rgba(203, 213, 225, 0.6);
+
+    /* FullCalendar */
+    --fc-border-color: rgba(203, 213, 225, 0.9);
     --fc-page-bg-color: var(--color-sidebar);
     --fc-neutral-bg-color: var(--color-sidebar);
     --fc-neutral-text-color: var(--color-text-main);
@@ -39,26 +75,24 @@
     @apply text-sm;
     background-color: var(--color-background);
     color: var(--color-text-main);
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 
-  /* >>> SELECTS (dark native dropdown best-effort) <<< */
   .select-accent {
     background-color: var(--color-input-bg);
     color: var(--color-text-main);
   }
 
-  /* Helps browsers render the native dropdown/popup in dark mode */
   select.select-dark {
     color-scheme: dark;
   }
 
-  select.select-dark option,
-  select.select-dark optgroup {
+  .dark select.select-dark option,
+  .dark select.select-dark optgroup {
     background-color: var(--color-sidebar);
     color: var(--color-text-main);
   }
 
-  /* Selected option highlight (best-effort) */
   select.select-dark option:checked {
     background-color: color-mix(
       in srgb,
@@ -72,10 +106,8 @@
 /* bring default react-datepicker styles */
 @import "react-datepicker/dist/react-datepicker.css";
 
-/* === Dark Cloudtec look for react-datepicker === */
-
-/* Main calendar popover */
-.react-datepicker {
+/* === Dark Datepicker === */
+.dark .react-datepicker {
   background-color: var(--color-sidebar);
   border-radius: 0.75rem;
   border: 1px solid var(--color-sidebar-border);
@@ -84,84 +116,77 @@
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55);
 }
 
-/* Make all calendar containers dark (prevents white strip) */
+.react-datepicker {
+  background-color: var(--color-sidebar);
+  border-radius: 0.75rem;
+  border: 1px solid var(--color-sidebar-border);
+  color: var(--color-text-main);
+  font-size: 12px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+}
+
 .react-datepicker__month-container,
 .react-datepicker__month,
 .react-datepicker__week {
   background-color: var(--color-sidebar);
 }
 
-/* Header (month/year + arrows) */
 .react-datepicker__header {
-  background-color: #111827;
-  border-bottom: 1px solid var(--color-sidebar-border);
+  background-color: var(--color-sidebar-border);
+  border-bottom: 1px solid var(--color-border);
 }
 
-/* Month + year text on top */
 .react-datepicker__current-month {
-  color: #ffffff; /* white */
+  color: var(--color-text-main) !important;
   font-size: 13px;
   font-weight: 600;
 }
 
-/* Day names row (Δε, Τρ, ...) */
-.react-datepicker__day-name {
-  color: var(--color-text-main);
-}
-
-/* Normal days */
+.react-datepicker__day-name,
 .react-datepicker__day,
 .react-datepicker__time-name {
-  color: var(--color-text-main);
+  color: var(--color-text-main) !important;
 }
 
-/* Days outside this month */
 .react-datepicker__day--outside-month {
-  color: var(--color-text-muted);
+  color: var(--color-text-muted) !important;
 }
 
-/* Hover for normal (not selected) days */
 .react-datepicker__day:not(.react-datepicker__day--selected):not(.react-datepicker__day--keyboard-selected):hover {
   background-color: var(--color-primary) !important;
   color: #ffffff !important;
 }
 
-/* Today ring */
 .react-datepicker__day--today {
   border-radius: 9999px;
   border: 1px solid var(--color-primary-soft);
 }
 
-/* Selected day */
 .react-datepicker__day--selected,
 .react-datepicker__day--keyboard-selected {
   background-color: var(--color-accent) !important;
   color: #000000 !important;
 }
 
-/* Hover when already selected */
 .react-datepicker__day--selected:hover,
 .react-datepicker__day--keyboard-selected:hover {
   background-color: #e0ad30 !important;
   color: #000000 !important;
 }
 
-/* Remove white triangle */
 .react-datepicker__triangle {
   display: none;
 }
 
-/* Navigation arrows */
 .react-datepicker__navigation-icon::before {
-  border-color: #e5e7eb;
+  border-color: var(--color-text-muted);
 }
 
-/* Month & year selects */
 .react-datepicker__year-select,
 .react-datepicker__month-select {
-  background-color: #111827;
-  color: #e5e7eb;
-  border: 1px solid rgba(148, 163, 184, 0.7);
+  background-color: var(--color-sidebar-border);
+  color: var(--color-text-main);
+  border: 1px solid var(--color-border);
   border-radius: 0.375rem;
   padding: 2px 8px;
   font-size: 12px;
@@ -169,37 +194,33 @@
 
 .react-datepicker__year-select option,
 .react-datepicker__month-select option {
-  background-color: #111827;
-  color: #e5e7eb;
+  background-color: var(--color-sidebar);
+  color: var(--color-text-main);
 }
 
-/* ✅ portal root used by AppDatePicker */
 #ct-datepicker-portal {
   position: relative;
   z-index: 9999;
 }
 
-/* Wrapper used by AppDatePicker (DatePickerField) */
 .ct-datepicker {
   background-color: transparent;
   border-radius: 0.75rem;
-  overflow: visible; /* ✅ was hidden (could clip) */
+  overflow: visible;
   min-width: 260px;
 }
 
 .ct-datepicker .react-datepicker__header {
-  background-color: #111827;
+  background-color: var(--color-sidebar-border);
 }
 
-/* ✅ MUST be above tables/cards/modals */
 .ct-datepicker-popper {
   z-index: 9999 !important;
 }
 
-/* Kill the white strip on the right side */
 .react-datepicker-popper {
   background-color: transparent !important;
-  z-index: 9999 !important; /* ✅ */
+  z-index: 9999 !important;
 }
 
 .react-datepicker-popper > div {
@@ -209,30 +230,12 @@
 
 .react-datepicker-popper .react-datepicker {
   background-color: var(--color-sidebar) !important;
-  border-color: rgba(148, 163, 184, 0.7);
+  border-color: var(--color-border);
 }
 
-/* Force all calendar text (day names + numbers) to be pure white */
-.react-datepicker__day-name,
-.react-datepicker__day,
-.react-datepicker__time-name {
-  color: #ffffff !important;
-}
-
-/* If you ALSO want days from other months to be white: */
-.react-datepicker__day--outside-month {
-  color: #ffffff !important;
-}
-
-/* Make "Δεκέμβριος 2025" (current month/year) white */
-.react-datepicker__current-month {
-  color: #ffffff !important;
-}
-
-/* Just in case react-datepicker uses these in other views */
 .react-datepicker-time__header,
 .react-datepicker-year-header {
-  color: #ffffff !important;
+  color: var(--color-text-main) !important;
 }
 
 @layer components {
@@ -257,7 +260,7 @@
 
   .btn-ghost {
     @apply btn;
-    background-color: #e5e7eb;
+    background-color: var(--color-sidebar-border);
     color: var(--color-text-main);
   }
 
@@ -268,15 +271,18 @@
 
   .form-input {
     @apply w-full rounded-lg border px-3 py-2 text-sm outline-none;
-    border-color: #d1d5db;
+    border-color: var(--color-border);
+    background-color: var(--color-input-bg);
+    color: var(--color-text-main);
   }
 
   .form-textarea {
     @apply w-full rounded-lg border px-3 py-2 text-sm outline-none;
-    border-color: #d1d5db;
+    border-color: var(--color-border);
+    background-color: var(--color-input-bg);
+    color: var(--color-text-main);
   }
 
-  /* >>> TABLE FOR CLASSES PAGE <<< */
   .classes-table th,
   .classes-table td {
     text-align: center;
@@ -309,17 +315,17 @@
 
   .logout-btn {
     @apply btn-primary;
-    background-color: #dc2626; /* red-600 */
+    background-color: #dc2626;
   }
 
   .logout-btn:hover {
-    background-color: #b91c1c; /* red-700 */
+    background-color: #b91c1c;
   }
 
   /* DASHBOARD WIDGETS */
   .dashboard-widget {
     @apply rounded-xl px-3 py-2 border flex flex-col justify-between;
-    min-height: 72px; /* smaller widgets */
+    min-height: 72px;
     background-color: var(--color-sidebar);
     border-color: var(--color-sidebar-border);
   }
@@ -339,7 +345,6 @@
     color: var(--color-text-muted);
   }
 
-  /* optional color variations for widgets */
   .dashboard-widget--primary {
     background:
       radial-gradient(circle at top left, rgba(37, 99, 235, 0.22), transparent),
@@ -363,31 +368,26 @@
 }
 
 /* ==== FullCalendar theming ==== */
-
 .fc {
   font-size: 11px;
   color: var(--color-text-main);
   background-color: transparent;
 }
 
-/* Outer frame + background of the whole grid (header + body) */
 .fc-theme-standard .fc-scrollgrid {
   border: 1px solid var(--fc-border-color) !important;
   background-color: var(--color-sidebar);
 }
 
-/* Header row background */
 .fc-theme-standard .fc-col-header-cell {
   background-color: var(--color-sidebar);
 }
 
-/* EVERY cell in the grid (header + body) has a border */
 .fc-theme-standard .fc-scrollgrid td,
 .fc-theme-standard .fc-scrollgrid th {
   border: 1px solid var(--fc-border-color) !important;
 }
 
-/* Vertical lines for each day column + time axis */
 .fc-theme-standard .fc-timegrid-col,
 .fc-theme-standard .fc-timegrid-axis,
 .fc-theme-standard .fc-daygrid-day {
@@ -395,12 +395,10 @@
   border-right: 1px solid var(--fc-border-color) !important;
 }
 
-/* Horizontal slot lines (rows – including your 15-minute slots) */
 .fc-theme-standard .fc-timegrid-slot {
   border-top: 1px solid var(--fc-border-color) !important;
 }
 
-/* Toolbar */
 .fc .fc-toolbar-title {
   font-size: 0.875rem;
   font-weight: 600;
@@ -430,35 +428,28 @@
   color: #000;
 }
 
-/* === Compact shells for timeGridWeek when many events === */
-
-/* Make timed events a bit more compact only in week view */
 .fc-timeGridWeek-view .fc-timegrid-event {
   padding: 2px 3px;
   box-sizing: border-box;
 }
 
-/* Reduce the gap between stacked events in the same slot */
 .fc-timeGridWeek-view .fc-timegrid-event-harness {
   margin-bottom: 1px;
 }
 
-/* Remove extra padding that FullCalendar adds inside events */
 .fc-timeGridWeek-view .fc-timegrid-event .fc-event-main {
   padding: 0;
 }
 
-/* Allow our custom content to wrap instead of overflowing */
 .fc-timeGridWeek-view .fc-timegrid-event .fc-event-main > div {
   white-space: normal;
 }
 
 /* ====== LOGIN PAGE GLASS CARD ====== */
-
 .login-card {
   position: relative;
   border-radius: 1rem;
-  padding: 1px; /* thickness of the gradient border */
+  padding: 1px;
   background: linear-gradient(
     135deg,
     rgba(255, 255, 255, 0.7),
@@ -470,43 +461,100 @@
 .login-card-inner {
   border-radius: inherit;
   padding: 2rem 2.25rem;
-  background: rgba(15, 23, 42, 0.88); /* dark navy, semi-transparent */
+  background: rgba(15, 23, 42, 0.88);
   backdrop-filter: blur(18px);
 }
 
 .programs-card {
-  /* glassy, single tone (slightly darker than page bg) */
   background: rgba(15, 23, 42, 0.22);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-
-  /* subtle inner depth like your left card */
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
-
-/* 🔹 Dark slim scrollbar for lists */
+/* 🔹 Scrollbar */
 .custom-scrollbar {
-  scrollbar-width: thin; /* Firefox */
-  scrollbar-color: #38bdf8 #020617; /* thumb, track */
+  scrollbar-width: thin;
+  scrollbar-color: #38bdf8 #020617;
 }
 
 .custom-scrollbar::-webkit-scrollbar {
-  width: 8px; /* thickness */
+  width: 8px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.9); /* ~ slate-900 */
+  background: rgba(15, 23, 42, 0.9);
   border-radius: 9999px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #38bdf8; /* sky-400 */
+  background: #38bdf8;
   border-radius: 9999px;
-  border: 2px solid #020617; /* makes it look “pill” */
+  border: 2px solid #020617;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #0ea5e9; /* sky-500 on hover */
+  background: #0ea5e9;
+}
+
+/* ==== FullCalendar Light Mode overrides ==== */
+:root:not(.dark) .fc {
+  color: var(--color-text-main);
+}
+
+:root:not(.dark) .fc-theme-standard .fc-scrollgrid {
+  background-color: #ffffff;
+}
+
+:root:not(.dark) .fc-theme-standard .fc-col-header-cell {
+  background-color: #f8fafc;
+}
+
+:root:not(.dark) .fc .fc-col-header-cell-cushion,
+:root:not(.dark) .fc .fc-daygrid-day-number,
+:root:not(.dark) .fc .fc-timegrid-slot-label-cushion,
+:root:not(.dark) .fc .fc-toolbar-title {
+  color: #1e293b;
+}
+
+:root:not(.dark) .fc .fc-button {
+  background-color: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #475569;
+}
+
+:root:not(.dark) .fc .fc-button:hover {
+  background-color: #e2e8f0;
+}
+
+:root:not(.dark) .fc-event {
+  background:
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.12), transparent),
+    #eff6ff;
+  border-color: rgba(37, 99, 235, 0.3) !important;
+  color: #1e3a8a !important;
+}
+
+/* Force all text inside light mode events to be dark */
+:root:not(.dark) .fc-event *,
+:root:not(.dark) .fc-event .fc-event-main,
+:root:not(.dark) .fc-event .fc-event-title,
+:root:not(.dark) .fc-event .fc-event-time {
+  color: #1e3a8a !important;
+}
+
+/* Time label (09:00 etc) uses accent color — keep readable in light */
+:root:not(.dark) .fc-event [style*="color: #ffc947"],
+:root:not(.dark) .fc-event [style*="color: var(--color-accent)"] {
+  color: #b45309 !important;
+}
+
+:root:not(.dark) .fc-daygrid-day:hover,
+:root:not(.dark) .fc-timegrid-col:hover {
+  background-color: rgba(241, 245, 249, 0.6);
+}
+
+:root:not(.dark) .fc .fc-now-indicator-line {
+  border-color: var(--color-accent);
 }

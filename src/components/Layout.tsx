@@ -1,11 +1,12 @@
-// src/layout/Layout.tsx
+// src/components/Layout.tsx
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth';
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { navItems, type NavItem } from '../_nav';
-import { Menu, LogOut, ChevronRight, School } from 'lucide-react';
+import { Menu, LogOut, ChevronRight, School, Sun, Moon } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 
 type NavLinkItem = NavItem & {
   to: string;
@@ -27,10 +28,13 @@ const APP_NAME = 'Tutor Admin';
 
 export default function Layout({ children }: LayoutProps) {
   const { user, profile, signOut } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [schoolName, setSchoolName] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [openGroup, setOpenGroup] = useState<string | null>('Μαθήματα');
   const location = useLocation();
+
+  const isDark = theme === 'dark';
 
   useEffect(() => {
     const loadSchoolName = async () => {
@@ -62,14 +66,26 @@ export default function Layout({ children }: LayoutProps) {
           [
             'group flex items-center rounded-xl px-3 py-2 text-[13px] font-medium transition-all duration-150',
             isActive
-              ? 'bg-white/[0.08] text-slate-50 shadow-sm shadow-black/20'
-              : 'text-slate-400 hover:bg-white/[0.05] hover:text-slate-200',
+              ? isDark
+                ? 'bg-white/[0.08] text-slate-50 shadow-sm shadow-black/20'
+                : 'bg-slate-100 text-slate-900 shadow-sm'
+              : isDark
+              ? 'text-slate-400 hover:bg-white/[0.05] hover:text-slate-200'
+              : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800',
           ].join(' ')
         }
       >
         {Icon && (
           <span className={`flex items-center justify-center ${sidebarCollapsed ? 'mx-auto' : 'mr-2.5'}`}>
-            <Icon className={`h-4 w-4 transition-colors ${isActive ? 'text-[color:var(--color-accent)]' : 'text-slate-500 group-hover:text-slate-300'}`} />
+            <Icon
+              className={`h-4 w-4 transition-colors ${
+                isActive
+                  ? 'text-[color:var(--color-accent)]'
+                  : isDark
+                  ? 'text-slate-500 group-hover:text-slate-300'
+                  : 'text-slate-400 group-hover:text-slate-600'
+              }`}
+            />
           </span>
         )}
         {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
@@ -95,14 +111,24 @@ export default function Layout({ children }: LayoutProps) {
           className={[
             'group flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-[13px] font-medium transition-all duration-150',
             hasActiveChild
-              ? 'text-slate-200'
-              : 'text-slate-400 hover:bg-white/[0.05] hover:text-slate-200',
+              ? isDark ? 'text-slate-200' : 'text-slate-800'
+              : isDark
+              ? 'text-slate-400 hover:bg-white/[0.05] hover:text-slate-200'
+              : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700',
           ].join(' ')}
         >
           <span className="flex items-center">
             {Icon && (
               <span className={`flex items-center justify-center ${sidebarCollapsed ? 'mx-auto' : 'mr-2.5'}`}>
-                <Icon className={`h-4 w-4 transition-colors ${hasActiveChild ? 'text-[color:var(--color-accent)]' : 'text-slate-500 group-hover:text-slate-400'}`} />
+                <Icon
+                  className={`h-4 w-4 transition-colors ${
+                    hasActiveChild
+                      ? 'text-[color:var(--color-accent)]'
+                      : isDark
+                      ? 'text-slate-500 group-hover:text-slate-400'
+                      : 'text-slate-400 group-hover:text-slate-600'
+                  }`}
+                />
               </span>
             )}
             {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
@@ -110,7 +136,9 @@ export default function Layout({ children }: LayoutProps) {
 
           {!sidebarCollapsed && (
             <ChevronRight
-              className={`h-3.5 w-3.5 text-slate-600 transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`}
+              className={`h-3.5 w-3.5 transition-transform duration-200 ${isOpen ? 'rotate-90' : ''} ${
+                isDark ? 'text-slate-600' : 'text-slate-400'
+              }`}
             />
           )}
         </button>
@@ -118,7 +146,7 @@ export default function Layout({ children }: LayoutProps) {
         {isOpen && !sidebarCollapsed && (
           <div className="mt-0.5 pl-6">
             <div className="relative">
-              <div className="absolute left-0 top-1 bottom-1 w-px rounded-full bg-slate-700/80" />
+              <div className={`absolute left-0 top-1 bottom-1 w-px rounded-full ${isDark ? 'bg-slate-700/80' : 'bg-slate-200'}`} />
               <div className="space-y-0.5 pl-3">
                 {item.children.map((child: NavLinkItem) => {
                   const ChildIcon = child.icon;
@@ -132,14 +160,26 @@ export default function Layout({ children }: LayoutProps) {
                         [
                           'group flex items-center rounded-lg px-2.5 py-1.5 text-[12px] font-medium transition-all duration-150',
                           isChildActive
-                            ? 'bg-white/[0.08] text-slate-50 shadow-sm shadow-black/20'
-                            : 'text-slate-500 hover:bg-white/[0.04] hover:text-slate-300',
+                            ? isDark
+                              ? 'bg-white/[0.08] text-slate-50 shadow-sm shadow-black/20'
+                              : 'bg-slate-100 text-slate-900'
+                            : isDark
+                            ? 'text-slate-500 hover:bg-white/[0.04] hover:text-slate-300'
+                            : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700',
                         ].join(' ')
                       }
                     >
                       {ChildIcon && (
                         <span className="mr-2 flex items-center justify-center">
-                          <ChildIcon className={`h-3.5 w-3.5 transition-colors ${isChildActive ? 'text-[color:var(--color-accent)]' : 'text-slate-600 group-hover:text-slate-400'}`} />
+                          <ChildIcon
+                            className={`h-3.5 w-3.5 transition-colors ${
+                              isChildActive
+                                ? 'text-[color:var(--color-accent)]'
+                                : isDark
+                                ? 'text-slate-600 group-hover:text-slate-400'
+                                : 'text-slate-400 group-hover:text-slate-600'
+                            }`}
+                          />
                         </span>
                       )}
                       <span className="truncate">{child.label}</span>
@@ -166,49 +206,70 @@ export default function Layout({ children }: LayoutProps) {
           sidebarCollapsed ? 'w-16' : 'w-60'
         }`}
         style={{
-          background: 'rgba(15, 23, 42, 0.75)',
+          background: 'var(--color-sidebar-bg)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
-          borderColor: 'rgba(51, 65, 85, 0.6)',
+          borderColor: 'var(--color-border)',
         }}
       >
         {/* Top — branding + toggle */}
         <div
-          className="flex items-center justify-between border-b px-3 py-3.5"
-          style={{ borderColor: 'rgba(51, 65, 85, 0.5)' }}
+          className="flex items-start justify-between border-b px-3 py-3.5"
+          style={{ borderColor: 'var(--color-border-soft)' }}
         >
           {!sidebarCollapsed && (
-            <div className="flex items-center gap-2 min-w-0">
+            <div className="flex items-start gap-2.5 min-w-0">
               <div
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-black"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-black mt-0.5"
                 style={{ backgroundColor: 'var(--color-accent)' }}
               >
-                <School className="h-3.5 w-3.5" />
+                <School className="h-4 w-4" />
               </div>
-              <span className="truncate text-[13px] font-semibold text-slate-100">
-                {APP_NAME}
-              </span>
+              <div className="min-w-0">
+                <p className={`truncate text-[15px] font-bold leading-tight ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+                  {schoolName || APP_NAME}
+                </p>
+                <p className={`truncate text-[11px] mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                  {schoolName ? APP_NAME : ''}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {sidebarCollapsed && (
+            <div className="mx-auto flex flex-col items-center gap-2">
+              <div
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-black"
+                style={{ backgroundColor: 'var(--color-accent)' }}
+              >
+                <School className="h-4 w-4" />
+              </div>
+              <button
+                type="button"
+                onClick={() => setSidebarCollapsed((prev) => !prev)}
+                className={`flex h-7 w-7 items-center justify-center rounded-lg border transition ${
+                  isDark
+                    ? 'border-slate-700/70 bg-slate-800/60 text-slate-400 hover:border-slate-600 hover:bg-slate-700/60 hover:text-slate-200'
+                    : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700'
+                }`}
+              >
+                <Menu className="h-3.5 w-3.5" />
+              </button>
             </div>
           )}
 
           <button
             type="button"
             onClick={() => setSidebarCollapsed((prev) => !prev)}
-            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-slate-700/70 bg-slate-800/60 text-slate-400 transition hover:border-slate-600 hover:bg-slate-700/60 hover:text-slate-200 ${sidebarCollapsed ? 'mx-auto' : ''}`}
+            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border transition ${
+              isDark
+                ? 'border-slate-700/70 bg-slate-800/60 text-slate-400 hover:border-slate-600 hover:bg-slate-700/60 hover:text-slate-200'
+                : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700'
+            } ${sidebarCollapsed ? 'hidden' : ''}`}
           >
             <Menu className="h-3.5 w-3.5" />
           </button>
         </div>
-
-        {/* School name pill */}
-        {!sidebarCollapsed && schoolName && (
-          <div className="px-3 pt-3">
-            <div className="flex items-center gap-1.5 rounded-lg border border-slate-700/60 bg-slate-800/40 px-2.5 py-1.5">
-              <div className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'var(--color-accent)' }} />
-              <span className="truncate text-[11px] font-medium text-slate-400">{schoolName}</span>
-            </div>
-          </div>
-        )}
 
         {/* Nav */}
         <nav className="mt-3 flex-1 space-y-0.5 overflow-y-auto px-2 pb-3">
@@ -223,9 +284,11 @@ export default function Layout({ children }: LayoutProps) {
         {!sidebarCollapsed && (
           <div
             className="border-t px-3 py-3"
-            style={{ borderColor: 'rgba(51, 65, 85, 0.5)' }}
+            style={{ borderColor: 'var(--color-border-soft)' }}
           >
-            <div className="flex items-center gap-2.5 rounded-xl border border-slate-700/60 bg-slate-800/40 px-2.5 py-2">
+            <div className={`flex items-center gap-2.5 rounded-xl border px-2.5 py-2 ${
+              isDark ? 'border-slate-700/60 bg-slate-800/40' : 'border-slate-200 bg-slate-50'
+            }`}>
               <div
                 className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-black"
                 style={{ backgroundColor: 'var(--color-accent)' }}
@@ -233,10 +296,10 @@ export default function Layout({ children }: LayoutProps) {
                 {(profile?.full_name || user?.email || '?')[0].toUpperCase()}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[12px] font-semibold text-slate-200">
+                <p className={`truncate text-[12px] font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
                   {profile?.full_name || user?.email}
                 </p>
-                <p className="truncate text-[10px] text-slate-500 capitalize">
+                <p className={`truncate text-[10px] capitalize ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                   {profile?.role || 'no role'}
                 </p>
               </div>
@@ -251,13 +314,19 @@ export default function Layout({ children }: LayoutProps) {
           </div>
         )}
 
-        {/* Collapsed: just logout */}
+        {/* Collapsed: avatar + logout stacked */}
         {sidebarCollapsed && (
-          <div className="border-t px-2 py-3" style={{ borderColor: 'rgba(51, 65, 85, 0.5)' }}>
+          <div className="border-t px-2 py-3 flex flex-col items-center gap-2" style={{ borderColor: 'var(--color-border-soft)' }}>
+            <div
+              className="flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-bold text-black"
+              style={{ backgroundColor: 'var(--color-accent)' }}
+            >
+              {(profile?.full_name || user?.email || '?')[0].toUpperCase()}
+            </div>
             <button
               onClick={signOut}
               aria-label="Αποσύνδεση"
-              className="mx-auto flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-red-500/10 hover:text-red-400"
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 transition hover:bg-red-500/10 hover:text-red-400"
             >
               <LogOut className="h-3.5 w-3.5" />
             </button>
@@ -270,41 +339,27 @@ export default function Layout({ children }: LayoutProps) {
 
         {/* Header */}
         <header
-          className="flex flex-shrink-0 items-center justify-between border-b px-5 py-3"
+          className="flex flex-shrink-0 items-center justify-end border-b px-5 py-3 h-[57px] gap-2"
           style={{
-            background: 'rgba(15, 23, 42, 0.70)',
+            background: 'var(--color-header-bg)',
             backdropFilter: 'blur(16px)',
             WebkitBackdropFilter: 'blur(16px)',
-            borderColor: 'rgba(51, 65, 85, 0.55)',
+            borderColor: 'var(--color-border)',
           }}
         >
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="text-[14px] font-semibold text-slate-100">{APP_NAME}</span>
-            {schoolName && (
-              <>
-                <span className="text-slate-700">·</span>
-                <span className="truncate text-[13px] text-slate-400">{schoolName}</span>
-              </>
-            )}
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="text-right">
-              <p className="text-[12px] font-semibold text-slate-200">
-                {profile?.full_name || user?.email}
-              </p>
-              <p className="text-[11px] text-slate-500 capitalize">
-                {profile?.role || 'no role'}
-              </p>
-            </div>
-            <button
-              onClick={signOut}
-              aria-label="Αποσύνδεση"
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-800/50 text-slate-400 transition hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-400"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-            </button>
-          </div>
+          {/* ── Theme Toggle Button ── */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            aria-label="Toggle theme"
+            className={`flex h-8 w-8 items-center justify-center rounded-lg border transition ${
+              isDark
+                ? 'border-slate-700/70 bg-slate-800/60 text-amber-400 hover:border-slate-600 hover:bg-slate-700/60'
+                : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+            }`}
+          >
+            {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </button>
         </header>
 
         {/* Scroll area */}

@@ -1,8 +1,8 @@
-// PART 1/3
 // src/components/dashboard/DashboardCalendarSection.tsx
 
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { supabase } from '../../lib/supabaseClient';
+import { useTheme } from '../../context/ThemeContext';
 
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -126,28 +126,22 @@ function getNextDateForDow(from: Date, dow: number): Date {
   return d;
 }
 
-/* ------------ Shared form components ------------ */
-
-const inputCls = "h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30 disabled:opacity-60";
-const selectCls = inputCls;
-
-function FormField({ label, icon, children }: { label: string; icon?: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1.5">
-      <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-        {icon && <span className="opacity-70">{icon}</span>}
-        {label}
-      </label>
-      {children}
-    </div>
-  );
-}
-
 /* ------------ Component ------------ */
 
 type DashboardCalendarSectionProps = { schoolId: string | null };
 
 export default function DashboardCalendarSection({ schoolId }: DashboardCalendarSectionProps) {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+
+  // Dynamic classes based on theme
+  const inputCls = `h-9 w-full rounded-lg border px-3 text-xs outline-none transition disabled:opacity-60 ${
+    isDark
+      ? 'border-slate-700/70 bg-slate-900/60 text-slate-100 placeholder-slate-500 focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30'
+      : 'border-slate-200 bg-white text-slate-800 placeholder-slate-400 focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/20'
+  }`;
+  const selectCls = inputCls;
+
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [tutors, setTutors] = useState<TutorRow[]>([]);
   const [program, setProgram] = useState<ProgramRow | null>(null);
@@ -179,8 +173,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
   const [savingTest, setSavingTest] = useState(false);
   const [testError, setTestError] = useState<string | null>(null);
 
-  /* -------- Holidays helpers (unchanged) -------- */
-
+  /* -------- Holidays helpers -------- */
   const holidayDateSet = useMemo(() => new Set(holidays.map((h) => h.date)), [holidays]);
   const holidayNameByDate = useMemo(() => {
     const m = new Map<string, string | null>();
@@ -189,7 +182,6 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
   }, [holidays]);
 
   /* -------- Data loading (unchanged) -------- */
-
   useEffect(() => {
     if (!schoolId) { setLoading(false); setClasses([]); return; }
     const load = async () => {
@@ -263,8 +255,6 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     loadExtra();
   }, [schoolId]);
 
-  /* -------- Helpers for subjects (unchanged logic) -------- */
-
   const subjectById = useMemo(() => { const m = new Map<string, SubjectRow>(); subjects.forEach((s) => m.set(s.id, s)); return m; }, [subjects]);
 
   const getSubjectsForClass = (classId: string | null): SubjectRow[] => {
@@ -286,7 +276,6 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
   };
 
   /* -------- Build events (unchanged) -------- */
-
   const events = useMemo(() => {
     if (!viewRange) return [];
     const { start: viewStart, end: viewEnd } = viewRange;
@@ -318,7 +307,9 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     const testsByKey = new Map<string, TestRow[]>();
     tests.forEach((t) => { const key = `${t.class_id}-${t.test_date}`; const arr = testsByKey.get(key) ?? []; arr.push(t); testsByKey.set(key, arr); });
     const hideStandaloneTestKeys = new Set<string>();
-    const inactiveColors = { backgroundColor: 'rgba(148, 163, 184, 0.18)', borderColor: 'rgba(148, 163, 184, 0.45)', textColor: '#e2e8f0' };
+    const inactiveColors = isDark
+      ? { backgroundColor: 'rgba(148, 163, 184, 0.18)', borderColor: 'rgba(148, 163, 184, 0.45)', textColor: '#e2e8f0' }
+      : { backgroundColor: 'rgba(100, 116, 139, 0.12)', borderColor: 'rgba(100, 116, 139, 0.35)', textColor: '#475569' };
 
     programItems.forEach((item) => {
       const cls = classMap.get(item.class_id);
@@ -432,10 +423,9 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     });
 
     return out;
-  }, [viewRange, programItems, classes, tutors, subjectTutorLinks, overrides, holidays, holidayDateSet, holidayNameByDate, schoolEvents, tests, subjects, subjectById]);
+  }, [viewRange, programItems, classes, tutors, subjectTutorLinks, overrides, holidays, holidayDateSet, holidayNameByDate, schoolEvents, tests, subjects, subjectById, isDark]);
 
   /* -------- Drag & drop (unchanged) -------- */
-
   const handleEventDrop = async (arg: EventDropArg) => {
     const { event, oldEvent, revert } = arg;
     const isInactive = event.extendedProps['isInactive'] as boolean | undefined;
@@ -511,8 +501,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     } catch (err) { console.error(err); revert(); }
   };
 
-  /* -------- Render event content (unchanged logic, updated pill styles) -------- */
-
+  /* -------- Render event content -------- */
   const renderEventContent = (arg: EventContentArg) => {
     const { event } = arg;
     const kind = event.extendedProps['kind'] as string | undefined;
@@ -534,24 +523,29 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
       else if (/\s*·\s*Διαγώνισμα\s*$/u.test(rawTitle)) mainTitle = rawTitle.replace(/\s*·\s*Διαγώνισμα\s*$/u, '').trim();
     }
 
+    const timeColor = isDark ? '#ffc947' : '#b45309';
+
     return (
       <div className="flex flex-col gap-0.5 text-[11px] leading-tight">
         {timeRange && (
-          <div className="font-semibold text-[12px] text-[#ffc947]">{timeRange}</div>
+          <div className="font-semibold text-[12px]" style={{ color: timeColor }}>{timeRange}</div>
         )}
-
         {isHoliday && (
-          <span className={`inline-flex w-fit items-center rounded-full border px-1.5 py-[1px] text-[9px] font-semibold ${isInactive ? 'border-slate-400/50 bg-slate-500/10 text-slate-300' : 'border-emerald-400/50 bg-emerald-500/10 text-emerald-200'}`}>
+          <span className={`inline-flex w-fit items-center rounded-full border px-1.5 py-[1px] text-[9px] font-semibold ${
+            isInactive
+              ? isDark ? 'border-slate-400/50 bg-slate-500/10 text-slate-300' : 'border-slate-300/50 bg-slate-200/40 text-slate-500'
+              : 'border-emerald-400/50 bg-emerald-500/10 text-emerald-600'
+          }`}>
             {holidayName || 'Αργία'}
           </span>
         )}
-
         {!isHoliday && isInactive && (
-          <span className="inline-flex w-fit items-center rounded-full border border-slate-400/50 bg-slate-500/10 px-1.5 py-[1px] text-[9px] font-semibold text-slate-300">
+          <span className={`inline-flex w-fit items-center rounded-full border px-1.5 py-[1px] text-[9px] font-semibold ${
+            isDark ? 'border-slate-400/50 bg-slate-500/10 text-slate-300' : 'border-slate-300/60 bg-slate-100 text-slate-500'
+          }`}>
             Ανενεργό
           </span>
         )}
-
         <div className="flex flex-wrap items-center gap-1">
           {hasTest && (
             <span className="inline-flex items-center rounded-full border border-red-500/60 bg-gradient-to-r from-red-500/30 via-red-600/30 to-red-700/30 px-1.5 py-[1px] text-[9px] font-semibold text-red-100 shadow-sm">
@@ -560,7 +554,6 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
           )}
           {mainTitle && <span className="font-semibold">{mainTitle}</span>}
         </div>
-
         {kind === 'program' && subject && <div className="text-[10px] opacity-80">{subject}</div>}
         {kind === 'program' && tutorName && <div className="text-[10px] opacity-70">{tutorName}</div>}
       </div>
@@ -568,7 +561,6 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
   };
 
   /* -------- School event modal helpers (unchanged) -------- */
-
   const openEditSchoolEventModal = (eventId: string) => {
     const row = schoolEvents.find((e) => e.id === eventId) ?? null;
     if (!row) return;
@@ -616,7 +608,6 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
   };
 
   /* -------- Click handling (unchanged) -------- */
-
   const openTestModalFromEvent = (event: any) => {
     const testId = event.extendedProps['testId'] as string | null | undefined;
     if (!testId || !event.start || !event.end) return;
@@ -660,7 +651,6 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
   };
 
   /* -------- Program override modal handlers (unchanged) -------- */
-
   const handleProgramFieldChange = (field: 'classId' | 'subjectId') => (e: ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     setEventModal((prev) => {
@@ -756,7 +746,6 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
   const handleDatesSet = (arg: DatesSetArg) => { setCalendarView(arg.view.type); setViewRange({ start: arg.start, end: arg.end }); };
 
   /* -------- Test modal handlers (unchanged) -------- */
-
   const handleTestFieldChange = (field: keyof TestModalState) => (e: ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
     const value = e.target.value;
     setTestModal((prev) => {
@@ -835,14 +824,28 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
 
   const requestDeleteSchoolEventFromModal = () => { if (!schoolEventEditing) return; setSchoolEventDeleteTarget({ id: schoolEventEditing.id, name: schoolEventEditing.name }); };
 
-  /* -------- Shared modal shell -------- */
+  /* -------- Shared form components -------- */
+  function FormField({ label, icon, children }: { label: string; icon?: React.ReactNode; children: React.ReactNode }) {
+    return (
+      <div className="space-y-1.5">
+        <label className={`flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+          {icon && <span className="opacity-70">{icon}</span>}
+          {label}
+        </label>
+        {children}
+      </div>
+    );
+  }
 
+  /* -------- Shared modal shell -------- */
   const ModalShell = ({ title, subtitle, icon, onClose, children, accentBar = true }: {
     title: string; subtitle?: string; icon?: React.ReactNode;
     onClose: () => void; children: React.ReactNode; accentBar?: boolean;
   }) => (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl" style={{ background: 'var(--color-sidebar)' }}>
+      <div className={`relative w-full max-w-md overflow-hidden rounded-2xl border shadow-2xl ${
+        isDark ? 'border-slate-700/60 bg-[#1f2d3d]' : 'border-slate-200 bg-white'
+      }`}>
         {accentBar && <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 30%, transparent))' }} />}
         <div className="flex items-center justify-between px-6 pt-5 pb-4">
           <div className="flex items-center gap-3">
@@ -853,12 +856,14 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
               </div>
             )}
             <div>
-              <h3 className="text-sm font-semibold text-slate-50">{title}</h3>
-              {subtitle && <p className="text-[11px] text-slate-400 mt-0.5">{subtitle}</p>}
+              <h3 className={`text-sm font-semibold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>{title}</h3>
+              {subtitle && <p className={`text-[11px] mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{subtitle}</p>}
             </div>
           </div>
           <button type="button" onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-800/50 text-slate-400 transition hover:border-slate-600 hover:text-slate-200">
+            className={`flex h-7 w-7 items-center justify-center rounded-lg border transition ${
+              isDark ? 'border-slate-700/60 bg-slate-800/50 text-slate-400 hover:border-slate-600 hover:text-slate-200' : 'border-slate-200 bg-slate-50 text-slate-400 hover:border-slate-300 hover:text-slate-600'
+            }`}>
             <X className="h-3.5 w-3.5" />
           </button>
         </div>
@@ -881,9 +886,15 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
         <FormField key={label} label={label} icon={<Clock className="h-3 w-3" />}>
           <div className="relative">
             <input value={time} onChange={onTime} placeholder="08:00"
-              className="h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 pl-3 pr-20 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30" />
+              className={`h-9 w-full rounded-lg border pl-3 pr-20 text-xs outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 ${
+                isDark
+                  ? 'border-slate-700/70 bg-slate-900/60 text-slate-100 placeholder-slate-500 focus:border-[color:var(--color-accent)]'
+                  : 'border-slate-200 bg-white text-slate-800 placeholder-slate-400 focus:border-[color:var(--color-accent)]'
+              }`} />
             <select value={period} onChange={onPeriod}
-              className="absolute inset-y-1 right-1 w-16 rounded-md border border-slate-600/60 bg-slate-800 px-1.5 text-[10px] text-slate-200 outline-none">
+              className={`absolute inset-y-1 right-1 w-16 rounded-md border px-1.5 text-[10px] outline-none ${
+                isDark ? 'border-slate-600/60 bg-slate-800 text-slate-200' : 'border-slate-200 bg-slate-50 text-slate-600'
+              }`}>
               <option value="AM">AM</option>
               <option value="PM">PM</option>
             </select>
@@ -893,8 +904,18 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     </div>
   );
 
-  /* -------- Return -------- */
+  /* ---- Modal footer helpers ---- */
+  const cancelBtnCls = `rounded-lg border px-4 py-1.5 text-xs font-medium transition ${
+    isDark ? 'border-slate-600/60 bg-slate-800/50 text-slate-200 hover:bg-slate-700/60' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+  }`;
+  const modalFooterCls = `flex items-center justify-between gap-2 border-t px-6 py-4 mt-4 ${
+    isDark ? 'border-slate-800/70 bg-slate-900/20' : 'border-slate-100 bg-slate-50/50'
+  }`;
+  const errorBannerCls = `flex items-start gap-2.5 rounded-xl border px-3.5 py-2.5 text-xs ${
+    isDark ? 'border-red-500/30 bg-red-950/40 text-red-200' : 'border-red-200 bg-red-50 text-red-700'
+  }`;
 
+  /* -------- Return -------- */
   return (
     <section className="space-y-4">
       {/* Section header */}
@@ -903,18 +924,24 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
           style={{ background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 60%, transparent))' }}>
           <CalendarDays className="h-4 w-4 text-black" />
         </div>
-        <h2 className="text-sm font-semibold text-slate-50">Πρόγραμμα Τμημάτων & Εκδηλώσεις</h2>
+        <h2 className={`text-sm font-semibold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Πρόγραμμα Τμημάτων & Εκδηλώσεις</h2>
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center gap-3 rounded-2xl border border-slate-700/50 bg-slate-950/40 py-12 backdrop-blur-md">
+        <div className={`flex items-center justify-center gap-3 rounded-2xl border py-12 backdrop-blur-md ${
+          isDark ? 'border-slate-700/50 bg-slate-950/40' : 'border-slate-200 bg-white/60'
+        }`}>
           <Loader2 className="h-5 w-5 animate-spin text-slate-500" />
-          <span className="text-xs text-slate-400">Φόρτωση προγράμματος…</span>
+          <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Φόρτωση προγράμματος…</span>
         </div>
       ) : (
         <>
           {/* Calendar wrapper */}
-          <div className="overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-2xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]">
+          <div className={`overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-md ring-1 ring-inset ${
+            isDark
+              ? 'border-slate-700/50 bg-slate-950/40 ring-white/[0.04]'
+              : 'border-slate-200 bg-white/80 ring-black/[0.02]'
+          }`}>
             <div className="p-3">
               <FullCalendar
                 plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
@@ -961,14 +988,13 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
                 <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/15 ring-1 ring-red-500/30">
                   <CalendarDays className="h-5 w-5 text-red-400" />
                 </div>
-                <p className="text-xs leading-relaxed text-slate-400">
+                <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                   Σίγουρα θέλετε να διαγράψετε την εκδήλωση{' '}
-                  <span className="font-semibold text-slate-100">«{schoolEventDeleteTarget.name}»</span>;
+                  <span className={`font-semibold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>«{schoolEventDeleteTarget.name}»</span>;
                   {' '}Η ενέργεια αυτή δεν μπορεί να ανακληθεί.
                 </p>
                 <div className="mt-5 flex justify-end gap-2.5">
-                  <button type="button" onClick={() => { if (!schoolEventDeleting) setSchoolEventDeleteTarget(null); }} disabled={schoolEventDeleting}
-                    className="rounded-lg border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-slate-700/60 disabled:opacity-50">
+                  <button type="button" onClick={() => { if (!schoolEventDeleting) setSchoolEventDeleteTarget(null); }} disabled={schoolEventDeleting} className={`${cancelBtnCls} disabled:opacity-50`}>
                     Ακύρωση
                   </button>
                   <button type="button" onClick={handleConfirmDeleteSchoolEvent} disabled={schoolEventDeleting}
@@ -984,11 +1010,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
           {eventModal && !showDeleteConfirm && (
             <ModalShell title="Επεξεργασία μαθήματος" icon={<BookOpen className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />} onClose={handleEventModalClose}>
               <div className="space-y-4 px-6 pb-2">
-                {eventError && (
-                  <div className="flex items-start gap-2.5 rounded-xl border border-red-500/30 bg-red-950/40 px-3.5 py-2.5 text-xs text-red-200">
-                    <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />{eventError}
-                  </div>
-                )}
+                {eventError && <div className={errorBannerCls}><span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />{eventError}</div>}
 
                 <FormField label="Τμήμα" icon={<GraduationCap className="h-3 w-3" />}>
                   <select value={eventModal.classId ?? ''} onChange={handleProgramFieldChange('classId')} className={selectCls}>
@@ -1016,7 +1038,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
                 />
 
                 {programModalIsHoliday && (
-                  <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-2.5 text-xs text-emerald-100">
+                  <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-2.5 text-xs text-emerald-700 dark:text-emerald-100">
                     <div>
                       <p className="font-semibold">{programModalHolidayName || 'Αργία'}</p>
                       <p className="opacity-80 mt-0.5">Θέλετε το μάθημα να γίνει παρόλο που είναι αργία;</p>
@@ -1030,16 +1052,13 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
                 )}
               </div>
 
-              <div className="flex items-center justify-between gap-2 border-t border-slate-800/70 bg-slate-900/20 px-6 py-4 mt-4">
+              <div className={modalFooterCls}>
                 <button type="button" onClick={handleProgramAskDeleteForDay}
                   className="rounded-lg bg-red-600/80 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-red-600 active:scale-[0.97]">
                   Ακύρωση για αυτή τη μέρα
                 </button>
                 <div className="flex gap-2.5">
-                  <button type="button" onClick={handleEventModalClose}
-                    className="rounded-lg border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-slate-700/60">
-                    Ακύρωση
-                  </button>
+                  <button type="button" onClick={handleEventModalClose} className={cancelBtnCls}>Ακύρωση</button>
                   <button type="button" onClick={handleEventModalSave}
                     className="inline-flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-semibold text-black shadow-sm transition hover:brightness-110 active:scale-[0.97]"
                     style={{ backgroundColor: 'var(--color-accent)' }}>
@@ -1053,19 +1072,18 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
           {/* Program delete confirm */}
           {eventModal && showDeleteConfirm && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-              <div className="relative w-full max-w-sm overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl" style={{ background: 'var(--color-sidebar)' }}>
+              <div className={`relative w-full max-w-sm overflow-hidden rounded-2xl border shadow-2xl ${
+                isDark ? 'border-slate-700/60 bg-[#1f2d3d]' : 'border-slate-200 bg-white'
+              }`}>
                 <div className="h-1 w-full bg-gradient-to-r from-red-600 via-red-500 to-rose-500" />
                 <div className="p-6">
                   <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/15 ring-1 ring-red-500/30">
                     <CalendarDays className="h-5 w-5 text-red-400" />
                   </div>
-                  <h3 className="mb-1 text-sm font-semibold text-slate-50">Ακύρωση μαθήματος</h3>
-                  <p className="text-xs leading-relaxed text-slate-400">Θέλετε σίγουρα να ακυρώσετε το μάθημα μόνο για τη συγκεκριμένη ημερομηνία;</p>
+                  <h3 className={`mb-1 text-sm font-semibold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Ακύρωση μαθήματος</h3>
+                  <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Θέλετε σίγουρα να ακυρώσετε το μάθημα μόνο για τη συγκεκριμένη ημερομηνία;</p>
                   <div className="mt-5 flex justify-end gap-2.5">
-                    <button type="button" onClick={handleProgramCancelDeleteConfirm}
-                      className="rounded-lg border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-slate-700/60">
-                      Όχι
-                    </button>
+                    <button type="button" onClick={handleProgramCancelDeleteConfirm} className={cancelBtnCls}>Όχι</button>
                     <button type="button" onClick={handleEventModalDeleteForDay}
                       className="rounded-lg bg-red-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-red-500 active:scale-[0.97]">
                       Ναι, ακύρωση
@@ -1082,11 +1100,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
               icon={<span className="text-[10px] font-bold" style={{ color: 'var(--color-accent)' }}>✎</span>}
               onClose={handleTestModalClose}>
               <div className="space-y-4 px-6 pb-2">
-                {testError && (
-                  <div className="flex items-start gap-2.5 rounded-xl border border-red-500/30 bg-red-950/40 px-3.5 py-2.5 text-xs text-red-200">
-                    <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />{testError}
-                  </div>
-                )}
+                {testError && <div className={errorBannerCls}><span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />{testError}</div>}
 
                 <FormField label="Τμήμα" icon={<GraduationCap className="h-3 w-3" />}>
                   <select value={testModal.classId ?? ''} onChange={handleTestFieldChange('classId')} className={selectCls}>
@@ -1114,7 +1128,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
                 />
 
                 {testModalIsHoliday && (
-                  <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-2.5 text-xs text-emerald-100">
+                  <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-2.5 text-xs text-emerald-700 dark:text-emerald-100">
                     <div>
                       <p className="font-semibold">{testModalHolidayName || 'Αργία'}</p>
                       <p className="opacity-80 mt-0.5">Θέλετε το διαγώνισμα να γίνει παρόλο που είναι αργία;</p>
@@ -1128,14 +1142,13 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
                 )}
               </div>
 
-              <div className="flex items-center justify-between gap-2 border-t border-slate-800/70 bg-slate-900/20 px-6 py-4 mt-4">
+              <div className={modalFooterCls}>
                 <button type="button" onClick={handleTestCancelForDay} disabled={savingTest}
                   className="rounded-lg bg-red-600/80 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-red-600 active:scale-[0.97] disabled:opacity-50">
                   Ακύρωση για αυτή τη μέρα
                 </button>
                 <div className="flex gap-2.5">
-                  <button type="button" onClick={handleTestModalClose} disabled={savingTest}
-                    className="rounded-lg border border-slate-600/60 bg-slate-800/50 px-3 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-slate-700/60 disabled:opacity-50">
+                  <button type="button" onClick={handleTestModalClose} disabled={savingTest} className={`${cancelBtnCls} disabled:opacity-50`}>
                     Ακύρωση
                   </button>
                   <button type="button" onClick={handleTestModalSave} disabled={savingTest}

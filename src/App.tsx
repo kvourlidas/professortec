@@ -14,19 +14,18 @@ import EventsPage from './pages/EventsPage';
 import TestsPage from './pages/TestsPage';
 import GradesPage from './pages/GradesPage';
 
-// ✅ Economics pages
 import EconomicsAnalysisPage from './pages/economics/EconomicsAnalysisPage';
 import PackageSubscriptionsPage from './pages/economics/PackageSubscriptionsPage';
 import StudentsSubscriptionsPage from './pages/economics/StudentsSubscriptionsPage';
 import TutorsPaymentsPage from './pages/economics/TutorsPaymentsPage';
 
-// ✅ Student App pages
 import StudentFeedbackPage from './pages/student-app/StudentFeedbackPage';
 import StudentMessagesPage from './pages/student-app/StudentMessagesPage';
-import SendNotificationsPage from './pages/student-app/SendNotificationsPage'; // ✅ NEW
+import SendNotificationsPage from './pages/student-app/SendNotificationsPage';
 
 import { useAuth } from './auth';
 import Layout from './components/Layout';
+import { ThemeProvider } from './context/ThemeContext';
 
 const BASE = '';
 
@@ -55,69 +54,43 @@ function ProtectedRoute({ children }: { children: ReactElement }) {
 
 export default function App() {
   return (
-    <Routes>
-      <Route path={p('/login')} element={<LoginPage />} />
+    <ThemeProvider>
+      <Routes>
+        <Route path={p('/login')} element={<LoginPage />} />
 
-      <Route
-        path={p('/dashboard')}
-        element={
-          <ProtectedRoute>
-            <DashboardPage />
-          </ProtectedRoute>
-        }
-      />
+        <Route
+          path={p('/dashboard')}
+          element={
+            <ProtectedRoute>
+              <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
 
-      <Route path={p('/classes')} element={<ProtectedRoute><ClassesPage /></ProtectedRoute>} />
-      <Route path={p('/levels')} element={<ProtectedRoute><LevelsPage /></ProtectedRoute>} />
-      <Route path={p('/students')} element={<ProtectedRoute><StudentsPage /></ProtectedRoute>} />
-      <Route path={p('/tutors')} element={<ProtectedRoute><TutorsPage /></ProtectedRoute>} />
-      <Route path={p('/subjects')} element={<ProtectedRoute><SubjectsPage /></ProtectedRoute>} />
+        <Route path={p('/classes')} element={<ProtectedRoute><ClassesPage /></ProtectedRoute>} />
+        <Route path={p('/levels')} element={<ProtectedRoute><LevelsPage /></ProtectedRoute>} />
+        <Route path={p('/students')} element={<ProtectedRoute><StudentsPage /></ProtectedRoute>} />
+        <Route path={p('/tutors')} element={<ProtectedRoute><TutorsPage /></ProtectedRoute>} />
+        <Route path={p('/subjects')} element={<ProtectedRoute><SubjectsPage /></ProtectedRoute>} />
 
-      <Route path={p('/program')} element={<ProtectedRoute><ProgramPage /></ProtectedRoute>} />
-      <Route path={p('/program/tests')} element={<ProtectedRoute><TestsPage /></ProtectedRoute>} />
-      <Route path={p('/program/events')} element={<ProtectedRoute><EventsPage /></ProtectedRoute>} />
-      <Route path={p('/program/holidays')} element={<ProtectedRoute><HolidaysPage /></ProtectedRoute>} />
+        <Route path={p('/program')} element={<ProtectedRoute><ProgramPage /></ProtectedRoute>} />
+        <Route path={p('/program/tests')} element={<ProtectedRoute><TestsPage /></ProtectedRoute>} />
+        <Route path={p('/program/events')} element={<ProtectedRoute><EventsPage /></ProtectedRoute>} />
+        <Route path={p('/program/holidays')} element={<ProtectedRoute><HolidaysPage /></ProtectedRoute>} />
 
-      <Route path={p('/grades')} element={<ProtectedRoute><GradesPage /></ProtectedRoute>} />
+        <Route path={p('/grades')} element={<ProtectedRoute><GradesPage /></ProtectedRoute>} />
 
-      {/* ✅ Student App */}
-      <Route
-        path={p('/student-app/feedback')}
-        element={<ProtectedRoute><StudentFeedbackPage /></ProtectedRoute>}
-      />
+        <Route path={p('/student-app/feedback')} element={<ProtectedRoute><StudentFeedbackPage /></ProtectedRoute>} />
+        <Route path={p('/student-app/messages')} element={<ProtectedRoute><StudentMessagesPage /></ProtectedRoute>} />
+        <Route path={p('/student-app/notifications')} element={<ProtectedRoute><SendNotificationsPage /></ProtectedRoute>} />
 
-      <Route
-        path={p('/student-app/messages')}
-        element={<ProtectedRoute><StudentMessagesPage /></ProtectedRoute>}
-      />
+        <Route path={p('/economics/analysis')} element={<ProtectedRoute><EconomicsAnalysisPage /></ProtectedRoute>} />
+        <Route path={p('/economics/package-subscriptions')} element={<ProtectedRoute><PackageSubscriptionsPage /></ProtectedRoute>} />
+        <Route path={p('/economics/student-subscriptions')} element={<ProtectedRoute><StudentsSubscriptionsPage /></ProtectedRoute>} />
+        <Route path={p('/economics/tutors-payments')} element={<ProtectedRoute><TutorsPaymentsPage /></ProtectedRoute>} />
 
-      <Route
-        path={p('/student-app/notifications')}
-        element={<ProtectedRoute><SendNotificationsPage /></ProtectedRoute>}
-      />
-
-      {/* ✅ Economics */}
-      <Route
-        path={p('/economics/analysis')}
-        element={<ProtectedRoute><EconomicsAnalysisPage /></ProtectedRoute>}
-      />
-
-      <Route
-        path={p('/economics/package-subscriptions')}
-        element={<ProtectedRoute><PackageSubscriptionsPage /></ProtectedRoute>}
-      />
-
-      <Route
-        path={p('/economics/student-subscriptions')}
-        element={<ProtectedRoute><StudentsSubscriptionsPage /></ProtectedRoute>}
-      />
-
-      <Route
-        path={p('/economics/tutors-payments')}
-        element={<ProtectedRoute><TutorsPaymentsPage /></ProtectedRoute>}
-      />
-
-      <Route path="*" element={<Navigate to={p('/dashboard')} replace />} />
-    </Routes>
+        <Route path="*" element={<Navigate to={p('/dashboard')} replace />} />
+      </Routes>
+    </ThemeProvider>
   );
 }
