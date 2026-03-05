@@ -2,7 +2,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../auth';
-import { Star, MessageSquareText, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useTheme } from '../../context/ThemeContext';
+import { Star, MessageSquareText, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const FEEDBACK_TABLE = 'student_feedback';
 
@@ -31,6 +32,8 @@ function Stars({ value, size = 'sm' }: { value: number; size?: 'sm' | 'lg' }) {
 
 export default function StudentFeedbackPage() {
   const { profile } = useAuth();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const schoolId = profile?.school_id ?? null;
 
   const [rows, setRows] = useState<RowVM[]>([]);
@@ -42,6 +45,35 @@ export default function StudentFeedbackPage() {
 
   const pageSize = 25;
   const [page, setPage] = useState(1);
+
+  // ── Dynamic classes ──
+  const tableCardCls = isDark
+    ? 'overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-2xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]'
+    : 'overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md';
+
+  const theadRowCls = isDark ? 'border-b border-slate-700/60 bg-slate-900/40' : 'border-b border-slate-200 bg-slate-50';
+  const tbodyDivideCls = isDark ? 'divide-y divide-slate-800/50' : 'divide-y divide-slate-100';
+  const trHoverCls = isDark ? 'group transition-colors hover:bg-white/[0.025]' : 'group transition-colors hover:bg-slate-50';
+
+  const paginationBarCls = isDark
+    ? 'flex items-center justify-between gap-3 border-t border-slate-800/70 bg-slate-900/20 px-5 py-3'
+    : 'flex items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-5 py-3';
+
+  const paginationBtnCls = isDark
+    ? 'inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-900/30 text-slate-400 transition hover:border-slate-600 hover:bg-slate-800/50 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-30'
+    : 'inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-30';
+
+  const paginationPageCls = isDark
+    ? 'rounded-lg border border-slate-700/60 bg-slate-900/20 px-3 py-1 text-[11px] text-slate-300'
+    : 'rounded-lg border border-slate-200 bg-white px-3 py-1 text-[11px] text-slate-600';
+
+  const emptyBoxCls = isDark
+    ? 'flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-700/50 bg-slate-800/50'
+    : 'flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200 bg-slate-100';
+
+  const avgCardCls = isDark
+    ? 'shrink-0 overflow-hidden rounded-xl border border-slate-700/50 bg-slate-900/40 px-5 py-3.5 backdrop-blur'
+    : 'shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white px-5 py-3.5 shadow-sm';
 
   useEffect(() => { setPage(1); setAvgRating(null); setRatingsCount(0); }, [schoolId]);
 
@@ -100,18 +132,19 @@ export default function StudentFeedbackPage() {
             <MessageSquareText className="h-4.5 w-4.5 text-black" />
           </div>
           <div>
-            <h1 className="text-base font-semibold tracking-tight text-slate-50">Feedback μαθητών</h1>
-            <p className="mt-0.5 text-xs text-slate-400">Αξιολογήσεις (0-5 αστέρια) και σχόλια που αφήνουν οι μαθητές.</p>
+            <h1 className={`text-base font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>
+              Feedback μαθητών
+            </h1>
+            <p className={`mt-0.5 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              Αξιολογήσεις (0-5 αστέρια) και σχόλια που αφήνουν οι μαθητές.
+            </p>
 
             {schoolId && (
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                {/* Total count pill */}
-                <span className="inline-flex items-center gap-1 rounded-full border border-slate-700/60 bg-slate-800/50 px-2.5 py-0.5 text-[11px] text-slate-300">
-                  <MessageSquareText className="h-3 w-3 text-slate-400" />
+                <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] ${isDark ? 'border-slate-700/60 bg-slate-800/50 text-slate-300' : 'border-slate-200 bg-slate-100 text-slate-600'}`}>
+                  <MessageSquareText className={`h-3 w-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
                   {total} μαθητές
                 </span>
-
-                {/* Average rating pill */}
                 {avgRating != null && (
                   <span className="inline-flex items-center gap-2 rounded-full border px-2.5 py-0.5 text-[11px]"
                     style={{ borderColor: 'color-mix(in srgb, var(--color-accent) 40%, transparent)', background: 'color-mix(in srgb, var(--color-accent) 10%, transparent)', color: 'var(--color-accent)' }}>
@@ -126,14 +159,16 @@ export default function StudentFeedbackPage() {
 
         {/* Avg rating card */}
         {schoolId && avgRating != null && (
-          <div className="shrink-0 overflow-hidden rounded-xl border border-slate-700/50 bg-slate-900/40 px-5 py-3.5 backdrop-blur">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Μέση αξιολόγηση</p>
+          <div className={avgCardCls}>
+            <p className={`text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+              Μέση αξιολόγηση
+            </p>
             <div className="mt-2 flex items-center gap-3">
               <Stars value={Math.round(avgRating)} size="lg" />
-              <span className="text-lg font-bold text-slate-50">{avgRating.toFixed(2)}</span>
-              <span className="text-xs text-slate-500">/ 5</span>
+              <span className={`text-lg font-bold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>{avgRating.toFixed(2)}</span>
+              <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>/ 5</span>
             </div>
-            <p className="mt-1 text-[10px] text-slate-500">{ratingsCount} αξιολογήσεις</p>
+            <p className={`mt-1 text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{ratingsCount} αξιολογήσεις</p>
           </div>
         )}
       </div>
@@ -152,34 +187,30 @@ export default function StudentFeedbackPage() {
       )}
 
       {/* ── Table card ── */}
-      <div className="overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-2xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]">
+      <div className={tableCardCls}>
         {loading ? (
-          <div className="space-y-0 divide-y divide-slate-800/60">
+          <div className={`space-y-0 divide-y ${isDark ? 'divide-slate-800/60' : 'divide-slate-100'}`}>
             {[...Array(6)].map((_, i) => (
               <div key={i} className="flex items-center gap-4 px-5 py-3.5 animate-pulse">
-                <div className="h-3 w-1/4 rounded-full bg-slate-800" />
-                <div className="h-3 w-24 rounded-full bg-slate-800/80" />
-                <div className="h-3 w-1/2 rounded-full bg-slate-800/60" />
+                <div className={`h-3 w-1/4 rounded-full ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`} />
+                <div className={`h-3 w-24 rounded-full ${isDark ? 'bg-slate-800/80' : 'bg-slate-200/80'}`} />
+                <div className={`h-3 w-1/2 rounded-full ${isDark ? 'bg-slate-800/60' : 'bg-slate-200/60'}`} />
               </div>
             ))}
           </div>
         ) : total === 0 ? (
           <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-700/50 bg-slate-800/50">
-              <MessageSquareText className="h-6 w-6 text-slate-500" />
+            <div className={emptyBoxCls}>
+              <MessageSquareText className={`h-6 w-6 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
             </div>
-            <p className="text-sm font-medium text-slate-200">Δεν υπάρχουν μαθητές.</p>
+            <p className={`text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-600'}`}>Δεν υπάρχουν μαθητές.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full border-collapse text-xs">
               <thead>
-                <tr className="border-b border-slate-700/60 bg-slate-900/40">
-                  {[
-                    { label: 'ΟΝΟΜΑΤΕΠΩΝΥΜΟ' },
-                    { label: 'ΑΞΙΟΛΟΓΗΣΗ' },
-                    { label: 'FEEDBACK' },
-                  ].map(({ label }) => (
+                <tr className={theadRowCls}>
+                  {['ΟΝΟΜΑΤΕΠΩΝΥΜΟ', 'ΑΞΙΟΛΟΓΗΣΗ', 'FEEDBACK'].map((label) => (
                     <th key={label} className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest"
                       style={{ color: 'color-mix(in srgb, var(--color-accent) 80%, white)' }}>
                       {label}
@@ -187,22 +218,23 @@ export default function StudentFeedbackPage() {
                   ))}
                 </tr>
               </thead>
-
-              <tbody className="divide-y divide-slate-800/50">
+              <tbody className={tbodyDivideCls}>
                 {rows.map((r) => (
-                  <tr key={r.studentId} className="group transition-colors hover:bg-white/[0.025]">
+                  <tr key={r.studentId} className={trHoverCls}>
                     <td className="px-5 py-3.5">
-                      <span className="font-medium text-slate-100 group-hover:text-white transition-colors">{r.fullName}</span>
+                      <span className={`font-medium transition-colors ${isDark ? 'text-slate-100 group-hover:text-white' : 'text-slate-700 group-hover:text-slate-900'}`}>
+                        {r.fullName}
+                      </span>
                     </td>
                     <td className="px-5 py-3.5">
                       {r.rating > 0
                         ? <Stars value={r.rating} />
-                        : <span className="text-xs text-slate-600 italic">Καμία αξιολόγηση</span>}
+                        : <span className={`text-xs italic ${isDark ? 'text-slate-600' : 'text-slate-300'}`}>Καμία αξιολόγηση</span>}
                     </td>
                     <td className="px-5 py-3.5 max-w-lg">
                       {r.feedback.trim()
-                        ? <p className="whitespace-pre-wrap text-[11px] leading-relaxed text-slate-300">{r.feedback}</p>
-                        : <span className="text-slate-600">—</span>}
+                        ? <p className={`whitespace-pre-wrap text-[11px] leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-500'}`}>{r.feedback}</p>
+                        : <span className={isDark ? 'text-slate-600' : 'text-slate-300'}>—</span>}
                     </td>
                   </tr>
                 ))}
@@ -213,23 +245,21 @@ export default function StudentFeedbackPage() {
 
         {/* Pagination */}
         {!loading && total > 0 && (
-          <div className="flex items-center justify-between gap-3 border-t border-slate-800/70 bg-slate-900/20 px-5 py-3">
-            <p className="text-[11px] text-slate-500">
-              <span className="text-slate-300">{showingFrom}–{showingTo}</span>{' '}
-              από <span className="text-slate-300">{total}</span> μαθητές
+          <div className={paginationBarCls}>
+            <p className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+              <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>{showingFrom}–{showingTo}</span>{' '}
+              από <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>{total}</span> μαθητές
             </p>
             <div className="flex items-center gap-1.5">
-              <button type="button" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}
-                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-900/30 text-slate-400 transition hover:border-slate-600 hover:bg-slate-800/50 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-30">
+              <button type="button" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className={paginationBtnCls}>
                 <ChevronLeft className="h-3.5 w-3.5" />
               </button>
-              <div className="rounded-lg border border-slate-700/60 bg-slate-900/20 px-3 py-1 text-[11px] text-slate-300">
-                <span className="font-medium text-slate-50">{page}</span>
-                <span className="mx-1 text-slate-600">/</span>
-                <span className="text-slate-400">{pageCount}</span>
+              <div className={paginationPageCls}>
+                <span className={`font-medium ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>{page}</span>
+                <span className={`mx-1 ${isDark ? 'text-slate-600' : 'text-slate-300'}`}>/</span>
+                <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{pageCount}</span>
               </div>
-              <button type="button" onClick={() => setPage((p) => Math.min(pageCount, p + 1))} disabled={page >= pageCount}
-                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-900/30 text-slate-400 transition hover:border-slate-600 hover:bg-slate-800/50 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-30">
+              <button type="button" onClick={() => setPage((p) => Math.min(pageCount, p + 1))} disabled={page >= pageCount} className={paginationBtnCls}>
                 <ChevronRight className="h-3.5 w-3.5" />
               </button>
             </div>

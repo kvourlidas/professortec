@@ -2,7 +2,8 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
-import { Trash2, CalendarOff, CalendarDays, X } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
+import { Trash2, CalendarOff, CalendarDays } from 'lucide-react';
 import DatePickerField from '../components/ui/AppDatePicker';
 
 type HolidayRow = {
@@ -44,10 +45,10 @@ const parseDisplayToDate = (display: string): Date | null => {
   return new Date(year, month - 1, day);
 };
 
-const inputCls = 'h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30';
-
 export default function HolidaysPage() {
   const { profile } = useAuth();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const schoolId = profile?.school_id ?? null;
 
   const [holidays, setHolidays] = useState<HolidayRow[]>([]);
@@ -63,6 +64,48 @@ export default function HolidaysPage() {
 
   const [deleteGroup, setDeleteGroup] = useState<HolidayGroup | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // ── Dynamic classes ──
+
+  const inputCls = isDark
+    ? 'h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30'
+    : 'h-9 w-full rounded-lg border border-slate-300 bg-white px-3 text-xs text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30';
+
+  const cardCls = isDark
+    ? 'overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-2xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]'
+    : 'overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md';
+
+  const cardHeaderCls = isDark
+    ? 'border-b border-slate-800/70 bg-slate-900/30 px-5 py-3'
+    : 'border-b border-slate-200 bg-slate-50 px-5 py-3';
+
+  const theadRowCls = isDark
+    ? 'border-b border-slate-700/60 bg-slate-900/40'
+    : 'border-b border-slate-200 bg-slate-50';
+
+  const tbodyDivideCls = isDark ? 'divide-y divide-slate-800/50' : 'divide-y divide-slate-100';
+  const trHoverCls = isDark ? 'group transition-colors hover:bg-white/[0.025]' : 'group transition-colors hover:bg-slate-50';
+
+  const dateBadgeCls = isDark
+    ? 'inline-flex items-center rounded-full border border-slate-600/50 bg-slate-800/60 px-2.5 py-0.5 text-[11px] font-medium text-slate-300'
+    : 'inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium text-slate-700';
+
+  const emptyBoxCls = isDark
+    ? 'flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-700/50 bg-slate-800/50'
+    : 'flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200 bg-slate-100';
+
+  const emptyTitleCls = isDark ? 'text-sm font-medium text-slate-200' : 'text-sm font-medium text-slate-700';
+  const emptySubCls = isDark ? 'mt-1 text-xs text-slate-500' : 'mt-1 text-xs text-slate-400';
+
+  const labelCls = `flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`;
+
+  const modalSmCardCls = isDark
+    ? 'relative w-full max-w-sm overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl'
+    : 'relative w-full max-w-sm overflow-hidden rounded-2xl border border-slate-200 shadow-2xl';
+
+  const cancelBtnCls = isDark
+    ? 'rounded-lg border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-slate-700/60 disabled:opacity-50'
+    : 'rounded-lg border border-slate-300 bg-white px-4 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100 disabled:opacity-50';
 
   const loadHolidays = useCallback(async () => {
     if (!schoolId) { setHolidays([]); return; }
@@ -147,14 +190,16 @@ export default function HolidaysPage() {
           <CalendarOff className="h-4 w-4 text-black" />
         </div>
         <div>
-          <h1 className="text-base font-semibold tracking-tight text-slate-50">Αργίες σχολείου</h1>
-          <p className="mt-0.5 text-xs text-slate-400">
+          <h1 className={`text-base font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>
+            Αργίες σχολείου
+          </h1>
+          <p className={`mt-0.5 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
             Ορίστε μονοήμερες αργίες ή περιόδους αργιών για το σχολείο σας.
           </p>
           {schoolId && (
             <div className="mt-2 flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 rounded-full border border-slate-700/60 bg-slate-800/50 px-2.5 py-0.5 text-[11px] text-slate-300">
-                <CalendarOff className="h-3 w-3 text-slate-400" />
+              <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] ${isDark ? 'border-slate-700/60 bg-slate-800/50 text-slate-300' : 'border-slate-200 bg-slate-100 text-slate-600'}`}>
+                <CalendarOff className={`h-3 w-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
                 {groupedHolidays.length} καταχωρήσεις
               </span>
             </div>
@@ -171,9 +216,11 @@ export default function HolidaysPage() {
       )}
 
       {/* ── Add form card ── */}
-      <div className="overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-2xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]">
-        <div className="border-b border-slate-800/70 bg-slate-900/30 px-5 py-3">
-          <p className="text-xs font-semibold text-slate-300">Προσθήκη αργίας</p>
+      <div className={cardCls}>
+        <div className={cardHeaderCls}>
+          <p className={`text-xs font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+            Προσθήκη αργίας
+          </p>
         </div>
         <div className="space-y-4 p-5">
           {/* Mode toggle */}
@@ -192,9 +239,9 @@ export default function HolidaysPage() {
                     borderColor: 'color-mix(in srgb, var(--color-accent) 40%, transparent)',
                     color: 'var(--color-accent)',
                   } : {
-                    backgroundColor: 'transparent',
-                    borderColor: 'rgb(71 85 105 / 0.5)',
-                    color: 'rgb(148 163 184)',
+                    backgroundColor: isDark ? 'transparent' : '#f8fafc',
+                    borderColor: isDark ? 'rgb(71 85 105 / 0.5)' : 'rgb(203 213 225)',
+                    color: isDark ? 'rgb(148 163 184)' : 'rgb(100 116 139)',
                   }}
                 >
                   {label}
@@ -224,9 +271,7 @@ export default function HolidaysPage() {
               </div>
             )}
             <div className="flex-1 space-y-1.5">
-              <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                Περιγραφή
-              </label>
+              <label className={labelCls}>Περιγραφή</label>
               <input
                 type="text"
                 value={name}
@@ -249,31 +294,31 @@ export default function HolidaysPage() {
       </div>
 
       {/* ── Holidays table ── */}
-      <div className="overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-2xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]">
+      <div className={cardCls}>
         {loading ? (
-          <div className="divide-y divide-slate-800/60">
+          <div className={`divide-y ${isDark ? 'divide-slate-800/60' : 'divide-slate-100'}`}>
             {[...Array(3)].map((_, i) => (
               <div key={i} className="flex items-center gap-4 px-5 py-3.5 animate-pulse">
-                <div className="h-3 w-1/3 rounded-full bg-slate-800" />
-                <div className="h-3 w-1/4 rounded-full bg-slate-800/70" />
+                <div className={`h-3 w-1/3 rounded-full ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`} />
+                <div className={`h-3 w-1/4 rounded-full ${isDark ? 'bg-slate-800/70' : 'bg-slate-200/70'}`} />
               </div>
             ))}
           </div>
         ) : groupedHolidays.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-700/50 bg-slate-800/50">
-              <CalendarOff className="h-6 w-6 text-slate-500" />
+            <div className={emptyBoxCls}>
+              <CalendarOff className={`h-6 w-6 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-200">Δεν έχουν καταχωρηθεί αργίες</p>
-              <p className="mt-1 text-xs text-slate-500">Χρησιμοποιήστε τη φόρμα παραπάνω για να προσθέσετε την πρώτη αργία.</p>
+              <p className={emptyTitleCls}>Δεν έχουν καταχωρηθεί αργίες</p>
+              <p className={emptySubCls}>Χρησιμοποιήστε τη φόρμα παραπάνω για να προσθέσετε την πρώτη αργία.</p>
             </div>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full border-collapse text-xs">
               <thead>
-                <tr className="border-b border-slate-700/60 bg-slate-900/40">
+                <tr className={theadRowCls}>
                   {[
                     { icon: <CalendarDays className="h-3 w-3" />, label: 'ΗΜΕΡΟΜΗΝΙΑ / ΠΕΡΙΟΔΟΣ' },
                     { icon: <CalendarOff className="h-3 w-3" />, label: 'ΠΕΡΙΓΡΑΦΗ' },
@@ -291,26 +336,19 @@ export default function HolidaysPage() {
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/50">
+              <tbody className={tbodyDivideCls}>
                 {groupedHolidays.map((g, idx) => {
                   const rangeLabel =
                     g.endDate && g.endDate !== g.startDate
                       ? `${formatDisplay(g.startDate)} – ${formatDisplay(g.endDate)}`
                       : formatDisplay(g.startDate);
-                  const isRange = !!(g.endDate && g.endDate !== g.startDate);
                   return (
-                    <tr key={`${g.startDate}-${g.endDate ?? ''}-${idx}`} className="group transition-colors hover:bg-white/[0.025]">
+                    <tr key={`${g.startDate}-${g.endDate ?? ''}-${idx}`} className={trHoverCls}>
                       <td className="px-5 py-3.5">
-                        <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${
-                          isRange
-                            ? 'border-slate-600/50 bg-slate-800/60 text-slate-300'
-                            : 'border-slate-600/50 bg-slate-800/60 text-slate-300'
-                        }`}>
-                          {rangeLabel}
-                        </span>
+                        <span className={dateBadgeCls}>{rangeLabel}</span>
                       </td>
-                      <td className="px-5 py-3.5 text-slate-400">
-                        {g.name || <span className="text-slate-600">—</span>}
+                      <td className={`px-5 py-3.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        {g.name || <span className={isDark ? 'text-slate-600' : 'text-slate-300'}>—</span>}
                       </td>
                       <td className="px-5 py-3.5">
                         <div className="flex items-center justify-end">
@@ -336,20 +374,22 @@ export default function HolidaysPage() {
       {/* ── Delete confirmation modal ── */}
       {deleteGroup && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="relative w-full max-w-sm overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl" style={{ background: 'var(--color-sidebar)' }}>
+          <div className={modalSmCardCls} style={{ background: 'var(--color-sidebar)' }}>
             <div className="h-1 w-full bg-gradient-to-r from-red-600 via-red-500 to-rose-500" />
             <div className="p-6">
               <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/15 ring-1 ring-red-500/30">
                 <CalendarOff className="h-5 w-5 text-red-400" />
               </div>
-              <h3 className="mb-1 text-sm font-semibold text-slate-50">Διαγραφή αργίας</h3>
-              <p className="text-xs leading-relaxed text-slate-400">
+              <h3 className={`mb-1 text-sm font-semibold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>
+                Διαγραφή αργίας
+              </h3>
+              <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                 Σίγουρα θέλετε να διαγράψετε{' '}
                 {deleteGroup.name
-                  ? <><span className="font-semibold text-slate-100">«{deleteGroup.name}»</span>{' '}</>
+                  ? <><span className={`font-semibold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>«{deleteGroup.name}»</span>{' '}</>
                   : 'την αργία '}
                 για{' '}
-                <span className="font-semibold text-slate-100">
+                <span className={`font-semibold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
                   {deleteGroup.endDate && deleteGroup.endDate !== deleteGroup.startDate
                     ? `${formatDisplay(deleteGroup.startDate)} – ${formatDisplay(deleteGroup.endDate)}`
                     : formatDisplay(deleteGroup.startDate)}
@@ -358,7 +398,7 @@ export default function HolidaysPage() {
               </p>
               <div className="mt-6 flex justify-end gap-2.5">
                 <button type="button" onClick={() => { if (!deleting) setDeleteGroup(null); }} disabled={deleting}
-                  className="rounded-lg border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-slate-700/60 disabled:opacity-50">
+                  className={cancelBtnCls}>
                   Ακύρωση
                 </button>
                 <button type="button" onClick={handleConfirmDelete} disabled={deleting}

@@ -4,6 +4,7 @@ import type { FormEvent } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
 import { Pencil, Trash2, Layers, Search, Plus, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 
 type LevelRow = {
   id: string;
@@ -21,11 +22,10 @@ function normalizeText(value: string | null | undefined): string {
     .toLowerCase();
 }
 
-const inputCls =
-  'h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30';
-
 export default function LevelsPage() {
   const { profile } = useAuth();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const schoolId = profile?.school_id ?? null;
 
   const [levels, setLevels] = useState<LevelRow[]>([]);
@@ -44,6 +44,82 @@ export default function LevelsPage() {
 
   const pageSize = 10;
   const [page, setPage] = useState(1);
+
+  // ── Dynamic classes ──
+  const inputCls = isDark
+    ? 'h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30'
+    : 'h-9 w-full rounded-lg border border-slate-300 bg-white px-3 text-xs text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30';
+
+  const searchInputCls = isDark
+    ? 'h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 pl-9 pr-3 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30 sm:w-52'
+    : 'h-9 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-xs text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30 sm:w-52';
+
+  const tableCardCls = isDark
+    ? 'overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-2xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]'
+    : 'overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md';
+
+  const theadRowCls = isDark
+    ? 'border-b border-slate-700/60 bg-slate-900/40'
+    : 'border-b border-slate-200 bg-slate-50';
+
+  const tbodyDivideCls = isDark ? 'divide-y divide-slate-800/50' : 'divide-y divide-slate-100';
+
+  const trHoverCls = isDark ? 'group transition-colors hover:bg-white/[0.025]' : 'group transition-colors hover:bg-slate-50';
+
+  const paginationBarCls = isDark
+    ? 'flex items-center justify-between gap-3 border-t border-slate-800/70 bg-slate-900/20 px-5 py-3'
+    : 'flex items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-5 py-3';
+
+  const paginationTextCls = isDark ? 'text-[11px] text-slate-500' : 'text-[11px] text-slate-400';
+  const paginationHighlightCls = isDark ? 'text-slate-300' : 'text-slate-700';
+
+  const paginationBtnCls = isDark
+    ? 'inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-900/30 text-slate-400 transition hover:border-slate-600 hover:bg-slate-800/50 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-30'
+    : 'inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-30';
+
+  const paginationPageCls = isDark
+    ? 'rounded-lg border border-slate-700/60 bg-slate-900/20 px-3 py-1 text-[11px] text-slate-300'
+    : 'rounded-lg border border-slate-200 bg-white px-3 py-1 text-[11px] text-slate-600';
+
+  const emptyBoxCls = isDark
+    ? 'flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-700/50 bg-slate-800/50'
+    : 'flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200 bg-slate-100';
+
+  const emptyTitleCls = isDark ? 'text-sm font-medium text-slate-200' : 'text-sm font-medium text-slate-700';
+  const emptySubCls = isDark ? 'mt-1 text-xs text-slate-500' : 'mt-1 text-xs text-slate-400';
+
+  const levelBadgeCls = isDark
+    ? 'inline-flex items-center rounded-full border border-slate-600/50 bg-slate-800/60 px-2.5 py-0.5 text-[11px] font-medium text-slate-200 group-hover:text-white transition-colors'
+    : 'inline-flex items-center rounded-full border border-slate-300 bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium text-slate-700 group-hover:text-slate-900 transition-colors';
+
+  // Modal classes
+  const modalOverlayCls = 'fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4';
+
+  const modalCardCls = isDark
+    ? 'relative w-full max-w-sm overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl'
+    : 'relative w-full max-w-sm overflow-hidden rounded-2xl border border-slate-200 shadow-2xl';
+
+  const modalHeaderCls = isDark
+    ? 'flex items-center justify-between px-6 pt-5 pb-4'
+    : 'flex items-center justify-between px-6 pt-5 pb-4';
+
+  const modalTitleCls = isDark ? 'text-sm font-semibold text-slate-50' : 'text-sm font-semibold text-slate-800';
+
+  const modalCloseBtnCls = isDark
+    ? 'flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-800/50 text-slate-400 transition hover:border-slate-600 hover:text-slate-200'
+    : 'flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-slate-500 transition hover:border-slate-300 hover:text-slate-700';
+
+  const modalFooterCls = isDark
+    ? 'flex justify-end gap-2.5 border-t border-slate-800/70 bg-slate-900/20 px-6 py-4 mt-4'
+    : 'flex justify-end gap-2.5 border-t border-slate-200 bg-slate-50 px-6 py-4 mt-4';
+
+  const cancelBtnCls = isDark
+    ? 'rounded-lg border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-slate-700/60 disabled:opacity-50'
+    : 'rounded-lg border border-slate-300 bg-white px-4 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100 disabled:opacity-50';
+
+  const formLabelCls = isDark
+    ? 'flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400'
+    : 'flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500';
 
   useEffect(() => { setPage(1); }, [search]);
 
@@ -165,14 +241,16 @@ export default function LevelsPage() {
             <Layers className="h-4 w-4 text-black" />
           </div>
           <div>
-            <h1 className="text-base font-semibold tracking-tight text-slate-50">Επίπεδα</h1>
-            <p className="mt-0.5 text-xs text-slate-400">
+            <h1 className={`text-base font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>
+              Επίπεδα
+            </h1>
+            <p className={`mt-0.5 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
               Προσθέστε επίπεδα όπως A1, A2, B1, B2 κτλ. για το σχολείο σας.
             </p>
             {schoolId && (
               <div className="mt-2 flex items-center gap-2 flex-wrap">
-                <span className="inline-flex items-center gap-1 rounded-full border border-slate-700/60 bg-slate-800/50 px-2.5 py-0.5 text-[11px] text-slate-300">
-                  <Layers className="h-3 w-3 text-slate-400" />
+                <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] ${isDark ? 'border-slate-700/60 bg-slate-800/50 text-slate-300' : 'border-slate-200 bg-slate-100 text-slate-600'}`}>
+                  <Layers className={`h-3 w-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
                   {levels.length} σύνολο
                 </span>
                 {search.trim() && (
@@ -191,7 +269,7 @@ export default function LevelsPage() {
               </div>
             )}
             {schoolId == null && (
-              <p className="mt-2 text-[11px] text-amber-300">
+              <p className="mt-2 text-[11px] text-amber-500">
                 Δεν έχει οριστεί school_id στο προφίλ.
               </p>
             )}
@@ -200,9 +278,9 @@ export default function LevelsPage() {
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2.5">
           <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
+            <Search className={`pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
             <input
-              className="h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 pl-9 pr-3 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30 sm:w-52"
+              className={searchInputCls}
               placeholder="Αναζήτηση επιπέδου..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -229,45 +307,42 @@ export default function LevelsPage() {
       )}
 
       {/* ── Table card ── */}
-      <div className="overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-2xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]">
+      <div className={tableCardCls}>
 
         {loading ? (
-          /* Skeleton */
-          <div className="divide-y divide-slate-800/60">
+          <div className={`divide-y ${isDark ? 'divide-slate-800/60' : 'divide-slate-100'}`}>
             {[...Array(4)].map((_, i) => (
               <div key={i} className="flex items-center gap-4 px-5 py-3.5 animate-pulse">
-                <div className="h-3 w-1/3 rounded-full bg-slate-800" />
-                <div className="ml-auto h-3 w-16 rounded-full bg-slate-800/60" />
+                <div className={`h-3 w-1/3 rounded-full ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`} />
+                <div className={`ml-auto h-3 w-16 rounded-full ${isDark ? 'bg-slate-800/60' : 'bg-slate-200/60'}`} />
               </div>
             ))}
           </div>
         ) : levels.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-700/50 bg-slate-800/50">
-              <Layers className="h-6 w-6 text-slate-500" />
+            <div className={emptyBoxCls}>
+              <Layers className={`h-6 w-6 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-200">Δεν υπάρχουν ακόμη επίπεδα</p>
-              <p className="mt-1 text-xs text-slate-500">
-                Πατήστε «Προσθήκη επιπέδου» για να δημιουργήσετε το πρώτο.
-              </p>
+              <p className={emptyTitleCls}>Δεν υπάρχουν ακόμη επίπεδα</p>
+              <p className={emptySubCls}>Πατήστε «Προσθήκη επιπέδου» για να δημιουργήσετε το πρώτο.</p>
             </div>
           </div>
         ) : filteredLevels.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-700/50 bg-slate-800/50">
-              <Search className="h-6 w-6 text-slate-500" />
+            <div className={emptyBoxCls}>
+              <Search className={`h-6 w-6 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-200">Δεν βρέθηκαν επίπεδα</p>
-              <p className="mt-1 text-xs text-slate-500">Δοκιμάστε διαφορετικά κριτήρια αναζήτησης.</p>
+              <p className={emptyTitleCls}>Δεν βρέθηκαν επίπεδα</p>
+              <p className={emptySubCls}>Δοκιμάστε διαφορετικά κριτήρια αναζήτησης.</p>
             </div>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full border-collapse text-xs">
               <thead>
-                <tr className="border-b border-slate-700/60 bg-slate-900/40">
+                <tr className={theadRowCls}>
                   <th
                     className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest"
                     style={{ color: 'color-mix(in srgb, var(--color-accent) 80%, white)' }}
@@ -286,13 +361,11 @@ export default function LevelsPage() {
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-slate-800/50">
+              <tbody className={tbodyDivideCls}>
                 {pagedLevels.map((lvl) => (
-                  <tr key={lvl.id} className="group transition-colors hover:bg-white/[0.025]">
+                  <tr key={lvl.id} className={trHoverCls}>
                     <td className="px-5 py-3.5">
-                      <span className="inline-flex items-center rounded-full border border-slate-600/50 bg-slate-800/60 px-2.5 py-0.5 text-[11px] font-medium text-slate-200 group-hover:text-white transition-colors">
-                        {lvl.name}
-                      </span>
+                      <span className={levelBadgeCls}>{lvl.name}</span>
                     </td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center justify-end gap-1.5">
@@ -325,30 +398,30 @@ export default function LevelsPage() {
 
         {/* Pagination */}
         {!loading && filteredLevels.length > 0 && (
-          <div className="flex items-center justify-between gap-3 border-t border-slate-800/70 bg-slate-900/20 px-5 py-3">
-            <p className="text-[11px] text-slate-500">
-              <span className="text-slate-300">{showingFrom}–{showingTo}</span>{' '}
-              από <span className="text-slate-300">{filteredLevels.length}</span> επίπεδα
+          <div className={paginationBarCls}>
+            <p className={paginationTextCls}>
+              <span className={paginationHighlightCls}>{showingFrom}–{showingTo}</span>{' '}
+              από <span className={paginationHighlightCls}>{filteredLevels.length}</span> επίπεδα
             </p>
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page <= 1}
-                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-900/30 text-slate-400 transition hover:border-slate-600 hover:bg-slate-800/50 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-30"
+                className={paginationBtnCls}
               >
                 <ChevronLeft className="h-3.5 w-3.5" />
               </button>
-              <div className="rounded-lg border border-slate-700/60 bg-slate-900/20 px-3 py-1 text-[11px] text-slate-300">
-                <span className="font-medium text-slate-50">{page}</span>
-                <span className="mx-1 text-slate-600">/</span>
-                <span className="text-slate-400">{pageCount}</span>
+              <div className={paginationPageCls}>
+                <span className={`font-medium ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>{page}</span>
+                <span className={`mx-1 ${isDark ? 'text-slate-600' : 'text-slate-300'}`}>/</span>
+                <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{pageCount}</span>
               </div>
               <button
                 type="button"
                 onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
                 disabled={page >= pageCount}
-                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-900/30 text-slate-400 transition hover:border-slate-600 hover:bg-slate-800/50 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-30"
+                className={paginationBtnCls}
               >
                 <ChevronRight className="h-3.5 w-3.5" />
               </button>
@@ -359,9 +432,9 @@ export default function LevelsPage() {
 
       {/* ── Create / Edit modal ── */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className={modalOverlayCls}>
           <div
-            className="relative w-full max-w-sm overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl"
+            className={modalCardCls}
             style={{ background: 'var(--color-sidebar)' }}
           >
             {/* Accent top stripe */}
@@ -371,7 +444,7 @@ export default function LevelsPage() {
             />
 
             {/* Modal header */}
-            <div className="flex items-center justify-between px-6 pt-5 pb-4">
+            <div className={modalHeaderCls}>
               <div className="flex items-center gap-3">
                 <div
                   className="flex h-8 w-8 items-center justify-center rounded-xl"
@@ -382,15 +455,11 @@ export default function LevelsPage() {
                 >
                   <Layers className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
                 </div>
-                <h2 className="text-sm font-semibold text-slate-50">
+                <h2 className={modalTitleCls}>
                   {editingId == null ? 'Νέο επίπεδο' : 'Επεξεργασία επιπέδου'}
                 </h2>
               </div>
-              <button
-                type="button"
-                onClick={closeModal}
-                className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-800/50 text-slate-400 transition hover:border-slate-600 hover:text-slate-200"
-              >
+              <button type="button" onClick={closeModal} className={modalCloseBtnCls}>
                 <X className="h-3.5 w-3.5" />
               </button>
             </div>
@@ -406,7 +475,7 @@ export default function LevelsPage() {
             <form onSubmit={handleSubmit}>
               <div className="px-6 pb-2">
                 <div className="space-y-1.5">
-                  <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                  <label className={formLabelCls}>
                     <span className="opacity-70"><Layers className="h-3 w-3" /></span>
                     Όνομα επιπέδου *
                   </label>
@@ -422,12 +491,12 @@ export default function LevelsPage() {
               </div>
 
               {/* Footer */}
-              <div className="flex justify-end gap-2.5 border-t border-slate-800/70 bg-slate-900/20 px-6 py-4 mt-4">
+              <div className={modalFooterCls}>
                 <button
                   type="button"
                   onClick={closeModal}
                   disabled={saving}
-                  className="rounded-lg border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-slate-700/60 disabled:opacity-50"
+                  className={cancelBtnCls}
                 >
                   Ακύρωση
                 </button>
@@ -447,9 +516,9 @@ export default function LevelsPage() {
 
       {/* ── Delete confirmation modal ── */}
       {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className={modalOverlayCls}>
           <div
-            className="relative w-full max-w-sm overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl"
+            className={modalCardCls}
             style={{ background: 'var(--color-sidebar)' }}
           >
             <div className="h-1 w-full bg-gradient-to-r from-red-600 via-red-500 to-rose-500" />
@@ -457,10 +526,14 @@ export default function LevelsPage() {
               <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/15 ring-1 ring-red-500/30">
                 <Layers className="h-5 w-5 text-red-400" />
               </div>
-              <h3 className="mb-1 text-sm font-semibold text-slate-50">Διαγραφή επιπέδου</h3>
-              <p className="text-xs leading-relaxed text-slate-400">
+              <h3 className={`mb-1 text-sm font-semibold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>
+                Διαγραφή επιπέδου
+              </h3>
+              <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                 Σίγουρα θέλετε να διαγράψετε το επίπεδο{' '}
-                <span className="font-semibold text-slate-100">«{deleteTarget.name}»</span>;{' '}
+                <span className={`font-semibold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+                  «{deleteTarget.name}»
+                </span>;{' '}
                 Η ενέργεια αυτή δεν μπορεί να αναιρεθεί.
               </p>
               <div className="mt-6 flex justify-end gap-2.5">
@@ -468,7 +541,7 @@ export default function LevelsPage() {
                   type="button"
                   onClick={handleCancelDelete}
                   disabled={deleting}
-                  className="rounded-lg border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-slate-700/60 disabled:opacity-50"
+                  className={cancelBtnCls}
                 >
                   Ακύρωση
                 </button>

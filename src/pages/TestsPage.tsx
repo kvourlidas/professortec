@@ -5,6 +5,7 @@ import {
 } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
+import { useTheme } from '../context/ThemeContext';
 import AppDatePicker from '../components/ui/AppDatePicker';
 import EditDeleteButtons from '../components/ui/EditDeleteButtons';
 import {
@@ -48,68 +49,130 @@ function formatDateDisplay(iso: string | null): string { if (!iso) return ''; co
 function parseDateDisplayToISO(display: string): string | null { const v = display.trim(); if (!v) return null; const parts = v.split(/[\/\-\.]/); if (parts.length !== 3) return null; const [dStr, mStr, yStr] = parts; const day = Number(dStr), month = Number(mStr), year = Number(yStr); if (!day || !month || !year) return null; return `${year}-${pad2(month)}-${pad2(day)}`; }
 function formatTimeDisplay(t: string | null): string { if (!t) return ''; return t.slice(0, 5); }
 
-// ── Shared input style ──────────────────────────────────────────────────────
-const inputCls = 'h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30';
-const selectCls = inputCls;
+// ── Page ────────────────────────────────────────────────────────────────────
+export default function TestsPage() {
+  const { profile } = useAuth();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const schoolId = profile?.school_id ?? null;
 
-function FormField({ label, icon, hint, children }: { label: string; icon?: React.ReactNode; hint?: string; children: React.ReactNode }) {
-  return (
+  // ── Dynamic classes ──
+  const inputCls = isDark
+    ? 'h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30'
+    : 'h-9 w-full rounded-lg border border-slate-300 bg-white px-3 text-xs text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30';
+  const selectCls = inputCls;
+
+  const tableCardCls = isDark
+    ? 'overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-2xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]'
+    : 'overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md';
+  const theadRowCls = isDark ? 'border-b border-slate-700/60 bg-slate-900/40' : 'border-b border-slate-200 bg-slate-50';
+  const tbodyDivideCls = isDark ? 'divide-y divide-slate-800/50' : 'divide-y divide-slate-100';
+  const trHoverCls = isDark ? 'group transition-colors hover:bg-white/[0.025]' : 'group transition-colors hover:bg-slate-50';
+  const timeBadgeCls = isDark
+    ? 'inline-flex items-center rounded-full border border-slate-600/50 bg-slate-800/60 px-2.5 py-0.5 text-[11px] text-slate-300'
+    : 'inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[11px] text-slate-600';
+  const paginationBarCls = isDark
+    ? 'flex items-center justify-between gap-3 border-t border-slate-800/70 bg-slate-900/20 px-5 py-3'
+    : 'flex items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-5 py-3';
+  const paginationBtnCls = isDark
+    ? 'inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-900/30 text-slate-400 transition hover:border-slate-600 hover:bg-slate-800/50 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-30'
+    : 'inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-30';
+  const paginationPageCls = isDark
+    ? 'rounded-lg border border-slate-700/60 bg-slate-900/20 px-3 py-1 text-[11px] text-slate-300'
+    : 'rounded-lg border border-slate-200 bg-white px-3 py-1 text-[11px] text-slate-600';
+  const emptyBoxCls = isDark
+    ? 'flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-700/50 bg-slate-800/50'
+    : 'flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200 bg-slate-100';
+  const emptyTitleCls = isDark ? 'text-sm font-medium text-slate-200' : 'text-sm font-medium text-slate-700';
+  const emptySubCls = isDark ? 'mt-1 text-xs text-slate-500' : 'mt-1 text-xs text-slate-400';
+  const searchInputCls = isDark
+    ? 'h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 pl-9 pr-3 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30 sm:w-52'
+    : 'h-9 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-xs text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30 sm:w-52';
+  const modalCardCls = isDark
+    ? 'relative w-full overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl'
+    : 'relative w-full overflow-hidden rounded-2xl border border-slate-200 shadow-2xl';
+  const modalSmCardCls = isDark
+    ? 'relative w-full max-w-sm overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl'
+    : 'relative w-full max-w-sm overflow-hidden rounded-2xl border border-slate-200 shadow-2xl';
+  const modalTitleCls = isDark ? 'text-sm font-semibold text-slate-50' : 'text-sm font-semibold text-slate-800';
+  const modalSubtitleCls = isDark ? 'mt-0.5 text-[11px] text-slate-400' : 'mt-0.5 text-[11px] text-slate-500';
+  const modalCloseBtnCls = isDark
+    ? 'flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-800/50 text-slate-400 transition hover:border-slate-600 hover:text-slate-200'
+    : 'flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-slate-500 transition hover:border-slate-300 hover:text-slate-700';
+  const modalFooterCls = isDark
+    ? 'flex justify-end gap-2.5 border-t border-slate-800/70 bg-slate-900/20 px-6 py-4 mt-3'
+    : 'flex justify-end gap-2.5 border-t border-slate-200 bg-slate-50 px-6 py-4 mt-3';
+  const cancelBtnCls = isDark
+    ? 'rounded-lg border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-slate-700/60 disabled:opacity-50'
+    : 'rounded-lg border border-slate-300 bg-white px-4 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100 disabled:opacity-50';
+  const labelCls = `flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`;
+  const timeInputCls = isDark
+    ? 'h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 pl-3 pr-16 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30'
+    : 'h-9 w-full rounded-lg border border-slate-300 bg-white pl-3 pr-16 text-xs text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30';
+  const periodSelectCls = isDark
+    ? 'absolute inset-y-1 right-1 rounded-md border border-slate-600/60 bg-slate-800/80 px-1.5 text-[10px] text-slate-300 outline-none'
+    : 'absolute inset-y-1 right-1 rounded-md border border-slate-200 bg-slate-100 px-1.5 text-[10px] text-slate-700 outline-none';
+  const resultsColCls = isDark
+    ? 'overflow-hidden rounded-xl border border-slate-700/50 bg-slate-900/30'
+    : 'overflow-hidden rounded-xl border border-slate-200 bg-slate-50';
+  const resultsColHeaderCls = isDark
+    ? 'flex items-center justify-between border-b border-slate-800/70 px-3 py-2.5'
+    : 'flex items-center justify-between border-b border-slate-200 bg-slate-100 px-3 py-2.5';
+  const resultsSearchBoxCls = isDark
+    ? 'flex items-center gap-1.5 rounded-lg border border-slate-700/60 bg-slate-900/60 px-2 py-1'
+    : 'flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-1';
+  const resultsSearchInputCls = isDark
+    ? 'w-24 bg-transparent text-[11px] text-slate-100 outline-none placeholder:text-slate-600'
+    : 'w-24 bg-transparent text-[11px] text-slate-700 outline-none placeholder:text-slate-400';
+  const resultsDivideCls = isDark ? 'divide-y divide-slate-800/50' : 'divide-y divide-slate-100';
+  const resultsRowHoverCls = isDark ? 'flex items-center justify-between px-3 py-2 hover:bg-white/[0.02]' : 'flex items-center justify-between px-3 py-2 hover:bg-slate-100/60';
+  const resultsRowHoverAssignedCls = isDark ? 'flex items-center gap-2 px-3 py-2 hover:bg-white/[0.02]' : 'flex items-center gap-2 px-3 py-2 hover:bg-slate-100/60';
+  const gradeInputCls = isDark
+    ? 'h-7 w-20 shrink-0 rounded-lg border border-slate-700/70 bg-slate-900/60 px-2 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)]'
+    : 'h-7 w-20 shrink-0 rounded-lg border border-slate-300 bg-white px-2 text-xs text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)]';
+  const avgBoxCls = isDark
+    ? 'flex items-center justify-between rounded-xl border border-slate-700/60 bg-slate-900/40 px-4 py-3'
+    : 'flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3';
+
+  // ── Inline components (need isDark from closure) ──
+
+  const FormField = ({ label, icon, hint, children }: { label: string; icon?: React.ReactNode; hint?: string; children: React.ReactNode }) => (
     <div className="space-y-1.5">
-      <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-        {icon && <span className="opacity-70">{icon}</span>}{label}
-      </label>
+      <label className={labelCls}>{icon && <span className="opacity-70">{icon}</span>}{label}</label>
       {children}
-      {hint && <p className="text-[10px] text-slate-500">{hint}</p>}
+      {hint && <p className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{hint}</p>}
     </div>
   );
-}
 
-// ── TimeField ───────────────────────────────────────────────────────────────
-function TimeField({ label, value, onChange, period, onPeriod }: { label: string; value: string; onChange: (e: ChangeEvent<HTMLInputElement>) => void; period: 'AM' | 'PM'; onPeriod: (p: 'AM' | 'PM') => void }) {
-  return (
+  const TimeField = ({ label, value, onChange, period, onPeriod }: { label: string; value: string; onChange: (e: ChangeEvent<HTMLInputElement>) => void; period: 'AM' | 'PM'; onPeriod: (p: 'AM' | 'PM') => void }) => (
     <FormField label={label} icon={<Clock className="h-3 w-3" />}>
       <div className="relative">
-        <input type="text" inputMode="numeric" placeholder="π.χ. 08:00" value={value} onChange={onChange}
-          className="h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 pl-3 pr-16 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30" />
-        <select value={period} onChange={(e) => onPeriod(e.target.value as 'AM' | 'PM')}
-          className="absolute inset-y-1 right-1 rounded-md border border-slate-600/60 bg-slate-800/80 px-1.5 text-[10px] text-slate-300 outline-none">
+        <input type="text" inputMode="numeric" placeholder="π.χ. 08:00" value={value} onChange={onChange} className={timeInputCls} />
+        <select value={period} onChange={(e) => onPeriod(e.target.value as 'AM' | 'PM')} className={periodSelectCls}>
           <option value="AM">AM</option><option value="PM">PM</option>
         </select>
       </div>
     </FormField>
   );
-}
 
-// ── Modal shell ─────────────────────────────────────────────────────────────
-function ModalShell({ title, subtitle, icon, onClose, children, wide }: { title: string; subtitle?: string; icon: React.ReactNode; onClose: () => void; children: React.ReactNode; wide?: boolean }) {
-  return (
+  const ModalShell = ({ title, subtitle, icon, onClose, children, wide }: { title: string; subtitle?: string; icon: React.ReactNode; onClose: () => void; children: React.ReactNode; wide?: boolean }) => (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className={`relative w-full overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl ${wide ? 'max-w-4xl' : 'max-w-md'}`} style={{ background: 'var(--color-sidebar)' }}>
+      <div className={`${modalCardCls} ${wide ? 'max-w-4xl' : 'max-w-md'}`} style={{ background: 'var(--color-sidebar)' }}>
         <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 30%, transparent))' }} />
         <div className="flex items-center justify-between px-6 pt-5 pb-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl" style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>
-              {icon}
-            </div>
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl" style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>{icon}</div>
             <div>
-              <h2 className="text-sm font-semibold text-slate-50">{title}</h2>
-              {subtitle && <p className="mt-0.5 text-[11px] text-slate-400">{subtitle}</p>}
+              <h2 className={modalTitleCls}>{title}</h2>
+              {subtitle && <p className={modalSubtitleCls}>{subtitle}</p>}
             </div>
           </div>
-          <button type="button" onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-800/50 text-slate-400 transition hover:border-slate-600 hover:text-slate-200">
-            <X className="h-3.5 w-3.5" />
-          </button>
+          <button type="button" onClick={onClose} className={modalCloseBtnCls}><X className="h-3.5 w-3.5" /></button>
         </div>
         {children}
       </div>
     </div>
   );
-}
-
-// ── Page ────────────────────────────────────────────────────────────────────
-export default function TestsPage() {
-  const { profile } = useAuth();
-  const schoolId = profile?.school_id ?? null;
 
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [subjects, setSubjects] = useState<SubjectRow[]>([]);
@@ -309,7 +372,6 @@ export default function TestsPage() {
     finally { setResultsSaving(false); }
   };
 
-  // ── Reusable test form fields ────────────────────────────────────────────
   const TestFormFields = ({ f, onField, onTimeChange, isEdit }: {
     f: AddTestForm; onField: (field: any) => (e: ChangeEvent<any>) => void;
     onTimeChange: (field: 'startTime' | 'endTime') => (e: ChangeEvent<HTMLInputElement>) => void;
@@ -353,12 +415,12 @@ export default function TestsPage() {
             <ClipboardList className="h-4 w-4 text-black" />
           </div>
           <div>
-            <h1 className="text-base font-semibold tracking-tight text-slate-50">Διαγωνίσματα</h1>
-            <p className="mt-0.5 text-xs text-slate-400">Καταχώρησε διαγωνίσματα ανά τμήμα και μάθημα.</p>
+            <h1 className={`text-base font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Διαγωνίσματα</h1>
+            <p className={`mt-0.5 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Καταχώρησε διαγωνίσματα ανά τμήμα και μάθημα.</p>
             {schoolId && (
               <div className="mt-2 flex items-center gap-2 flex-wrap">
-                <span className="inline-flex items-center gap-1 rounded-full border border-slate-700/60 bg-slate-800/50 px-2.5 py-0.5 text-[11px] text-slate-300">
-                  <ClipboardList className="h-3 w-3 text-slate-400" />{tests.length} σύνολο
+                <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] ${isDark ? 'border-slate-700/60 bg-slate-800/50 text-slate-300' : 'border-slate-200 bg-slate-100 text-slate-600'}`}>
+                  <ClipboardList className={`h-3 w-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />{tests.length} σύνολο
                 </span>
                 {searchTerm.trim() && (
                   <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px]" style={{ borderColor: 'color-mix(in srgb, var(--color-accent) 40%, transparent)', background: 'color-mix(in srgb, var(--color-accent) 10%, transparent)', color: 'var(--color-accent)' }}>
@@ -371,8 +433,8 @@ export default function TestsPage() {
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2.5">
           <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
-            <input className="h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 pl-9 pr-3 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30 sm:w-52" placeholder="Αναζήτηση..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            <Search className={`pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+            <input className={searchInputCls} placeholder="Αναζήτηση..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
           <button type="button" onClick={openModal} className="inline-flex h-9 items-center gap-2 rounded-lg px-4 text-xs font-semibold text-black shadow-sm transition hover:brightness-110 active:scale-[0.98]" style={{ backgroundColor: 'var(--color-accent)' }}>
             <ClipboardList className="h-3.5 w-3.5" />Προσθήκη διαγωνίσματος
@@ -385,18 +447,18 @@ export default function TestsPage() {
       {!schoolId && <div className="flex items-start gap-3 rounded-xl border border-amber-500/40 bg-amber-950/30 px-4 py-3 text-xs text-amber-200 backdrop-blur"><span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-amber-400" />Το προφίλ σας δεν είναι συνδεδεμένο με σχολείο.</div>}
 
       {/* Table card */}
-      <div className="overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-2xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]">
+      <div className={tableCardCls}>
         {loading ? (
-          <div className="divide-y divide-slate-800/60">{[...Array(4)].map((_, i) => <div key={i} className="flex items-center gap-4 px-5 py-3.5 animate-pulse"><div className="h-3 w-16 rounded-full bg-slate-800" /><div className="h-3 w-20 rounded-full bg-slate-800/80" /><div className="h-3 w-24 rounded-full bg-slate-800/60" /><div className="h-3 w-24 rounded-full bg-slate-800/50" /></div>)}</div>
+          <div className={`divide-y ${isDark ? 'divide-slate-800/60' : 'divide-slate-100'}`}>{[...Array(4)].map((_, i) => <div key={i} className="flex items-center gap-4 px-5 py-3.5 animate-pulse"><div className={`h-3 w-16 rounded-full ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`} /><div className={`h-3 w-20 rounded-full ${isDark ? 'bg-slate-800/80' : 'bg-slate-200/80'}`} /><div className={`h-3 w-24 rounded-full ${isDark ? 'bg-slate-800/60' : 'bg-slate-200/60'}`} /><div className={`h-3 w-24 rounded-full ${isDark ? 'bg-slate-800/50' : 'bg-slate-200/50'}`} /></div>)}</div>
         ) : tests.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center"><div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-700/50 bg-slate-800/50"><ClipboardList className="h-6 w-6 text-slate-500" /></div><div><p className="text-sm font-medium text-slate-200">Δεν υπάρχουν ακόμη διαγωνίσματα</p><p className="mt-1 text-xs text-slate-500">Πατήστε «Προσθήκη διαγωνίσματος».</p></div></div>
+          <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center"><div className={emptyBoxCls}><ClipboardList className={`h-6 w-6 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} /></div><div><p className={emptyTitleCls}>Δεν υπάρχουν ακόμη διαγωνίσματα</p><p className={emptySubCls}>Πατήστε «Προσθήκη διαγωνίσματος».</p></div></div>
         ) : filteredTests.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center"><div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-700/50 bg-slate-800/50"><Search className="h-6 w-6 text-slate-500" /></div><div><p className="text-sm font-medium text-slate-200">Δεν βρέθηκαν διαγωνίσματα</p><p className="mt-1 text-xs text-slate-500">Δοκιμάστε διαφορετικά κριτήρια.</p></div></div>
+          <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center"><div className={emptyBoxCls}><Search className={`h-6 w-6 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} /></div><div><p className={emptyTitleCls}>Δεν βρέθηκαν διαγωνίσματα</p><p className={emptySubCls}>Δοκιμάστε διαφορετικά κριτήρια.</p></div></div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full border-collapse text-xs">
               <thead>
-                <tr className="border-b border-slate-700/60 bg-slate-900/40">
+                <tr className={theadRowCls}>
                   {[{ icon: <Calendar className="h-3 w-3" />, label: 'ΗΜΕΡΟΜΗΝΙΑ' }, { icon: <Clock className="h-3 w-3" />, label: 'ΩΡΑ' }, { icon: <BookOpen className="h-3 w-3" />, label: 'ΤΜΗΜΑ' }, { icon: <Tag className="h-3 w-3" />, label: 'ΜΑΘΗΜΑ' }, { icon: <ClipboardList className="h-3 w-3" />, label: 'ΤΙΤΛΟΣ' }].map(({ icon, label }) => (
                     <th key={label} className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'color-mix(in srgb, var(--color-accent) 80%, white)' }}>
                       <span className="inline-flex items-center gap-1.5"><span className="opacity-60">{icon}</span>{label}</span>
@@ -405,16 +467,16 @@ export default function TestsPage() {
                   <th className="px-5 py-3 text-right text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'color-mix(in srgb, var(--color-accent) 80%, white)' }}>ΕΝΕΡΓΕΙΕΣ</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/50">
+              <tbody className={tbodyDivideCls}>
                 {pagedTests.map((t) => (
-                  <tr key={t.id} className="group transition-colors hover:bg-white/[0.025]">
-                    <td className="px-5 py-3.5 tabular-nums text-slate-400">{t.dateDisplay}</td>
+                  <tr key={t.id} className={trHoverCls}>
+                    <td className={`px-5 py-3.5 tabular-nums ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t.dateDisplay}</td>
                     <td className="px-5 py-3.5">
-                      {t.timeRange ? <span className="inline-flex items-center rounded-full border border-slate-600/50 bg-slate-800/60 px-2.5 py-0.5 text-[11px] text-slate-300">{t.timeRange}</span> : <span className="text-slate-600">—</span>}
+                      {t.timeRange ? <span className={timeBadgeCls}>{t.timeRange}</span> : <span className={isDark ? 'text-slate-600' : 'text-slate-300'}>—</span>}
                     </td>
-                    <td className="px-5 py-3.5 font-medium text-slate-100 group-hover:text-white transition-colors">{t.classTitle}</td>
-                    <td className="px-5 py-3.5 text-slate-400">{t.subjectName}</td>
-                    <td className="px-5 py-3.5 text-slate-400">{t.title ?? <span className="text-slate-600">—</span>}</td>
+                    <td className={`px-5 py-3.5 font-medium transition-colors ${isDark ? 'text-slate-100 group-hover:text-white' : 'text-slate-700 group-hover:text-slate-900'}`}>{t.classTitle}</td>
+                    <td className={`px-5 py-3.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t.subjectName}</td>
+                    <td className={`px-5 py-3.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t.title ?? <span className={isDark ? 'text-slate-600' : 'text-slate-300'}>—</span>}</td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center justify-end gap-1.5">
                         <button type="button" onClick={() => openResultsModal(t.id)}
@@ -434,12 +496,18 @@ export default function TestsPage() {
 
         {/* Pagination */}
         {!loading && filteredTests.length > 0 && (
-          <div className="flex items-center justify-between gap-3 border-t border-slate-800/70 bg-slate-900/20 px-5 py-3">
-            <p className="text-[11px] text-slate-500"><span className="text-slate-300">{showingFrom}–{showingTo}</span> από <span className="text-slate-300">{filteredTests.length}</span> διαγωνίσματα</p>
+          <div className={paginationBarCls}>
+            <p className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+              <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>{showingFrom}–{showingTo}</span> από <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>{filteredTests.length}</span> διαγωνίσματα
+            </p>
             <div className="flex items-center gap-1.5">
-              <button type="button" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-900/30 text-slate-400 transition hover:border-slate-600 hover:bg-slate-800/50 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-30"><ChevronLeft className="h-3.5 w-3.5" /></button>
-              <div className="rounded-lg border border-slate-700/60 bg-slate-900/20 px-3 py-1 text-[11px] text-slate-300"><span className="font-medium text-slate-50">{page}</span><span className="mx-1 text-slate-600">/</span><span className="text-slate-400">{pageCount}</span></div>
-              <button type="button" onClick={() => setPage((p) => Math.min(pageCount, p + 1))} disabled={page >= pageCount} className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-900/30 text-slate-400 transition hover:border-slate-600 hover:bg-slate-800/50 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-30"><ChevronRight className="h-3.5 w-3.5" /></button>
+              <button type="button" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className={paginationBtnCls}><ChevronLeft className="h-3.5 w-3.5" /></button>
+              <div className={paginationPageCls}>
+                <span className={`font-medium ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>{page}</span>
+                <span className={`mx-1 ${isDark ? 'text-slate-600' : 'text-slate-300'}`}>/</span>
+                <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{pageCount}</span>
+              </div>
+              <button type="button" onClick={() => setPage((p) => Math.min(pageCount, p + 1))} disabled={page >= pageCount} className={paginationBtnCls}><ChevronRight className="h-3.5 w-3.5" /></button>
             </div>
           </div>
         )}
@@ -450,11 +518,9 @@ export default function TestsPage() {
         <ModalShell title="Νέο διαγώνισμα" icon={<ClipboardList className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />} onClose={closeModal}>
           {error && <div className="mx-6 mb-3 flex items-start gap-2.5 rounded-xl border border-red-500/30 bg-red-950/40 px-3.5 py-2.5 text-xs text-red-200"><span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />{error}</div>}
           <form onSubmit={handleSubmit}>
-            <div className="max-h-[60vh] overflow-y-auto px-6 pb-2">
-              <TestFormFields f={form} onField={handleFieldChange} onTimeChange={handleTimeChange} />
-            </div>
-            <div className="flex justify-end gap-2.5 border-t border-slate-800/70 bg-slate-900/20 px-6 py-4 mt-3">
-              <button type="button" onClick={closeModal} disabled={saving} className="rounded-lg border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-slate-700/60 disabled:opacity-50">Ακύρωση</button>
+            <div className="max-h-[60vh] overflow-y-auto px-6 pb-2"><TestFormFields f={form} onField={handleFieldChange} onTimeChange={handleTimeChange} /></div>
+            <div className={modalFooterCls}>
+              <button type="button" onClick={closeModal} disabled={saving} className={cancelBtnCls}>Ακύρωση</button>
               <button type="submit" disabled={saving} className="inline-flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-semibold text-black shadow-sm transition hover:brightness-110 active:scale-[0.97] disabled:opacity-60" style={{ backgroundColor: 'var(--color-accent)' }}>
                 {saving ? <><Loader2 className="h-3 w-3 animate-spin" />Αποθήκευση...</> : 'Αποθήκευση'}
               </button>
@@ -468,11 +534,9 @@ export default function TestsPage() {
         <ModalShell title="Επεξεργασία διαγωνίσματος" icon={<ClipboardList className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />} onClose={closeEditModal}>
           {error && <div className="mx-6 mb-3 flex items-start gap-2.5 rounded-xl border border-red-500/30 bg-red-950/40 px-3.5 py-2.5 text-xs text-red-200"><span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />{error}</div>}
           <form onSubmit={handleEditSubmit}>
-            <div className="max-h-[60vh] overflow-y-auto px-6 pb-2">
-              <TestFormFields f={editForm} onField={handleEditFieldChange} onTimeChange={handleEditTimeChange} isEdit />
-            </div>
-            <div className="flex justify-end gap-2.5 border-t border-slate-800/70 bg-slate-900/20 px-6 py-4 mt-3">
-              <button type="button" onClick={closeEditModal} disabled={savingEdit} className="rounded-lg border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-slate-700/60 disabled:opacity-50">Ακύρωση</button>
+            <div className="max-h-[60vh] overflow-y-auto px-6 pb-2"><TestFormFields f={editForm} onField={handleEditFieldChange} onTimeChange={handleEditTimeChange} isEdit /></div>
+            <div className={modalFooterCls}>
+              <button type="button" onClick={closeEditModal} disabled={savingEdit} className={cancelBtnCls}>Ακύρωση</button>
               <button type="submit" disabled={savingEdit} className="inline-flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-semibold text-black shadow-sm transition hover:brightness-110 active:scale-[0.97] disabled:opacity-60" style={{ backgroundColor: 'var(--color-accent)' }}>
                 {savingEdit ? <><Loader2 className="h-3 w-3 animate-spin" />Αποθήκευση...</> : 'Ενημέρωση'}
               </button>
@@ -484,16 +548,16 @@ export default function TestsPage() {
       {/* ── Delete modal ── */}
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="relative w-full max-w-sm overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl" style={{ background: 'var(--color-sidebar)' }}>
+          <div className={modalSmCardCls} style={{ background: 'var(--color-sidebar)' }}>
             <div className="h-1 w-full bg-gradient-to-r from-red-600 via-red-500 to-rose-500" />
             <div className="p-6">
               <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/15 ring-1 ring-red-500/30"><ClipboardList className="h-5 w-5 text-red-400" /></div>
-              <h3 className="mb-1 text-sm font-semibold text-slate-50">Διαγραφή διαγωνίσματος</h3>
-              <p className="text-xs leading-relaxed text-slate-400">
-                Σίγουρα θέλετε να διαγράψετε το διαγώνισμα <span className="font-semibold text-slate-100">«{deleteTarget.subjectName}»</span> για το τμήμα <span className="font-semibold text-slate-100">{deleteTarget.classTitle}</span> στις <span className="font-semibold text-slate-100">{deleteTarget.dateDisplay}</span>{deleteTarget.timeRange && <> ({deleteTarget.timeRange})</>}; Δεν μπορεί να αναιρεθεί.
+              <h3 className={`mb-1 text-sm font-semibold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Διαγραφή διαγωνίσματος</h3>
+              <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                Σίγουρα θέλετε να διαγράψετε το διαγώνισμα <span className={`font-semibold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>«{deleteTarget.subjectName}»</span> για το τμήμα <span className={`font-semibold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{deleteTarget.classTitle}</span> στις <span className={`font-semibold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{deleteTarget.dateDisplay}</span>{deleteTarget.timeRange && <> ({deleteTarget.timeRange})</>}; Δεν μπορεί να αναιρεθεί.
               </p>
               <div className="mt-6 flex justify-end gap-2.5">
-                <button type="button" onClick={closeDeleteModal} disabled={deleting} className="rounded-lg border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-slate-700/60 disabled:opacity-50">Ακύρωση</button>
+                <button type="button" onClick={closeDeleteModal} disabled={deleting} className={cancelBtnCls}>Ακύρωση</button>
                 <button type="button" onClick={handleConfirmDelete} disabled={deleting} className="rounded-lg bg-red-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-red-500 active:scale-[0.97] disabled:opacity-60">{deleting ? 'Διαγραφή…' : 'Διαγραφή'}</button>
               </div>
             </div>
@@ -507,73 +571,68 @@ export default function TestsPage() {
           {resultsError && <div className="mx-6 mb-3 flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-950/40 px-3.5 py-2.5 text-xs text-amber-200"><span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />{resultsError}</div>}
           <div className="px-6 pb-2">
             {resultsLoading ? (
-              <div className="flex items-center justify-center py-10 text-xs text-slate-400"><Loader2 className="mr-2 h-4 w-4 animate-spin" />Φόρτωση μαθητών και βαθμών...</div>
+              <div className={`flex items-center justify-center py-10 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}><Loader2 className="mr-2 h-4 w-4 animate-spin" />Φόρτωση μαθητών και βαθμών...</div>
             ) : resultsAllStudents.length === 0 ? (
-              <p className="py-4 text-xs text-slate-400">Δεν βρέθηκαν μαθητές. Προσθέστε μαθητές στη σελίδα «Μαθητές».</p>
+              <p className={`py-4 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Δεν βρέθηκαν μαθητές. Προσθέστε μαθητές στη σελίδα «Μαθητές».</p>
             ) : (
               <div className="grid gap-4 md:grid-cols-2">
                 {/* Left: available */}
-                <div className="overflow-hidden rounded-xl border border-slate-700/50 bg-slate-900/30">
-                  <div className="flex items-center justify-between border-b border-slate-800/70 px-3 py-2.5">
-                    <span className="text-xs font-semibold text-slate-200">Όλοι οι μαθητές</span>
-                    <div className="flex items-center gap-1.5 rounded-lg border border-slate-700/60 bg-slate-900/60 px-2 py-1">
-                      <Search className="h-3 w-3 text-slate-500" />
-                      <input className="w-24 bg-transparent text-[11px] text-slate-100 outline-none placeholder:text-slate-600" placeholder="Αναζήτηση..." value={resultsSearchLeft} onChange={(e) => setResultsSearchLeft(e.target.value)} disabled={resultsSaving} />
+                <div className={resultsColCls}>
+                  <div className={resultsColHeaderCls}>
+                    <span className={`text-xs font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Όλοι οι μαθητές</span>
+                    <div className={resultsSearchBoxCls}>
+                      <Search className={`h-3 w-3 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+                      <input className={resultsSearchInputCls} placeholder="Αναζήτηση..." value={resultsSearchLeft} onChange={(e) => setResultsSearchLeft(e.target.value)} disabled={resultsSaving} />
                     </div>
                   </div>
                   <div className="max-h-72 overflow-y-auto">
-                    {availableStudents.length === 0 ? <p className="px-3 py-4 text-[11px] text-slate-500">Δεν υπάρχουν διαθέσιμοι μαθητές.</p> : (
-                      <div className="divide-y divide-slate-800/50">
-                        {availableStudents.map((s) => (
-                          <div key={s.id} className="flex items-center justify-between px-3 py-2 hover:bg-white/[0.02]">
-                            <span className="text-xs text-slate-200">{s.full_name ?? 'Χωρίς όνομα'}</span>
-                            <button type="button" onClick={() => setResultsAssignedIds((prev) => { const n = new Set(prev); n.add(s.id); return n; })} disabled={resultsSaving}
-                              className="inline-flex h-6 w-6 items-center justify-center rounded-lg border border-emerald-500/40 bg-emerald-500/10 text-emerald-400 transition hover:bg-emerald-500/20 disabled:opacity-60">
-                              <ArrowRight size={13} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    {availableStudents.length === 0
+                      ? <p className={`px-3 py-4 text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Δεν υπάρχουν διαθέσιμοι μαθητές.</p>
+                      : <div className={resultsDivideCls}>{availableStudents.map((s) => (
+                        <div key={s.id} className={resultsRowHoverCls}>
+                          <span className={`text-xs ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{s.full_name ?? 'Χωρίς όνομα'}</span>
+                          <button type="button" onClick={() => setResultsAssignedIds((prev) => { const n = new Set(prev); n.add(s.id); return n; })} disabled={resultsSaving}
+                            className="inline-flex h-6 w-6 items-center justify-center rounded-lg border border-emerald-500/40 bg-emerald-500/10 text-emerald-400 transition hover:bg-emerald-500/20 disabled:opacity-60">
+                            <ArrowRight size={13} />
+                          </button>
+                        </div>
+                      ))}</div>}
                   </div>
                 </div>
                 {/* Right: assigned */}
-                <div className="overflow-hidden rounded-xl border border-slate-700/50 bg-slate-900/30">
-                  <div className="flex items-center justify-between border-b border-slate-800/70 px-3 py-2.5">
-                    <span className="text-xs font-semibold text-slate-200">Μαθητές που έγραψαν</span>
-                    <div className="flex items-center gap-1.5 rounded-lg border border-slate-700/60 bg-slate-900/60 px-2 py-1">
-                      <Search className="h-3 w-3 text-slate-500" />
-                      <input className="w-24 bg-transparent text-[11px] text-slate-100 outline-none placeholder:text-slate-600" placeholder="Αναζήτηση..." value={resultsSearchRight} onChange={(e) => setResultsSearchRight(e.target.value)} disabled={resultsSaving} />
+                <div className={resultsColCls}>
+                  <div className={resultsColHeaderCls}>
+                    <span className={`text-xs font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Μαθητές που έγραψαν</span>
+                    <div className={resultsSearchBoxCls}>
+                      <Search className={`h-3 w-3 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+                      <input className={resultsSearchInputCls} placeholder="Αναζήτηση..." value={resultsSearchRight} onChange={(e) => setResultsSearchRight(e.target.value)} disabled={resultsSaving} />
                     </div>
                   </div>
                   <div className="max-h-72 overflow-y-auto">
-                    {assignedStudents.length === 0 ? <p className="px-3 py-4 text-[11px] text-slate-500">Δεν έχουν επιλεγεί μαθητές.</p> : (
-                      <div className="divide-y divide-slate-800/50">
-                        {assignedStudents.map((s) => {
-                          const info = resultsGradeByStudent[s.id] ?? { grade: '' };
-                          return (
-                            <div key={s.id} className="flex items-center gap-2 px-3 py-2 hover:bg-white/[0.02]">
-                              <button type="button" onClick={() => setResultsAssignedIds((prev) => { const n = new Set(prev); n.delete(s.id); return n; })} disabled={resultsSaving}
-                                className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-red-500/40 bg-red-500/10 text-red-400 transition hover:bg-red-500/20 disabled:opacity-60">
-                                <ArrowLeft size={13} />
-                              </button>
-                              <span className="flex-1 text-xs text-slate-200 truncate">{s.full_name ?? 'Χωρίς όνομα'}</span>
-                              <input type="text" inputMode="decimal" placeholder="π.χ. 18.5" value={info.grade}
-                                onChange={(e) => setResultsGradeByStudent((prev) => ({ ...prev, [s.id]: { grade: e.target.value, existingResultId: prev[s.id]?.existingResultId } }))}
-                                className="h-7 w-20 shrink-0 rounded-lg border border-slate-700/70 bg-slate-900/60 px-2 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)]"
-                                disabled={resultsSaving} />
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
+                    {assignedStudents.length === 0
+                      ? <p className={`px-3 py-4 text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Δεν έχουν επιλεγεί μαθητές.</p>
+                      : <div className={resultsDivideCls}>{assignedStudents.map((s) => {
+                        const info = resultsGradeByStudent[s.id] ?? { grade: '' };
+                        return (
+                          <div key={s.id} className={resultsRowHoverAssignedCls}>
+                            <button type="button" onClick={() => setResultsAssignedIds((prev) => { const n = new Set(prev); n.delete(s.id); return n; })} disabled={resultsSaving}
+                              className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-red-500/40 bg-red-500/10 text-red-400 transition hover:bg-red-500/20 disabled:opacity-60">
+                              <ArrowLeft size={13} />
+                            </button>
+                            <span className={`flex-1 text-xs truncate ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{s.full_name ?? 'Χωρίς όνομα'}</span>
+                            <input type="text" inputMode="decimal" placeholder="π.χ. 18.5" value={info.grade}
+                              onChange={(e) => setResultsGradeByStudent((prev) => ({ ...prev, [s.id]: { grade: e.target.value, existingResultId: prev[s.id]?.existingResultId } }))}
+                              className={gradeInputCls} disabled={resultsSaving} />
+                          </div>
+                        );
+                      })}</div>}
                   </div>
                 </div>
               </div>
             )}
           </div>
-          <div className="flex justify-end gap-2.5 border-t border-slate-800/70 bg-slate-900/20 px-6 py-4 mt-3">
-            <button type="button" onClick={closeResultsModal} disabled={resultsSaving} className="rounded-lg border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-slate-700/60 disabled:opacity-50">Ακύρωση</button>
+          <div className={modalFooterCls}>
+            <button type="button" onClick={closeResultsModal} disabled={resultsSaving} className={cancelBtnCls}>Ακύρωση</button>
             <button type="button" onClick={handleSaveResults} disabled={resultsSaving || resultsLoading} className="inline-flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-semibold text-black shadow-sm transition hover:brightness-110 active:scale-[0.97] disabled:opacity-60" style={{ backgroundColor: 'var(--color-accent)' }}>
               {resultsSaving ? <><Loader2 className="h-3 w-3 animate-spin" />Αποθήκευση...</> : 'Αποθήκευση'}
             </button>

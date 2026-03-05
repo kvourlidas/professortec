@@ -2,6 +2,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import DatePickerField from '../ui/AppDatePicker';
 import { CalendarDays, Clock, FileText, X, Loader2 } from 'lucide-react';
+import { useTheme } from '../../context/ThemeContext';
 
 export type EventFormState = {
   name: string;
@@ -78,26 +79,12 @@ function autoFormatTimeInput(raw: string): string {
   return `${digits.slice(0, 2)}:${digits.slice(2, 4)}`;
 }
 
-const inputCls =
-  'h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30';
-
-function FormField({ label, icon, children }: {
-  label: string; icon?: React.ReactNode; children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-        {icon && <span className="opacity-70">{icon}</span>}
-        {label}
-      </label>
-      {children}
-    </div>
-  );
-}
-
 export default function EventFormModal({
   open, mode, editingEvent, error, saving, onClose, onSubmit,
 }: EventFormModalProps) {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [dateDisplay, setDateDisplay] = useState('');
@@ -105,6 +92,51 @@ export default function EventFormModal({
   const [endTime, setEndTime] = useState('');
   const [startPeriod, setStartPeriod] = useState<'AM' | 'PM'>('AM');
   const [endPeriod, setEndPeriod] = useState<'AM' | 'PM'>('AM');
+
+  // ── Dynamic classes ──
+  const inputCls = isDark
+    ? 'h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30'
+    : 'h-9 w-full rounded-lg border border-slate-300 bg-white px-3 text-xs text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30';
+
+  const timeInputCls = isDark
+    ? 'h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 pl-3 pr-16 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30'
+    : 'h-9 w-full rounded-lg border border-slate-300 bg-white pl-3 pr-16 text-xs text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30';
+
+  const textareaCls = isDark
+    ? 'w-full rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30 min-h-[72px] resize-none'
+    : 'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30 min-h-[72px] resize-none';
+
+  const periodSelectCls = isDark
+    ? 'absolute inset-y-1 right-1 rounded-md border border-slate-600/60 bg-slate-800/80 px-1.5 text-[10px] text-slate-300 outline-none transition hover:border-slate-500'
+    : 'absolute inset-y-1 right-1 rounded-md border border-slate-200 bg-slate-100 px-1.5 text-[10px] text-slate-700 outline-none transition hover:border-slate-300';
+
+  const modalCardCls = isDark
+    ? 'relative w-full max-w-md overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl'
+    : 'relative w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 shadow-2xl';
+
+  const modalCloseBtnCls = isDark
+    ? 'flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-800/50 text-slate-400 transition hover:border-slate-600 hover:text-slate-200'
+    : 'flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-slate-500 transition hover:border-slate-300 hover:text-slate-700';
+
+  const modalFooterCls = isDark
+    ? 'flex justify-end gap-2.5 border-t border-slate-800/70 bg-slate-900/20 px-6 py-4 mt-3'
+    : 'flex justify-end gap-2.5 border-t border-slate-200 bg-slate-50 px-6 py-4 mt-3';
+
+  const cancelBtnCls = isDark
+    ? 'rounded-lg border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-slate-700/60 disabled:opacity-50'
+    : 'rounded-lg border border-slate-300 bg-white px-4 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100 disabled:opacity-50';
+
+  const labelCls = `flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`;
+
+  const FormField = ({ label, icon, children }: { label: string; icon?: React.ReactNode; children: React.ReactNode }) => (
+    <div className="space-y-1.5">
+      <label className={labelCls}>
+        {icon && <span className="opacity-70">{icon}</span>}
+        {label}
+      </label>
+      {children}
+    </div>
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -139,10 +171,7 @@ export default function EventFormModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div
-        className="relative w-full max-w-md overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl"
-        style={{ background: 'var(--color-sidebar)' }}
-      >
+      <div className={modalCardCls} style={{ background: 'var(--color-sidebar)' }}>
         {/* Accent top stripe */}
         <div
           className="h-0.5 w-full"
@@ -162,19 +191,17 @@ export default function EventFormModal({
               <CalendarDays className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-slate-50">
+              <h2 className={`text-sm font-semibold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>
                 {mode === 'create' ? 'Νέο event' : 'Επεξεργασία event'}
               </h2>
               {mode === 'edit' && editingEvent && (
-                <p className="mt-0.5 text-[11px] text-slate-400">{editingEvent.name}</p>
+                <p className={`mt-0.5 text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                  {editingEvent.name}
+                </p>
               )}
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-800/50 text-slate-400 transition hover:border-slate-600 hover:text-slate-200"
-          >
+          <button type="button" onClick={onClose} className={modalCloseBtnCls}>
             <X className="h-3.5 w-3.5" />
           </button>
         </div>
@@ -214,7 +241,6 @@ export default function EventFormModal({
 
             {/* Time fields */}
             <div className="grid gap-3 sm:grid-cols-2">
-              {/* Start time */}
               <FormField label="Ώρα έναρξης *" icon={<Clock className="h-3 w-3" />}>
                 <div className="relative">
                   <input
@@ -223,21 +249,16 @@ export default function EventFormModal({
                     placeholder="π.χ. 08:00"
                     value={startTime}
                     onChange={(e) => setStartTime(autoFormatTimeInput(e.target.value))}
-                    className="h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 pl-3 pr-16 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30"
+                    className={timeInputCls}
                     required
                   />
-                  <select
-                    value={startPeriod}
-                    onChange={(e) => setStartPeriod(e.target.value as 'AM' | 'PM')}
-                    className="absolute inset-y-1 right-1 rounded-md border border-slate-600/60 bg-slate-800/80 px-1.5 text-[10px] text-slate-300 outline-none transition hover:border-slate-500"
-                  >
+                  <select value={startPeriod} onChange={(e) => setStartPeriod(e.target.value as 'AM' | 'PM')} className={periodSelectCls}>
                     <option value="AM">AM</option>
                     <option value="PM">PM</option>
                   </select>
                 </div>
               </FormField>
 
-              {/* End time */}
               <FormField label="Ώρα λήξης *" icon={<Clock className="h-3 w-3" />}>
                 <div className="relative">
                   <input
@@ -246,14 +267,10 @@ export default function EventFormModal({
                     placeholder="π.χ. 09:30"
                     value={endTime}
                     onChange={(e) => setEndTime(autoFormatTimeInput(e.target.value))}
-                    className="h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 pl-3 pr-16 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30"
+                    className={timeInputCls}
                     required
                   />
-                  <select
-                    value={endPeriod}
-                    onChange={(e) => setEndPeriod(e.target.value as 'AM' | 'PM')}
-                    className="absolute inset-y-1 right-1 rounded-md border border-slate-600/60 bg-slate-800/80 px-1.5 text-[10px] text-slate-300 outline-none transition hover:border-slate-500"
-                  >
+                  <select value={endPeriod} onChange={(e) => setEndPeriod(e.target.value as 'AM' | 'PM')} className={periodSelectCls}>
                     <option value="AM">AM</option>
                     <option value="PM">PM</option>
                   </select>
@@ -264,7 +281,7 @@ export default function EventFormModal({
             {/* Description */}
             <FormField label="Περιγραφή (προαιρετικά)" icon={<FileText className="h-3 w-3" />}>
               <textarea
-                className="w-full rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30 min-h-[72px] resize-none"
+                className={textareaCls}
                 placeholder="π.χ. Παράσταση με όλους τους μαθητές της Γ' Γυμνασίου"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -273,13 +290,8 @@ export default function EventFormModal({
           </div>
 
           {/* Footer */}
-          <div className="flex justify-end gap-2.5 border-t border-slate-800/70 bg-slate-900/20 px-6 py-4 mt-3">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={saving}
-              className="rounded-lg border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-slate-700/60 disabled:opacity-50"
-            >
+          <div className={modalFooterCls}>
+            <button type="button" onClick={onClose} disabled={saving} className={cancelBtnCls}>
               Ακύρωση
             </button>
             <button

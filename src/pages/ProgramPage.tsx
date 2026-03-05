@@ -7,13 +7,14 @@ import {
 } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
+import { useTheme } from '../context/ThemeContext';
 import AppDatePicker from '../components/ui/AppDatePicker';
 import {
   CalendarDays, Search, Clock, Calendar, BookOpen,
   GraduationCap, Layers, X, Loader2, ChevronDown,
 } from 'lucide-react';
 
-// ── Types (unchanged) ────────────────────────────────────────────────────────
+// ── Types ────────────────────────────────────────────────────────────────────
 
 type ClassRow = { id: string; school_id: string; title: string; subject: string | null; subject_id: string | null; tutor_id: string | null };
 type SubjectRow = { id: string; school_id: string; name: string; level_id: string | null };
@@ -41,7 +42,7 @@ const DAY_OPTIONS = [
 
 const DAY_LABEL_BY_VALUE: Record<string, string> = DAY_OPTIONS.reduce((acc, d) => { acc[d.value] = d.label; return acc; }, {} as Record<string, string>);
 
-// ── Helpers (unchanged) ───────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 const pad2 = (n: number) => n.toString().padStart(2, '0');
 
@@ -115,28 +116,12 @@ function normalizeText(value: string | null | undefined): string {
   return value.toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
 
-// ── Shared form components ────────────────────────────────────────────────────
-
-const inputCls = "h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30 disabled:opacity-60";
-const selectCls = inputCls;
-
-function FormField({ label, icon, hint, children }: { label: string; icon?: React.ReactNode; hint?: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1.5">
-      <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-        {icon && <span className="opacity-70">{icon}</span>}
-        {label}
-      </label>
-      {children}
-      {hint && <p className="text-[10px] text-amber-400">{hint}</p>}
-    </div>
-  );
-}
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function ProgramPage() {
   const { profile } = useAuth();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const schoolId = profile?.school_id ?? null;
 
   const [program, setProgram] = useState<ProgramRow | null>(null);
@@ -162,6 +147,64 @@ export default function ProgramPage() {
 
   const [deleteSlotTarget, setDeleteSlotTarget] = useState<{ id: string; classLabel: string; dayLabel: string; timeRange: string } | null>(null);
   const [deletingSlot, setDeletingSlot] = useState(false);
+
+  // ── Dynamic classes ──
+
+  const inputCls = isDark
+    ? 'h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30 disabled:opacity-60'
+    : 'h-9 w-full rounded-lg border border-slate-300 bg-white px-3 text-xs text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30 disabled:opacity-60';
+
+  const selectCls = inputCls;
+
+  const modalCardCls = isDark
+    ? 'relative w-full max-w-lg overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl'
+    : 'relative w-full max-w-lg overflow-hidden rounded-2xl border border-slate-200 shadow-2xl';
+
+  const modalSmCardCls = isDark
+    ? 'relative w-full max-w-sm overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl'
+    : 'relative w-full max-w-sm overflow-hidden rounded-2xl border border-slate-200 shadow-2xl';
+
+  const modalTitleCls = isDark ? 'text-sm font-semibold text-slate-50' : 'text-sm font-semibold text-slate-800';
+
+  const modalCloseBtnCls = isDark
+    ? 'flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-800/50 text-slate-400 transition hover:border-slate-600 hover:text-slate-200'
+    : 'flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-slate-500 transition hover:border-slate-300 hover:text-slate-700';
+
+  const modalFooterCls = isDark
+    ? 'flex justify-end gap-2.5 border-t border-slate-800/70 bg-slate-900/20 px-6 py-4 mt-4'
+    : 'flex justify-end gap-2.5 border-t border-slate-200 bg-slate-50 px-6 py-4 mt-4';
+
+  const cancelBtnCls = isDark
+    ? 'rounded-lg border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-slate-700/60 disabled:opacity-50'
+    : 'rounded-lg border border-slate-300 bg-white px-4 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100 disabled:opacity-50';
+
+  const panelCls = isDark
+    ? 'overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-2xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]'
+    : 'overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md';
+
+  const panelHeaderCls = isDark
+    ? 'border-b border-slate-700/60 bg-slate-900/40 px-4 py-3'
+    : 'border-b border-slate-200 bg-slate-50 px-4 py-3';
+
+  const classCardCls = isDark
+    ? 'group flex items-center justify-between gap-2 rounded-xl border border-slate-700/50 bg-slate-900/30 px-3 py-2.5 transition hover:border-slate-600/60 hover:bg-slate-800/40 cursor-grab active:cursor-grabbing'
+    : 'group flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 transition hover:border-slate-300 hover:bg-slate-100 cursor-grab active:cursor-grabbing';
+
+  const daySelectCls = isDark
+    ? 'h-7 appearance-none rounded-lg border border-slate-600/60 bg-slate-800/80 pl-2 pr-6 text-[10px] text-slate-200 outline-none transition hover:border-slate-500 focus:border-[color:var(--color-accent)]'
+    : 'h-7 appearance-none rounded-lg border border-slate-300 bg-white pl-2 pr-6 text-[10px] text-slate-700 outline-none transition hover:border-slate-400 focus:border-[color:var(--color-accent)]';
+
+  const searchInputCls = isDark
+    ? 'h-8 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 pl-9 pr-3 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30'
+    : 'h-8 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-xs text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30';
+
+  const timeInputCls = isDark
+    ? 'h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 pl-3 pr-20 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30'
+    : 'h-9 w-full rounded-lg border border-slate-300 bg-white pl-3 pr-20 text-xs text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30';
+
+  const periodSelectCls = isDark
+    ? 'absolute inset-y-1 right-1 w-16 rounded-md border border-slate-600/60 bg-slate-800 px-1.5 text-[10px] text-slate-200 outline-none'
+    : 'absolute inset-y-1 right-1 w-16 rounded-md border border-slate-200 bg-slate-100 px-1.5 text-[10px] text-slate-700 outline-none';
 
   // ── Maps ──
 
@@ -259,7 +302,7 @@ export default function ProgramPage() {
     load();
   }, [schoolId]);
 
-  // ── Subject / tutor helpers (unchanged logic) ─────────────────────────────
+  // ── Subject / tutor helpers ───────────────────────────────────────────────
 
   const getSubjectsForClass = (classId: string | null): SubjectRow[] => {
     if (!classId) return [];
@@ -287,7 +330,7 @@ export default function ProgramPage() {
     return result;
   };
 
-  // ── Add slot ─────────────────────────────────────────────────────────────
+  // ── Add slot ──────────────────────────────────────────────────────────────
 
   const openAddSlotModal = (classId: string, day: string) => {
     const displayToday = formatDateDisplay(todayISO());
@@ -398,7 +441,18 @@ export default function ProgramPage() {
     setDragClassId(null);
   };
 
-  // ── Slot form shared JSX (add & edit share the same fields) ──────────────
+  // ── Slot form fields ──────────────────────────────────────────────────────
+
+  const FormField = ({ label, icon, hint, children }: { label: string; icon?: React.ReactNode; hint?: string; children: React.ReactNode }) => (
+    <div className="space-y-1.5">
+      <label className={`flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+        {icon && <span className="opacity-70">{icon}</span>}
+        {label}
+      </label>
+      {children}
+      {hint && <p className="text-[10px] text-amber-500">{hint}</p>}
+    </div>
+  );
 
   const SlotFormFields = ({
     classTitle, dayValue, onDayChange,
@@ -426,12 +480,10 @@ export default function ProgramPage() {
 
     return (
       <div className="space-y-4">
-        {/* Class + Day */}
         <div className="grid gap-3 sm:grid-cols-2">
           <FormField label="Τμήμα" icon={<GraduationCap className="h-3 w-3" />}>
             <input disabled value={classTitle} className={inputCls} />
           </FormField>
-
           <FormField label="Ημέρα" icon={<CalendarDays className="h-3 w-3" />}>
             {isEdit && onDayChange ? (
               <select className={selectCls} value={dayValue} onChange={onDayChange}>
@@ -443,7 +495,6 @@ export default function ProgramPage() {
           </FormField>
         </div>
 
-        {/* Subject + Tutor */}
         <div className="grid gap-3 sm:grid-cols-2">
           <FormField label="Μάθημα" icon={<BookOpen className="h-3 w-3" />}
             hint={subjOptions.length === 0 ? 'Ρυθμίστε τα μαθήματα στη σελίδα «Τμήματα».' : undefined}>
@@ -452,7 +503,6 @@ export default function ProgramPage() {
               {subjOptions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </FormField>
-
           <FormField label="Καθηγητής" icon={<Layers className="h-3 w-3" />}>
             <select className={selectCls} value={tutorId ?? ''} onChange={onTutorChange} disabled={!subjectId || tutorOptions.length === 0}>
               <option value="">{tutorOptions.length === 0 ? 'Δεν έχουν οριστεί καθηγητές' : 'Επιλέξτε (προαιρετικό)'}</option>
@@ -461,7 +511,6 @@ export default function ProgramPage() {
           </FormField>
         </div>
 
-        {/* Times */}
         <div className="grid gap-3 sm:grid-cols-2">
           {[
             { label: 'Ώρα έναρξης', time: startTime, onChange: onStartTimeChange, period: startPeriod, onPeriod: onStartPeriodChange },
@@ -469,10 +518,8 @@ export default function ProgramPage() {
           ].map(({ label, time, onChange, period, onPeriod }) => (
             <FormField key={label} label={label} icon={<Clock className="h-3 w-3" />}>
               <div className="relative">
-                <input type="text" inputMode="numeric" placeholder="π.χ. 08:00" value={time} onChange={onChange}
-                  className="h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 pl-3 pr-20 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30" />
-                <select value={period} onChange={onPeriod}
-                  className="absolute inset-y-1 right-1 w-16 rounded-md border border-slate-600/60 bg-slate-800 px-1.5 text-[10px] text-slate-200 outline-none">
+                <input type="text" inputMode="numeric" placeholder="π.χ. 08:00" value={time} onChange={onChange} className={timeInputCls} />
+                <select value={period} onChange={onPeriod} className={periodSelectCls}>
                   <option value="AM">AM</option>
                   <option value="PM">PM</option>
                 </select>
@@ -481,7 +528,6 @@ export default function ProgramPage() {
           ))}
         </div>
 
-        {/* Dates */}
         <div className="grid gap-3 sm:grid-cols-2">
           <FormField label="Ημερομηνία έναρξης" icon={<Calendar className="h-3 w-3" />}>
             <AppDatePicker value={startDate} onChange={onStartDateChange} placeholder="π.χ. 12/05/2025" />
@@ -506,11 +552,15 @@ export default function ProgramPage() {
           <CalendarDays className="h-4.5 w-4.5 text-black" />
         </div>
         <div>
-          <h1 className="text-base font-semibold tracking-tight text-slate-50">Πρόγραμμα Τμημάτων</h1>
-          <p className="mt-0.5 text-xs text-slate-400">Δημιούργησε ένα εβδομαδιαίο πρόγραμμα, προσθέτοντας τμήματα σε κάθε μέρα.</p>
+          <h1 className={`text-base font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>
+            Πρόγραμμα Τμημάτων
+          </h1>
+          <p className={`mt-0.5 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            Δημιούργησε ένα εβδομαδιαίο πρόγραμμα, προσθέτοντας τμήματα σε κάθε μέρα.
+          </p>
           {program && (
-            <span className="mt-2 inline-flex items-center gap-1 rounded-full border border-slate-700/60 bg-slate-800/50 px-2.5 py-0.5 text-[11px] text-slate-300">
-              <CalendarDays className="h-3 w-3 text-slate-400" />
+            <span className={`mt-2 inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] ${isDark ? 'border-slate-700/60 bg-slate-800/50 text-slate-300' : 'border-slate-200 bg-slate-100 text-slate-600'}`}>
+              <CalendarDays className={`h-3 w-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
               {program.name}
             </span>
           )}
@@ -532,39 +582,42 @@ export default function ProgramPage() {
 
       {loading ? (
         <div className="flex flex-col items-center justify-center gap-3 py-20">
-          <Loader2 className="h-7 w-7 animate-spin text-slate-500" />
-          <p className="text-xs text-slate-400">Φόρτωση προγράμματος…</p>
+          <Loader2 className={`h-7 w-7 animate-spin ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+          <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Φόρτωση προγράμματος…</p>
         </div>
       ) : (
         <div className="flex flex-col gap-4 lg:flex-row">
 
           {/* ── Left: available classes ── */}
-          <section className="overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-2xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04] lg:w-[320px] shrink-0">
-            {/* Panel header */}
-            <div className="border-b border-slate-700/60 bg-slate-900/40 px-4 py-3">
+          <section className={`${panelCls} lg:w-[320px] shrink-0`}>
+            <div className={panelHeaderCls}>
               <h2 className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'color-mix(in srgb, var(--color-accent) 80%, white)' }}>
                 Διαθέσιμα τμήματα
               </h2>
-              <p className="mt-0.5 text-[10px] text-slate-500">Σύρετε ή επιλέξτε μέρα για προσθήκη.</p>
+              <p className={`mt-0.5 text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                Σύρετε ή επιλέξτε μέρα για προσθήκη.
+              </p>
             </div>
 
             <div className="p-3 space-y-2">
-              {/* Search */}
               <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
+                <Search className={`pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
                 <input
-                  className="h-8 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 pl-9 pr-3 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30"
+                  className={searchInputCls}
                   placeholder="Αναζήτηση τμήματος..."
                   value={classSearch}
                   onChange={(e) => setClassSearch(e.target.value)}
                 />
               </div>
 
-              {/* Class list */}
               {classes.length === 0 ? (
-                <p className="py-4 text-center text-[11px] text-slate-500">Δεν υπάρχουν ακόμη τμήματα.</p>
+                <p className={`py-4 text-center text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                  Δεν υπάρχουν ακόμη τμήματα.
+                </p>
               ) : filteredClasses.length === 0 ? (
-                <p className="py-4 text-center text-[11px] text-slate-500">Δεν βρέθηκαν τμήματα.</p>
+                <p className={`py-4 text-center text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                  Δεν βρέθηκαν τμήματα.
+                </p>
               ) : (
                 <div className="max-h-[520px] space-y-1.5 overflow-y-auto pr-0.5">
                   {filteredClasses.map((cls) => {
@@ -575,21 +628,25 @@ export default function ProgramPage() {
 
                     return (
                       <div key={cls.id}
-                        className="group flex items-center justify-between gap-2 rounded-xl border border-slate-700/50 bg-slate-900/30 px-3 py-2.5 transition hover:border-slate-600/60 hover:bg-slate-800/40 cursor-grab active:cursor-grabbing"
+                        className={classCardCls}
                         draggable
                         onDragStart={() => setDragClassId(cls.id)}
                         onDragEnd={() => setDragClassId((prev) => (prev === cls.id ? null : prev))}
                       >
                         <div className="flex-1 min-w-0">
-                          <div className="text-xs font-semibold text-slate-100 truncate">{cls.title || 'Τμήμα'}</div>
+                          <div className={`text-xs font-semibold truncate ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+                            {cls.title || 'Τμήμα'}
+                          </div>
                           {metaParts.length > 0 && (
-                            <div className="mt-0.5 text-[10px] text-slate-400 truncate">{metaParts.join(' · ')}</div>
+                            <div className={`mt-0.5 text-[10px] truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                              {metaParts.join(' · ')}
+                            </div>
                           )}
                         </div>
 
                         <div className="relative shrink-0">
                           <select
-                            className="h-7 appearance-none rounded-lg border border-slate-600/60 bg-slate-800/80 pl-2 pr-6 text-[10px] text-slate-200 outline-none transition hover:border-slate-500 focus:border-[color:var(--color-accent)]"
+                            className={daySelectCls}
                             defaultValue=""
                             onChange={(e) => {
                               const day = e.target.value;
@@ -601,7 +658,7 @@ export default function ProgramPage() {
                             <option value="">+ Μέρα</option>
                             {DAY_OPTIONS.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
                           </select>
-                          <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-400" />
+                          <ChevronDown className={`pointer-events-none absolute right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
                         </div>
                       </div>
                     );
@@ -612,8 +669,8 @@ export default function ProgramPage() {
           </section>
 
           {/* ── Right: weekly schedule ── */}
-          <section className="flex-1 overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-2xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]">
-            <div className="border-b border-slate-700/60 bg-slate-900/40 px-4 py-3">
+          <section className={`flex-1 ${panelCls}`}>
+            <div className={panelHeaderCls}>
               <h2 className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'color-mix(in srgb, var(--color-accent) 80%, white)' }}>
                 Εβδομαδιαίο πλάνο
               </h2>
@@ -623,21 +680,25 @@ export default function ProgramPage() {
               <div className="min-w-[700px] grid grid-cols-7 gap-2">
                 {DAY_OPTIONS.map((day) => (
                   <div key={day.value}
-                    className={`flex flex-col rounded-xl border transition-colors ${dragClassId ? 'border-dashed border-slate-500/60 bg-slate-800/30' : 'border-slate-700/40 bg-slate-900/20'}`}
+                    className={`flex flex-col rounded-xl border transition-colors ${
+                      dragClassId
+                        ? isDark ? 'border-dashed border-slate-500/60 bg-slate-800/30' : 'border-dashed border-slate-400/60 bg-slate-100/60'
+                        : isDark ? 'border-slate-700/40 bg-slate-900/20' : 'border-slate-200 bg-slate-50/60'
+                    }`}
                     onDragOver={(e) => { if (dragClassId) e.preventDefault(); }}
                     onDrop={() => handleDropOnDay(day.value)}
                   >
-                    {/* Day header */}
-                    <div className="border-b border-slate-700/40 px-2 py-2 text-center text-[9px] font-bold uppercase tracking-widest"
+                    <div className={`border-b px-2 py-2 text-center text-[9px] font-bold uppercase tracking-widest ${isDark ? 'border-slate-700/40' : 'border-slate-200'}`}
                       style={{ color: 'color-mix(in srgb, var(--color-accent) 70%, white)' }}>
                       {day.label}
                     </div>
 
-                    {/* Slots */}
                     <div className="flex-1 space-y-1.5 p-1.5 min-h-[120px]">
                       {itemsByDay[day.value]?.length === 0 ? (
-                        <div className="flex h-full min-h-[80px] items-center justify-center rounded-lg border border-dashed border-slate-700/40 bg-white/[0.02]">
-                          <p className="text-[9px] text-center text-slate-600 px-1">Σύρετε τμήμα εδώ</p>
+                        <div className={`flex h-full min-h-[80px] items-center justify-center rounded-lg border border-dashed ${isDark ? 'border-slate-700/40 bg-white/[0.02]' : 'border-slate-300/60 bg-white/40'}`}>
+                          <p className={`text-[9px] text-center px-1 ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
+                            Σύρετε τμήμα εδώ
+                          </p>
                         </div>
                       ) : (
                         itemsByDay[day.value].map((item) => {
@@ -646,16 +707,16 @@ export default function ProgramPage() {
                           const subjForItem = item.subject_id ? subjectById.get(item.subject_id) : cls.subject_id ? subjectById.get(cls.subject_id) : null;
                           const subjName = subjForItem?.name ?? cls.subject ?? '';
                           const tutorNameForItem = item.tutor_id ? (tutorNameById.get(item.tutor_id) ?? '') : cls.tutor_id ? (tutorNameById.get(cls.tutor_id) ?? '') : '';
-
-                          const timeRange = item.start_time && item.end_time
-                            ? `${formatTimeDisplay(item.start_time)} – ${formatTimeDisplay(item.end_time)}`
-                            : '';
-
+                          const timeRange = item.start_time && item.end_time ? `${formatTimeDisplay(item.start_time)} – ${formatTimeDisplay(item.end_time)}` : '';
                           const classLabel = [cls.title, subjName, tutorNameForItem].filter(Boolean).join(' · ');
 
                           return (
                             <div key={item.id}
-                              className="group relative cursor-pointer rounded-lg border border-slate-600/40 bg-slate-800/50 px-2 py-1.5 text-[10px] transition hover:border-[color:var(--color-accent)]/50 hover:bg-slate-700/50"
+                              className={`group relative cursor-pointer rounded-lg border px-2 py-1.5 text-[10px] transition ${
+                                isDark
+                                  ? 'border-slate-600/40 bg-slate-800/50 hover:border-[color:var(--color-accent)]/50 hover:bg-slate-700/50'
+                                  : 'border-slate-200 bg-white hover:border-[color:var(--color-accent)]/50 hover:bg-slate-50'
+                              }`}
                               onClick={() => openEditSlotModal(item)}
                             >
                               <button type="button"
@@ -667,10 +728,12 @@ export default function ProgramPage() {
                               >
                                 ✕
                               </button>
-                              <div className="font-semibold text-slate-100 leading-tight pr-3">{cls.title}</div>
-                              {subjName && <div className="text-[9px] text-slate-400 mt-0.5">{subjName}</div>}
+                              <div className={`font-semibold leading-tight pr-3 ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+                                {cls.title}
+                              </div>
+                              {subjName && <div className={`text-[9px] mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{subjName}</div>}
                               {timeRange && (
-                                <div className="mt-1 flex items-center gap-0.5 text-[9px] text-slate-500">
+                                <div className={`mt-1 flex items-center gap-0.5 text-[9px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                                   <Clock className="h-2.5 w-2.5" />{timeRange}
                                 </div>
                               )}
@@ -690,7 +753,7 @@ export default function ProgramPage() {
       {/* ── Add slot modal ── */}
       {addModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl" style={{ background: 'var(--color-sidebar)' }}>
+          <div className={modalCardCls} style={{ background: 'var(--color-sidebar)' }}>
             <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 30%, transparent))' }} />
             <div className="flex items-center justify-between px-6 pt-5 pb-4">
               <div className="flex items-center gap-3">
@@ -698,10 +761,9 @@ export default function ProgramPage() {
                   style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>
                   <CalendarDays className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
                 </div>
-                <h2 className="text-sm font-semibold text-slate-50">Προσθήκη στο πρόγραμμα</h2>
+                <h2 className={modalTitleCls}>Προσθήκη στο πρόγραμμα</h2>
               </div>
-              <button type="button" onClick={closeAddSlotModal}
-                className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-800/50 text-slate-400 transition hover:border-slate-600 hover:text-slate-200">
+              <button type="button" onClick={closeAddSlotModal} className={modalCloseBtnCls}>
                 <X className="h-3.5 w-3.5" />
               </button>
             </div>
@@ -727,11 +789,8 @@ export default function ProgramPage() {
               />
             </div>
 
-            <div className="flex justify-end gap-2.5 border-t border-slate-800/70 bg-slate-900/20 px-6 py-4 mt-4">
-              <button type="button" onClick={closeAddSlotModal}
-                className="rounded-lg border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-slate-700/60">
-                Ακύρωση
-              </button>
+            <div className={modalFooterCls}>
+              <button type="button" onClick={closeAddSlotModal} className={cancelBtnCls}>Ακύρωση</button>
               <button type="button" onClick={handleConfirmAddSlot} disabled={savingSlot}
                 className="inline-flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-semibold text-black shadow-sm transition hover:brightness-110 active:scale-[0.97] disabled:opacity-60"
                 style={{ backgroundColor: 'var(--color-accent)' }}>
@@ -745,7 +804,7 @@ export default function ProgramPage() {
       {/* ── Edit slot modal ── */}
       {editModalOpen && editForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl" style={{ background: 'var(--color-sidebar)' }}>
+          <div className={modalCardCls} style={{ background: 'var(--color-sidebar)' }}>
             <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 30%, transparent))' }} />
             <div className="flex items-center justify-between px-6 pt-5 pb-4">
               <div className="flex items-center gap-3">
@@ -754,12 +813,11 @@ export default function ProgramPage() {
                   <CalendarDays className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
                 </div>
                 <div>
-                  <h2 className="text-sm font-semibold text-slate-50">Επεξεργασία στο πρόγραμμα</h2>
-                  {currentEditClass && <p className="text-[11px] text-slate-400 mt-0.5">{currentEditClass.title}</p>}
+                  <h2 className={modalTitleCls}>Επεξεργασία στο πρόγραμμα</h2>
+                  {currentEditClass && <p className={`text-[11px] mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{currentEditClass.title}</p>}
                 </div>
               </div>
-              <button type="button" onClick={closeEditSlotModal}
-                className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-800/50 text-slate-400 transition hover:border-slate-600 hover:text-slate-200">
+              <button type="button" onClick={closeEditSlotModal} className={modalCloseBtnCls}>
                 <X className="h-3.5 w-3.5" />
               </button>
             </div>
@@ -785,11 +843,8 @@ export default function ProgramPage() {
               />
             </div>
 
-            <div className="flex justify-end gap-2.5 border-t border-slate-800/70 bg-slate-900/20 px-6 py-4 mt-4">
-              <button type="button" onClick={closeEditSlotModal} disabled={savingEdit}
-                className="rounded-lg border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-slate-700/60 disabled:opacity-50">
-                Ακύρωση
-              </button>
+            <div className={modalFooterCls}>
+              <button type="button" onClick={closeEditSlotModal} disabled={savingEdit} className={cancelBtnCls}>Ακύρωση</button>
               <button type="button" onClick={handleConfirmEditSlot} disabled={savingEdit}
                 className="inline-flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-semibold text-black shadow-sm transition hover:brightness-110 active:scale-[0.97] disabled:opacity-60"
                 style={{ backgroundColor: 'var(--color-accent)' }}>
@@ -803,24 +858,25 @@ export default function ProgramPage() {
       {/* ── Delete slot modal ── */}
       {deleteSlotTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="relative w-full max-w-sm overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl" style={{ background: 'var(--color-sidebar)' }}>
+          <div className={modalSmCardCls} style={{ background: 'var(--color-sidebar)' }}>
             <div className="h-1 w-full bg-gradient-to-r from-red-600 via-red-500 to-rose-500" />
             <div className="p-6">
               <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/15 ring-1 ring-red-500/30">
                 <CalendarDays className="h-5 w-5 text-red-400" />
               </div>
-              <h3 className="mb-1 text-sm font-semibold text-slate-50">Διαγραφή από το πρόγραμμα</h3>
-              <p className="text-xs leading-relaxed text-slate-400">
+              <h3 className={`mb-1 text-sm font-semibold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>
+                Διαγραφή από το πρόγραμμα
+              </h3>
+              <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                 Αφαίρεση του τμήματος{' '}
-                <span className="font-semibold text-slate-100">«{deleteSlotTarget.classLabel}»</span>{' '}
+                <span className={`font-semibold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>«{deleteSlotTarget.classLabel}»</span>{' '}
                 από την ημέρα{' '}
-                <span className="font-semibold text-slate-100">{deleteSlotTarget.dayLabel}</span>
-                {deleteSlotTarget.timeRange && <> στις <span className="font-semibold text-slate-100">{deleteSlotTarget.timeRange}</span></>};
+                <span className={`font-semibold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{deleteSlotTarget.dayLabel}</span>
+                {deleteSlotTarget.timeRange && <> στις <span className={`font-semibold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{deleteSlotTarget.timeRange}</span></>};
                 {' '}Η ενέργεια αυτή δεν μπορεί να ανακληθεί.
               </p>
               <div className="mt-6 flex justify-end gap-2.5">
-                <button type="button" onClick={() => { if (!deletingSlot) setDeleteSlotTarget(null); }} disabled={deletingSlot}
-                  className="rounded-lg border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-slate-700/60 disabled:opacity-50">
+                <button type="button" onClick={() => { if (!deletingSlot) setDeleteSlotTarget(null); }} disabled={deletingSlot} className={cancelBtnCls}>
                   Ακύρωση
                 </button>
                 <button type="button" onClick={handleConfirmDeleteSlot} disabled={deletingSlot}
