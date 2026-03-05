@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../auth';
+import { useTheme } from '../../context/ThemeContext';
 import {
   Loader2, Save, HandCoins, History, X, Briefcase,
   Search, ChevronLeft, ChevronRight,
@@ -10,7 +11,6 @@ import MonthlySubscriptionModal, {
   type PeriodMode as MonthlyPeriodMode,
 } from '../../components/economics/MonthlySubscriptionModal';
 
-// ── Types ──────────────────────────────────────────────────────────────────
 type StudentRow = { id: string; school_id: string; full_name: string | null };
 type PackageType = 'hourly' | 'monthly' | 'yearly';
 type PackageRow = { id: string; school_id: string; name: string; price: number; currency: string; is_active: boolean; sort_order: number; package_type?: PackageType | null; hours?: number | null; created_at?: string | null };
@@ -20,7 +20,6 @@ type StudentViewRow = { student_id: string; student_name: string; sub: Subscript
 
 const CURRENCY_SYMBOL = '€';
 
-// ── Helpers ────────────────────────────────────────────────────────────────
 function money(n: number | null | undefined) { const v = Number(n ?? 0); return Number.isFinite(v) ? v.toFixed(2) : '0.00'; }
 function parseMoney(input: string) { const n = Number((input ?? '').trim().replace(',', '.').replace(/[^0-9.]/g, '')); return Number.isFinite(n) ? Math.max(0, n) : 0; }
 function parsePct(input: string) { const n = Number((input ?? '').trim().replace(',', '.').replace(/[^0-9.]/g, '')); return Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 0; }
@@ -37,13 +36,56 @@ function isMonthlyPackageName(name: string | null | undefined) { const n=normali
 function isHourlyPackageName(name: string | null | undefined) { const n=normalizeText(name); return n.includes('ωρια')||n.includes('hour')||n.includes('hourly'); }
 function formatDateTime(iso: string | null) { if (!iso) return '—'; const d=new Date(iso); return Number.isNaN(d.getTime()) ? iso : d.toLocaleString('el-GR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
 
-// ── Shared input style ──────────────────────────────────────────────────────
-const inputCls = 'h-8 rounded-lg border border-slate-700/70 bg-slate-900/60 px-2.5 text-[11px] text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30';
-
 export default function StudentsSubscriptionsPage() {
   const { profile } = useAuth();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const schoolId = profile?.school_id ?? null;
   const pageSize = 15;
+
+  const inputCls = isDark
+    ? 'h-8 rounded-lg border border-slate-700/70 bg-slate-900/60 px-2.5 text-[11px] text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30'
+    : 'h-8 rounded-lg border border-slate-300 bg-white px-2.5 text-[11px] text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30';
+
+  const cardCls = isDark
+    ? 'overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]'
+    : 'overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md';
+
+  const theadCls = isDark
+    ? 'border-b border-slate-800/60 bg-slate-900/40 text-[10px] font-semibold uppercase tracking-widest'
+    : 'border-b border-slate-200 bg-slate-50 text-[10px] font-semibold uppercase tracking-widest';
+
+  const pkgSelectCls = isDark
+    ? 'w-full max-w-[280px] rounded-lg border border-slate-700/70 bg-slate-900/60 px-2 py-1.5 text-[11px] text-slate-100 outline-none transition focus:border-[color:var(--color-accent)]'
+    : 'w-full max-w-[280px] rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-[11px] text-slate-700 outline-none transition focus:border-[color:var(--color-accent)]';
+
+  const periodBadgeCls = isDark
+    ? 'inline-flex rounded-full border border-slate-700/60 bg-slate-900/30 px-2.5 py-1 text-[11px] text-slate-300'
+    : 'inline-flex rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-[11px] text-slate-600';
+
+  const paginationBarCls = isDark
+    ? 'flex items-center justify-between gap-3 border-t border-slate-800/60 bg-slate-900/20 px-4 py-3'
+    : 'flex items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-4 py-3';
+
+  const paginationBtnCls = isDark
+    ? 'flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-900/40 text-slate-400 transition hover:bg-slate-800/50 hover:text-slate-200 disabled:opacity-30'
+    : 'flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30';
+
+  const searchInputCls = isDark
+    ? 'h-9 w-full rounded-xl border border-slate-700/60 bg-slate-900/60 pl-8 pr-3 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30 backdrop-blur'
+    : 'h-9 w-full rounded-xl border border-slate-300 bg-white pl-8 pr-3 text-xs text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30';
+
+  const modalCardCls = isDark
+    ? 'relative w-full max-w-lg overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl'
+    : 'relative w-full max-w-lg overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl';
+
+  const modalCloseBtnCls = isDark
+    ? 'flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-800/50 text-slate-400 transition hover:border-slate-600 hover:text-slate-200'
+    : 'flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-slate-500 transition hover:border-slate-300 hover:text-slate-700';
+
+  const cancelBtnCls = isDark
+    ? 'rounded-lg border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-slate-700/60'
+    : 'rounded-lg border border-slate-300 bg-white px-4 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50';
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -213,10 +255,8 @@ export default function StudentsSubscriptionsPage() {
     return '—';
   };
 
-  // ── Render ─────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6 px-1">
-
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3">
@@ -224,45 +264,35 @@ export default function StudentsSubscriptionsPage() {
             <Briefcase className="h-4 w-4 text-black"/>
           </div>
           <div>
-            <h1 className="text-base font-semibold tracking-tight text-slate-50">Συνδρομές Μαθητών</h1>
-            <p className="mt-0.5 text-xs text-slate-400">Ανάθεση πακέτου &amp; πληρωμές (υπολογίζει αυτόματα υπόλοιπο).</p>
+            <h1 className={`text-base font-semibold tracking-tight ${isDark?'text-slate-50':'text-slate-800'}`}>Συνδρομές Μαθητών</h1>
+            <p className={`mt-0.5 text-xs ${isDark?'text-slate-400':'text-slate-500'}`}>Ανάθεση πακέτου &amp; πληρωμές (υπολογίζει αυτόματα υπόλοιπο).</p>
           </div>
         </div>
-
-        {/* Search */}
         <div className="relative w-full sm:w-64">
-          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500 pointer-events-none"/>
-          <input
-            className="h-9 w-full rounded-xl border border-slate-700/60 bg-slate-900/60 pl-8 pr-3 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30 backdrop-blur"
-            placeholder="Αναζήτηση μαθητή..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
+          <Search className={`absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 pointer-events-none ${isDark?'text-slate-500':'text-slate-400'}`}/>
+          <input className={searchInputCls} placeholder="Αναζήτηση μαθητή..." value={search} onChange={e => setSearch(e.target.value)}/>
         </div>
       </div>
 
-      {/* Feedback banner */}
       {(error || info) && (
-        <div className={`flex items-start gap-3 rounded-xl border px-4 py-3 text-xs backdrop-blur ${error ? 'border-red-500/40 bg-red-950/40 text-red-200' : 'border-emerald-500/30 bg-emerald-950/30 text-emerald-200'}`}>
-          <span className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${error ? 'bg-red-400' : 'bg-emerald-400'}`}/>
+        <div className={`flex items-start gap-3 rounded-xl border px-4 py-3 text-xs ${error?(isDark?'border-red-500/40 bg-red-950/40 text-red-200':'border-red-300 bg-red-50 text-red-700'):(isDark?'border-emerald-500/30 bg-emerald-950/30 text-emerald-200':'border-emerald-300 bg-emerald-50 text-emerald-700')}`}>
+          <span className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${error?'bg-red-400':'bg-emerald-400'}`}/>
           {error ?? info}
         </div>
       )}
 
-      {/* Table card */}
-      <div className="overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]">
+      <div className={cardCls}>
         <div className="overflow-x-auto overflow-y-visible">
           {loading ? (
-            <div className="flex items-center gap-2.5 px-6 py-10 text-sm text-slate-400">
-              <Loader2 className="h-4 w-4 animate-spin" style={{ color: 'var(--color-accent)' }}/>
-              Φόρτωση…
+            <div className={`flex items-center gap-2.5 px-6 py-10 text-sm ${isDark?'text-slate-400':'text-slate-500'}`}>
+              <Loader2 className="h-4 w-4 animate-spin" style={{ color:'var(--color-accent)' }}/>Φόρτωση…
             </div>
           ) : rows.length === 0 ? (
-            <div className="flex items-center justify-center px-6 py-12 text-xs text-slate-500">Δεν βρέθηκαν μαθητές.</div>
+            <div className={`flex items-center justify-center px-6 py-12 text-xs ${isDark?'text-slate-500':'text-slate-400'}`}>Δεν βρέθηκαν μαθητές.</div>
           ) : (
             <table className="min-w-full border-collapse text-xs">
               <thead>
-                <tr className="border-b border-slate-800/60 bg-slate-900/40 text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'color-mix(in srgb, var(--color-accent) 70%, white)' }}>
+                <tr className={theadCls} style={{ color:'color-mix(in srgb, var(--color-accent) 70%, white)' }}>
                   <th className="px-4 py-3 text-left">Μαθητής</th>
                   <th className="px-4 py-3 text-left">Πακέτο</th>
                   <th className="px-4 py-3 text-left">Διάστημα</th>
@@ -273,129 +303,66 @@ export default function StudentsSubscriptionsPage() {
                   <th className="px-4 py-3 text-right">Ενέργειες</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/40">
+              <tbody className={isDark?'divide-y divide-slate-800/40':'divide-y divide-slate-100'}>
                 {rows.map((r) => {
-                  const hasSub = !!r.sub;
-                  const paid = r.paid;
-                  const pkgNameForLogic = r.sub?.package_name ?? '';
-                  const isHourly = isHourlyPackageName(pkgNameForLogic);
-                  const billedRaw = r.sub ? Number((r.sub as any).charge_amount ?? r.sub.price ?? 0) : 0;
-                  const billed = !hasSub ? 0 : isHourly ? Math.abs(billedRaw) : billedRaw;
-                  const computedBalance = !hasSub ? 0 : isHourly ? Math.max(0, billed-paid) : Number(r.balance??0);
-                  const displayPrice = !hasSub ? 0 : isHourly ? Number(r.sub?.price??0) : Number(r.sub?.price??billed);
-                  const paidCls = !hasSub ? 'text-slate-500' : paid > 0 ? 'text-emerald-300' : 'text-slate-400';
-                  const balanceCls = !hasSub ? 'text-slate-500' : computedBalance > 0 ? 'text-amber-300' : 'text-emerald-300';
-                  const badge = !hasSub
-                    ? { text: 'Χωρίς πακέτο', cls: 'border-slate-700/60 bg-slate-900/30 text-slate-400' }
-                    : paid <= 0 && billed > 0
-                      ? { text: 'Ανεξόφλητο', cls: 'border-red-500/40 bg-red-950/30 text-red-300' }
-                      : computedBalance > 0
-                        ? { text: 'Υπόλοιπο', cls: 'border-amber-500/40 bg-amber-950/30 text-amber-300' }
-                        : { text: 'Εξοφλημένο', cls: 'border-emerald-500/40 bg-emerald-950/30 text-emerald-300' };
-                  const selectedPkgId = selectedPackage[r.student_id] ?? '';
-                  const selectedPkg = selectedPkgId ? packageById.get(selectedPkgId) ?? null : null;
-                  const summary = periodSummary(r.student_id, selectedPkg?.name ?? r.sub?.package_name, r.sub);
-
+                  const hasSub=!!r.sub, paid=r.paid;
+                  const pkgNameForLogic=r.sub?.package_name??'', isHourly=isHourlyPackageName(pkgNameForLogic);
+                  const billedRaw=r.sub?Number((r.sub as any).charge_amount??r.sub.price??0):0;
+                  const billed=!hasSub?0:isHourly?Math.abs(billedRaw):billedRaw;
+                  const computedBalance=!hasSub?0:isHourly?Math.max(0,billed-paid):Number(r.balance??0);
+                  const displayPrice=!hasSub?0:isHourly?Number(r.sub?.price??0):Number(r.sub?.price??billed);
+                  const paidCls=!hasSub?(isDark?'text-slate-500':'text-slate-300'):paid>0?(isDark?'text-emerald-400':'text-emerald-600'):(isDark?'text-slate-400':'text-slate-400');
+                  const balanceCls=!hasSub?(isDark?'text-slate-500':'text-slate-300'):computedBalance>0?(isDark?'text-amber-400':'text-amber-600'):(isDark?'text-emerald-400':'text-emerald-600');
+                  const badge=!hasSub
+                    ?{text:'Χωρίς πακέτο',cls:isDark?'border-slate-700/60 bg-slate-900/30 text-slate-400':'border-slate-200 bg-slate-100 text-slate-500'}
+                    :paid<=0&&billed>0?{text:'Ανεξόφλητο',cls:isDark?'border-red-500/40 bg-red-950/30 text-red-300':'border-red-300 bg-red-50 text-red-600'}
+                    :computedBalance>0?{text:'Υπόλοιπο',cls:isDark?'border-amber-500/40 bg-amber-950/30 text-amber-300':'border-amber-300 bg-amber-50 text-amber-600'}
+                    :{text:'Εξοφλημένο',cls:isDark?'border-emerald-500/40 bg-emerald-950/30 text-emerald-300':'border-emerald-300 bg-emerald-50 text-emerald-700'};
+                  const selectedPkgId=selectedPackage[r.student_id]??'';
+                  const selectedPkg=selectedPkgId?packageById.get(selectedPkgId)??null:null;
+                  const summary=periodSummary(r.student_id,selectedPkg?.name??r.sub?.package_name,r.sub);
                   return (
-                    <tr key={r.student_id} className="transition-colors hover:bg-white/[0.025]">
-                      {/* Name */}
+                    <tr key={r.student_id} className={isDark?'transition-colors hover:bg-white/[0.025]':'transition-colors hover:bg-slate-50/80'}>
                       <td className="px-4 py-3 align-top">
-                        <span className="font-medium text-slate-100">{r.student_name}</span>
+                        <span className={`font-medium ${isDark?'text-slate-100':'text-slate-700'}`}>{r.student_name}</span>
                       </td>
-
-                      {/* Package selector + pricing */}
                       <td className="px-4 py-3 align-top">
-                        <select
-                          value={selectedPkgId}
-                          onChange={e => {
-                            const nextId=e.target.value, prevId=selectedPackage[r.student_id]??'';
-                            setSelectedPackage(prev=>({...prev,[r.student_id]:nextId}));
-                            setCustomPriceInput(p=>({...p,[r.student_id]:''}));
-                            setDiscountPctInput(p=>({...p,[r.student_id]:''}));
-                            if (!nextId) { setStartsOn(p=>({...p,[r.student_id]:''})); setEndsOn(p=>({...p,[r.student_id]:''})); setPeriodMode(p=>({...p,[r.student_id]:'month'})); const now=new Date(); setSelectedYear(p=>({...p,[r.student_id]:String(now.getFullYear())})); setSelectedMonthNum(p=>({...p,[r.student_id]:pad2(now.getMonth()+1)})); return; }
-                            openPackageModalIfNeeded(r.student_id, r.student_name, nextId, prevId);
-                          }}
-                          className="w-full max-w-[280px] rounded-lg border border-slate-700/70 bg-slate-900/60 px-2 py-1.5 text-[11px] text-slate-100 outline-none transition focus:border-[color:var(--color-accent)]"
-                        >
+                        <select value={selectedPkgId} onChange={e => {
+                          const nextId=e.target.value,prevId=selectedPackage[r.student_id]??'';
+                          setSelectedPackage(prev=>({...prev,[r.student_id]:nextId}));
+                          setCustomPriceInput(p=>({...p,[r.student_id]:''}));
+                          setDiscountPctInput(p=>({...p,[r.student_id]:''}));
+                          if (!nextId){setStartsOn(p=>({...p,[r.student_id]:''}));setEndsOn(p=>({...p,[r.student_id]:''}));setPeriodMode(p=>({...p,[r.student_id]:'month'}));const now=new Date();setSelectedYear(p=>({...p,[r.student_id]:String(now.getFullYear())}));setSelectedMonthNum(p=>({...p,[r.student_id]:pad2(now.getMonth()+1)}));return;}
+                          openPackageModalIfNeeded(r.student_id,r.student_name,nextId,prevId);
+                        }} className={pkgSelectCls}>
                           <option value="">— Επιλογή πακέτου —</option>
-                          {packages.map(p => (
-                            <option key={p.id} value={p.id}>{p.name} · {money(p.price)} {CURRENCY_SYMBOL}{p.is_active?'':' (ανενεργό)'}</option>
-                          ))}
+                          {packages.map(p=><option key={p.id} value={p.id}>{p.name} · {money(p.price)} {CURRENCY_SYMBOL}{p.is_active?'':' (ανενεργό)'}</option>)}
                         </select>
                         <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                          <input
-                            value={customPriceInput[r.student_id]??''}
-                            onChange={e => setCustomPriceInput(p=>({...p,[r.student_id]:e.target.value.replace(',','.').replace(/[^0-9.]/g,'')}))}
-                            disabled={!selectedPkgId} inputMode="decimal"
-                            placeholder={selectedPkg ? `Τιμή (${money(selectedPkg.price)} ${CURRENCY_SYMBOL})` : 'Τιμή'}
-                            className={`w-28 ${inputCls} ${!selectedPkgId ? 'cursor-not-allowed opacity-50' : ''}`}
-                            title="Προαιρετικό: custom τιμή"
-                          />
-                          <input
-                            value={discountPctInput[r.student_id]??''}
-                            onChange={e => setDiscountPctInput(p=>({...p,[r.student_id]:e.target.value.replace(',','.').replace(/[^0-9.]/g,'')}))}
-                            disabled={!selectedPkgId} inputMode="decimal" placeholder="Έκπτωση %"
-                            className={`w-20 ${inputCls} ${!selectedPkgId ? 'cursor-not-allowed opacity-50' : ''}`}
-                            title="Ποσοστιαία έκπτωση 0–100"
-                          />
-                          <span className="text-[11px] text-slate-500">
-                            Τελική: <span className="font-semibold text-slate-200">{selectedPkgId ? `${money(getFinalPriceForStudent(r.student_id))} ${CURRENCY_SYMBOL}` : '—'}</span>
-                          </span>
+                          <input value={customPriceInput[r.student_id]??''} onChange={e=>setCustomPriceInput(p=>({...p,[r.student_id]:e.target.value.replace(',','.').replace(/[^0-9.]/g,'')}))} disabled={!selectedPkgId} inputMode="decimal" placeholder={selectedPkg?`Τιμή (${money(selectedPkg.price)} ${CURRENCY_SYMBOL})`:'Τιμή'} className={`w-28 ${inputCls} ${!selectedPkgId?'cursor-not-allowed opacity-50':''}`}/>
+                          <input value={discountPctInput[r.student_id]??''} onChange={e=>setDiscountPctInput(p=>({...p,[r.student_id]:e.target.value.replace(',','.').replace(/[^0-9.]/g,'')}))} disabled={!selectedPkgId} inputMode="decimal" placeholder="Έκπτωση %" className={`w-20 ${inputCls} ${!selectedPkgId?'cursor-not-allowed opacity-50':''}`}/>
+                          <span className={`text-[11px] ${isDark?'text-slate-500':'text-slate-400'}`}>Τελική: <span className={`font-semibold ${isDark?'text-slate-200':'text-slate-700'}`}>{selectedPkgId?`${money(getFinalPriceForStudent(r.student_id))} ${CURRENCY_SYMBOL}`:'—'}</span></span>
                         </div>
                       </td>
-
-                      {/* Period */}
-                      <td className="px-4 py-3 align-top">
-                        <span className="inline-flex rounded-full border border-slate-700/60 bg-slate-900/30 px-2.5 py-1 text-[11px] text-slate-300">{summary}</span>
-                      </td>
-
-                      {/* Price */}
-                      <td className="px-4 py-3 align-top text-right text-[12px] text-slate-200 tabular-nums">
-                        {r.sub ? `${money(displayPrice)} ${CURRENCY_SYMBOL}${isHourly?' / ώρα':''}` : '—'}
-                      </td>
-
-                      {/* Paid */}
-                      <td className={`px-4 py-3 align-top text-right text-[12px] tabular-nums font-medium ${paidCls}`}>
-                        {r.sub ? `${money(paid)} ${CURRENCY_SYMBOL}` : '—'}
-                      </td>
-
-                      {/* Balance */}
-                      <td className={`px-4 py-3 align-top text-right text-[12px] tabular-nums font-medium ${balanceCls}`}>
-                        {r.sub ? `${money(computedBalance)} ${CURRENCY_SYMBOL}` : '—'}
-                      </td>
-
-                      {/* Status */}
-                      <td className="px-4 py-3 align-top">
-                        <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-medium ${badge.cls}`}>{badge.text}</span>
-                      </td>
-
-                      {/* Actions */}
+                      <td className="px-4 py-3 align-top"><span className={periodBadgeCls}>{summary}</span></td>
+                      <td className={`px-4 py-3 align-top text-right text-[12px] tabular-nums ${isDark?'text-slate-200':'text-slate-700'}`}>{r.sub?`${money(displayPrice)} ${CURRENCY_SYMBOL}${isHourly?' / ώρα':''}`:'—'}</td>
+                      <td className={`px-4 py-3 align-top text-right text-[12px] tabular-nums font-medium ${paidCls}`}>{r.sub?`${money(paid)} ${CURRENCY_SYMBOL}`:'—'}</td>
+                      <td className={`px-4 py-3 align-top text-right text-[12px] tabular-nums font-medium ${balanceCls}`}>{r.sub?`${money(computedBalance)} ${CURRENCY_SYMBOL}`:'—'}</td>
+                      <td className="px-4 py-3 align-top"><span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-medium ${badge.cls}`}>{badge.text}</span></td>
                       <td className="px-4 py-3 align-top">
                         <div className="flex items-center justify-end gap-1.5">
-                          <input
-                            value={paymentInput[r.student_id]??''}
-                            onChange={e => setPaymentInput(prev=>({...prev,[r.student_id]:e.target.value.replace(',','.').replace(/[^0-9.]/g,'')}))}
-                            disabled={!hasSub || payingStudentId===r.student_id}
-                            inputMode="decimal" placeholder="Πληρωμή"
-                            className={`w-24 ${inputCls} ${(!hasSub || payingStudentId===r.student_id) ? 'cursor-not-allowed opacity-50' : ''}`}
-                          />
-                          {/* Pay */}
-                          <button type="button" onClick={() => addPayment(r.student_id)} disabled={!hasSub || payingStudentId===r.student_id}
-                            className={`flex h-8 w-8 items-center justify-center rounded-lg border transition ${hasSub ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20' : 'cursor-not-allowed border-slate-800/60 bg-slate-900/20 text-slate-600'}`}
-                            title="Προσθήκη πληρωμής" aria-label="Προσθήκη πληρωμής">
-                            {payingStudentId===r.student_id ? <Loader2 className="h-3.5 w-3.5 animate-spin"/> : <HandCoins className="h-3.5 w-3.5"/>}
+                          <input value={paymentInput[r.student_id]??''} onChange={e=>setPaymentInput(prev=>({...prev,[r.student_id]:e.target.value.replace(',','.').replace(/[^0-9.]/g,'')}))} disabled={!hasSub||payingStudentId===r.student_id} inputMode="decimal" placeholder="Πληρωμή" className={`w-24 ${inputCls} ${(!hasSub||payingStudentId===r.student_id)?'cursor-not-allowed opacity-50':''}`}/>
+                          <button type="button" onClick={()=>addPayment(r.student_id)} disabled={!hasSub||payingStudentId===r.student_id}
+                            className={`flex h-8 w-8 items-center justify-center rounded-lg border transition ${hasSub?'border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20':`cursor-not-allowed ${isDark?'border-slate-800/60 bg-slate-900/20 text-slate-600':'border-slate-200 bg-slate-50 text-slate-300'}`}`}>
+                            {payingStudentId===r.student_id?<Loader2 className="h-3.5 w-3.5 animate-spin"/>:<HandCoins className="h-3.5 w-3.5"/>}
                           </button>
-                          {/* Save */}
-                          <button type="button" onClick={() => saveStudentPackage(r.student_id)} disabled={savingStudentId===r.student_id}
-                            className={`flex h-8 w-8 items-center justify-center rounded-lg border transition ${savingStudentId===r.student_id ? 'cursor-not-allowed opacity-50' : ''}`}
-                            style={{ borderColor: 'color-mix(in srgb, var(--color-accent) 40%, transparent)', background: 'color-mix(in srgb, var(--color-accent) 12%, transparent)', color: 'var(--color-accent)' }}
-                            title="Αποθήκευση πακέτου" aria-label="Αποθήκευση πακέτου">
-                            {savingStudentId===r.student_id ? <Loader2 className="h-3.5 w-3.5 animate-spin"/> : <Save className="h-3.5 w-3.5"/>}
+                          <button type="button" onClick={()=>saveStudentPackage(r.student_id)} disabled={savingStudentId===r.student_id}
+                            className={`flex h-8 w-8 items-center justify-center rounded-lg border transition ${savingStudentId===r.student_id?'cursor-not-allowed opacity-50':''}`}
+                            style={{borderColor:'color-mix(in srgb, var(--color-accent) 40%, transparent)',background:'color-mix(in srgb, var(--color-accent) 12%, transparent)',color:'var(--color-accent)'}}>
+                            {savingStudentId===r.student_id?<Loader2 className="h-3.5 w-3.5 animate-spin"/>:<Save className="h-3.5 w-3.5"/>}
                           </button>
-                          {/* History */}
-                          <button type="button" onClick={() => { if (hasSub) setHistoryTarget({studentName:r.student_name,payments:r.payments}); }} disabled={!hasSub}
-                            className={`flex h-8 w-8 items-center justify-center rounded-lg border transition ${hasSub ? 'border-slate-700/60 bg-slate-900/30 text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' : 'cursor-not-allowed border-slate-800/60 bg-slate-900/20 text-slate-600'}`}
-                            title="Ιστορικό πληρωμών" aria-label="Ιστορικό πληρωμών">
+                          <button type="button" onClick={()=>{if(hasSub)setHistoryTarget({studentName:r.student_name,payments:r.payments});}} disabled={!hasSub}
+                            className={`flex h-8 w-8 items-center justify-center rounded-lg border transition ${hasSub?(isDark?'border-slate-700/60 bg-slate-900/30 text-slate-400 hover:bg-slate-800/50 hover:text-slate-200':'border-slate-200 bg-white text-slate-500 hover:bg-slate-100 hover:text-slate-700'):`cursor-not-allowed ${isDark?'border-slate-800/60 bg-slate-900/20 text-slate-600':'border-slate-200 bg-slate-50 text-slate-300'}`}`}>
                             <History className="h-3.5 w-3.5"/>
                           </button>
                         </div>
@@ -407,104 +374,56 @@ export default function StudentsSubscriptionsPage() {
             </table>
           )}
         </div>
-
-        {/* Pagination */}
         {!loading && totalStudents > 0 && (
-          <div className="flex items-center justify-between gap-3 border-t border-slate-800/60 bg-slate-900/20 px-4 py-3">
-            <span className="text-[11px] text-slate-500">
-              Εμφάνιση <span className="text-slate-300">{showingFrom}–{showingTo}</span> από <span className="text-slate-300">{totalStudents}</span>
+          <div className={paginationBarCls}>
+            <span className={`text-[11px] ${isDark?'text-slate-500':'text-slate-400'}`}>
+              Εμφάνιση <span className={isDark?'text-slate-300':'text-slate-700'}>{showingFrom}–{showingTo}</span> από <span className={isDark?'text-slate-300':'text-slate-700'}>{totalStudents}</span>
             </span>
             <div className="flex items-center gap-1">
-              <button type="button" onClick={() => setPage(p=>Math.max(1,p-1))} disabled={page<=1}
-                className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-900/40 text-slate-400 transition hover:bg-slate-800/50 hover:text-slate-200 disabled:opacity-30">
-                <ChevronLeft className="h-3.5 w-3.5"/>
-              </button>
-              <span className="min-w-[56px] text-center text-[11px] text-slate-400"><span className="font-semibold text-slate-200">{page}</span> / {pageCount}</span>
-              <button type="button" onClick={() => setPage(p=>Math.min(pageCount,p+1))} disabled={page>=pageCount}
-                className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-900/40 text-slate-400 transition hover:bg-slate-800/50 hover:text-slate-200 disabled:opacity-30">
-                <ChevronRight className="h-3.5 w-3.5"/>
-              </button>
+              <button type="button" onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page<=1} className={paginationBtnCls}><ChevronLeft className="h-3.5 w-3.5"/></button>
+              <span className={`min-w-[56px] text-center text-[11px] ${isDark?'text-slate-400':'text-slate-500'}`}><span className={`font-semibold ${isDark?'text-slate-200':'text-slate-800'}`}>{page}</span> / {pageCount}</span>
+              <button type="button" onClick={()=>setPage(p=>Math.min(pageCount,p+1))} disabled={page>=pageCount} className={paginationBtnCls}><ChevronRight className="h-3.5 w-3.5"/></button>
             </div>
           </div>
         )}
       </div>
 
-      {/* Yearly Modal */}
-      <YearlySubscriptionModal
-        open={!!yearlyModal}
-        studentName={yearlyModal?.studentName??''}
-        packageName={yearlyModal?.pkgName??''}
-        initialStart={startsOn[yearlyModal?.studentId??'']??''}
-        initialEnd={endsOn[yearlyModal?.studentId??'']??''}
-        onCancel={() => { if (yearlyModal) setSelectedPackage(p=>({...p,[yearlyModal.studentId]:yearlyModal.prevPkgId})); setYearlyModal(null); }}
-        onSave={(startDisplay, endDisplay) => { if (!yearlyModal) return; const sid=yearlyModal.studentId; setStartsOn(p=>({...p,[sid]:startDisplay})); setEndsOn(p=>({...p,[sid]:endDisplay})); setPeriodMode(p=>({...p,[sid]:'range'})); setYearlyModal(null); }}
-      />
+      <YearlySubscriptionModal open={!!yearlyModal} studentName={yearlyModal?.studentName??''} packageName={yearlyModal?.pkgName??''} initialStart={startsOn[yearlyModal?.studentId??'']??''} initialEnd={endsOn[yearlyModal?.studentId??'']??''} onCancel={()=>{if(yearlyModal)setSelectedPackage(p=>({...p,[yearlyModal.studentId]:yearlyModal.prevPkgId}));setYearlyModal(null);}} onSave={(startDisplay,endDisplay)=>{if(!yearlyModal)return;const sid=yearlyModal.studentId;setStartsOn(p=>({...p,[sid]:startDisplay}));setEndsOn(p=>({...p,[sid]:endDisplay}));setPeriodMode(p=>({...p,[sid]:'range'}));setYearlyModal(null);}}/>
+      <MonthlySubscriptionModal open={!!monthlyModal} studentName={monthlyModal?.studentName??''} packageName={monthlyModal?.pkgName??''} yearOptions={yearOptions} monthOptions={monthOptions} initialMode={periodMode[monthlyModal?.studentId??'']??'month'} initialMonth={selectedMonthNum[monthlyModal?.studentId??'']??pad2(new Date().getMonth()+1)} initialYear={selectedYear[monthlyModal?.studentId??'']??String(new Date().getFullYear())} initialStart={startsOn[monthlyModal?.studentId??'']??''} initialEnd={endsOn[monthlyModal?.studentId??'']??''} onCancel={()=>{if(monthlyModal)setSelectedPackage(p=>({...p,[monthlyModal.studentId]:monthlyModal.prevPkgId}));setMonthlyModal(null);}} onSave={({mode,month,year,startDisplay,endDisplay})=>{if(!monthlyModal)return;const sid=monthlyModal.studentId;setPeriodMode(p=>({...p,[sid]:mode}));if(mode==='month'){setSelectedMonthNum(p=>({...p,[sid]:month}));setSelectedYear(p=>({...p,[sid]:year}));const range=monthKeyToRange(`${year}-${month}`);if(range){setStartsOn(p=>({...p,[sid]:isoToDisplayDate(range.startISO)}));setEndsOn(p=>({...p,[sid]:isoToDisplayDate(range.endISO)}));}}else{setStartsOn(p=>({...p,[sid]:startDisplay}));setEndsOn(p=>({...p,[sid]:endDisplay}));}setMonthlyModal(null);}}/>
 
-      {/* Monthly Modal */}
-      <MonthlySubscriptionModal
-        open={!!monthlyModal}
-        studentName={monthlyModal?.studentName??''}
-        packageName={monthlyModal?.pkgName??''}
-        yearOptions={yearOptions} monthOptions={monthOptions}
-        initialMode={periodMode[monthlyModal?.studentId??'']??'month'}
-        initialMonth={selectedMonthNum[monthlyModal?.studentId??'']??pad2(new Date().getMonth()+1)}
-        initialYear={selectedYear[monthlyModal?.studentId??'']??String(new Date().getFullYear())}
-        initialStart={startsOn[monthlyModal?.studentId??'']??''}
-        initialEnd={endsOn[monthlyModal?.studentId??'']??''}
-        onCancel={() => { if (monthlyModal) setSelectedPackage(p=>({...p,[monthlyModal.studentId]:monthlyModal.prevPkgId})); setMonthlyModal(null); }}
-        onSave={({ mode, month, year, startDisplay, endDisplay }) => {
-          if (!monthlyModal) return; const sid=monthlyModal.studentId;
-          setPeriodMode(p=>({...p,[sid]:mode}));
-          if (mode==='month') { setSelectedMonthNum(p=>({...p,[sid]:month})); setSelectedYear(p=>({...p,[sid]:year})); const range=monthKeyToRange(`${year}-${month}`); if (range) { setStartsOn(p=>({...p,[sid]:isoToDisplayDate(range.startISO)})); setEndsOn(p=>({...p,[sid]:isoToDisplayDate(range.endISO)})); } }
-          else { setStartsOn(p=>({...p,[sid]:startDisplay})); setEndsOn(p=>({...p,[sid]:endDisplay})); }
-          setMonthlyModal(null);
-        }}
-      />
-
-      {/* History Modal */}
       {historyTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl" style={{ background: 'var(--color-sidebar)' }}>
-            {/* Accent stripe */}
-            <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 30%, transparent))' }}/>
-
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 pt-5 pb-4">
+          <div className={modalCardCls} style={isDark?{background:'var(--color-sidebar)'}:{}}>
+            <div className="h-0.5 w-full" style={{background:'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 30%, transparent))'}}/>
+            <div className={`flex items-center justify-between px-6 pt-5 pb-4 ${!isDark?'border-b border-slate-100':''}`}>
               <div className="flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl" style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>
-                  <History className="h-4 w-4" style={{ color: 'var(--color-accent)' }}/>
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl" style={{background:'color-mix(in srgb, var(--color-accent) 15%, transparent)',border:'1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)'}}>
+                  <History className="h-4 w-4" style={{color:'var(--color-accent)'}}/>
                 </div>
                 <div>
-                  <div className="text-sm font-semibold text-slate-50">Ιστορικό πληρωμών</div>
-                  <div className="mt-0.5 text-[11px] text-slate-400">
-                    Μαθητής: <span className="font-semibold" style={{ color: 'var(--color-accent)' }}>{historyTarget.studentName}</span>
-                  </div>
+                  <div className={`text-sm font-semibold ${isDark?'text-slate-50':'text-slate-800'}`}>Ιστορικό πληρωμών</div>
+                  <div className={`mt-0.5 text-[11px] ${isDark?'text-slate-400':'text-slate-500'}`}>Μαθητής: <span className="font-semibold" style={{color:'var(--color-accent)'}}>{historyTarget.studentName}</span></div>
                 </div>
               </div>
-              <button type="button" onClick={() => setHistoryTarget(null)}
-                className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-800/50 text-slate-400 transition hover:border-slate-600 hover:text-slate-200">
-                <X className="h-3.5 w-3.5"/>
-              </button>
+              <button type="button" onClick={()=>setHistoryTarget(null)} className={modalCloseBtnCls}><X className="h-3.5 w-3.5"/></button>
             </div>
-
-            {/* Content */}
             <div className="px-6 pb-2">
-              {historyTarget.payments.length === 0 ? (
-                <div className="rounded-xl border border-slate-700/50 bg-slate-900/30 px-4 py-4 text-center text-xs text-slate-500">Δεν υπάρχουν πληρωμές ακόμα.</div>
-              ) : (
-                <div className="overflow-hidden rounded-xl border border-slate-700/50">
+              {historyTarget.payments.length===0?(
+                <div className={`rounded-xl border px-4 py-4 text-center text-xs ${isDark?'border-slate-700/50 bg-slate-900/30 text-slate-500':'border-slate-200 bg-slate-50 text-slate-400'}`}>Δεν υπάρχουν πληρωμές ακόμα.</div>
+              ):(
+                <div className={`overflow-hidden rounded-xl border ${isDark?'border-slate-700/50':'border-slate-200'}`}>
                   <table className="min-w-full border-collapse text-xs">
                     <thead>
-                      <tr className="border-b border-slate-700/60 bg-slate-900/40 text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'color-mix(in srgb, var(--color-accent) 70%, white)' }}>
+                      <tr className={`${isDark?'border-b border-slate-700/60 bg-slate-900/40':'border-b border-slate-200 bg-slate-50'} text-[10px] font-semibold uppercase tracking-widest`} style={{color:'color-mix(in srgb, var(--color-accent) 70%, white)'}}>
                         <th className="px-4 py-2.5 text-left">Ημερομηνία</th>
                         <th className="px-4 py-2.5 text-right">Ποσό</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800/40">
-                      {historyTarget.payments.map((p, i) => (
-                        <tr key={`${p.created_at??'na'}-${i}`} className="transition-colors hover:bg-white/[0.02]">
-                          <td className="px-4 py-2.5 text-slate-300">{formatDateTime(p.created_at)}</td>
-                          <td className="px-4 py-2.5 text-right font-medium tabular-nums text-emerald-300">{money(p.amount)} {CURRENCY_SYMBOL}</td>
+                    <tbody className={isDark?'divide-y divide-slate-800/40':'divide-y divide-slate-100'}>
+                      {historyTarget.payments.map((p,i)=>(
+                        <tr key={`${p.created_at??'na'}-${i}`} className={isDark?'transition-colors hover:bg-white/[0.02]':'transition-colors hover:bg-slate-50'}>
+                          <td className={`px-4 py-2.5 ${isDark?'text-slate-300':'text-slate-600'}`}>{formatDateTime(p.created_at)}</td>
+                          <td className="px-4 py-2.5 text-right font-medium tabular-nums text-emerald-400">{money(p.amount)} {CURRENCY_SYMBOL}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -512,16 +431,9 @@ export default function StudentsSubscriptionsPage() {
                 </div>
               )}
             </div>
-
-            {/* Footer */}
-            <div className="mt-4 flex items-center justify-between border-t border-slate-800/70 bg-slate-900/20 px-6 py-4">
-              <span className="text-xs text-slate-400">
-                Σύνολο: <span className="font-semibold text-emerald-300">{money(historyTotalPaid)} {CURRENCY_SYMBOL}</span>
-              </span>
-              <button type="button" onClick={() => setHistoryTarget(null)}
-                className="rounded-lg border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-slate-700/60">
-                Κλείσιμο
-              </button>
+            <div className={`flex items-center justify-between px-6 py-4 ${isDark?'mt-4 border-t border-slate-800/70 bg-slate-900/20':'border-t border-slate-100 bg-slate-50'}`}>
+              <span className={`text-xs ${isDark?'text-slate-400':'text-slate-500'}`}>Σύνολο: <span className="font-semibold text-emerald-400">{money(historyTotalPaid)} {CURRENCY_SYMBOL}</span></span>
+              <button type="button" onClick={()=>setHistoryTarget(null)} className={cancelBtnCls}>Κλείσιμο</button>
             </div>
           </div>
         </div>

@@ -35,6 +35,15 @@ function formatDt(iso: string) {
   } catch { return iso; }
 }
 
+function FormField({ label, labelCls, children }: { label: string; labelCls: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <label className={labelCls}>{label}</label>
+      {children}
+    </div>
+  );
+}
+
 export default function SendNotificationsPage() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
@@ -140,13 +149,6 @@ export default function SendNotificationsPage() {
     } finally { setLoadingSend(false); }
   };
 
-  const FormField = ({ label, children }: { label: string; children: React.ReactNode }) => (
-    <div className="space-y-1.5">
-      <label className={labelCls}>{label}</label>
-      {children}
-    </div>
-  );
-
   return (
     <div className="space-y-6 px-1">
       <style>{scrollbarStyle}</style>
@@ -192,15 +194,15 @@ export default function SendNotificationsPage() {
           </div>
 
           <div className="space-y-4 p-5">
-            <FormField label="Τίτλος">
+            <FormField label="Τίτλος" labelCls={labelCls}>
               <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="π.χ. Ανακοίνωση" />
             </FormField>
 
-            <FormField label="Μήνυμα">
+            <FormField label="Μήνυμα" labelCls={labelCls}>
               <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Γράψε το μήνυμα…" rows={6} className={textareaCls} />
             </FormField>
 
-            <FormField label="Τύπος">
+            <FormField label="Τύπος" labelCls={labelCls}>
               <div className="relative">
                 <select value={kind} onChange={(e) => setKind(e.target.value as Kind)} className={selectCls}>
                   {(Object.entries(KIND_LABELS) as [Kind, string][]).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
