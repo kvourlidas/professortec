@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { navItems, type NavItem } from '../_nav';
-import { Menu, LogOut, ChevronRight, School, Sun, Moon } from 'lucide-react';
+import { Menu, LogOut, ChevronRight, School } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 type NavLinkItem = NavItem & {
@@ -220,8 +220,8 @@ export default function Layout({ children }: LayoutProps) {
           {!sidebarCollapsed && (
             <div className="flex items-start gap-2.5 min-w-0">
               <div
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg  mt-0.5"
-                style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-input-bg)' }}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-black mt-0.5"
+                style={{ backgroundColor: 'var(--color-accent)' }}
               >
                 <School className="h-4 w-4" />
               </div>
@@ -244,6 +244,7 @@ export default function Layout({ children }: LayoutProps) {
               >
                 <School className="h-4 w-4" />
               </div>
+              {/* Collapse toggle (collapsed state) */}
               <button
                 type="button"
                 onClick={() => setSidebarCollapsed((prev) => !prev)}
@@ -258,6 +259,7 @@ export default function Layout({ children }: LayoutProps) {
             </div>
           )}
 
+          {/* Collapse toggle (expanded state) */}
           <button
             type="button"
             onClick={() => setSidebarCollapsed((prev) => !prev)}
@@ -280,6 +282,75 @@ export default function Layout({ children }: LayoutProps) {
           )}
         </nav>
 
+        {/* ── Theme Toggle ── */}
+        {!sidebarCollapsed ? (
+          <div className="px-3 pb-2">
+            <div className={`flex rounded-xl p-1 ${isDark ? 'bg-slate-800/60' : 'bg-slate-100'}`}>
+              {/* Light button */}
+              <button
+                type="button"
+                onClick={toggleTheme}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-[11px] font-semibold transition-all duration-200 ${
+                  !isDark
+                    ? 'bg-white text-amber-500 shadow-sm shadow-black/10'
+                    : 'text-slate-500 hover:text-slate-300'
+                }`}
+              >
+                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="5"/>
+                  <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                  <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                </svg>
+                Light
+              </button>
+              {/* Dark button */}
+              <button
+                type="button"
+                onClick={toggleTheme}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-[11px] font-semibold transition-all duration-200 ${
+                  isDark
+                    ? 'bg-slate-700 text-indigo-300 shadow-sm shadow-black/30'
+                    : 'text-slate-400 hover:text-slate-600'
+                }`}
+              >
+                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                </svg>
+                Dark
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex justify-center pb-2">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label="Toggle theme"
+              className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all duration-200 ${
+                isDark
+                  ? 'bg-slate-700 text-indigo-300'
+                  : 'bg-slate-100 text-amber-500'
+              }`}
+            >
+              {isDark ? (
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                </svg>
+              ) : (
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="5"/>
+                  <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                  <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                </svg>
+              )}
+            </button>
+          </div>
+        )}
+
         {/* User card — bottom of sidebar */}
         {!sidebarCollapsed && (
           <div
@@ -291,7 +362,7 @@ export default function Layout({ children }: LayoutProps) {
             }`}>
               <div
                 className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-black"
-                style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-input-bg)' }}
+                style={{ backgroundColor: 'var(--color-accent)' }}
               >
                 {(profile?.full_name || user?.email || '?')[0].toUpperCase()}
               </div>
@@ -334,39 +405,10 @@ export default function Layout({ children }: LayoutProps) {
         )}
       </aside>
 
-      {/* ── Main column ── */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-
-        {/* Header */}
-        <header
-          className="flex flex-shrink-0 items-center justify-end border-b px-5 py-3 h-[57px] gap-2"
-          style={{
-            background: 'var(--color-header-bg)',
-            backdropFilter: 'blur(16px)',
-            WebkitBackdropFilter: 'blur(16px)',
-            borderColor: 'var(--color-border)',
-          }}
-        >
-          {/* ── Theme Toggle Button ── */}
-          <button
-            type="button"
-            onClick={toggleTheme}
-            aria-label="Toggle theme"
-            className={`flex h-8 w-8 items-center justify-center rounded-lg border transition ${
-              isDark
-                ? 'border-slate-700/70 bg-slate-800/60 text-amber-400 hover:border-slate-600 hover:bg-slate-700/60'
-                : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
-            }`}
-          >
-            {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </button>
-        </header>
-
-        {/* Scroll area */}
-        <main className="flex-1 overflow-y-auto px-4 py-6">
-          <div className="page-shell">{children}</div>
-        </main>
-      </div>
+      {/* ── Main column (no header) ── */}
+      <main className="flex flex-1 flex-col overflow-y-auto px-4 py-6">
+        <div className="page-shell">{children}</div>
+      </main>
     </div>
   );
 }

@@ -3,23 +3,12 @@ import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
 import { useTheme } from '../context/ThemeContext';
 import ClassFormModal from '../components/classes/ClassFormModal';
-import EditDeleteButtons from '../components/ui/EditDeleteButtons';
-import { Plus, School, Search, Users, BookOpen, GraduationCap, ChevronLeft, ChevronRight } from 'lucide-react';
 import ClassStudentsModal from '../components/classes/ClassStudentsModal';
-
-type ClassRow = {
-  id: string; school_id: string; title: string;
-  subject: string | null; subject_id: string | null; tutor_id: string | null;
-};
-type SubjectRow = { id: string; school_id: string; name: string; level_id: string | null };
-type LevelRow = { id: string; school_id: string; name: string };
-type ModalMode = 'create' | 'edit';
-type ClassFormState = { title: string; levelId: string; subjectIds: string[] };
-
-function normalizeText(value: string | number | null | undefined): string {
-  if (value === null || value === undefined) return '';
-  return value.toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-}
+import ClassDeleteModal from '../components/classes/ClassDeleteModal';
+import ClassesTable from '../components/classes/ClassesTable';
+import { Plus, School, Search, GraduationCap } from 'lucide-react';
+import type { ClassRow, SubjectRow, LevelRow, ModalMode, ClassFormState } from '../components/classes/types';
+import { normalizeText } from '../components/classes/utils';
 
 export default function ClassesPage() {
   const { profile } = useAuth();
@@ -131,15 +120,8 @@ export default function ClassesPage() {
   const showingFrom = filteredClasses.length === 0 ? 0 : (page - 1) * pageSize + 1;
   const showingTo = Math.min(page * pageSize, filteredClasses.length);
 
-  // ── Shared style helpers ──
   const cardCls = `overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-md ring-1 ring-inset ${isDark ? 'border-slate-700/50 bg-slate-950/40 ring-white/[0.04]' : 'border-slate-200 bg-white/80 ring-black/[0.02]'}`;
   const inputCls = `h-9 w-full rounded-lg border pl-9 pr-3 text-xs outline-none ring-0 backdrop-blur transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 focus:border-[color:var(--color-accent)] ${isDark ? 'border-slate-700/70 bg-slate-900/60 text-slate-100 placeholder-slate-500' : 'border-slate-200 bg-white text-slate-800 placeholder-slate-400'}`;
-  const theadRowCls = `border-b ${isDark ? 'border-slate-700/60 bg-slate-900/40' : 'border-slate-200 bg-slate-50'}`;
-  const tbodyDivideCls = `divide-y ${isDark ? 'divide-slate-800/50' : 'divide-slate-100'}`;
-  const trHoverCls = `group transition-colors ${isDark ? 'hover:bg-white/[0.025]' : 'hover:bg-slate-50'}`;
-  const cancelBtnCls = `btn border px-4 py-1.5 ${isDark ? 'border-slate-600/60 bg-slate-800/50 text-slate-200 hover:bg-slate-700/60' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`;
-  const paginationBtnCls = `inline-flex h-7 w-7 items-center justify-center rounded-lg border transition disabled:cursor-not-allowed disabled:opacity-30 ${isDark ? 'border-slate-700/60 bg-slate-900/30 text-slate-400 hover:border-slate-600 hover:bg-slate-800/50 hover:text-slate-200' : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-700'}`;
-  const paginationFooterCls = `flex items-center justify-between gap-3 border-t px-5 py-3 ${isDark ? 'border-slate-800/70 bg-slate-900/20' : 'border-slate-100 bg-slate-50/50'}`;
 
   return (
     <div className="space-y-6 px-1">
@@ -198,164 +180,29 @@ export default function ClassesPage() {
 
       {/* ── Table card ── */}
       <div className={cardCls}>
-        {loading ? (
-          <div className={`space-y-0 divide-y ${isDark ? 'divide-slate-800/60' : 'divide-slate-100'}`}>
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="flex items-center gap-4 px-5 py-3.5 animate-pulse">
-                <div className={`h-3 w-1/4 rounded-full ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`} />
-                <div className={`h-3 w-1/5 rounded-full ${isDark ? 'bg-slate-800/80' : 'bg-slate-200/80'}`} />
-                <div className={`h-3 w-16 rounded-full ${isDark ? 'bg-slate-800/60' : 'bg-slate-200/60'}`} />
-              </div>
-            ))}
-          </div>
-        ) : classes.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
-            <div className={`flex h-14 w-14 items-center justify-center rounded-2xl border ${isDark ? 'border-slate-700/50 bg-slate-800/50' : 'border-slate-200 bg-slate-100'}`}>
-              <School className={`h-6 w-6 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-            </div>
-            <div>
-              <p className={`text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Δεν υπάρχουν ακόμη τμήματα</p>
-              <p className={`mt-1 text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Πατήστε «Προσθήκη Τμήματος» για να δημιουργήσετε το πρώτο.</p>
-            </div>
-          </div>
-        ) : filteredClasses.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
-            <div className={`flex h-14 w-14 items-center justify-center rounded-2xl border ${isDark ? 'border-slate-700/50 bg-slate-800/50' : 'border-slate-200 bg-slate-100'}`}>
-              <Search className={`h-6 w-6 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-            </div>
-            <div>
-              <p className={`text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Δεν βρέθηκαν τμήματα</p>
-              <p className={`mt-1 text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Δοκιμάστε διαφορετικά κριτήρια αναζήτησης.</p>
-            </div>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full border-collapse text-xs">
-              <thead>
-                <tr className={theadRowCls}>
-                  {[
-                    { icon: <School className="h-3 w-3" />, label: 'ΟΝΟΜΑ ΤΜΗΜΑΤΟΣ' },
-                    { icon: <BookOpen className="h-3 w-3" />, label: 'ΜΑΘΗΜΑ' },
-                    { icon: <GraduationCap className="h-3 w-3" />, label: 'ΕΠΙΠΕΔΟ' },
-                    { icon: <Users className="h-3 w-3" />, label: 'ΜΑΘΗΤΕΣ' },
-                  ].map(({ icon, label }) => (
-                    <th key={label} className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest"
-                      style={{ color: 'color-mix(in srgb, var(--color-accent) 80%, white)' }}>
-                      <span className="inline-flex items-center gap-1.5">
-                        <span className="opacity-60">{icon}</span>{label}
-                      </span>
-                    </th>
-                  ))}
-                  <th className="px-5 py-3 text-right text-[10px] font-semibold uppercase tracking-widest"
-                    style={{ color: 'color-mix(in srgb, var(--color-accent) 80%, white)' }}>
-                    ΕΝΕΡΓΕΙΕΣ
-                  </th>
-                </tr>
-              </thead>
-              <tbody className={tbodyDivideCls}>
-                {pagedClasses.map((c) => {
-                  let levelName = '—';
-                  if (c.subject_id) { const subjRow = subjects.find((s) => s.id === c.subject_id); if (subjRow?.level_id) levelName = levelNameById.get(subjRow.level_id) ?? '—'; }
-                  return (
-                    <tr key={c.id} className={trHoverCls}>
-                      <td className="px-5 py-3.5">
-                        <span className={`font-medium transition-colors ${isDark ? 'text-slate-100 group-hover:text-white' : 'text-slate-700 group-hover:text-slate-900'}`}>
-                          {c.title}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        {c.subject ? (
-                          <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium"
-                            style={{ background: 'color-mix(in srgb, var(--color-accent) 12%, transparent)', color: 'var(--color-accent)', border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>
-                            {c.subject}
-                          </span>
-                        ) : (
-                          <span className={isDark ? 'text-slate-600' : 'text-slate-400'}>—</span>
-                        )}
-                      </td>
-                      <td className="px-5 py-3.5">
-                        {levelName !== '—' ? (
-                          <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] ${isDark ? 'border-slate-600/50 bg-slate-800/60 text-slate-300' : 'border-slate-200 bg-slate-100 text-slate-600'}`}>
-                            {levelName}
-                          </span>
-                        ) : (
-                          <span className={isDark ? 'text-slate-600' : 'text-slate-400'}>—</span>
-                        )}
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <button type="button" onClick={() => setStudentsModalClass({ id: c.id, title: c.title })}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/50 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-500 transition hover:border-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-600">
-                          <Users className="h-3 w-3" />
-                          Προβολή
-                        </button>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center justify-end gap-1">
-                          <EditDeleteButtons onEdit={() => openEditModal(c)} onDelete={() => setDeleteTarget({ id: c.id, title: c.title })} />
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* ── Pagination footer ── */}
-        {!loading && filteredClasses.length > 0 && (
-          <div className={paginationFooterCls}>
-            <p className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-              <span className={isDark ? 'text-slate-300' : 'text-slate-600'}>{showingFrom}–{showingTo}</span>{' '}
-              από <span className={isDark ? 'text-slate-300' : 'text-slate-600'}>{filteredClasses.length}</span> τμήματα
-            </p>
-            <div className="flex items-center gap-1.5">
-              <button type="button" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className={paginationBtnCls}>
-                <ChevronLeft className="h-3.5 w-3.5" />
-              </button>
-              <div className={`rounded-lg border px-3 py-1 text-[11px] ${isDark ? 'border-slate-700/60 bg-slate-900/20 text-slate-300' : 'border-slate-200 bg-white text-slate-600'}`}>
-                <span className={`font-medium ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>{page}</span>
-                <span className={`mx-1 ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>/</span>
-                <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{pageCount}</span>
-              </div>
-              <button type="button" onClick={() => setPage((p) => Math.min(pageCount, p + 1))} disabled={page >= pageCount} className={paginationBtnCls}>
-                <ChevronRight className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          </div>
-        )}
+        <ClassesTable
+          loading={loading}
+          classes={classes}
+          filteredClasses={filteredClasses}
+          pagedClasses={pagedClasses}
+          subjects={subjects}
+          levelNameById={levelNameById}
+          isDark={isDark}
+          page={page}
+          pageCount={pageCount}
+          showingFrom={showingFrom}
+          showingTo={showingTo}
+          onSetPage={setPage}
+          onEditClass={openEditModal}
+          onDeleteClass={setDeleteTarget}
+          onViewStudents={setStudentsModalClass}
+        />
       </div>
 
       {/* ── Modals ── */}
       <ClassFormModal open={modalOpen} mode={modalMode} editingClass={editingClass} subjects={subjects} levels={levels} error={error} saving={saving} onClose={closeModal} onSubmit={handleSaveClass} />
       <ClassStudentsModal open={!!studentsModalClass} onClose={() => setStudentsModalClass(null)} classId={studentsModalClass?.id ?? null} classTitle={studentsModalClass?.title} />
-
-      {/* ── Delete confirmation modal ── */}
-      {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className={`relative w-full max-w-sm overflow-hidden rounded-2xl border shadow-2xl ${isDark ? 'border-slate-700/60 bg-[#1f2d3d]' : 'border-slate-200 bg-white'}`}>
-            <div className="h-1 w-full bg-gradient-to-r from-red-600 via-red-500 to-rose-500" />
-            <div className="p-6">
-              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/15 ring-1 ring-red-500/30">
-                <School className="h-5 w-5 text-red-400" />
-              </div>
-              <h3 className={`mb-1 text-sm font-semibold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Διαγραφή τμήματος</h3>
-              <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                Σίγουρα θέλεις να διαγράψεις το τμήμα{' '}
-                <span className={`font-semibold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>«{deleteTarget.title}»</span>;
-                {' '}Η ενέργεια αυτή δεν μπορεί να ανακληθεί.
-              </p>
-              <div className="mt-6 flex justify-end gap-2.5">
-                <button type="button" onClick={() => setDeleteTarget(null)} className={cancelBtnCls}>Ακύρωση</button>
-                <button type="button" onClick={handleConfirmDelete} disabled={deleting}
-                  className="btn bg-red-600 px-4 py-1.5 font-semibold text-white shadow-sm hover:bg-red-500 active:scale-[0.97] disabled:opacity-60">
-                  {deleting ? 'Διαγραφή…' : 'Διαγραφή'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <ClassDeleteModal deleteTarget={deleteTarget} deleting={deleting} isDark={isDark} onCancel={() => setDeleteTarget(null)} onConfirm={handleConfirmDelete} />
     </div>
   );
 }
