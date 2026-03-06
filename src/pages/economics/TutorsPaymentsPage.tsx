@@ -69,9 +69,7 @@ export default function TutorsPaymentsPage() {
     ? 'mt-5 flex justify-end gap-2.5 border-t border-slate-800/70 bg-slate-900/20 px-6 py-4'
     : 'flex justify-end gap-2.5 border-t border-slate-100 bg-slate-50 px-6 py-4';
 
-  const cancelBtnCls = isDark
-    ? 'rounded-lg border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-slate-700/60 disabled:opacity-50'
-    : 'rounded-lg border border-slate-300 bg-white px-4 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50';
+  const cancelBtnCls = 'btn border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-slate-200 hover:bg-slate-700/60 disabled:opacity-50';
 
   const FieldLabel = ({children}: {children: React.ReactNode}) => (
     <div className={`mb-1.5 text-[10px] font-semibold uppercase tracking-wider ${isDark?'text-slate-500':'text-slate-400'}`}>{children}</div>
@@ -243,7 +241,7 @@ export default function TutorsPaymentsPage() {
       {/* Header */}
       <div className="flex items-start gap-3">
         <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 60%, transparent))' }}>
-          <HandCoins className="h-4 w-4 text-black"/>
+          <HandCoins className="h-4 w-4" style={{ color: 'var(--color-input-bg)' }}/>
         </div>
         <div>
           <h1 className={`text-base font-semibold tracking-tight ${isDark?'text-slate-50':'text-slate-800'}`}>Πληρωμές Καθηγητών</h1>
@@ -477,8 +475,7 @@ export default function TutorsPaymentsPage() {
             <div className={modalFooterCls}>
               <button type="button" onClick={closeEditPayment} disabled={busy} className={cancelBtnCls}>Ακύρωση</button>
               <button type="button" onClick={saveEditedPayment} disabled={busy}
-                className="inline-flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-semibold text-black transition hover:brightness-110 active:scale-[0.97] disabled:opacity-60"
-                style={{ backgroundColor: 'var(--color-accent)' }}>
+                className="btn-primary gap-1.5 px-4 py-1.5 font-semibold hover:brightness-110 active:scale-[0.97] disabled:opacity-60">
                 {busy?<><Loader2 className="h-3.5 w-3.5 animate-spin"/>Αποθήκευση…</>:'Αποθήκευση'}
               </button>
             </div>

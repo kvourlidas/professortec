@@ -102,9 +102,7 @@ export default function TestsPage() {
   const modalFooterCls = isDark
     ? 'flex justify-end gap-2.5 border-t border-slate-800/70 bg-slate-900/20 px-6 py-4 mt-3'
     : 'flex justify-end gap-2.5 border-t border-slate-200 bg-slate-50 px-6 py-4 mt-3';
-  const cancelBtnCls = isDark
-    ? 'rounded-lg border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-slate-700/60 disabled:opacity-50'
-    : 'rounded-lg border border-slate-300 bg-white px-4 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100 disabled:opacity-50';
+  const cancelBtnCls = 'btn border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-slate-200 hover:bg-slate-700/60 disabled:opacity-50';
   const labelCls = `flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`;
   const timeInputCls = isDark
     ? 'h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 pl-3 pr-16 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30'
@@ -412,7 +410,7 @@ export default function TestsPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3">
           <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 60%, transparent))' }}>
-            <ClipboardList className="h-4 w-4 text-black" />
+            <ClipboardList className="h-4 w-4" style={{ color: 'var(--color-input-bg)' }}/>
           </div>
           <div>
             <h1 className={`text-base font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Διαγωνίσματα</h1>
@@ -436,7 +434,7 @@ export default function TestsPage() {
             <Search className={`pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
             <input className={searchInputCls} placeholder="Αναζήτηση..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
-          <button type="button" onClick={openModal} className="inline-flex h-9 items-center gap-2 rounded-lg px-4 text-xs font-semibold text-black shadow-sm transition hover:brightness-110 active:scale-[0.98]" style={{ backgroundColor: 'var(--color-accent)' }}>
+          <button type="button" onClick={openModal} className="btn-primary h-9 gap-2 px-4 font-semibold shadow-sm hover:brightness-110 active:scale-[0.98]">
             <ClipboardList className="h-3.5 w-3.5" />Προσθήκη διαγωνίσματος
           </button>
         </div>
@@ -521,7 +519,7 @@ export default function TestsPage() {
             <div className="max-h-[60vh] overflow-y-auto px-6 pb-2"><TestFormFields f={form} onField={handleFieldChange} onTimeChange={handleTimeChange} /></div>
             <div className={modalFooterCls}>
               <button type="button" onClick={closeModal} disabled={saving} className={cancelBtnCls}>Ακύρωση</button>
-              <button type="submit" disabled={saving} className="inline-flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-semibold text-black shadow-sm transition hover:brightness-110 active:scale-[0.97] disabled:opacity-60" style={{ backgroundColor: 'var(--color-accent)' }}>
+              <button type="submit" disabled={saving} className="btn-primary gap-1.5 px-4 py-1.5 font-semibold shadow-sm hover:brightness-110 active:scale-[0.97] disabled:opacity-60">
                 {saving ? <><Loader2 className="h-3 w-3 animate-spin" />Αποθήκευση...</> : 'Αποθήκευση'}
               </button>
             </div>
@@ -537,7 +535,7 @@ export default function TestsPage() {
             <div className="max-h-[60vh] overflow-y-auto px-6 pb-2"><TestFormFields f={editForm} onField={handleEditFieldChange} onTimeChange={handleEditTimeChange} isEdit /></div>
             <div className={modalFooterCls}>
               <button type="button" onClick={closeEditModal} disabled={savingEdit} className={cancelBtnCls}>Ακύρωση</button>
-              <button type="submit" disabled={savingEdit} className="inline-flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-semibold text-black shadow-sm transition hover:brightness-110 active:scale-[0.97] disabled:opacity-60" style={{ backgroundColor: 'var(--color-accent)' }}>
+              <button type="submit" disabled={savingEdit} className="btn-primary gap-1.5 px-4 py-1.5 font-semibold shadow-sm hover:brightness-110 active:scale-[0.97] disabled:opacity-60">
                 {savingEdit ? <><Loader2 className="h-3 w-3 animate-spin" />Αποθήκευση...</> : 'Ενημέρωση'}
               </button>
             </div>
@@ -558,7 +556,7 @@ export default function TestsPage() {
               </p>
               <div className="mt-6 flex justify-end gap-2.5">
                 <button type="button" onClick={closeDeleteModal} disabled={deleting} className={cancelBtnCls}>Ακύρωση</button>
-                <button type="button" onClick={handleConfirmDelete} disabled={deleting} className="rounded-lg bg-red-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-red-500 active:scale-[0.97] disabled:opacity-60">{deleting ? 'Διαγραφή…' : 'Διαγραφή'}</button>
+                <button type="button" onClick={handleConfirmDelete} disabled={deleting} className="btn bg-red-600 px-4 py-1.5 font-semibold text-white shadow-sm hover:bg-red-500 active:scale-[0.97] disabled:opacity-60">{deleting ? 'Διαγραφή…' : 'Διαγραφή'}</button>
               </div>
             </div>
           </div>
@@ -633,7 +631,7 @@ export default function TestsPage() {
           </div>
           <div className={modalFooterCls}>
             <button type="button" onClick={closeResultsModal} disabled={resultsSaving} className={cancelBtnCls}>Ακύρωση</button>
-            <button type="button" onClick={handleSaveResults} disabled={resultsSaving || resultsLoading} className="inline-flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-semibold text-black shadow-sm transition hover:brightness-110 active:scale-[0.97] disabled:opacity-60" style={{ backgroundColor: 'var(--color-accent)' }}>
+            <button type="button" onClick={handleSaveResults} disabled={resultsSaving || resultsLoading} className="btn-primary gap-1.5 px-4 py-1.5 font-semibold shadow-sm hover:brightness-110 active:scale-[0.97] disabled:opacity-60">
               {resultsSaving ? <><Loader2 className="h-3 w-3 animate-spin" />Αποθήκευση...</> : 'Αποθήκευση'}
             </button>
           </div>

@@ -180,7 +180,7 @@ export default function StudentMessagesPage() {
           <div className="flex items-center gap-2.5">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
               style={{ background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 60%, transparent))' }}>
-              <MessageSquareText className="h-4 w-4 text-black" />
+              <MessageSquareText className="h-4 w-4" style={{ color: 'var(--color-input-bg)' }}/>
             </div>
             <div>
               <div className={`text-sm font-semibold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Μηνύματα</div>

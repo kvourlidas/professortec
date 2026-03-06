@@ -905,9 +905,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
   );
 
   /* ---- Modal footer helpers ---- */
-  const cancelBtnCls = `rounded-lg border px-4 py-1.5 text-xs font-medium transition ${
-    isDark ? 'border-slate-600/60 bg-slate-800/50 text-slate-200 hover:bg-slate-700/60' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-  }`;
+  const cancelBtnCls = 'btn border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-slate-200 hover:bg-slate-700/60';
   const modalFooterCls = `flex items-center justify-between gap-2 border-t px-6 py-4 mt-4 ${
     isDark ? 'border-slate-800/70 bg-slate-900/20' : 'border-slate-100 bg-slate-50/50'
   }`;
@@ -922,7 +920,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
       <div className="flex items-center gap-3">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
           style={{ background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 60%, transparent))' }}>
-          <CalendarDays className="h-4 w-4 text-black" />
+          <CalendarDays className="h-4 w-4" style= {{ color: 'var(--color-input-bg)'}}/>
         </div>
         <h2 className={`text-sm font-semibold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Πρόγραμμα Τμημάτων & Εκδηλώσεις</h2>
       </div>
@@ -998,7 +996,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
                     Ακύρωση
                   </button>
                   <button type="button" onClick={handleConfirmDeleteSchoolEvent} disabled={schoolEventDeleting}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-red-500 active:scale-[0.97] disabled:opacity-60">
+                    className="btn bg-red-600 px-4 py-1.5 font-semibold text-white shadow-sm hover:bg-red-500 active:scale-[0.97] disabled:opacity-60">
                     {schoolEventDeleting ? <><Loader2 className="h-3 w-3 animate-spin" />Διαγραφή…</> : 'Διαγραφή'}
                   </button>
                 </div>
@@ -1054,14 +1052,13 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
 
               <div className={modalFooterCls}>
                 <button type="button" onClick={handleProgramAskDeleteForDay}
-                  className="rounded-lg bg-red-600/80 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-red-600 active:scale-[0.97]">
+                  className="btn bg-red-600/80 px-3 py-1.5 font-semibold text-white hover:bg-red-600 active:scale-[0.97]">
                   Ακύρωση για αυτή τη μέρα
                 </button>
                 <div className="flex gap-2.5">
                   <button type="button" onClick={handleEventModalClose} className={cancelBtnCls}>Ακύρωση</button>
                   <button type="button" onClick={handleEventModalSave}
-                    className="inline-flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-semibold text-black shadow-sm transition hover:brightness-110 active:scale-[0.97]"
-                    style={{ backgroundColor: 'var(--color-accent)' }}>
+                    className="btn-primary gap-1.5 px-4 py-1.5 font-semibold shadow-sm hover:brightness-110 active:scale-[0.97]">
                     Ενημέρωση
                   </button>
                 </div>
@@ -1085,7 +1082,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
                   <div className="mt-5 flex justify-end gap-2.5">
                     <button type="button" onClick={handleProgramCancelDeleteConfirm} className={cancelBtnCls}>Όχι</button>
                     <button type="button" onClick={handleEventModalDeleteForDay}
-                      className="rounded-lg bg-red-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-red-500 active:scale-[0.97]">
+                      className="btn bg-red-600 px-4 py-1.5 font-semibold text-white shadow-sm hover:bg-red-500 active:scale-[0.97]">
                       Ναι, ακύρωση
                     </button>
                   </div>
@@ -1152,8 +1149,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
                     Ακύρωση
                   </button>
                   <button type="button" onClick={handleTestModalSave} disabled={savingTest}
-                    className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-black shadow-sm transition hover:brightness-110 active:scale-[0.97] disabled:opacity-60"
-                    style={{ backgroundColor: 'var(--color-accent)' }}>
+                    className="btn-primary gap-1.5 px-3 py-1.5 font-semibold shadow-sm hover:brightness-110 active:scale-[0.97] disabled:opacity-60">
                     {savingTest ? <><Loader2 className="h-3 w-3 animate-spin" />Αποθήκευση…</> : 'Ενημέρωση'}
                   </button>
                   <button type="button" onClick={handleTestDelete} disabled={savingTest}

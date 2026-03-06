@@ -78,9 +78,7 @@ export default function PackageSubscriptionsPage() {
 
   const labelCls = `block mb-1 text-[10px] font-semibold uppercase tracking-wider ${isDark?'text-slate-500':'text-slate-400'}`;
 
-  const cancelBtnCls = isDark
-    ? 'rounded-lg border border-slate-600/60 bg-slate-800/50 px-4 py-2 text-xs font-medium text-slate-200 transition hover:bg-slate-700/60 disabled:opacity-50'
-    : 'rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50';
+  const cancelBtnCls = 'btn border border-slate-600/60 bg-slate-800/50 px-4 py-2 text-slate-200 hover:bg-slate-700/60 disabled:opacity-50';
 
   const modalCardCls = isDark
     ? 'w-full max-w-lg rounded-2xl border border-slate-700/60 shadow-2xl overflow-hidden'
@@ -158,7 +156,7 @@ export default function PackageSubscriptionsPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3">
           <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 60%, transparent))' }}>
-            <Package className="h-4 w-4 text-black"/>
+            <Package className="h-4 w-4" style={{ color: 'var(--color-input-bg)' }}/>
           </div>
           <div>
             <h1 className={`text-base font-semibold tracking-tight ${isDark?'text-slate-50':'text-slate-800'}`}>Πακέτα Συνδρομών</h1>
@@ -166,8 +164,7 @@ export default function PackageSubscriptionsPage() {
           </div>
         </div>
         <button type="button" onClick={openAdd}
-          className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold text-black transition hover:brightness-110 active:scale-[0.97]"
-          style={{ backgroundColor: 'var(--color-accent)' }}>
+          className="btn-primary gap-2 rounded-xl px-4 py-2 font-semibold hover:brightness-110 active:scale-[0.97]">
           <Plus className="h-3.5 w-3.5"/>
           Νέο πακέτο
         </button>
@@ -273,7 +270,7 @@ export default function PackageSubscriptionsPage() {
                   Ακύρωση αλλαγών
                 </button>
                 <button type="button" onClick={saveAll} disabled={!isDirty||saving}
-                  className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-xs font-semibold transition ${!isDirty||saving?(isDark?'border-slate-800/70 bg-transparent text-slate-600':'border-slate-200 bg-transparent text-slate-300'):'border-[color:var(--color-accent)]/30 bg-[color:var(--color-accent)]/15 text-[color:var(--color-accent)] hover:bg-[color:var(--color-accent)]/25'}`}>
+                  className="btn-primary gap-2 px-4 py-2 font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
                   {saving?<Loader2 className="h-3.5 w-3.5 animate-spin"/>:<Save className="h-3.5 w-3.5"/>}
                   Αποθήκευση
                 </button>
@@ -347,8 +344,7 @@ export default function PackageSubscriptionsPage() {
             <div className={`flex justify-end gap-2.5 px-6 py-4 ${isDark?'mt-2 border-t border-slate-800/70 bg-slate-900/20':'border-t border-slate-100 bg-slate-50'}`}>
               <button type="button" onClick={()=>{setAddOpen(false);setAddError(null);}} className={cancelBtnCls}>Ακύρωση</button>
               <button type="button" onClick={addPackage} disabled={saving}
-                className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold text-black transition hover:brightness-110 active:scale-[0.97] disabled:opacity-60"
-                style={{ backgroundColor: 'var(--color-accent)' }}>
+                className="btn-primary gap-2 px-4 py-2 font-semibold hover:brightness-110 active:scale-[0.97] disabled:opacity-60">
                 {saving?<Loader2 className="h-3.5 w-3.5 animate-spin"/>:<Plus className="h-3.5 w-3.5"/>}
                 Προσθήκη
               </button>
@@ -371,7 +367,7 @@ export default function PackageSubscriptionsPage() {
             <div className={`flex justify-end gap-2.5 px-6 py-4 ${isDark?'border-t border-slate-800/70 bg-slate-900/20':'border-t border-slate-100 bg-slate-50'}`}>
               <button type="button" onClick={()=>{setDeleteOpen(false);setDeleteTarget(null);}} className={cancelBtnCls} disabled={saving}>Ακύρωση</button>
               <button type="button" onClick={confirmDelete} disabled={saving}
-                className="inline-flex items-center gap-2 rounded-lg bg-rose-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-rose-500 active:scale-[0.97] disabled:opacity-60">
+                className="btn bg-rose-600 gap-2 px-4 py-2 font-semibold text-white hover:bg-rose-500 active:scale-[0.97] disabled:opacity-60">
                 {saving?<Loader2 className="h-3.5 w-3.5 animate-spin"/>:<Trash2 className="h-3.5 w-3.5"/>}
                 Διαγραφή
               </button>

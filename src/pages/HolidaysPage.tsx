@@ -104,8 +104,8 @@ export default function HolidaysPage() {
     : 'relative w-full max-w-sm overflow-hidden rounded-2xl border border-slate-200 shadow-2xl';
 
   const cancelBtnCls = isDark
-    ? 'rounded-lg border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-slate-700/60 disabled:opacity-50'
-    : 'rounded-lg border border-slate-300 bg-white px-4 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100 disabled:opacity-50';
+    ? 'btn border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-slate-200 hover:bg-slate-700/60 disabled:opacity-50'
+    : 'btn border border-slate-300 bg-white px-4 py-1.5 text-slate-700 hover:bg-slate-100 disabled:opacity-50';
 
   const loadHolidays = useCallback(async () => {
     if (!schoolId) { setHolidays([]); return; }
@@ -187,7 +187,7 @@ export default function HolidaysPage() {
           className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
           style={{ background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 60%, transparent))' }}
         >
-          <CalendarOff className="h-4 w-4 text-black" />
+          <CalendarOff className="h-4 w-4" style={{ color: 'var(--color-input-bg)' }} />
         </div>
         <div>
           <h1 className={`text-base font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>
@@ -284,8 +284,7 @@ export default function HolidaysPage() {
               type="button"
               onClick={handleAdd}
               disabled={saving || !canSave}
-              className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg px-4 text-xs font-semibold text-black shadow-sm transition hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-              style={{ backgroundColor: 'var(--color-accent)' }}
+              className="btn-primary h-9 shrink-0 gap-2 px-4 font-semibold shadow-sm hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {saving ? 'Αποθήκευση…' : 'Προσθήκη αργίας'}
             </button>
@@ -402,7 +401,7 @@ export default function HolidaysPage() {
                   Ακύρωση
                 </button>
                 <button type="button" onClick={handleConfirmDelete} disabled={deleting}
-                  className="rounded-lg bg-red-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-red-500 active:scale-[0.97] disabled:opacity-60">
+                  className="btn bg-red-600 px-4 py-1.5 font-semibold text-white shadow-sm hover:bg-red-500 active:scale-[0.97] disabled:opacity-60">
                   {deleting ? 'Διαγραφή…' : 'Διαγραφή'}
                 </button>
               </div>

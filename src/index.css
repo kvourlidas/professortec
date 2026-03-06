@@ -13,6 +13,9 @@
     --color-accent: #ffc947;
     --color-input-bg: #303f50;
 
+    --color-button-bg: #2563eb;
+    --color-button-text: #ffffff;
+
     --color-text-main: #ffffff;
     --color-text-td: #ffffff;
     --color-text-muted: #6b7280;
@@ -39,8 +42,11 @@
     --color-surface: #ffffff;
     --color-primary: #2563eb;
     --color-primary-soft: #dbeafe;
-    --color-accent: #f59e0b;
+    --color-accent: #2563eb;
     --color-input-bg: #f8fafc;
+
+    --color-button-bg: #f3b421;
+    --color-button-text: #000000;
 
     --color-text-main: #0f172a;
     --color-text-td: #1e293b;
@@ -254,8 +260,8 @@
 
   .btn-primary {
     @apply btn;
-    background-color: var(--color-primary);
-    color: #ffffff;
+    background-color: var(--color-button-bg);
+    color: var(--color-button-text);
   }
 
   .btn-ghost {
@@ -425,7 +431,7 @@
 .fc .fc-button.fc-button-primary:not(:disabled):active {
   background-color: var(--color-accent);
   border-color: var(--color-accent);
-  color: #000;
+  color: var(--color-input-bg);
 }
 
 .fc-timeGridWeek-view .fc-timegrid-event {

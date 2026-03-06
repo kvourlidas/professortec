@@ -114,8 +114,8 @@ export default function LevelsPage() {
     : 'flex justify-end gap-2.5 border-t border-slate-200 bg-slate-50 px-6 py-4 mt-4';
 
   const cancelBtnCls = isDark
-    ? 'rounded-lg border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-slate-700/60 disabled:opacity-50'
-    : 'rounded-lg border border-slate-300 bg-white px-4 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100 disabled:opacity-50';
+    ? 'btn border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-slate-200 hover:bg-slate-700/60 disabled:opacity-50'
+    : 'btn border border-slate-300 bg-white px-4 py-1.5 text-slate-700 hover:bg-slate-100 disabled:opacity-50';
 
   const formLabelCls = isDark
     ? 'flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400'
@@ -238,7 +238,7 @@ export default function LevelsPage() {
             className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
             style={{ background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 60%, transparent))' }}
           >
-            <Layers className="h-4 w-4 text-black" />
+            <Layers className="h-4 w-4" style={{ color: 'var(--color-input-bg)' }} />
           </div>
           <div>
             <h1 className={`text-base font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>
@@ -289,8 +289,7 @@ export default function LevelsPage() {
           <button
             type="button"
             onClick={openCreateModal}
-            className="inline-flex h-9 items-center gap-2 rounded-lg px-4 text-xs font-semibold text-black shadow-sm transition hover:brightness-110 active:scale-[0.98]"
-            style={{ backgroundColor: 'var(--color-accent)' }}
+            className="btn-primary h-9 gap-2 px-4 font-semibold shadow-sm hover:brightness-110 active:scale-[0.98]"
           >
             <Plus className="h-3.5 w-3.5" />
             Προσθήκη επιπέδου
@@ -503,8 +502,7 @@ export default function LevelsPage() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="inline-flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-semibold text-black shadow-sm transition hover:brightness-110 active:scale-[0.97] disabled:opacity-60"
-                  style={{ backgroundColor: 'var(--color-accent)' }}
+                  className="btn-primary gap-1.5 px-4 py-1.5 font-semibold shadow-sm hover:brightness-110 active:scale-[0.97] disabled:opacity-60"
                 >
                   {saving ? 'Αποθήκευση…' : 'Αποθήκευση'}
                 </button>
@@ -549,7 +547,7 @@ export default function LevelsPage() {
                   type="button"
                   onClick={handleConfirmDelete}
                   disabled={deleting}
-                  className="rounded-lg bg-red-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-red-500 active:scale-[0.97] disabled:opacity-60"
+                  className="btn bg-red-600 px-4 py-1.5 font-semibold text-white shadow-sm hover:bg-red-500 active:scale-[0.97] disabled:opacity-60"
                 >
                   {deleting ? 'Διαγραφή…' : 'Διαγραφή'}
                 </button>

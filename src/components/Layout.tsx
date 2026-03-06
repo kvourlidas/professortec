@@ -220,8 +220,8 @@ export default function Layout({ children }: LayoutProps) {
           {!sidebarCollapsed && (
             <div className="flex items-start gap-2.5 min-w-0">
               <div
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-black mt-0.5"
-                style={{ backgroundColor: 'var(--color-accent)' }}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg  mt-0.5"
+                style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-input-bg)' }}
               >
                 <School className="h-4 w-4" />
               </div>
@@ -291,7 +291,7 @@ export default function Layout({ children }: LayoutProps) {
             }`}>
               <div
                 className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-black"
-                style={{ backgroundColor: 'var(--color-accent)' }}
+                style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-input-bg)' }}
               >
                 {(profile?.full_name || user?.email || '?')[0].toUpperCase()}
               </div>

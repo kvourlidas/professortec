@@ -138,8 +138,8 @@ export default function DashboardNotesSection({ schoolId }: DashboardNotesSectio
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
-            style={{ background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 60%, transparent))' }}>
-            <StickyNote className="h-4 w-4 text-black" />
+            style={{ background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 60%, transparent))'}}>
+            <StickyNote className="h-4 w-4" style= {{ color: 'var(--color-input-bg)'}}/>
           </div>
           <h2 className={`text-sm font-semibold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Σημειώσεις</h2>
         </div>
@@ -209,8 +209,7 @@ export default function DashboardNotesSection({ schoolId }: DashboardNotesSectio
 
             {/* Add button */}
             <button type="button" onClick={handleAddNote} disabled={notesSaving || !noteText.trim()}
-              className="ml-auto inline-flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-semibold text-black shadow-sm transition hover:brightness-110 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50"
-              style={{ backgroundColor: 'var(--color-accent)' }}>
+              className="btn-primary ml-auto gap-1.5 px-4 py-1.5 font-semibold shadow-sm hover:brightness-110 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50">
               {notesSaving ? <><Loader2 className="h-3 w-3 animate-spin" />Αποθήκευση…</> : 'Προσθήκη'}
             </button>
           </div>

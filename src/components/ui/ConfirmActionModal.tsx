@@ -56,10 +56,10 @@ export default function ConfirmActionModal({
             type="button"
             onClick={onConfirm}
             disabled={busy}
-            className="rounded-md px-3 py-1 text-xs font-semibold disabled:opacity-60"
+            className="btn px-3 py-1 font-semibold disabled:opacity-60"
             style={{
-              backgroundColor: confirmColor === 'red' ? '#dc2626' : 'var(--color-accent)',
-              color: confirmColor === 'red' ? '#fff' : '#000',
+              backgroundColor: confirmColor === 'red' ? '#dc2626' : 'var(--color-button-bg)',
+              color: confirmColor === 'red' ? '#fff' : 'var(--color-button-text)',
             }}
           >
             {busy ? (

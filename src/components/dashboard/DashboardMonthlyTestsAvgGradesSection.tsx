@@ -9,7 +9,7 @@ import { useTheme } from '../../context/ThemeContext';
 
 type Props = { schoolId: string | null };
 type StudentTestGradeRow = { test_id: string; test_name: string | null; test_date: string | null; grade: number | null; subject_id?: string | null };
-type SubjectRow = { id: string; title: string | null };
+type SubjectRow = { id: string; name: string | null };
 type ChartRow = { testId: string; name: string; avg: number; count: number };
 
 const MONTHS = [
@@ -109,7 +109,7 @@ export default function DashboardMonthlyTestsAvgGradesSection({ schoolId }: Prop
 
   const subjectsLabel = useMemo(() => {
     if (selectedSubjectIds.length === 0) return 'Όλα τα μαθήματα';
-    const selected = subjects.filter((s) => selectedSubjectIds.includes(s.id)).map((s) => (s.title ?? '').trim()).filter(Boolean);
+    const selected = subjects.filter((s) => selectedSubjectIds.includes(s.id)).map((s) => (s.name ?? '').trim()).filter(Boolean);
     if (selected.length === 0) return 'Επιλεγμένα';
     if (selected.length <= 2) return selected.join(', ');
     return `${selected[0]}, +${selected.length - 1}`;
@@ -118,7 +118,7 @@ export default function DashboardMonthlyTestsAvgGradesSection({ schoolId }: Prop
   useEffect(() => {
     if (!schoolId) { setSubjects([]); setSelectedSubjectIds([]); return; }
     let cancelled = false;
-    supabase.from('subjects').select('id,title').eq('school_id', schoolId).order('title', { ascending: true })
+    supabase.from('subjects').select('id,name').eq('school_id', schoolId).order('name', { ascending: true })
       .then(({ data, error }) => { if (cancelled) return; if (error) { console.error(error); setSubjects([]); } else { setSubjects((data ?? []) as SubjectRow[]); } });
     return () => { cancelled = true; };
   }, [schoolId]);
@@ -231,7 +231,7 @@ export default function DashboardMonthlyTestsAvgGradesSection({ schoolId }: Prop
                     const active = selectedSubjectIds.includes(s.id);
                     return (
                       <button key={s.id} type="button" onClick={() => setSelectedSubjectIds((prev) => active ? prev.filter((x) => x !== s.id) : [...prev, s.id])} className={listItemCls(active)}>
-                        <span className="truncate">{(s.title ?? 'Μάθημα').trim() || 'Μάθημα'}</span>
+                        <span className="truncate">{(s.name ?? 'Μάθημα').trim() || 'Μάθημα'}</span>
                         {active && <Check className="h-3 w-3 shrink-0" />}
                       </button>
                     );

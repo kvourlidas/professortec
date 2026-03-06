@@ -54,7 +54,7 @@ export default function ClassFormModal({ open, mode, editingClass, subjects, lev
   const subjectListCls = `max-h-44 space-y-1 overflow-y-auto rounded-xl border p-2 ${isDark ? 'border-slate-700/60 bg-slate-900/40' : 'border-slate-200 bg-slate-50'}`;
   const subjectItemCls = `flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-xs transition ${isDark ? 'hover:bg-slate-800/60' : 'hover:bg-slate-100'}`;
   const footerCls = `flex justify-end gap-2.5 border-t px-6 py-4 ${isDark ? 'border-slate-800/70 bg-slate-900/20' : 'border-slate-100 bg-slate-50/50'}`;
-  const cancelBtnCls = `rounded-lg border px-4 py-1.5 text-xs font-medium transition ${isDark ? 'border-slate-600/60 bg-slate-800/50 text-slate-200 hover:bg-slate-700/60' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'}`;
+  const cancelBtnCls = `btn border px-4 py-1.5 ${isDark ? 'border-slate-600/60 bg-slate-800/50 text-slate-200 hover:bg-slate-700/60' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'}`;
   const closeBtnCls = `flex h-7 w-7 items-center justify-center rounded-lg border transition ${isDark ? 'border-slate-700/60 bg-slate-800/50 text-slate-400 hover:border-slate-600 hover:text-slate-200' : 'border-slate-200 bg-slate-100 text-slate-500 hover:border-slate-300 hover:text-slate-700'}`;
 
   return (
@@ -168,8 +168,7 @@ export default function ClassFormModal({ open, mode, editingClass, subjects, lev
           <div className={footerCls}>
             <button type="button" onClick={onClose} className={cancelBtnCls}>Ακύρωση</button>
             <button type="submit" disabled={saving}
-              className="inline-flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-semibold text-black shadow-sm transition hover:brightness-110 active:scale-[0.97] disabled:opacity-60"
-              style={{ backgroundColor: 'var(--color-accent)' }}>
+              className="btn-primary gap-1.5 px-4 py-1.5 font-semibold shadow-sm hover:brightness-110 active:scale-[0.97] disabled:opacity-60">
               {saving ? (<><Loader2 className="h-3 w-3 animate-spin" />Αποθήκευση...</>) : isCreate ? 'Δημιουργία' : 'Αποθήκευση αλλαγών'}
             </button>
           </div>

@@ -125,30 +125,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let ignore = false;
 
-    const boot = async () => {
-      setLoading(true);
+    // onAuthStateChange fires INITIAL_SESSION immediately on registration with the
+    // locally cached session — no extra getSession() call needed. This prevents the
+    // double profile query (and potential double token refresh) that occurred when
+    // getSession() and onAuthStateChange both triggered hydrateFromUser concurrently.
+    const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (ignore) return;
 
-      try {
-        // ✅ getSession is instant if stored; getUser can cause more network dependency.
-        const { data } = await withTimeout(supabase.auth.getSession(), BOOT_TIMEOUT_MS, 'getSession');
-        if (ignore) return;
-
-        const u = data.session?.user ?? null;
-
-        // hydrate profile with timeout so loader never hangs forever
-        await withTimeout(hydrateFromUser(u), BOOT_TIMEOUT_MS, 'hydrateFromUser');
-      } catch (e) {
-        console.error('Auth boot failed:', e);
-        // do NOT keep app stuck loading
-        clearState();
-      } finally {
-        if (!ignore) setLoading(false);
+      // Token refresh only rotates the JWT — profile is unchanged, just update the user object silently
+      if (event === 'TOKEN_REFRESHED') {
+        if (session?.user) setUser(session.user);
+        return;
       }
-    };
 
-    boot();
-
-    const { data: sub } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (hydratingRef.current) return;
       hydratingRef.current = true;
 
@@ -160,7 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         clearState();
       } finally {
         hydratingRef.current = false;
-        setLoading(false);
+        if (!ignore) setLoading(false);
       }
     });
 

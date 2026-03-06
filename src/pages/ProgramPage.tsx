@@ -174,9 +174,7 @@ export default function ProgramPage() {
     ? 'flex justify-end gap-2.5 border-t border-slate-800/70 bg-slate-900/20 px-6 py-4 mt-4'
     : 'flex justify-end gap-2.5 border-t border-slate-200 bg-slate-50 px-6 py-4 mt-4';
 
-  const cancelBtnCls = isDark
-    ? 'rounded-lg border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-slate-700/60 disabled:opacity-50'
-    : 'rounded-lg border border-slate-300 bg-white px-4 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100 disabled:opacity-50';
+  const cancelBtnCls = 'btn border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-slate-200 hover:bg-slate-700/60 disabled:opacity-50';
 
   const panelCls = isDark
     ? 'overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-2xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]'
@@ -549,7 +547,7 @@ export default function ProgramPage() {
       <div className="flex items-start gap-3">
         <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
           style={{ background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 60%, transparent))' }}>
-          <CalendarDays className="h-4.5 w-4.5 text-black" />
+          <CalendarDays className="h-4.5 w-4.5" style={{ color: 'var(--color-input-bg)' }}/>
         </div>
         <div>
           <h1 className={`text-base font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>
@@ -792,8 +790,7 @@ export default function ProgramPage() {
             <div className={modalFooterCls}>
               <button type="button" onClick={closeAddSlotModal} className={cancelBtnCls}>Ακύρωση</button>
               <button type="button" onClick={handleConfirmAddSlot} disabled={savingSlot}
-                className="inline-flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-semibold text-black shadow-sm transition hover:brightness-110 active:scale-[0.97] disabled:opacity-60"
-                style={{ backgroundColor: 'var(--color-accent)' }}>
+                className="btn-primary gap-1.5 px-4 py-1.5 font-semibold shadow-sm hover:brightness-110 active:scale-[0.97] disabled:opacity-60">
                 {savingSlot ? <><Loader2 className="h-3 w-3 animate-spin" />Προσθήκη…</> : 'Προσθήκη'}
               </button>
             </div>
@@ -846,8 +843,7 @@ export default function ProgramPage() {
             <div className={modalFooterCls}>
               <button type="button" onClick={closeEditSlotModal} disabled={savingEdit} className={cancelBtnCls}>Ακύρωση</button>
               <button type="button" onClick={handleConfirmEditSlot} disabled={savingEdit}
-                className="inline-flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-semibold text-black shadow-sm transition hover:brightness-110 active:scale-[0.97] disabled:opacity-60"
-                style={{ backgroundColor: 'var(--color-accent)' }}>
+                className="btn-primary gap-1.5 px-4 py-1.5 font-semibold shadow-sm hover:brightness-110 active:scale-[0.97] disabled:opacity-60">
                 {savingEdit ? <><Loader2 className="h-3 w-3 animate-spin" />Ενημέρωση…</> : 'Ενημέρωση'}
               </button>
             </div>
@@ -880,7 +876,7 @@ export default function ProgramPage() {
                   Ακύρωση
                 </button>
                 <button type="button" onClick={handleConfirmDeleteSlot} disabled={deletingSlot}
-                  className="rounded-lg bg-red-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-red-500 active:scale-[0.97] disabled:opacity-60">
+                  className="btn bg-red-600 px-4 py-1.5 font-semibold text-white shadow-sm hover:bg-red-500 active:scale-[0.97] disabled:opacity-60">
                   {deletingSlot ? 'Διαγραφή…' : 'Διαγραφή'}
                 </button>
               </div>

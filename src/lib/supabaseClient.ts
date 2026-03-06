@@ -22,18 +22,14 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
  * Keep auth refresh and realtime healthy when tab sleeps/wakes.
  * IMPORTANT: do this once (module scope is OK).
  */
-const onVisible = async () => {
-  // restart refresh loop
+const onVisible = () => {
+  // Restart the auto-refresh timer — it will refresh the token before it expires.
+  // Do NOT call refreshSession() explicitly here: on page load the window focus event
+  // fires at the same time as boot()'s getSession(), and the Supabase client serialises
+  // concurrent refresh calls, doubling the latency (~9 s instead of ~4 s).
   supabase.auth.startAutoRefresh();
 
-  // refresh token if needed (fast no-op if still valid)
-  try {
-    await supabase.auth.refreshSession();
-  } catch (e) {
-    console.warn('refreshSession failed on visible', e);
-  }
-
-  // reconnect realtime websocket if it was dropped
+  // Reconnect realtime websocket if it was dropped
   try {
     supabase.realtime.connect();
   } catch (e) {

@@ -137,7 +137,7 @@ export default function ClassesPage() {
   const theadRowCls = `border-b ${isDark ? 'border-slate-700/60 bg-slate-900/40' : 'border-slate-200 bg-slate-50'}`;
   const tbodyDivideCls = `divide-y ${isDark ? 'divide-slate-800/50' : 'divide-slate-100'}`;
   const trHoverCls = `group transition-colors ${isDark ? 'hover:bg-white/[0.025]' : 'hover:bg-slate-50'}`;
-  const cancelBtnCls = `rounded-lg border px-4 py-1.5 text-xs font-medium transition ${isDark ? 'border-slate-600/60 bg-slate-800/50 text-slate-200 hover:bg-slate-700/60' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`;
+  const cancelBtnCls = `btn border px-4 py-1.5 ${isDark ? 'border-slate-600/60 bg-slate-800/50 text-slate-200 hover:bg-slate-700/60' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`;
   const paginationBtnCls = `inline-flex h-7 w-7 items-center justify-center rounded-lg border transition disabled:cursor-not-allowed disabled:opacity-30 ${isDark ? 'border-slate-700/60 bg-slate-900/30 text-slate-400 hover:border-slate-600 hover:bg-slate-800/50 hover:text-slate-200' : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-700'}`;
   const paginationFooterCls = `flex items-center justify-between gap-3 border-t px-5 py-3 ${isDark ? 'border-slate-800/70 bg-slate-900/20' : 'border-slate-100 bg-slate-50/50'}`;
 
@@ -149,7 +149,7 @@ export default function ClassesPage() {
         <div className="flex items-start gap-3">
           <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
             style={{ background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 60%, transparent))' }}>
-            <GraduationCap className="h-4.5 w-4.5 text-black" />
+            <GraduationCap className="h-4.5 w-4.5" style={{ color: 'var(--color-input-bg)' }} />
           </div>
           <div>
             <h1 className={`text-base font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Τμήματα</h1>
@@ -176,8 +176,7 @@ export default function ClassesPage() {
             <input className={`${inputCls} sm:w-52`} placeholder="Αναζήτηση τμήματος..." value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
           <button type="button" onClick={openCreateModal}
-            className="inline-flex h-9 items-center gap-2 rounded-lg px-4 text-xs font-semibold text-black shadow-sm transition hover:brightness-110 active:scale-[0.98]"
-            style={{ backgroundColor: 'var(--color-accent)' }}>
+            className="btn-primary h-9 gap-2 px-4 font-semibold shadow-sm hover:brightness-110 active:scale-[0.98]">
             <Plus className="h-3.5 w-3.5" />
             Προσθήκη Τμήματος
           </button>
@@ -349,7 +348,7 @@ export default function ClassesPage() {
               <div className="mt-6 flex justify-end gap-2.5">
                 <button type="button" onClick={() => setDeleteTarget(null)} className={cancelBtnCls}>Ακύρωση</button>
                 <button type="button" onClick={handleConfirmDelete} disabled={deleting}
-                  className="rounded-lg bg-red-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-red-500 active:scale-[0.97] disabled:opacity-60">
+                  className="btn bg-red-600 px-4 py-1.5 font-semibold text-white shadow-sm hover:bg-red-500 active:scale-[0.97] disabled:opacity-60">
                   {deleting ? 'Διαγραφή…' : 'Διαγραφή'}
                 </button>
               </div>

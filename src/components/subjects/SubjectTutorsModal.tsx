@@ -185,8 +185,8 @@ export default function SubjectTutorsModal({
   const footerPendingCls = isDark ? 'text-[11px] text-slate-500' : 'text-[11px] text-slate-400';
 
   const cancelBtnCls = isDark
-    ? 'rounded-lg border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-slate-700/60 disabled:opacity-50'
-    : 'rounded-lg border border-slate-300 bg-white px-4 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50';
+    ? 'btn border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-slate-200 hover:bg-slate-700/60 disabled:opacity-50'
+    : 'btn border border-slate-300 bg-white px-4 py-1.5 text-slate-600 hover:bg-slate-50 disabled:opacity-50';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
@@ -338,8 +338,7 @@ export default function SubjectTutorsModal({
               Ακύρωση
             </button>
             <button type="button" onClick={handleSave} disabled={saving}
-              className="inline-flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-semibold text-black shadow-sm transition hover:brightness-110 active:scale-[0.97] disabled:opacity-60"
-              style={{ backgroundColor: 'var(--color-accent)' }}>
+              className="btn-primary gap-1.5 px-4 py-1.5 font-semibold shadow-sm hover:brightness-110 active:scale-[0.97] disabled:opacity-60">
               {saving ? <><Loader2 className="h-3 w-3 animate-spin" />Αποθήκευση...</> : 'Αποθήκευση'}
             </button>
           </div>

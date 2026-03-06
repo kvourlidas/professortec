@@ -150,8 +150,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={pending}
-              className="mt-2 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold text-black shadow-md transition hover:brightness-110 active:scale-[0.98] disabled:opacity-60"
-              style={{ backgroundColor: 'var(--color-accent)' }}
+              className="btn-primary mt-2 h-10 w-full justify-center gap-2 rounded-xl text-sm shadow-md hover:brightness-110 active:scale-[0.98] disabled:opacity-60"
             >
               {pending ? (
                 <><Loader2 className="h-4 w-4 animate-spin" />Σύνδεση…</>

@@ -63,15 +63,7 @@ export default function YearlySubscriptionModal({
     ? 'flex items-center justify-end gap-2 border-t border-slate-700/70 px-5 py-4'
     : 'flex items-center justify-end gap-2 border-t border-slate-200 bg-slate-50 px-5 py-4';
 
-  const cancelBtnCls = isDark
-    ? 'rounded-md border border-slate-700/70 bg-slate-900/30 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-800/40'
-    : 'rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition';
-
-  const saveBtnCls = canSave
-    ? 'inline-flex items-center gap-2 rounded-md border border-[color:var(--color-accent)]/40 bg-[color:var(--color-accent)]/20 px-3 py-1.5 text-xs font-semibold text-[color:var(--color-accent)] hover:bg-[color:var(--color-accent)]/28 transition'
-    : isDark
-      ? 'inline-flex items-center gap-2 rounded-md border border-slate-700/70 bg-slate-900/30 px-3 py-1.5 text-xs font-semibold text-slate-500 cursor-not-allowed'
-      : 'inline-flex items-center gap-2 rounded-md border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-400 cursor-not-allowed';
+  const cancelBtnCls = 'btn border border-slate-600/60 bg-slate-800/50 px-3 py-1.5 text-slate-200 hover:bg-slate-700/60';
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/55 p-4">
@@ -127,7 +119,7 @@ export default function YearlySubscriptionModal({
               if (!start.trim() || !end.trim()) { setLocalError('Βάλε ημερομηνία έναρξης και λήξης.'); return; }
               onSave(start.trim(), end.trim());
             }}
-            className={saveBtnCls}
+            className="btn-primary gap-2 px-3 py-1.5 font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <Save className="h-4 w-4" />
             Αποθήκευση
