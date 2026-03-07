@@ -1,66 +1,20 @@
 // src/pages/TutorsPage.tsx
 import { useEffect, useMemo, useState } from 'react';
-import type { FormEvent, ChangeEvent } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
 import { useTheme } from '../context/ThemeContext';
 import EditDeleteButtons from '../components/ui/EditDeleteButtons';
-import DatePickerField from '../components/ui/AppDatePicker';
+import TutorFormModal from '../components/tutors/TutorFormModal';
+import TutorDeleteModal from '../components/tutors/TutorDeleteModal';
+import type { ModalMode, TutorFormState, TutorRow } from '../components/tutors/types';
+import { TUTOR_SELECT, emptyForm } from '../components/tutors/types';
+import { formatDateToGreek, normalizeText, displayToIso } from '../components/tutors/utils';
 import {
   Users, Search, UserPlus, ChevronLeft, ChevronRight,
-  User, Phone, Mail, Calendar, Hash, GraduationCap, X, Loader2,
+  User, Phone, Mail, Calendar, Hash,
 } from 'lucide-react';
 
-type TutorRow = {
-  id: string; school_id: string; full_name: string;
-  date_of_birth: string | null; afm: string | null;
-  phone: string | null; email: string | null; created_at: string;
-};
-type ModalMode = 'create' | 'edit';
-type TutorFormState = { fullName: string; dateOfBirth: string; afm: string; phone: string; email: string };
-
-const emptyForm: TutorFormState = { fullName: '', dateOfBirth: '', afm: '', phone: '', email: '' };
-const TUTOR_SELECT = 'id, school_id, full_name, date_of_birth, afm, phone, email, created_at';
-
-function formatDateToGreek(dateStr: string | null): string {
-  if (!dateStr) return '';
-  const parts = dateStr.split('-');
-  if (parts.length !== 3) return dateStr;
-  const [y, m, d] = parts;
-  return `${d}/${m}/${y}`;
-}
-function isoToDisplay(iso: string | null): string {
-  if (!iso) return '';
-  const [y, m, d] = iso.split('-');
-  if (!y || !m || !d) return '';
-  return `${d}/${m}/${y}`;
-}
-function displayToIso(display: string): string {
-  if (!display) return '';
-  const parts = display.split(/[\/\-\.]/);
-  if (parts.length !== 3) return '';
-  const [d, m, y] = parts;
-  if (!d || !m || !y) return '';
-  return `${y}-${d.padStart(2, '0')}-${m.padStart(2, '0')}`;
-}
-function normalizeText(value: string | number | null | undefined): string {
-  if (value === null || value === undefined) return '';
-  return value.toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-}
-
-function FormField({ label, icon, children, isDark }: {
-  label: string; icon?: React.ReactNode; children: React.ReactNode; isDark: boolean;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <label className={`flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-        {icon && <span className="opacity-70">{icon}</span>}
-        {label}
-      </label>
-      {children}
-    </div>
-  );
-}
+const PAGE_SIZE = 10;
 
 export default function TutorsPage() {
   const { profile } = useAuth();
@@ -72,20 +26,22 @@ export default function TutorsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Form modal
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<ModalMode>('create');
   const [editingTutor, setEditingTutor] = useState<TutorRow | null>(null);
-  const [form, setForm] = useState<TutorFormState>(emptyForm);
   const [saving, setSaving] = useState(false);
 
-  const [search, setSearch] = useState('');
-  const pageSize = 10;
-  const [page, setPage] = useState(1);
-  useEffect(() => { setPage(1); }, [search]);
-
+  // Delete modal
   const [deleteTarget, setDeleteTarget] = useState<TutorRow | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Search & pagination
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  useEffect(() => { setPage(1); }, [search]);
+
+  // Load tutors
   useEffect(() => {
     if (!schoolId) { setLoading(false); return; }
     const load = async () => {
@@ -98,36 +54,40 @@ export default function TutorsPage() {
     load();
   }, [schoolId]);
 
-  const resetForm = () => setForm(emptyForm);
-  const openCreateModal = () => { resetForm(); setError(null); setModalMode('create'); setEditingTutor(null); setModalOpen(true); };
-  const openEditModal = (row: TutorRow) => {
-    setError(null); setModalMode('edit'); setEditingTutor(row);
-    setForm({ fullName: row.full_name ?? '', dateOfBirth: row.date_of_birth ? isoToDisplay(row.date_of_birth) : '', afm: row.afm ?? '', phone: row.phone ?? '', email: row.email ?? '' });
-    setModalOpen(true);
-  };
-  const closeModal = () => { if (saving) return; setModalOpen(false); setEditingTutor(null); setModalMode('create'); resetForm(); };
-  const handleFormChange = (field: keyof TutorFormState) => (e: ChangeEvent<HTMLInputElement>) => setForm((prev) => ({ ...prev, [field]: e.target.value }));
+  // Modal handlers
+  const openCreateModal = () => { setError(null); setModalMode('create'); setEditingTutor(null); setModalOpen(true); };
+  const openEditModal = (row: TutorRow) => { setError(null); setModalMode('edit'); setEditingTutor(row); setModalOpen(true); };
+  const closeModal = () => { if (saving) return; setModalOpen(false); setEditingTutor(null); setModalMode('create'); };
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (form: TutorFormState) => {
     if (!schoolId) { setError('Το προφίλ σας δεν είναι συνδεδεμένο με σχολείο.'); return; }
     const fullNameTrimmed = form.fullName.trim();
     if (!fullNameTrimmed) return;
     setSaving(true); setError(null);
-    const payload = { school_id: schoolId, full_name: fullNameTrimmed, date_of_birth: displayToIso(form.dateOfBirth) || null, afm: form.afm.trim() || null, phone: form.phone.trim() || null, email: form.email.trim() || null };
+    const payload = {
+      school_id: schoolId,
+      full_name: fullNameTrimmed,
+      date_of_birth: displayToIso(form.dateOfBirth) || null,
+      afm: form.afm.trim() || null,
+      phone: form.phone.trim() || null,
+      email: form.email.trim() || null,
+    };
     if (modalMode === 'create') {
       const { data, error } = await supabase.from('tutors').insert(payload).select(TUTOR_SELECT).maybeSingle();
       setSaving(false);
       if (error || !data) { console.error(error); setError('Αποτυχία δημιουργίας καθηγητή.'); return; }
       setTutors((prev) => [...prev, data as TutorRow]); closeModal();
     } else if (modalMode === 'edit' && editingTutor) {
-      const { data, error } = await supabase.from('tutors').update({ full_name: payload.full_name, date_of_birth: payload.date_of_birth, afm: payload.afm, phone: payload.phone, email: payload.email }).eq('id', editingTutor.id).eq('school_id', schoolId).select(TUTOR_SELECT).maybeSingle();
+      const { data, error } = await supabase.from('tutors')
+        .update({ full_name: payload.full_name, date_of_birth: payload.date_of_birth, afm: payload.afm, phone: payload.phone, email: payload.email })
+        .eq('id', editingTutor.id).eq('school_id', schoolId).select(TUTOR_SELECT).maybeSingle();
       setSaving(false);
       if (error || !data) { console.error(error); setError('Αποτυχία ενημέρωσης καθηγητή.'); return; }
       setTutors((prev) => prev.map((t) => (t.id === editingTutor.id ? (data as TutorRow) : t))); closeModal();
     } else { setSaving(false); }
   };
 
+  // Delete handlers
   const handleConfirmDelete = async () => {
     if (!deleteTarget || !schoolId) return;
     setDeleting(true); setError(null);
@@ -137,6 +97,7 @@ export default function TutorsPage() {
     setTutors((prev) => prev.filter((t) => t.id !== deleteTarget.id)); setDeleteTarget(null);
   };
 
+  // Filtering & pagination
   const filteredTutors = useMemo(() => {
     const q = normalizeText(search.trim());
     if (!q) return tutors;
@@ -146,25 +107,20 @@ export default function TutorsPage() {
     });
   }, [tutors, search]);
 
-  const pageCount = useMemo(() => Math.max(1, Math.ceil(filteredTutors.length / pageSize)), [filteredTutors.length]);
+  const pageCount = useMemo(() => Math.max(1, Math.ceil(filteredTutors.length / PAGE_SIZE)), [filteredTutors.length]);
   useEffect(() => { setPage((p) => Math.min(Math.max(1, p), pageCount)); }, [pageCount]);
-  const pagedTutors = useMemo(() => { const start = (page - 1) * pageSize; return filteredTutors.slice(start, start + pageSize); }, [filteredTutors, page]);
-  const showingFrom = filteredTutors.length === 0 ? 0 : (page - 1) * pageSize + 1;
-  const showingTo = Math.min(page * pageSize, filteredTutors.length);
+  const pagedTutors = useMemo(() => { const start = (page - 1) * PAGE_SIZE; return filteredTutors.slice(start, start + PAGE_SIZE); }, [filteredTutors, page]);
+  const showingFrom = filteredTutors.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const showingTo = Math.min(page * PAGE_SIZE, filteredTutors.length);
 
   // ── Style helpers ──
   const cardCls = `overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-md ring-1 ring-inset ${isDark ? 'border-slate-700/50 bg-slate-950/40 ring-white/[0.04]' : 'border-slate-200 bg-white/80 ring-black/[0.02]'}`;
-  const inputCls = `h-9 w-full rounded-lg border px-3 text-xs outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 focus:border-[color:var(--color-accent)] ${isDark ? 'border-slate-700/70 bg-slate-900/60 text-slate-100 placeholder-slate-500' : 'border-slate-200 bg-slate-50 text-slate-800 placeholder-slate-400'}`;
   const searchInputCls = `h-9 w-full rounded-lg border pl-9 pr-3 text-xs outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 focus:border-[color:var(--color-accent)] sm:w-52 ${isDark ? 'border-slate-700/70 bg-slate-900/60 text-slate-100 placeholder-slate-500' : 'border-slate-200 bg-white text-slate-800 placeholder-slate-400'}`;
   const theadRowCls = `border-b ${isDark ? 'border-slate-700/60 bg-slate-900/40' : 'border-slate-200 bg-slate-50'}`;
   const tbodyDivideCls = `divide-y ${isDark ? 'divide-slate-800/50' : 'divide-slate-100'}`;
   const trHoverCls = `group transition-colors ${isDark ? 'hover:bg-white/[0.025]' : 'hover:bg-slate-50'}`;
-  const modalBg = isDark ? 'border-slate-700/60 bg-[#1f2d3d]' : 'border-slate-200 bg-white';
-  const cancelBtnCls = `btn border px-4 py-1.5 disabled:opacity-50 ${isDark ? 'border-slate-600/60 bg-slate-800/50 text-slate-200 hover:bg-slate-700/60' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'}`;
-  const closeBtnCls = `flex h-7 w-7 items-center justify-center rounded-lg border transition ${isDark ? 'border-slate-700/60 bg-slate-800/50 text-slate-400 hover:border-slate-600 hover:text-slate-200' : 'border-slate-200 bg-slate-100 text-slate-500 hover:border-slate-300 hover:text-slate-700'}`;
   const paginationBtnCls = `inline-flex h-7 w-7 items-center justify-center rounded-lg border transition disabled:cursor-not-allowed disabled:opacity-30 ${isDark ? 'border-slate-700/60 bg-slate-900/30 text-slate-400 hover:border-slate-600 hover:bg-slate-800/50 hover:text-slate-200' : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-700'}`;
   const paginationFooterCls = `flex items-center justify-between gap-3 border-t px-5 py-3 ${isDark ? 'border-slate-800/70 bg-slate-900/20' : 'border-slate-100 bg-slate-50/50'}`;
-  const modalFooterCls = `flex justify-end gap-2.5 border-t px-6 py-4 mt-4 ${isDark ? 'border-slate-800/70 bg-slate-900/20' : 'border-slate-100 bg-slate-50/50'}`;
 
   return (
     <div className="space-y-6 px-1">
@@ -211,7 +167,7 @@ export default function TutorsPage() {
       </div>
 
       {/* ── Alerts ── */}
-      {error && (
+      {error && !modalOpen && !deleteTarget && (
         <div className={`flex items-start gap-3 rounded-xl border px-4 py-3 text-xs backdrop-blur ${isDark ? 'border-red-500/40 bg-red-950/40 text-red-200' : 'border-red-200 bg-red-50 text-red-700'}`}>
           <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-red-400" />{error}
         </div>
@@ -333,95 +289,23 @@ export default function TutorsPage() {
         )}
       </div>
 
-      {/* ── Create / Edit modal ── */}
-      {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className={`relative w-full max-w-lg overflow-hidden rounded-2xl border shadow-2xl ${modalBg}`}>
-            <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 30%, transparent))' }} />
+      {/* ── Modals ── */}
+      <TutorFormModal
+        open={modalOpen}
+        mode={modalMode}
+        editingTutor={editingTutor}
+        error={error}
+        saving={saving}
+        onClose={closeModal}
+        onSubmit={handleSubmit}
+      />
 
-            <div className="flex items-center justify-between px-6 pt-5 pb-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl"
-                  style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>
-                  <GraduationCap className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
-                </div>
-                <div>
-                  <h2 className={`text-sm font-semibold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>
-                    {modalMode === 'create' ? 'Νέος καθηγητής' : 'Επεξεργασία καθηγητή'}
-                  </h2>
-                  {modalMode === 'edit' && editingTutor && (
-                    <p className={`text-[11px] mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{editingTutor.full_name}</p>
-                  )}
-                </div>
-              </div>
-              <button type="button" onClick={closeModal} className={closeBtnCls}>
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-
-            {error && (
-              <div className={`mx-6 mb-3 flex items-start gap-2.5 rounded-xl border px-3.5 py-2.5 text-xs ${isDark ? 'border-red-500/30 bg-red-950/40 text-red-200' : 'border-red-200 bg-red-50 text-red-700'}`}>
-                <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />{error}
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit}>
-              <div className="space-y-4 px-6 pb-2">
-                <FormField label="Ονοματεπώνυμο" icon={<User className="h-3 w-3" />} isDark={isDark}>
-                  <input className={inputCls} placeholder="π.χ. Γιάννης Παπαδόπουλος" value={form.fullName} onChange={handleFormChange('fullName')} required />
-                </FormField>
-                <FormField label="Ημερομηνία γέννησης" icon={<Calendar className="h-3 w-3" />} isDark={isDark}>
-                  <DatePickerField label="" value={form.dateOfBirth} onChange={(value) => setForm((prev) => ({ ...prev, dateOfBirth: value }))} placeholder="π.χ. 24/12/1985" id="tutor-dob" />
-                </FormField>
-                <FormField label="ΑΦΜ" icon={<Hash className="h-3 w-3" />} isDark={isDark}>
-                  <input className={inputCls} placeholder="π.χ. 123456789" value={form.afm} onChange={handleFormChange('afm')} />
-                </FormField>
-                <FormField label="Τηλέφωνο" icon={<Phone className="h-3 w-3" />} isDark={isDark}>
-                  <input className={inputCls} placeholder="π.χ. 6900000000" value={form.phone} onChange={handleFormChange('phone')} />
-                </FormField>
-                <FormField label="Email" icon={<Mail className="h-3 w-3" />} isDark={isDark}>
-                  <input type="email" className={inputCls} placeholder="π.χ. tutor@example.com" value={form.email} onChange={handleFormChange('email')} />
-                </FormField>
-              </div>
-
-              <div className={modalFooterCls}>
-                <button type="button" onClick={closeModal} disabled={saving} className={cancelBtnCls}>Ακύρωση</button>
-                <button type="submit" disabled={saving}
-                  className="btn-primary gap-1.5 px-4 py-1.5 font-semibold shadow-sm hover:brightness-110 active:scale-[0.97] disabled:opacity-60">
-                  {saving ? <><Loader2 className="h-3 w-3 animate-spin" />Αποθήκευση...</> : modalMode === 'create' ? 'Αποθήκευση' : 'Ενημέρωση'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ── Delete confirmation modal ── */}
-      {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className={`relative w-full max-w-sm overflow-hidden rounded-2xl border shadow-2xl ${modalBg}`}>
-            <div className="h-1 w-full bg-gradient-to-r from-red-600 via-red-500 to-rose-500" />
-            <div className="p-6">
-              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/15 ring-1 ring-red-500/30">
-                <Users className="h-5 w-5 text-red-400" />
-              </div>
-              <h3 className={`mb-1 text-sm font-semibold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Διαγραφή καθηγητή</h3>
-              <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                Σίγουρα θέλετε να διαγράψετε τον καθηγητή{' '}
-                <span className={`font-semibold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>«{deleteTarget.full_name}»</span>;
-                {' '}Η ενέργεια αυτή δεν μπορεί να ανακληθεί.
-              </p>
-              <div className="mt-6 flex justify-end gap-2.5">
-                <button type="button" onClick={() => { if (!deleting) setDeleteTarget(null); }} disabled={deleting} className={cancelBtnCls}>Ακύρωση</button>
-                <button type="button" onClick={handleConfirmDelete} disabled={deleting}
-                  className="btn bg-red-600 px-4 py-1.5 font-semibold text-white shadow-sm hover:bg-red-500 active:scale-[0.97] disabled:opacity-60">
-                  {deleting ? 'Διαγραφή…' : 'Διαγραφή'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <TutorDeleteModal
+        deleteTarget={deleteTarget}
+        deleting={deleting}
+        onCancel={() => { if (!deleting) setDeleteTarget(null); }}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 }

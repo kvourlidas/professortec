@@ -1,37 +1,17 @@
 // src/pages/SubjectsPage.tsx
 import { useState, useEffect, useMemo } from 'react';
-import type { FormEvent } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
-import {
-  NotebookText, Search, Plus, ChevronLeft, ChevronRight,
-  BookOpen, Layers, Users, X, Loader2,
-} from 'lucide-react';
+import { NotebookText, Search, Plus, ChevronLeft, ChevronRight, BookOpen, Layers, Users } from 'lucide-react';
 import EditDeleteButtons from '../components/ui/EditDeleteButtons';
 import SubjectTutorsModal from '../components/subjects/SubjectTutorsModal';
+import SubjectFormModal from '../components/subjects/SubjectFormModal';
+import SubjectDeleteModal from '../components/subjects/SubjectDeleteModal';
 import { useTheme } from '../context/ThemeContext';
+import type { LevelRow, SubjectRow, TutorRow, ModalMode } from '../components/subjects/types';
+import { normalizeText } from '../components/subjects/utils';
 
-type LevelRow = { id: string; school_id: string; name: string; created_at: string };
-type SubjectRow = { id: string; school_id: string; name: string; level_id: string | null; created_at: string };
-type TutorRow = { id: string; school_id: string; full_name: string | null };
-type ModalMode = 'create' | 'edit';
-
-function normalizeText(value: string | null | undefined): string {
-  if (!value) return '';
-  return value.toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-}
-
-function FormField({ label, icon, children }: { label: string; icon?: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1.5">
-      <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-        {icon && <span className="opacity-70">{icon}</span>}
-        {label}
-      </label>
-      {children}
-    </div>
-  );
-}
+const PAGE_SIZE = 10;
 
 export default function SubjectsPage() {
   const { profile } = useAuth();
@@ -44,33 +24,149 @@ export default function SubjectsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Form modal
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<ModalMode>('create');
   const [editingSubject, setEditingSubject] = useState<SubjectRow | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const [subjectName, setSubjectName] = useState('');
-  const [levelId, setLevelId] = useState('');
-  const [search, setSearch] = useState('');
-
-  const pageSize = 10;
-  const [page, setPage] = useState(1);
-  useEffect(() => { setPage(1); }, [search]);
-
+  // Delete modal
   const [deleteTarget, setDeleteTarget] = useState<SubjectRow | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Tutors modal
   const [tutorsModalSubject, setTutorsModalSubject] = useState<{ id: string; name: string } | null>(null);
   const [tutorsBySubject, setTutorsBySubject] = useState<Map<string, TutorRow[]>>(new Map());
   const [reloadSubjectTutorsFlag, setReloadSubjectTutorsFlag] = useState(0);
 
-  // ── Dynamic classes ──
-  const inputCls = isDark
-    ? 'h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30'
-    : 'h-9 w-full rounded-lg border border-slate-300 bg-white px-3 text-xs text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30';
+  // Search & pagination
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  useEffect(() => { setPage(1); }, [search]);
 
-  const selectCls = inputCls;
+  // Load levels
+  useEffect(() => {
+    if (!schoolId) return;
+    supabase.from('levels').select('*').eq('school_id', schoolId).order('name', { ascending: true })
+      .then(({ data, error }) => {
+        if (error) { console.error(error); setError('Αποτυχία φόρτωσης επιπέδων.'); }
+        else setLevels((data ?? []) as LevelRow[]);
+      });
+  }, [schoolId]);
 
+  // Load subjects
+  useEffect(() => {
+    if (!schoolId) { setLoading(false); return; }
+    setLoading(true); setError(null);
+    supabase.from('subjects').select('id, school_id, name, level_id, created_at')
+      .eq('school_id', schoolId).order('name', { ascending: true })
+      .then(({ data, error }) => {
+        if (error) { console.error(error); setError('Αποτυχία φόρτωσης μαθημάτων.'); }
+        else setSubjects((data ?? []) as SubjectRow[]);
+        setLoading(false);
+      });
+  }, [schoolId]);
+
+  // Load tutors per subject
+  useEffect(() => {
+    if (!schoolId) return;
+    const load = async () => {
+      try {
+        const [{ data: tutorsData, error: tutorsErr }, { data: linksData, error: linksErr }] = await Promise.all([
+          supabase.from('tutors').select('id, school_id, full_name').eq('school_id', schoolId).order('full_name', { ascending: true }),
+          supabase.from('subject_tutors').select('subject_id, tutor_id').eq('school_id', schoolId),
+        ]);
+        if (tutorsErr) throw tutorsErr;
+        if (linksErr) throw linksErr;
+        const tutors = (tutorsData ?? []) as TutorRow[];
+        type LinkRow = { subject_id: string; tutor_id: string };
+        const links = (linksData ?? []) as LinkRow[];
+        const map = new Map<string, TutorRow[]>();
+        links.forEach((link) => {
+          const tutor = tutors.find((t) => t.id === link.tutor_id);
+          if (!tutor) return;
+          const list = map.get(link.subject_id) ?? [];
+          list.push(tutor);
+          map.set(link.subject_id, list);
+        });
+        setTutorsBySubject(map);
+      } catch (err) { console.error('Error loading subject tutors map', err); }
+    };
+    load();
+  }, [schoolId, reloadSubjectTutorsFlag]);
+
+  // Modal handlers
+  const openCreateModal = () => { setError(null); setModalMode('create'); setEditingSubject(null); setModalOpen(true); };
+  const openEditModal = (row: SubjectRow) => { setError(null); setModalMode('edit'); setEditingSubject(row); setModalOpen(true); };
+  const closeModal = () => { if (saving) return; setModalOpen(false); setEditingSubject(null); setModalMode('create'); };
+
+  const handleSubmit = async (name: string, levelId: string) => {
+    if (!schoolId) { setError('Το προφίλ σας δεν είναι συνδεδεμένο με σχολείο.'); return; }
+    const nameTrimmed = name.trim();
+    if (!nameTrimmed) return;
+    if (!levelId) { setError('Παρακαλώ επιλέξτε επίπεδο.'); return; }
+    setSaving(true); setError(null);
+    const payload = { school_id: schoolId, name: nameTrimmed, level_id: levelId };
+
+    if (modalMode === 'create') {
+      const { data, error } = await supabase.from('subjects').insert(payload)
+        .select('id, school_id, name, level_id, created_at').maybeSingle();
+      setSaving(false);
+      if (error || !data) { console.error(error); setError('Αποτυχία δημιουργίας μαθήματος.'); return; }
+      setSubjects((prev) => [...prev, data as SubjectRow].sort((a, b) => a.name.localeCompare(b.name, 'el')));
+      closeModal();
+    } else if (modalMode === 'edit' && editingSubject) {
+      const { data, error } = await supabase.from('subjects')
+        .update({ name: payload.name, level_id: payload.level_id })
+        .eq('id', editingSubject.id).eq('school_id', schoolId)
+        .select('id, school_id, name, level_id, created_at').maybeSingle();
+      setSaving(false);
+      if (error || !data) { console.error(error); setError('Αποτυχία ενημέρωσης μαθήματος.'); return; }
+      setSubjects((prev) => prev.map((s) => (s.id === editingSubject.id ? (data as SubjectRow) : s)));
+      closeModal();
+    } else { setSaving(false); }
+  };
+
+  // Delete handlers
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true); setError(null);
+    const { error } = await supabase.from('subjects').delete()
+      .eq('id', deleteTarget.id).eq('school_id', schoolId ?? '');
+    setDeleting(false);
+    if (error) { console.error(error); setError('Αποτυχία διαγραφής μαθήματος.'); return; }
+    setSubjects((prev) => prev.filter((s) => s.id !== deleteTarget.id));
+    setDeleteTarget(null);
+  };
+
+  // Filtering & pagination
+  const levelNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    levels.forEach((lvl) => m.set(lvl.id, lvl.name));
+    return m;
+  }, [levels]);
+
+  const filteredSubjects = useMemo(() => {
+    const q = normalizeText(search.trim());
+    if (!q) return subjects;
+    return subjects.filter((subj) => {
+      const levelName = subj.level_id ? (levelNameById.get(subj.level_id) ?? '') : '';
+      return normalizeText([subj.name, levelName].join(' ')).includes(q);
+    });
+  }, [subjects, levelNameById, search]);
+
+  const pageCount = useMemo(() => Math.max(1, Math.ceil(filteredSubjects.length / PAGE_SIZE)), [filteredSubjects.length]);
+  useEffect(() => { setPage((p) => Math.min(Math.max(1, p), pageCount)); }, [pageCount]);
+
+  const pagedSubjects = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filteredSubjects.slice(start, start + PAGE_SIZE);
+  }, [filteredSubjects, page]);
+
+  const showingFrom = filteredSubjects.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const showingTo = Math.min(page * PAGE_SIZE, filteredSubjects.length);
+
+  // ── Style classes ──
   const searchInputCls = isDark
     ? 'h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 pl-9 pr-3 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30 sm:w-52'
     : 'h-9 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-xs text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30 sm:w-52';
@@ -112,158 +208,16 @@ export default function SubjectsPage() {
     ? 'inline-flex items-center rounded-full border border-slate-600/50 bg-slate-800/60 px-2.5 py-0.5 text-[11px] text-slate-300'
     : 'inline-flex items-center rounded-full border border-slate-300 bg-slate-100 px-2.5 py-0.5 text-[11px] text-slate-600';
 
-  const modalCardCls = isDark
-    ? 'relative w-full max-w-md overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl'
-    : 'relative w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 shadow-2xl';
-
-  const modalSmCardCls = isDark
-    ? 'relative w-full max-w-sm overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl'
-    : 'relative w-full max-w-sm overflow-hidden rounded-2xl border border-slate-200 shadow-2xl';
-
-  const modalTitleCls = isDark ? 'text-sm font-semibold text-slate-50' : 'text-sm font-semibold text-slate-800';
-
-  const modalCloseBtnCls = isDark
-    ? 'flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-800/50 text-slate-400 transition hover:border-slate-600 hover:text-slate-200'
-    : 'flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-slate-500 transition hover:border-slate-300 hover:text-slate-700';
-
-  const modalFooterCls = isDark
-    ? 'flex justify-end gap-2.5 border-t border-slate-800/70 bg-slate-900/20 px-6 py-4 mt-4'
-    : 'flex justify-end gap-2.5 border-t border-slate-200 bg-slate-50 px-6 py-4 mt-4';
-
-  const cancelBtnCls = isDark
-    ? 'btn border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-slate-200 hover:bg-slate-700/60 disabled:opacity-50'
-    : 'btn border border-slate-300 bg-white px-4 py-1.5 text-slate-700 hover:bg-slate-100 disabled:opacity-50';
-
-  const levelNameById = useMemo(() => {
-    const m = new Map<string, string>();
-    levels.forEach((lvl) => m.set(lvl.id, lvl.name));
-    return m;
-  }, [levels]);
-
-  useEffect(() => {
-    if (!schoolId) return;
-    supabase.from('levels').select('*').eq('school_id', schoolId).order('name', { ascending: true })
-      .then(({ data, error }) => {
-        if (error) { console.error(error); setError('Αποτυχία φόρτωσης επιπέδων.'); }
-        else setLevels((data ?? []) as LevelRow[]);
-      });
-  }, [schoolId]);
-
-  useEffect(() => {
-    if (!schoolId) { setLoading(false); return; }
-    setLoading(true); setError(null);
-    supabase.from('subjects').select('id, school_id, name, level_id, created_at')
-      .eq('school_id', schoolId).order('name', { ascending: true })
-      .then(({ data, error }) => {
-        if (error) { console.error(error); setError('Αποτυχία φόρτωσης μαθημάτων.'); }
-        else setSubjects((data ?? []) as SubjectRow[]);
-        setLoading(false);
-      });
-  }, [schoolId]);
-
-  useEffect(() => {
-    if (!schoolId) return;
-    const load = async () => {
-      try {
-        const [{ data: tutorsData, error: tutorsErr }, { data: linksData, error: linksErr }] = await Promise.all([
-          supabase.from('tutors').select('id, school_id, full_name').eq('school_id', schoolId).order('full_name', { ascending: true }),
-          supabase.from('subject_tutors').select('subject_id, tutor_id').eq('school_id', schoolId),
-        ]);
-        if (tutorsErr) throw tutorsErr;
-        if (linksErr) throw linksErr;
-        const tutors = (tutorsData ?? []) as TutorRow[];
-        type LinkRow = { subject_id: string; tutor_id: string };
-        const links = (linksData ?? []) as LinkRow[];
-        const map = new Map<string, TutorRow[]>();
-        links.forEach((link) => {
-          const tutor = tutors.find((t) => t.id === link.tutor_id);
-          if (!tutor) return;
-          const list = map.get(link.subject_id) ?? [];
-          list.push(tutor);
-          map.set(link.subject_id, list);
-        });
-        setTutorsBySubject(map);
-      } catch (err) { console.error('Error loading subject tutors map', err); }
-    };
-    load();
-  }, [schoolId, reloadSubjectTutorsFlag]);
-
-  const resetForm = () => { setSubjectName(''); setLevelId(''); };
-
-  const openCreateModal = () => { resetForm(); setError(null); setModalMode('create'); setEditingSubject(null); setModalOpen(true); };
-  const openEditModal = (row: SubjectRow) => {
-    setError(null); setModalMode('edit'); setEditingSubject(row);
-    setSubjectName(row.name ?? ''); setLevelId(row.level_id ?? '');
-    setModalOpen(true);
-  };
-  const closeModal = () => {
-    if (saving) return;
-    setModalOpen(false); setEditingSubject(null); setModalMode('create'); resetForm();
-  };
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!schoolId) { setError('Το προφίλ σας δεν είναι συνδεδεμένο με σχολείο.'); return; }
-    const nameTrimmed = subjectName.trim();
-    if (!nameTrimmed) return;
-    if (!levelId) { setError('Παρακαλώ επιλέξτε επίπεδο.'); return; }
-    setSaving(true); setError(null);
-    const payload = { school_id: schoolId, name: nameTrimmed, level_id: levelId };
-
-    if (modalMode === 'create') {
-      const { data, error } = await supabase.from('subjects').insert(payload).select('id, school_id, name, level_id, created_at').maybeSingle();
-      setSaving(false);
-      if (error || !data) { console.error(error); setError('Αποτυχία δημιουργίας μαθήματος.'); return; }
-      setSubjects((prev) => [...prev, data as SubjectRow].sort((a, b) => a.name.localeCompare(b.name, 'el')));
-      closeModal();
-    } else if (modalMode === 'edit' && editingSubject) {
-      const { data, error } = await supabase.from('subjects').update({ name: payload.name, level_id: payload.level_id })
-        .eq('id', editingSubject.id).eq('school_id', schoolId).select('id, school_id, name, level_id, created_at').maybeSingle();
-      setSaving(false);
-      if (error || !data) { console.error(error); setError('Αποτυχία ενημέρωσης μαθήματος.'); return; }
-      setSubjects((prev) => prev.map((s) => (s.id === editingSubject.id ? (data as SubjectRow) : s)));
-      closeModal();
-    } else { setSaving(false); }
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!deleteTarget) return;
-    setDeleting(true); setError(null);
-    const { error } = await supabase.from('subjects').delete().eq('id', deleteTarget.id).eq('school_id', schoolId ?? '');
-    setDeleting(false);
-    if (error) { console.error(error); setError('Αποτυχία διαγραφής μαθήματος.'); return; }
-    setSubjects((prev) => prev.filter((s) => s.id !== deleteTarget.id));
-    setDeleteTarget(null);
-  };
-
-  const filteredSubjects = useMemo(() => {
-    const q = normalizeText(search.trim());
-    if (!q) return subjects;
-    return subjects.filter((subj) => {
-      const levelName = subj.level_id ? (levelNameById.get(subj.level_id) ?? '') : '';
-      return normalizeText([subj.name, levelName].join(' ')).includes(q);
-    });
-  }, [subjects, levelNameById, search]);
-
-  const pageCount = useMemo(() => Math.max(1, Math.ceil(filteredSubjects.length / pageSize)), [filteredSubjects.length]);
-  useEffect(() => { setPage((p) => Math.min(Math.max(1, p), pageCount)); }, [pageCount]);
-
-  const pagedSubjects = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return filteredSubjects.slice(start, start + pageSize);
-  }, [filteredSubjects, page]);
-
-  const showingFrom = filteredSubjects.length === 0 ? 0 : (page - 1) * pageSize + 1;
-  const showingTo = Math.min(page * pageSize, filteredSubjects.length);
-
   return (
     <div className="space-y-6 px-1">
 
       {/* ── Header ── */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3">
-          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
-            style={{ background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 60%, transparent))' }}>
+          <div
+            className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+            style={{ background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 60%, transparent))' }}
+          >
             <NotebookText className="h-4.5 w-4." style={{ color: 'var(--color-input-bg)' }} />
           </div>
           <div>
@@ -280,8 +234,10 @@ export default function SubjectsPage() {
                   {subjects.length} σύνολο
                 </span>
                 {search.trim() && (
-                  <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px]"
-                    style={{ borderColor: 'color-mix(in srgb, var(--color-accent) 40%, transparent)', background: 'color-mix(in srgb, var(--color-accent) 10%, transparent)', color: 'var(--color-accent)' }}>
+                  <span
+                    className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px]"
+                    style={{ borderColor: 'color-mix(in srgb, var(--color-accent) 40%, transparent)', background: 'color-mix(in srgb, var(--color-accent) 10%, transparent)', color: 'var(--color-accent)' }}
+                  >
                     <Search className="h-3 w-3" />
                     {filteredSubjects.length} αποτελέσματα
                   </span>
@@ -301,8 +257,11 @@ export default function SubjectsPage() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <button type="button" onClick={openCreateModal}
-            className="btn-primary h-9 gap-2 px-4 font-semibold shadow-sm hover:brightness-110 active:scale-[0.98]">
+          <button
+            type="button"
+            onClick={openCreateModal}
+            className="btn-primary h-9 gap-2 px-4 font-semibold shadow-sm hover:brightness-110 active:scale-[0.98]"
+          >
             <Plus className="h-3.5 w-3.5" />
             Προσθήκη μαθήματος
           </button>
@@ -310,7 +269,7 @@ export default function SubjectsPage() {
       </div>
 
       {/* ── Alerts ── */}
-      {error && (
+      {error && !modalOpen && !deleteTarget && (
         <div className="flex items-start gap-3 rounded-xl border border-red-500/40 bg-red-950/40 px-4 py-3 text-xs text-red-200 backdrop-blur">
           <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-red-400" />{error}
         </div>
@@ -385,21 +344,18 @@ export default function SubjectsPage() {
 
                   return (
                     <tr key={subj.id} className={trHoverCls}>
-                      {/* Name */}
                       <td className="px-5 py-3.5">
                         <span className={`font-medium transition-colors ${isDark ? 'text-slate-100 group-hover:text-white' : 'text-slate-700 group-hover:text-slate-900'}`}>
                           {subj.name}
                         </span>
                       </td>
 
-                      {/* Level */}
                       <td className="px-5 py-3.5">
                         {levelName !== '—'
                           ? <span className={levelBadgeCls}>{levelName}</span>
                           : <span className={isDark ? 'text-slate-600' : 'text-slate-300'}>—</span>}
                       </td>
 
-                      {/* Tutors */}
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-2 flex-wrap">
                           <button
@@ -432,7 +388,6 @@ export default function SubjectsPage() {
                         </div>
                       </td>
 
-                      {/* Actions */}
                       <td className="px-5 py-3.5">
                         <div className="flex items-center justify-end gap-1">
                           <EditDeleteButtons
@@ -475,109 +430,25 @@ export default function SubjectsPage() {
         )}
       </div>
 
-      {/* ── Create / Edit modal ── */}
-      {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className={modalCardCls} style={{ background: 'var(--color-sidebar)' }}>
-            <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 30%, transparent))' }} />
+      {/* ── Modals ── */}
+      <SubjectFormModal
+        open={modalOpen}
+        mode={modalMode}
+        editingSubject={editingSubject}
+        levels={levels}
+        error={error}
+        saving={saving}
+        onClose={closeModal}
+        onSubmit={handleSubmit}
+      />
 
-            <div className="flex items-center justify-between px-6 pt-5 pb-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl"
-                  style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>
-                  <BookOpen className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
-                </div>
-                <div>
-                  <h2 className={modalTitleCls}>
-                    {modalMode === 'create' ? 'Νέο μάθημα' : 'Επεξεργασία μαθήματος'}
-                  </h2>
-                  {modalMode === 'edit' && editingSubject && (
-                    <p className={`text-[11px] mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                      {editingSubject.name}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <button type="button" onClick={closeModal} className={modalCloseBtnCls}>
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
+      <SubjectDeleteModal
+        deleteTarget={deleteTarget}
+        deleting={deleting}
+        onCancel={() => { if (!deleting) setDeleteTarget(null); }}
+        onConfirm={handleConfirmDelete}
+      />
 
-            {error && (
-              <div className="mx-6 mb-3 flex items-start gap-2.5 rounded-xl border border-red-500/30 bg-red-950/40 px-3.5 py-2.5 text-xs text-red-200">
-                <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />{error}
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit}>
-              <div className="space-y-4 px-6 pb-2">
-                <FormField label="Όνομα μαθήματος" icon={<BookOpen className="h-3 w-3" />}>
-                  <input className={inputCls} placeholder="π.χ. Αγγλικά"
-                    value={subjectName} onChange={(e) => setSubjectName(e.target.value)} required />
-                </FormField>
-
-                <FormField label="Επίπεδο" icon={<Layers className="h-3 w-3" />}>
-                  <select className={selectCls} value={levelId} onChange={(e) => setLevelId(e.target.value)} required>
-                    <option value="">Επιλέξτε επίπεδο…</option>
-                    {levels.map((lvl) => <option key={lvl.id} value={lvl.id}>{lvl.name}</option>)}
-                  </select>
-                  <p className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                    Κάθε μάθημα ανήκει σε ένα επίπεδο.
-                  </p>
-                </FormField>
-              </div>
-
-              <div className={modalFooterCls}>
-                <button type="button" onClick={closeModal} disabled={saving} className={cancelBtnCls}>
-                  Ακύρωση
-                </button>
-                <button type="submit" disabled={saving}
-                  className="btn-primary gap-1.5 px-4 py-1.5 font-semibold shadow-sm hover:brightness-110 active:scale-[0.97] disabled:opacity-60">
-                  {saving
-                    ? <><Loader2 className="h-3 w-3 animate-spin" />Αποθήκευση...</>
-                    : modalMode === 'create' ? 'Αποθήκευση' : 'Ενημέρωση'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ── Delete modal ── */}
-      {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className={modalSmCardCls} style={{ background: 'var(--color-sidebar)' }}>
-            <div className="h-1 w-full bg-gradient-to-r from-red-600 via-red-500 to-rose-500" />
-            <div className="p-6">
-              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/15 ring-1 ring-red-500/30">
-                <BookOpen className="h-5 w-5 text-red-400" />
-              </div>
-              <h3 className={`mb-1 text-sm font-semibold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>
-                Διαγραφή μαθήματος
-              </h3>
-              <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                Σίγουρα θέλετε να διαγράψετε το μάθημα{' '}
-                <span className={`font-semibold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
-                  «{deleteTarget.name}»
-                </span>;
-                {' '}Η ενέργεια αυτή δεν μπορεί να ανακληθεί.
-              </p>
-              <div className="mt-6 flex justify-end gap-2.5">
-                <button type="button" onClick={() => { if (!deleting) setDeleteTarget(null); }} disabled={deleting}
-                  className={cancelBtnCls}>
-                  Ακύρωση
-                </button>
-                <button type="button" onClick={handleConfirmDelete} disabled={deleting}
-                  className="btn bg-red-600 px-4 py-1.5 font-semibold text-white shadow-sm hover:bg-red-500 active:scale-[0.97] disabled:opacity-60">
-                  {deleting ? 'Διαγραφή…' : 'Διαγραφή'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── SubjectTutors modal ── */}
       <SubjectTutorsModal
         open={!!tutorsModalSubject}
         onClose={() => setTutorsModalSubject(null)}

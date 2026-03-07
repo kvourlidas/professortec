@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -L \"https://raw.githubusercontent.com/kvourlidas/professortec/refs/heads/main/public/edra-primary-light%20\\(PNG\\).png\" -o \"public/edra-primary-light.png\")",
+      "Bash(curl -L \"https://raw.githubusercontent.com/kvourlidas/professortec/refs/heads/main/public/edra-primary-dark\\(PNG\\).png\" -o \"public/edra-primary-dark.png\")",
+      "Bash(npx tsc --noEmit)",
+      "Bash(npx vite build)"
+    ]
+  }
+}

@@ -219,7 +219,7 @@ export default function DashboardMonthlyTestsAvgGradesSection({ schoolId }: Prop
           <div className="flex flex-wrap items-center gap-1.5">
             <div ref={subjectsWrapRef}>
               <DropdownShell isDark={isDark} label={subjectsLabel} open={openSubjects} onToggle={() => { setOpenMonth(false); setOpenYear(false); setOpenSubjects((v) => !v); }} widthClass="w-[180px]">
-                <div className="max-h-64 overflow-y-auto p-1.5">
+                <div className="dropdown-scrollbar max-h-64 overflow-y-auto p-1.5">
                   <button type="button" onClick={() => { setSelectedSubjectIds([]); setOpenSubjects(false); }} className={listItemCls(selectedSubjectIds.length === 0)}>
                     <span>Όλα τα μαθήματα</span>
                     {selectedSubjectIds.length === 0 && <Check className="h-3 w-3" />}
@@ -242,7 +242,7 @@ export default function DashboardMonthlyTestsAvgGradesSection({ schoolId }: Prop
 
             <div ref={monthWrapRef}>
               <DropdownShell isDark={isDark} label={monthLabel} open={openMonth} onToggle={() => { setOpenSubjects(false); setOpenYear(false); setOpenMonth((v) => !v); }} widthClass="w-[140px]">
-                <div className="max-h-64 overflow-y-auto p-1.5">
+                <div className="dropdown-scrollbar max-h-64 overflow-y-auto p-1.5">
                   {MONTHS.map((m) => (
                     <button key={m.idx} type="button" onClick={() => { setMonth(m.idx); setOpenMonth(false); }} className={listItemCls(m.idx === month)}>
                       <span>{m.label}</span>
@@ -255,7 +255,7 @@ export default function DashboardMonthlyTestsAvgGradesSection({ schoolId }: Prop
 
             <div ref={yearWrapRef}>
               <DropdownShell isDark={isDark} label={String(year)} open={openYear} onToggle={() => { setOpenSubjects(false); setOpenMonth(false); setOpenYear((v) => !v); }} widthClass="w-[80px]">
-                <div className="max-h-64 overflow-y-auto p-1.5">
+                <div className="dropdown-scrollbar max-h-64 overflow-y-auto p-1.5">
                   {yearOptions.map((y) => (
                     <button key={y} type="button" onClick={() => { setYear(y); setOpenYear(false); }} className={listItemCls(y === year)}>
                       <span>{y}</span>

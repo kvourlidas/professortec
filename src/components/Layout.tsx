@@ -5,7 +5,9 @@ import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { navItems, type NavItem } from '../_nav';
-import { Menu, LogOut, ChevronRight, School } from 'lucide-react';
+import { Menu, LogOut, ChevronRight, Building2 } from 'lucide-react';
+import logoLight from '../assets/edra-primary-transparent-light(PNG)(1).png';
+import logoDark from '../assets/edra-primary-transparent-dark(PNG).png';
 import { useTheme } from '../context/ThemeContext';
 
 type NavLinkItem = NavItem & {
@@ -214,79 +216,53 @@ export default function Layout({ children }: LayoutProps) {
       >
         {/* Top — branding + toggle */}
         <div
-          className="flex items-start justify-between border-b px-3 py-3.5"
+          className="flex flex-col gap-2.5 border-b px-3 pt-3 pb-3"
           style={{ borderColor: 'var(--color-border-soft)' }}
         >
-          {!sidebarCollapsed && (
-            <div className="flex items-start gap-2.5 min-w-0">
-              <div
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-black mt-0.5"
-                style={{ backgroundColor: 'var(--color-accent)' }}
-              >
-                <School className="h-4 w-4" />
+          {/* Row 1: logo/name + collapse button */}
+          <div className="flex items-center justify-between">
+            {!sidebarCollapsed && (
+              <div className="flex items-center gap-2 min-w-0">
+                <img
+                  src={isDark ? logoDark : logoLight}
+                  alt="edra"
+                  className="h-20 w-auto shrink-0 -my-3"
+                />
+                <div className="min-w-0">
+                  <p className={`truncate text-[11px] font-semibold leading-tight ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                    {schoolName || APP_NAME}
+                  </p>
+                  <p className={`truncate text-[10px] mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                    {schoolName ? APP_NAME : ''}
+                  </p>
+                </div>
               </div>
-              <div className="min-w-0">
-                <p className={`truncate text-[15px] font-bold leading-tight ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
-                  {schoolName || APP_NAME}
-                </p>
-                <p className={`truncate text-[11px] mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                  {schoolName ? APP_NAME : ''}
-                </p>
+            )}
+            {sidebarCollapsed && (
+              <div className="mx-auto">
+                <img
+                  src={isDark ? logoDark : logoLight}
+                  alt="edra"
+                  className="h-10 w-10 object-contain"
+                />
               </div>
-            </div>
-          )}
+            )}
+            <button
+              type="button"
+              onClick={() => setSidebarCollapsed((prev) => !prev)}
+              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border transition ${
+                isDark
+                  ? 'border-slate-700/70 bg-slate-800/60 text-slate-400 hover:border-slate-600 hover:bg-slate-700/60 hover:text-slate-200'
+                  : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700'
+              }`}
+            >
+              <Menu className="h-3.5 w-3.5" />
+            </button>
+          </div>
 
-          {sidebarCollapsed && (
-            <div className="mx-auto flex flex-col items-center gap-2">
-              <div
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-black"
-                style={{ backgroundColor: 'var(--color-accent)' }}
-              >
-                <School className="h-4 w-4" />
-              </div>
-              {/* Collapse toggle (collapsed state) */}
-              <button
-                type="button"
-                onClick={() => setSidebarCollapsed((prev) => !prev)}
-                className={`flex h-7 w-7 items-center justify-center rounded-lg border transition ${
-                  isDark
-                    ? 'border-slate-700/70 bg-slate-800/60 text-slate-400 hover:border-slate-600 hover:bg-slate-700/60 hover:text-slate-200'
-                    : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700'
-                }`}
-              >
-                <Menu className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          )}
-
-          {/* Collapse toggle (expanded state) */}
-          <button
-            type="button"
-            onClick={() => setSidebarCollapsed((prev) => !prev)}
-            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border transition ${
-              isDark
-                ? 'border-slate-700/70 bg-slate-800/60 text-slate-400 hover:border-slate-600 hover:bg-slate-700/60 hover:text-slate-200'
-                : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700'
-            } ${sidebarCollapsed ? 'hidden' : ''}`}
-          >
-            <Menu className="h-3.5 w-3.5" />
-          </button>
-        </div>
-
-        {/* Nav */}
-        <nav className="mt-3 flex-1 space-y-0.5 overflow-y-auto px-2 pb-3">
-          {navItems.map((item: NavItem) =>
-            item.children?.length
-              ? renderGroup(item as NavGroupItem)
-              : renderLink(item as NavLinkItem)
-          )}
-        </nav>
-
-        {/* ── Theme Toggle ── */}
-        {!sidebarCollapsed ? (
-          <div className="px-3 pb-2">
+          {/* Row 2: theme toggle */}
+          {!sidebarCollapsed ? (
             <div className={`flex rounded-xl p-1 ${isDark ? 'bg-slate-800/60' : 'bg-slate-100'}`}>
-              {/* Light button */}
               <button
                 type="button"
                 onClick={toggleTheme}
@@ -305,7 +281,6 @@ export default function Layout({ children }: LayoutProps) {
                 </svg>
                 Light
               </button>
-              {/* Dark button */}
               <button
                 type="button"
                 onClick={toggleTheme}
@@ -321,35 +296,80 @@ export default function Layout({ children }: LayoutProps) {
                 Dark
               </button>
             </div>
-          </div>
-        ) : (
-          <div className="flex justify-center pb-2">
-            <button
-              type="button"
-              onClick={toggleTheme}
-              aria-label="Toggle theme"
-              className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all duration-200 ${
-                isDark
-                  ? 'bg-slate-700 text-indigo-300'
-                  : 'bg-slate-100 text-amber-500'
-              }`}
-            >
-              {isDark ? (
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-                </svg>
-              ) : (
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="5"/>
-                  <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
-                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-                  <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
-                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-                </svg>
-              )}
-            </button>
-          </div>
-        )}
+          ) : (
+            <div className="flex justify-center">
+              <button
+                type="button"
+                onClick={toggleTheme}
+                aria-label="Toggle theme"
+                className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all duration-200 ${
+                  isDark ? 'bg-slate-700 text-indigo-300' : 'bg-slate-100 text-amber-500'
+                }`}
+              >
+                {isDark ? (
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                  </svg>
+                ) : (
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="5"/>
+                    <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                    <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                  </svg>
+                )}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Nav */}
+        <nav className="mt-3 flex-1 space-y-0.5 overflow-y-auto px-2 pb-3">
+          {navItems.map((item: NavItem) =>
+            item.children?.length
+              ? renderGroup(item as NavGroupItem)
+              : renderLink(item as NavLinkItem)
+          )}
+        </nav>
+
+        {/* School Info — pinned above user card */}
+        <div
+          className="border-t px-2 py-2"
+          style={{ borderColor: 'var(--color-border-soft)' }}
+        >
+          <NavLink
+            to="/school-info"
+            className={() =>
+              [
+                'group flex items-center rounded-xl px-3 py-2 text-[13px] font-medium transition-all duration-150',
+                location.pathname === '/school-info'
+                  ? isDark
+                    ? 'bg-white/[0.08] text-slate-50 shadow-sm shadow-black/20'
+                    : 'bg-slate-100 text-slate-900 shadow-sm'
+                  : isDark
+                  ? 'text-slate-400 hover:bg-white/[0.05] hover:text-slate-200'
+                  : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800',
+              ].join(' ')
+            }
+          >
+            <span className={`flex items-center justify-center ${sidebarCollapsed ? 'mx-auto' : 'mr-2.5'}`}>
+              <Building2
+                className={`h-4 w-4 transition-colors ${
+                  location.pathname === '/school-info'
+                    ? 'text-[color:var(--color-accent)]'
+                    : isDark
+                    ? 'text-slate-500 group-hover:text-slate-300'
+                    : 'text-slate-400 group-hover:text-slate-600'
+                }`}
+              />
+            </span>
+            {!sidebarCollapsed && <span className="truncate">Πληροφορίες Σχολείου</span>}
+            {location.pathname === '/school-info' && !sidebarCollapsed && (
+              <span className="ml-auto h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'var(--color-accent)' }} />
+            )}
+          </NavLink>
+        </div>
 
         {/* User card — bottom of sidebar */}
         {!sidebarCollapsed && (

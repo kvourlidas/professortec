@@ -5,45 +5,9 @@ import { useAuth } from '../auth';
 import { useTheme } from '../context/ThemeContext';
 import { Trash2, CalendarOff, CalendarDays } from 'lucide-react';
 import DatePickerField from '../components/ui/AppDatePicker';
-
-type HolidayRow = {
-  id: string;
-  school_id: string;
-  date: string;
-  name: string | null;
-  created_at: string | null;
-};
-
-type HolidayGroup = {
-  ids: string[];
-  startDate: string;
-  endDate?: string | null;
-  name: string | null;
-};
-
-type Mode = 'single' | 'range';
-
-const pad2 = (n: number) => n.toString().padStart(2, '0');
-const formatLocalYMD = (d: Date): string => {
-  const y = d.getFullYear(); const m = pad2(d.getMonth() + 1); const day = pad2(d.getDate());
-  return `${y}-${m}-${day}`;
-};
-const addDays = (d: Date, days: number): Date => { const copy = new Date(d); copy.setDate(copy.getDate() + days); return copy; };
-const parseYMD = (s: string): Date => new Date(s + 'T00:00:00');
-const formatDisplay = (iso: string) => { const [y, m, d] = iso.split('-'); if (!y || !m || !d) return iso; return `${d}/${m}/${y}`; };
-const formatDateDisplayFromDate = (d: Date | null): string => {
-  if (!d) return '';
-  return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
-};
-const parseDisplayToDate = (display: string): Date | null => {
-  if (!display) return null;
-  const parts = display.split(/[\/\-\.]/);
-  if (parts.length !== 3) return null;
-  const [dStr, mStr, yStr] = parts;
-  const day = Number(dStr); const month = Number(mStr); const year = Number(yStr);
-  if (!day || !month || !year) return null;
-  return new Date(year, month - 1, day);
-};
+import type { HolidayRow, HolidayGroup, Mode } from '../components/holidays/types';
+import { formatLocalYMD, addDays, parseYMD, formatDisplay, formatDateDisplayFromDate, parseDisplayToDate } from '../components/holidays/utils';
+import HolidayDeleteModal from '../components/holidays/HolidayDeleteModal';
 
 export default function HolidaysPage() {
   const { profile } = useAuth();
@@ -98,14 +62,6 @@ export default function HolidaysPage() {
   const emptySubCls = isDark ? 'mt-1 text-xs text-slate-500' : 'mt-1 text-xs text-slate-400';
 
   const labelCls = `flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`;
-
-  const modalSmCardCls = isDark
-    ? 'relative w-full max-w-sm overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl'
-    : 'relative w-full max-w-sm overflow-hidden rounded-2xl border border-slate-200 shadow-2xl';
-
-  const cancelBtnCls = isDark
-    ? 'btn border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-slate-200 hover:bg-slate-700/60 disabled:opacity-50'
-    : 'btn border border-slate-300 bg-white px-4 py-1.5 text-slate-700 hover:bg-slate-100 disabled:opacity-50';
 
   const loadHolidays = useCallback(async () => {
     if (!schoolId) { setHolidays([]); return; }
@@ -371,44 +327,12 @@ export default function HolidaysPage() {
       </div>
 
       {/* ── Delete confirmation modal ── */}
-      {deleteGroup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className={modalSmCardCls} style={{ background: 'var(--color-sidebar)' }}>
-            <div className="h-1 w-full bg-gradient-to-r from-red-600 via-red-500 to-rose-500" />
-            <div className="p-6">
-              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/15 ring-1 ring-red-500/30">
-                <CalendarOff className="h-5 w-5 text-red-400" />
-              </div>
-              <h3 className={`mb-1 text-sm font-semibold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>
-                Διαγραφή αργίας
-              </h3>
-              <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                Σίγουρα θέλετε να διαγράψετε{' '}
-                {deleteGroup.name
-                  ? <><span className={`font-semibold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>«{deleteGroup.name}»</span>{' '}</>
-                  : 'την αργία '}
-                για{' '}
-                <span className={`font-semibold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
-                  {deleteGroup.endDate && deleteGroup.endDate !== deleteGroup.startDate
-                    ? `${formatDisplay(deleteGroup.startDate)} – ${formatDisplay(deleteGroup.endDate)}`
-                    : formatDisplay(deleteGroup.startDate)}
-                </span>;{' '}
-                Η ενέργεια αυτή δεν μπορεί να αναιρεθεί.
-              </p>
-              <div className="mt-6 flex justify-end gap-2.5">
-                <button type="button" onClick={() => { if (!deleting) setDeleteGroup(null); }} disabled={deleting}
-                  className={cancelBtnCls}>
-                  Ακύρωση
-                </button>
-                <button type="button" onClick={handleConfirmDelete} disabled={deleting}
-                  className="btn bg-red-600 px-4 py-1.5 font-semibold text-white shadow-sm hover:bg-red-500 active:scale-[0.97] disabled:opacity-60">
-                  {deleting ? 'Διαγραφή…' : 'Διαγραφή'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <HolidayDeleteModal
+        deleteGroup={deleteGroup}
+        deleting={deleting}
+        onCancel={() => { if (!deleting) setDeleteGroup(null); }}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 }

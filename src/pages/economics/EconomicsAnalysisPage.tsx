@@ -197,6 +197,7 @@ export default function EconomicsAnalysisPage() {
     <div className="space-y-6 px-1">
 
       {/* Header + Filters */}
+      <div className="relative z-10">
       <EconomicsFilterBar
         mode={mode} onModeChange={setMode}
         month={month} onMonthChange={setMonth}
@@ -207,6 +208,7 @@ export default function EconomicsAnalysisPage() {
         yearsOptions={(() => { const base = new Date().getFullYear(); return Array.from({ length: 21 }, (_, i) => ({ value: base - 10 + i, label: String(base - 10 + i) })); })()}
         isDark={isDark}
       />
+      </div>
 
       {/* Error banner */}
       {error && (

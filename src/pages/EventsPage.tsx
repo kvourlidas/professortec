@@ -1,60 +1,28 @@
 // src/pages/EventsPage.tsx
 import { useEffect, useMemo, useState } from 'react';
-import { useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
 import { useTheme } from '../context/ThemeContext';
-
 import EventFormModal, {
   type EventFormState,
   type SchoolEventForEdit,
 } from '../components/events/EventFormModal';
+import EventDeleteModal from '../components/events/EventDeleteModal';
 import EditDeleteButtons from '../components/ui/EditDeleteButtons';
+import type { SchoolEventRow, ModalMode } from '../components/events/types';
+import { normalizeText, formatDate, formatTimeRange } from '../components/events/utils';
 import {
   CalendarDays, Search, Plus, ChevronLeft, ChevronRight,
   Clock, FileText, Calendar,
 } from 'lucide-react';
 
-type SchoolEventRow = {
-  id: string;
-  school_id: string;
-  name: string;
-  description: string | null;
-  date: string;
-  start_time: string;
-  end_time: string;
-  created_at: string | null;
-};
-
-type ModalMode = 'create' | 'edit';
-
-function normalizeText(value: string | number | null | undefined): string {
-  if (value === null || value === undefined) return '';
-  return value.toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-}
-
-function formatDate(iso: string | null): string {
-  if (!iso) return '—';
-  const [y, m, d] = iso.split('-');
-  if (!y || !m || !d) return iso;
-  return `${d}/${m}/${y}`;
-}
-
-function formatTimeRange(start: string | null, end: string | null): string {
-  if (!start && !end) return '—';
-  const s = start ? start.slice(0, 5) : '';
-  const e = end ? end.slice(0, 5) : '';
-  if (s && e) return `${s} – ${e}`;
-  return s || e || '—';
-}
+const PAGE_SIZE = 10;
 
 export default function EventsPage() {
   const { profile } = useAuth();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const schoolId = profile?.school_id ?? null;
-  const location = useLocation();
-
   const [events, setEvents] = useState<SchoolEventRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -68,7 +36,6 @@ export default function EventsPage() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const pageSize = 10;
   const [page, setPage] = useState(1);
   useEffect(() => { setPage(1); }, [search]);
 
@@ -114,14 +81,6 @@ export default function EventsPage() {
   const searchInputCls = isDark
     ? 'h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 pl-9 pr-3 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30 sm:w-52'
     : 'h-9 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-xs text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30 sm:w-52';
-
-  const modalSmCardCls = isDark
-    ? 'relative w-full max-w-sm overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl'
-    : 'relative w-full max-w-sm overflow-hidden rounded-2xl border border-slate-200 shadow-2xl';
-
-  const cancelBtnCls = isDark
-    ? 'btn border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-slate-200 hover:bg-slate-700/60 disabled:opacity-50'
-    : 'btn border border-slate-300 bg-white px-4 py-1.5 text-slate-700 hover:bg-slate-100 disabled:opacity-50';
 
   useEffect(() => {
     if (!schoolId) { setLoading(false); setEvents([]); return; }
@@ -195,16 +154,16 @@ export default function EventsPage() {
     });
   }, [events, search]);
 
-  const pageCount = useMemo(() => Math.max(1, Math.ceil(filteredEvents.length / pageSize)), [filteredEvents.length]);
+  const pageCount = useMemo(() => Math.max(1, Math.ceil(filteredEvents.length / PAGE_SIZE)), [filteredEvents.length]);
   useEffect(() => { setPage((p) => Math.min(Math.max(1, p), pageCount)); }, [pageCount]);
 
   const pagedEvents = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return filteredEvents.slice(start, start + pageSize);
+    const start = (page - 1) * PAGE_SIZE;
+    return filteredEvents.slice(start, start + PAGE_SIZE);
   }, [filteredEvents, page]);
 
-  const showingFrom = filteredEvents.length === 0 ? 0 : (page - 1) * pageSize + 1;
-  const showingTo = Math.min(page * pageSize, filteredEvents.length);
+  const showingFrom = filteredEvents.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const showingTo = Math.min(page * PAGE_SIZE, filteredEvents.length);
 
   return (
     <div className="space-y-6 px-1">
@@ -265,7 +224,7 @@ export default function EventsPage() {
       </div>
 
       {/* ── Alerts ── */}
-      {error && (
+      {error && !modalOpen && !deleteTarget && (
         <div className="flex items-start gap-3 rounded-xl border border-red-500/40 bg-red-950/40 px-4 py-3 text-xs text-red-200 backdrop-blur">
           <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-red-400" />
           {error}
@@ -410,38 +369,12 @@ export default function EventsPage() {
       />
 
       {/* ── Delete confirmation modal ── */}
-      {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className={modalSmCardCls} style={{ background: 'var(--color-sidebar)' }}>
-            <div className="h-1 w-full bg-gradient-to-r from-red-600 via-red-500 to-rose-500" />
-            <div className="p-6">
-              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/15 ring-1 ring-red-500/30">
-                <CalendarDays className="h-5 w-5 text-red-400" />
-              </div>
-              <h3 className={`mb-1 text-sm font-semibold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>
-                Διαγραφή εκδήλωσης
-              </h3>
-              <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                Σίγουρα θέλετε να διαγράψετε την εκδήλωση{' '}
-                <span className={`font-semibold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
-                  «{deleteTarget.name}»
-                </span>;{' '}
-                Η ενέργεια αυτή δεν μπορεί να αναιρεθεί.
-              </p>
-              <div className="mt-6 flex justify-end gap-2.5">
-                <button type="button" onClick={() => { if (!deleting) setDeleteTarget(null); }} disabled={deleting}
-                  className={cancelBtnCls}>
-                  Ακύρωση
-                </button>
-                <button type="button" onClick={handleConfirmDelete} disabled={deleting}
-                  className="btn bg-red-600 px-4 py-1.5 font-semibold text-white shadow-sm hover:bg-red-500 active:scale-[0.97] disabled:opacity-60">
-                  {deleting ? 'Διαγραφή…' : 'Διαγραφή'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <EventDeleteModal
+        deleteTarget={deleteTarget}
+        deleting={deleting}
+        onCancel={() => { if (!deleting) setDeleteTarget(null); }}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 }
