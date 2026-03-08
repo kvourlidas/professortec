@@ -1,7 +1,7 @@
 // src/components/dashboard/DashboardNotesSection.tsx
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
-import { Palette, StickyNote, ChevronLeft, ChevronRight, Loader2, AlertTriangle } from 'lucide-react';
+import { Palette, StickyNote, ChevronLeft, ChevronRight, Loader2, AlertTriangle, Undo2 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 
 type DashboardNote = {
@@ -10,11 +10,14 @@ type DashboardNote = {
 };
 
 const NOTE_COLORS = [
+  { value: '#6366f1', label: 'Indigo'    },
+  { value: '#0ea5e9', label: 'Μπλε'      },
+  { value: '#06b6d4', label: 'Cyan'      },
+  { value: '#10b981', label: 'Πράσινο'   },
+  { value: '#f59e0b', label: 'Κίτρινο'   },
   { value: '#f97316', label: 'Πορτοκαλί' },
-  { value: '#3b82f6', label: 'Μπλε' },
-  { value: '#22c55e', label: 'Πράσινο' },
-  { value: '#eab308', label: 'Κίτρινο' },
-  { value: '#f97373', label: 'Κόκκινο' },
+  { value: '#f43f5e', label: 'Κόκκινο'   },
+  { value: '#a855f7', label: 'Μωβ'       },
 ];
 
 const DEFAULT_NOTE_COLOR = '#3b82f6';
@@ -112,22 +115,44 @@ export default function DashboardNotesSection({ schoolId }: DashboardNotesSectio
     if (error) { console.error(error); setNotes(prev); }
   };
 
-  const ColorPalette = ({ onSelect, onReset }: { onSelect: (c: string) => void; onReset?: () => void }) => (
-    <div className={`overflow-hidden rounded-xl border p-3 shadow-xl backdrop-blur-xl ${
-      isDark ? 'border-slate-700/60 bg-slate-900/95' : 'border-slate-200 bg-white/95'
-    }`}>
-      {onReset && (
-        <div className="mb-2.5 flex items-center justify-between">
-          <span className={`text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Χρώμα</span>
-          <button type="button" onClick={onReset} className={`text-[10px] transition ${isDark ? 'text-slate-500 hover:text-slate-200' : 'text-slate-400 hover:text-slate-700'}`}>Reset</button>
-        </div>
-      )}
-      <div className="grid grid-cols-5 gap-1.5">
-        {NOTE_COLORS.map((c) => (
-          <button key={c.value} type="button" onClick={() => onSelect(c.value)}
-            className="h-7 w-7 rounded-full border border-white/10 shadow-sm transition hover:ring-2 hover:ring-white/30 hover:scale-110"
-            style={{ backgroundColor: c.value }} title={c.label} aria-label={c.label} />
-        ))}
+  const ColorPalette = ({ onSelect, onReset, currentColor }: { onSelect: (c: string) => void; onReset?: () => void; currentColor?: string }) => (
+    <div className={`rounded-2xl border shadow-[0_8px_32px_rgba(0,0,0,0.35)] backdrop-blur-2xl ${
+      isDark ? 'border-white/10 bg-slate-900/95' : 'border-slate-200 bg-white/95'
+    }`} style={{ width: 216 }}>
+      {/* Gradient accent top strip */}
+      <div className="h-0.5 w-full rounded-t-2xl" style={{ background: 'linear-gradient(90deg, #6366f1, #f43f5e, #f97316, #a855f7)' }} />
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 pt-3 pb-2">
+        <span className={`text-[9px] font-bold uppercase tracking-[0.15em] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Χρώμα</span>
+        {onReset && (
+          <button type="button" onClick={onReset}
+            className={`text-[10px] transition hover:underline ${isDark ? 'text-slate-600 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}>
+            Επαναφορά
+          </button>
+        )}
+      </div>
+      {/* 4×2 grid */}
+      <div className="grid grid-cols-4 gap-2.5 px-4 pb-4">
+        {NOTE_COLORS.map((c) => {
+          const isActive = currentColor === c.value;
+          return (
+            <button key={c.value} type="button" onClick={() => onSelect(c.value)}
+              aria-label={c.label} title={c.label}
+              className="relative flex h-9 w-9 items-center justify-center rounded-[10px] transition-transform duration-100 hover:scale-110 active:scale-95"
+              style={{
+                background: `linear-gradient(135deg, ${c.value}dd, ${c.value})`,
+                boxShadow: isActive
+                  ? `0 0 0 2px ${isDark ? '#0f172a' : '#fff'}, 0 0 0 4px ${c.value}, 0 4px 12px ${c.value}80`
+                  : `0 3px 8px ${c.value}55`,
+              }}>
+              {isActive && (
+                <svg className="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none">
+                  <path d="M3 8.5l3.5 3.5 6.5-7" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -151,12 +176,12 @@ export default function DashboardNotesSection({ schoolId }: DashboardNotesSectio
       </div>
 
       {/* Card */}
-      <div className={`overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-md ring-1 ring-inset ${
+      <div className={`rounded-2xl border shadow-2xl backdrop-blur-md ring-1 ring-inset ${
         isDark
           ? 'border-slate-700/50 bg-slate-950/40 ring-white/[0.04]'
           : 'border-slate-200 bg-white/80 ring-black/[0.02]'
       }`}>
-        <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 30%, transparent))' }} />
+        <div className="h-0.5 w-full rounded-t-2xl" style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 30%, transparent))' }} />
 
         {/* Add note form */}
         <div className="p-4">
@@ -187,8 +212,8 @@ export default function DashboardNotesSection({ schoolId }: DashboardNotesSectio
                 <span className="h-3 w-3 rounded-full border border-white/10" style={{ backgroundColor: noteColor || DEFAULT_NOTE_COLOR }} />
               </button>
               {paletteOpen && (
-                <div className="absolute left-0 z-50 mt-2">
-                  <ColorPalette onSelect={(c) => { setNoteColor(c); setPaletteOpen(false); }} onReset={() => { setNoteColor(DEFAULT_NOTE_COLOR); setPaletteOpen(false); }} />
+                <div className="absolute left-0 bottom-full z-50 mb-2">
+                  <ColorPalette currentColor={noteColor} onSelect={(c) => { setNoteColor(c); setPaletteOpen(false); }} onReset={() => { setNoteColor(DEFAULT_NOTE_COLOR); setPaletteOpen(false); }} />
                 </div>
               )}
             </div>
@@ -241,15 +266,8 @@ export default function DashboardNotesSection({ schoolId }: DashboardNotesSectio
                         : isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-slate-50/60'
                     }`}>
                       <div className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full border border-white/10" style={{ backgroundColor: note.color }} />
-
                       <div className="min-w-0 flex-1">
-                        {note.is_urgent && (
-                          <span className="mb-1.5 inline-flex items-center gap-1 rounded-full border border-red-500/40 bg-red-500/10 px-2 py-0.5 text-[10px] font-semibold text-red-300">
-                            <AlertTriangle className="h-2.5 w-2.5" />Επείγον
-                          </span>
-                        )}
                         <p className={`whitespace-pre-wrap text-xs leading-relaxed ${isDark ? 'text-slate-100' : 'text-slate-700'}`}>{note.content}</p>
-
                         <div className="mt-2 flex flex-wrap items-center gap-1.5">
                           <button type="button" onClick={() => handleToggleUrgent(note.id, note.is_urgent)}
                             className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] transition ${
@@ -259,10 +277,10 @@ export default function DashboardNotesSection({ schoolId }: DashboardNotesSectio
                                 ? 'border-slate-700/60 text-slate-500 hover:border-red-500/30 hover:text-red-300'
                                 : 'border-slate-200 text-slate-400 hover:border-red-300 hover:text-red-500'
                             }`}>
-                            <AlertTriangle className="h-2.5 w-2.5" />
-                            {note.is_urgent ? 'Αφαίρεση' : 'Επείγον'}
+                            {note.is_urgent
+                              ? <><Undo2 className="h-2.5 w-2.5" />Αναίρεση επείγον</>
+                              : <><AlertTriangle className="h-2.5 w-2.5" />Επείγον</>}
                           </button>
-
                           <div ref={paletteOpenForThis ? notePaletteWrapRef : null} className="relative">
                             <button type="button"
                               onClick={() => setNotePaletteOpenId((curr) => curr === note.id ? null : note.id)}
@@ -275,12 +293,11 @@ export default function DashboardNotesSection({ schoolId }: DashboardNotesSectio
                               <Palette className="h-3 w-3" />
                             </button>
                             {paletteOpenForThis && (
-                              <div className="absolute left-0 z-50 mt-2">
-                                <ColorPalette onSelect={(c) => { handleChangeNoteColor(note.id, c); setNotePaletteOpenId(null); }} />
+                              <div className="absolute left-0 bottom-full z-50 mb-2">
+                                <ColorPalette currentColor={note.color} onSelect={(c) => { handleChangeNoteColor(note.id, c); setNotePaletteOpenId(null); }} />
                               </div>
                             )}
                           </div>
-
                           <button type="button" onClick={() => handleDeleteNote(note.id)}
                             className={`ml-auto rounded-lg border border-transparent px-2 py-0.5 text-[10px] opacity-0 transition group-hover:opacity-100 ${
                               isDark
