@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Send, Search, RefreshCw, MessageSquareText, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../context/ThemeContext';
+import { useAuth } from '../../auth';
 
 type StudentRow = { id: string; full_name: string | null };
 type ThreadRow = { id: string; school_id: string; student_id: string };
@@ -11,6 +12,17 @@ type UnreadRow = { student_id: string; thread_id: string; unread_count: number }
 export default function StudentMessagesPage() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const { profile } = useAuth();
+  const [schoolName, setSchoolName] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchSchoolName = async () => {
+      if (!profile?.school_id) return;
+      const { data } = await supabase.from('schools').select('name').eq('id', profile.school_id).maybeSingle();
+      if (data?.name) setSchoolName(data.name);
+    };
+    fetchSchoolName();
+  }, [profile?.school_id]);
 
   const [loadingStudents, setLoadingStudents] = useState(true);
   const [students, setStudents] = useState<StudentRow[]>([]);
@@ -27,39 +39,23 @@ export default function StudentMessagesPage() {
   const [unreadByStudent, setUnreadByStudent] = useState<Record<string, number>>({});
 
   const listEndRef = useRef<HTMLDivElement | null>(null);
+  const pendingScrollRef = useRef(false);
 
-  // ── Dynamic classes ──
-  const panelCls = isDark
-    ? 'overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-2xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]'
-    : 'overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md';
+  const scrollToBottom = (behavior: ScrollBehavior = 'instant') => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        listEndRef.current?.scrollIntoView({ behavior });
+      });
+    });
+  };
 
-  const panelHeaderBorderCls = isDark ? 'border-b border-slate-700/60' : 'border-b border-slate-200';
-
-  const searchInputCls = isDark
-    ? 'h-8 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 pl-9 pr-3 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30'
-    : 'h-8 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-xs text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30';
-
-  const refreshBtnCls = isDark
-    ? 'flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-800/50 text-slate-400 transition hover:border-slate-600 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-40'
-    : 'flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-slate-500 transition hover:border-slate-300 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40';
-
-  const composerBorderCls = isDark ? 'border-t border-slate-700/60' : 'border-t border-slate-200 bg-slate-50';
-
-  const textareaCls = isDark
-    ? 'flex-1 resize-none rounded-xl border border-slate-700/70 bg-slate-900/60 px-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30 disabled:opacity-40'
-    : 'flex-1 resize-none rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30 disabled:opacity-40';
-
-  const emptyBoxCls = isDark
-    ? 'flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-700/50 bg-slate-800/50'
-    : 'flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200 bg-slate-100';
-
-  const scrollbarStyle = `
-    .msg-scroll::-webkit-scrollbar { width: 5px; }
-    .msg-scroll::-webkit-scrollbar-track { background: ${isDark ? 'rgba(15,23,42,0.4)' : 'rgba(241,245,249,0.8)'}; border-radius: 99px; }
-    .msg-scroll::-webkit-scrollbar-thumb { background: ${isDark ? 'rgba(100,116,139,0.45)' : 'rgba(148,163,184,0.55)'}; border-radius: 99px; }
-    .msg-scroll::-webkit-scrollbar-thumb:hover { background: rgba(100,116,139,0.75); }
-    .msg-scroll { scrollbar-width: thin; scrollbar-color: ${isDark ? 'rgba(100,116,139,0.45) rgba(15,23,42,0.4)' : 'rgba(148,163,184,0.55) rgba(241,245,249,0.8)'}; }
-  `;
+  // Fire scroll after messages actually render
+  useEffect(() => {
+    if (pendingScrollRef.current && messages.length > 0) {
+      pendingScrollRef.current = false;
+      scrollToBottom('instant');
+    }
+  }, [messages]);
 
   const filteredStudents = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -80,8 +76,13 @@ export default function StudentMessagesPage() {
 
   const canSend = useMemo(() => draft.trim().length > 0 && !sending && !!activeThread, [draft, sending, activeThread]);
 
-  const scrollToBottom = () => {
-    requestAnimationFrame(() => { listEndRef.current?.scrollIntoView({ behavior: 'smooth' }); });
+  const [refreshing, setRefreshing] = useState(false);
+
+  const manualRefresh = async () => {
+    if (!activeThread || refreshing) return;
+    setRefreshing(true);
+    await refreshChat();
+    setRefreshing(false);
   };
 
   const loadUnreadCounts = async () => {
@@ -105,7 +106,10 @@ export default function StudentMessagesPage() {
   };
 
   const openStudentChat = async (student: StudentRow) => {
-    setActiveStudent(student); setLoadingChat(true); setMessages([]); setDraft('');
+    setActiveStudent(student);
+    setLoadingChat(true);
+    setMessages([]);
+    setDraft('');
     try {
       const { data: threadId, error: tErr } = await supabase.rpc('school_get_or_create_thread', { p_student_id: student.id });
       if (tErr) throw tErr;
@@ -118,24 +122,24 @@ export default function StudentMessagesPage() {
       const { data: msgs, error: mErr } = await supabase.from('messages').select('id, body, sender_role, created_at').eq('thread_id', tid).order('created_at', { ascending: true });
       if (mErr) throw mErr;
       setMessages((msgs ?? []) as MsgRow[]);
-      scrollToBottom();
+      pendingScrollRef.current = true;
       await loadUnreadCounts();
+      scrollToBottom('instant');
     } catch (e) { console.error('openStudentChat error:', e); }
     finally { setLoadingChat(false); }
   };
 
   const refreshChat = async () => {
     if (!activeThread) return;
-    setLoadingChat(true);
     try {
       await supabase.rpc('school_mark_thread_read', { p_thread_id: activeThread.id });
       const { data: msgs, error } = await supabase.from('messages').select('id, body, sender_role, created_at').eq('thread_id', activeThread.id).order('created_at', { ascending: true });
       if (error) throw error;
       setMessages((msgs ?? []) as MsgRow[]);
-      scrollToBottom();
+      pendingScrollRef.current = true;
+      scrollToBottom('instant');
       await loadUnreadCounts();
     } catch (e) { console.error('refreshChat error:', e); }
-    finally { setLoadingChat(false); }
   };
 
   const sendMessage = async () => {
@@ -147,7 +151,14 @@ export default function StudentMessagesPage() {
       if (userErr) throw userErr;
       const uid = user?.id;
       if (!uid) throw new Error('No auth user');
-      const { error } = await supabase.from('messages').insert({ thread_id: activeThread.id, school_id: activeThread.school_id, student_id: activeThread.student_id, sender_role: 'school', sender_user_id: uid, body });
+      const { error } = await supabase.from('messages').insert({
+        thread_id: activeThread.id,
+        school_id: activeThread.school_id,
+        student_id: activeThread.student_id,
+        sender_role: 'school',
+        sender_user_id: uid,
+        body,
+      });
       if (error) throw error;
       setDraft('');
       await refreshChat();
@@ -168,211 +179,306 @@ export default function StudentMessagesPage() {
     catch { return ''; }
   };
 
+  const formatDate = (iso: string) => {
+    try {
+      const d = new Date(iso);
+      const today = new Date();
+      if (d.toDateString() === today.toDateString()) return 'Σήμερα';
+      return d.toLocaleDateString('el-GR', { day: 'numeric', month: 'short' });
+    } catch { return ''; }
+  };
+
+  // Group messages by date
+  const groupedMessages = useMemo(() => {
+    const groups: { date: string; msgs: MsgRow[] }[] = [];
+    messages.forEach((m) => {
+      const d = formatDate(m.created_at);
+      const last = groups[groups.length - 1];
+      if (!last || last.date !== d) groups.push({ date: d, msgs: [m] });
+      else last.msgs.push(m);
+    });
+    return groups;
+  }, [messages]);
+
+  // ── Styles ────────────────────────────────────────────────────────────────
+  const scrollStyle: React.CSSProperties = {
+    scrollbarWidth: 'thin',
+    scrollbarColor: isDark ? 'rgba(71,85,105,0.35) transparent' : 'rgba(203,213,225,0.7) transparent',
+  };
+
+  const divider = isDark ? 'border-slate-700/50' : 'border-slate-100';
+
   return (
-    <div className="flex h-[calc(100vh-120px)] gap-3 px-1">
-      <style>{scrollbarStyle}</style>
+    <div
+      className={`flex overflow-hidden ${isDark ? 'bg-[#111827]' : 'bg-white'}`}
+      style={{ margin: '-24px -16px', height: 'calc(100vh - 0px)', maxHeight: '100vh' }}
+    >
+        {/* ── Sidebar ─────────────────────────────────────────────────── */}
+        <div className={[
+          'flex w-64 shrink-0 flex-col border-r',
+          divider,
+          isDark ? 'bg-[#111827]' : 'bg-slate-50',
+        ].join(' ')}>
 
-      {/* ── Left panel ── */}
-      <div className={`flex w-72 shrink-0 flex-col ${panelCls}`}>
+          {/* Header */}
+          <div className={`border-b px-4 py-3 ${divider}`}>
+            <p className={`text-[11px] font-semibold uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+              Μηνύματα
+            </p>
+          </div>
 
-        {/* Header */}
-        <div className={`${panelHeaderBorderCls} px-4 py-3`}>
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
-              style={{ background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 60%, transparent))' }}>
-              <MessageSquareText className="h-4 w-4" style={{ color: 'var(--color-input-bg)' }}/>
-            </div>
-            <div>
-              <div className={`text-sm font-semibold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Μηνύματα</div>
-              <div className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Επίλεξε μαθητή για συνομιλία</div>
+          {/* Search */}
+          <div className={`border-b px-3 py-2 ${divider}`}>
+            <div className="relative">
+              <Search className={`pointer-events-none absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Αναζήτηση…"
+                className={[
+                  'h-7 w-full rounded-lg pl-7 pr-3 text-[11px] outline-none transition',
+                  isDark
+                    ? 'bg-slate-900/80 text-slate-200 placeholder-slate-600 focus:ring-1 focus:ring-[color:var(--color-accent)]/20'
+                    : 'border border-slate-200 bg-white text-slate-700 placeholder-slate-400 focus:ring-1 focus:ring-[color:var(--color-accent)]/20',
+                ].join(' ')}
+              />
             </div>
           </div>
-        </div>
 
-        {/* Search */}
-        <div className="px-3 pt-3">
-          <div className="relative">
-            <Search className={`pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Αναζήτηση μαθητή…"
-              className={searchInputCls}
-            />
-          </div>
-        </div>
-
-        {/* Student list */}
-        <div className="msg-scroll flex-1 overflow-y-auto space-y-1 p-3">
-          {loadingStudents ? (
-            <div className="flex items-center justify-center gap-2 py-8">
-              <Loader2 className={`h-4 w-4 animate-spin ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-              <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Φόρτωση…</span>
-            </div>
-          ) : sortedStudents.length === 0 ? (
-            <div className={`py-8 text-center text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Δεν βρέθηκαν μαθητές</div>
-          ) : (
-            sortedStudents.map((s) => {
-              const active = activeStudent?.id === s.id;
-              const unread = unreadByStudent[s.id] ?? 0;
-
-              return (
-                <button key={s.id} onClick={() => openStudentChat(s)}
-                  className={`group flex w-full items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition ${
-                    active
-                      ? 'border-[color:var(--color-accent)]/40 bg-[color:var(--color-accent)]/10 shadow-sm'
-                      : isDark
-                        ? 'border-slate-700/50 bg-slate-900/20 hover:border-slate-600/60 hover:bg-slate-800/40'
-                        : 'border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-slate-100'
-                  }`}
-                >
-                  {/* Avatar */}
-                  <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border text-xs font-bold ${
-                    active
-                      ? 'border-[color:var(--color-accent)]/40 text-[color:var(--color-accent)]'
-                      : isDark
-                        ? 'border-slate-700/60 text-slate-400'
-                        : 'border-slate-200 text-slate-500'
-                  }`}
-                    style={active
-                      ? { background: 'color-mix(in srgb, var(--color-accent) 12%, transparent)' }
-                      : { background: isDark ? 'rgba(15,23,42,0.4)' : 'rgba(241,245,249,0.8)' }
-                    }>
-                    {(s.full_name?.trim()?.[0] ?? 'Μ').toUpperCase()}
-                  </div>
-
-                  {/* Name */}
-                  <div className="min-w-0 flex-1">
-                    <div className={`truncate text-xs font-semibold ${isDark ? 'text-slate-100' : 'text-slate-700'}`}>
-                      {s.full_name ?? '—'}
-                    </div>
-                    <div className={`mt-0.5 text-[10px] min-h-[14px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                      {active ? 'Ανοιχτή συνομιλία' : ''}
-                    </div>
-                  </div>
-
-                  {/* Unread badge */}
-                  {unread > 0 ? (
-                    <div className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/40 bg-blue-500/10 px-2 py-0.5">
-                      <span className="h-1.5 w-1.5 rounded-full bg-blue-400 shadow-[0_0_0_3px_rgba(59,130,246,0.15)]" />
-                      <span className="text-[10px] font-bold text-blue-400">{unread}</span>
-                    </div>
-                  ) : (
-                    <div className="w-10" />
-                  )}
-                </button>
-              );
-            })
-          )}
-        </div>
-      </div>
-
-      {/* ── Right panel ── */}
-      <div className={`flex flex-1 flex-col ${panelCls}`}>
-
-        {/* Chat header */}
-        <div className={`flex items-center justify-between gap-3 ${panelHeaderBorderCls} px-5 py-3`}>
-          <div className="min-w-0">
-            <div className={`truncate text-sm font-semibold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>
-              {activeStudent ? `Συνομιλία: ${activeStudent.full_name ?? '—'}` : 'Επίλεξε μαθητή'}
-            </div>
-          </div>
-          <button onClick={refreshChat} disabled={!activeThread || loadingChat}
-            title="Ανανέωση" aria-label="Ανανέωση"
-            className={refreshBtnCls}>
-            <RefreshCw className={`h-3.5 w-3.5 ${loadingChat ? 'animate-spin' : ''}`} />
-          </button>
-        </div>
-
-        {/* Messages area */}
-        <div className="msg-scroll flex-1 overflow-y-auto p-4">
-          {!activeThread ? (
-            <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
-              <div className={emptyBoxCls}>
-                <MessageSquareText className={`h-6 w-6 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+          {/* Student list */}
+          <div className="flex-1 overflow-y-auto py-1" style={scrollStyle}>
+            {loadingStudents ? (
+              <div className="flex justify-center py-10">
+                <Loader2 className={`h-3.5 w-3.5 animate-spin ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />
               </div>
-              <div>
-                <p className={`text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Άνοιξε μια συνομιλία</p>
-                <p className={`mt-1 max-w-xs text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                  Επίλεξε έναν μαθητή από την αριστερή λίστα για να δεις και να απαντήσεις στα μηνύματα.
-                </p>
-              </div>
-            </div>
-          ) : loadingChat ? (
-            <div className="flex h-full items-center justify-center gap-2">
-              <Loader2 className={`h-5 w-5 animate-spin ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-              <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Φόρτωση συνομιλίας…</span>
-            </div>
-          ) : messages.length === 0 ? (
-            <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
-              <div className={`rounded-2xl border border-dashed px-6 py-8 ${isDark ? 'border-slate-700/50 bg-white/[0.02]' : 'border-slate-300 bg-slate-50'}`}>
-                <p className={`text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-600'}`}>Δεν υπάρχουν μηνύματα</p>
-                <p className={`mt-1 text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Στείλε το πρώτο μήνυμα από κάτω.</p>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-2.5">
-              {messages.map((m) => {
-                const mine = m.sender_role === 'school';
+            ) : sortedStudents.length === 0 ? (
+              <p className={`py-10 text-center text-[11px] ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>Δεν βρέθηκαν</p>
+            ) : (
+              sortedStudents.map((s) => {
+                const active = activeStudent?.id === s.id;
+                const unread = unreadByStudent[s.id] ?? 0;
+                const initial = (s.full_name?.trim()?.[0] ?? 'Μ').toUpperCase();
+
                 return (
-                  <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`group relative max-w-[75%] rounded-2xl px-3.5 py-2.5 ${
-                      mine
-                        ? 'border border-[color:var(--color-accent)]/30 shadow-sm'
-                        : isDark
-                          ? 'border border-slate-700/50 bg-slate-800/50'
-                          : 'border border-slate-200 bg-slate-100'
-                    }`}
-                      style={mine ? { background: isDark
-                        ? 'color-mix(in srgb, var(--color-accent) 12%, rgba(15,23,42,0.6))'
-                        : 'color-mix(in srgb, var(--color-accent) 10%, rgba(255,255,255,0.95))'
-                      } : {}}>
-                      <p className={`text-[13.5px] leading-relaxed whitespace-pre-wrap ${
-                        mine
-                          ? isDark ? 'text-slate-100' : 'text-slate-800'
-                          : isDark ? 'text-slate-100' : 'text-slate-700'
-                      }`}>{m.body}</p>
-                      <p className={`mt-1 text-[10px] ${mine ? 'text-right' : 'text-left'} ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                        {formatTime(m.created_at)}
-                      </p>
+                  <button
+                    key={s.id}
+                    onClick={() => openStudentChat(s)}
+                    className={[
+                      'flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors',
+                      active
+                        ? isDark ? 'bg-white/[0.05]' : 'bg-white'
+                        : isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-white/80',
+                    ].join(' ')}
+                  >
+                    {/* Avatar */}
+                    <div
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
+                      style={
+                        active
+                          ? { background: 'var(--color-accent)', color: isDark ? '#000' : '#fff' }
+                          : { background: isDark ? '#1a2234' : '#e2e8f0', color: isDark ? '#64748b' : '#94a3b8' }
+                      }
+                    >
+                      {initial}
                     </div>
-                  </div>
+
+                    {/* Name */}
+                    <span className={[
+                      'flex-1 truncate text-[12px]',
+                      active
+                        ? isDark ? 'font-semibold text-slate-100' : 'font-semibold text-slate-800'
+                        : isDark ? 'text-slate-500' : 'text-slate-500',
+                    ].join(' ')}>
+                      {s.full_name ?? '—'}
+                    </span>
+
+                    {/* Unread badge */}
+                    {unread > 0 && (
+                      <span className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-blue-500 px-1 text-[9px] font-bold text-white">
+                        {unread > 9 ? '9+' : unread}
+                      </span>
+                    )}
+                  </button>
                 );
-              })}
-              <div ref={listEndRef} />
-            </div>
-          )}
+              })
+            )}
+          </div>
         </div>
 
-        {/* Composer */}
-        <div className={`${composerBorderCls} px-4 py-3`}>
-          <div className="flex items-end gap-2.5">
-            <textarea
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              placeholder="Γράψε μήνυμα…"
-              disabled={!activeThread}
-              rows={2}
-              className={textareaCls}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  if (canSend) sendMessage();
-                }
-              }}
-            />
-            <button onClick={sendMessage} disabled={!canSend}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[color:var(--color-accent)]/40 text-[color:var(--color-accent)] shadow-sm transition hover:brightness-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
-              style={{ background: 'color-mix(in srgb, var(--color-accent) 12%, transparent)' }}
-              title="Αποστολή">
-              {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+        {/* ── Chat panel ──────────────────────────────────────────────── */}
+        <div className={`flex flex-1 flex-col ${isDark ? 'bg-[#0f172a]' : 'bg-white'}`}>
+
+          {/* Header */}
+          <div className={`flex h-11 shrink-0 items-center justify-between border-b px-5 ${divider}`}>
+            {activeStudent ? (
+              <div className="flex items-center gap-2.5">
+                <div
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
+                  style={{ background: 'var(--color-accent)', color: isDark ? '#000' : '#fff' }}
+                >
+                  {(activeStudent.full_name?.trim()?.[0] ?? 'Μ').toUpperCase()}
+                </div>
+                <span className={`text-sm font-semibold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+                  {activeStudent.full_name ?? '—'}
+                </span>
+              </div>
+            ) : (
+              <span className={`text-xs ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>Επίλεξε μαθητή</span>
+            )}
+
+            <button
+              onClick={manualRefresh}
+              disabled={!activeThread || refreshing}
+              className={`flex h-6 w-6 items-center justify-center rounded-lg transition disabled:cursor-not-allowed disabled:opacity-25 ${isDark ? 'text-slate-600 hover:text-slate-400' : 'text-slate-400 hover:text-slate-600'}`}
+            >
+              <RefreshCw className={`h-3 w-3 ${refreshing ? 'animate-spin' : ''}`} />
             </button>
           </div>
-          <p className={`mt-1.5 text-[10px] ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
-            <span className={`font-semibold ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>Enter</span> για αποστολή · <span className={`font-semibold ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>Shift+Enter</span> για νέα γραμμή
-          </p>
+
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto px-5 py-4" style={scrollStyle}>
+            {!activeThread ? (
+              <div className="flex h-full flex-col items-center justify-center gap-2">
+                <MessageSquareText className={`h-7 w-7 ${isDark ? 'text-slate-800' : 'text-slate-300'}`} />
+                <p className={`text-xs ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
+                  Επίλεξε μαθητή για να δεις τη συνομιλία
+                </p>
+              </div>
+            ) : loadingChat ? (
+              <div className="flex h-full items-center justify-center">
+                <Loader2 className={`h-4 w-4 animate-spin ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />
+              </div>
+            ) : messages.length === 0 ? (
+              <div className="flex h-full items-center justify-center">
+                <p className={`text-xs ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
+                  Δεν υπάρχουν μηνύματα ακόμα.
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4">
+                {groupedMessages.map((group) => (
+                  <div key={group.date} className="flex flex-col gap-1">
+
+                    {/* Date separator */}
+                    <div className="flex items-center gap-3 py-1">
+                      <div className={`h-px flex-1 ${isDark ? 'bg-slate-800/80' : 'bg-slate-100'}`} />
+                      <span className={`text-[10px] ${isDark ? 'text-slate-700' : 'text-slate-400'}`}>{group.date}</span>
+                      <div className={`h-px flex-1 ${isDark ? 'bg-slate-800/80' : 'bg-slate-100'}`} />
+                    </div>
+
+                    {/* Bubbles */}
+                    {group.msgs.map((m, i) => {
+                      const mine = m.sender_role === 'school';
+                      const sameSenderAsPrev = i > 0 && group.msgs[i - 1].sender_role === m.sender_role;
+                      const sameSenderAsNext = i < group.msgs.length - 1 && group.msgs[i + 1].sender_role === m.sender_role;
+                      const isLastInRun = !sameSenderAsNext;
+
+                      return (
+                        <div
+                          key={m.id}
+                          className={`flex items-end gap-2 ${mine ? 'justify-end' : 'justify-start'} ${sameSenderAsPrev ? 'mt-0.5' : 'mt-2.5'}`}
+                        >
+                          {/* Student avatar - left side, only on last in run */}
+                          {!mine && (
+                            <div className="w-6 shrink-0 mb-0.5">
+                              {isLastInRun ? (
+                                <div
+                                  className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold"
+                                  style={{ background: isDark ? '#1e293b' : '#e2e8f0', color: isDark ? '#94a3b8' : '#64748b' }}
+                                >
+                                  {(activeStudent?.full_name?.trim()?.[0] ?? 'Μ').toUpperCase()}
+                                </div>
+                              ) : null}
+                            </div>
+                          )}
+
+                          <div className="flex flex-col">
+                            {/* Time label on first bubble of a run */}
+                            {!sameSenderAsPrev && (
+                              <span className={`mb-1 px-1 text-[10px] ${mine ? 'text-right' : 'text-left'} ${isDark ? 'text-slate-700' : 'text-slate-400'}`}>
+                                {formatTime(m.created_at)}
+                              </span>
+                            )}
+                            <div
+                              className={[
+                                'max-w-[340px] break-words rounded-2xl px-3.5 py-2 text-[13px] leading-relaxed',
+                                mine
+                                  ? 'rounded-br-sm'
+                                  : isDark
+                                  ? 'rounded-bl-sm bg-[#1e293b] text-slate-200'
+                                  : 'rounded-bl-sm bg-slate-100 text-slate-700',
+                              ].join(' ')}
+                              style={mine ? { background: 'var(--color-accent)', color: isDark ? '#000' : '#fff' } : {}}
+                            >
+                              {m.body}
+                            </div>
+                          </div>
+
+                          {/* School avatar - right side, only on last in run */}
+                          {mine && (
+                            <div className="w-6 shrink-0 mb-0.5">
+                              {isLastInRun ? (
+                                <div
+                                  className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold"
+                                  style={{ background: isDark ? '#1e293b' : '#e2e8f0', color: 'var(--color-accent)' }}
+                                >
+                                  {(schoolName?.trim()?.[0] ?? 'Σ').toUpperCase()}
+                                </div>
+                              ) : null}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+                {/* Scroll anchor */}
+                <div ref={listEndRef} />
+              </div>
+            )}
+          </div>
+
+          {/* Composer */}
+          <div className={`border-t px-4 py-3 ${divider}`}>
+            <div className="flex items-end gap-2">
+              <textarea
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                placeholder={activeThread ? 'Γράψε μήνυμα…' : 'Επίλεξε μαθητή…'}
+                disabled={!activeThread}
+                rows={2}
+                className={[
+                  'flex-1 resize-none rounded-xl px-3.5 py-2.5 text-[13px] leading-relaxed outline-none transition disabled:cursor-not-allowed disabled:opacity-30',
+                  isDark
+                    ? 'bg-[#1e293b] text-slate-100 placeholder-slate-500 focus:ring-1 focus:ring-[color:var(--color-accent)]/20'
+                    : 'border border-slate-200 bg-slate-50 text-slate-800 placeholder-slate-400 focus:ring-1 focus:ring-[color:var(--color-accent)]/20',
+                ].join(' ')}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (canSend) sendMessage();
+                  }
+                }}
+              />
+              <button
+                onClick={sendMessage}
+                disabled={!canSend}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
+                style={{
+                  background: canSend ? 'var(--color-accent)' : isDark ? '#1a2234' : '#e2e8f0',
+                }}
+              >
+                {sending
+                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" style={{ color: isDark ? '#475569' : '#94a3b8' }} />
+                  : <Send className="h-3.5 w-3.5" style={{ color: canSend ? (isDark ? '#000' : '#fff') : isDark ? '#334155' : '#94a3b8' }} />
+                }
+              </button>
+            </div>
+            <p className={`mt-1.5 text-[10px] ${isDark ? 'text-slate-700' : 'text-slate-400'}`}>
+              Enter αποστολή · Shift+Enter νέα γραμμή
+            </p>
+          </div>
         </div>
-      </div>
     </div>
   );
 }

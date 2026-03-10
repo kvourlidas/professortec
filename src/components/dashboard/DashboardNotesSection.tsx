@@ -176,7 +176,7 @@ export default function DashboardNotesSection({ schoolId }: DashboardNotesSectio
       </div>
 
       {/* Card */}
-      <div className={`rounded-2xl border shadow-2xl backdrop-blur-md ring-1 ring-inset ${
+      <div className={`overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-md ring-1 ring-inset ${
         isDark
           ? 'border-slate-700/50 bg-slate-950/40 ring-white/[0.04]'
           : 'border-slate-200 bg-white/80 ring-black/[0.02]'

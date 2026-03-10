@@ -1,6 +1,5 @@
 import { ChevronLeft, ChevronRight, MessageSquareText } from 'lucide-react';
 import { Stars } from './Stars';
-import { PAGE_SIZE } from './constants';
 import type { RowVM } from './types';
 
 interface FeedbackTableProps {
@@ -15,6 +14,8 @@ interface FeedbackTableProps {
   onNext: () => void;
   isDark: boolean;
 }
+
+const PAGE_SIZE = 10;
 
 export function FeedbackTable({
   loading, rows, total, page, pageCount,
@@ -61,7 +62,10 @@ export function FeedbackTable({
           <div className={emptyBoxCls}>
             <MessageSquareText className={`h-6 w-6 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
           </div>
-          <p className={`text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-600'}`}>Δεν υπάρχουν μαθητές.</p>
+          <div>
+            <p className={`text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-600'}`}>Δεν υπάρχουν αξιολογήσεις ακόμα.</p>
+            <p className={`mt-1 text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Όταν οι μαθητές αφήσουν feedback, θα εμφανιστεί εδώ.</p>
+          </div>
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -87,7 +91,7 @@ export function FeedbackTable({
                   <td className="px-5 py-3.5">
                     {r.rating > 0
                       ? <Stars value={r.rating} />
-                      : <span className={`text-xs italic ${isDark ? 'text-slate-600' : 'text-slate-300'}`}>Καμία αξιολόγηση</span>}
+                      : <span className={`text-xs italic ${isDark ? 'text-slate-600' : 'text-slate-300'}`}>—</span>}
                   </td>
                   <td className="px-5 py-3.5 max-w-lg">
                     {r.feedback.trim()
@@ -101,11 +105,11 @@ export function FeedbackTable({
         </div>
       )}
 
-      {!loading && total > 0 && (
+      {!loading && total > PAGE_SIZE && (
         <div className={paginationBarCls}>
           <p className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
             <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>{showingFrom}–{showingTo}</span>{' '}
-            από <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>{total}</span> μαθητές
+            από <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>{total}</span> αξιολογήσεις
           </p>
           <div className="flex items-center gap-1.5">
             <button type="button" onClick={onPrev} disabled={page <= 1} className={paginationBtnCls}>

@@ -4,11 +4,13 @@ import { useAuth } from '../../auth';
 import { useTheme } from '../../context/ThemeContext';
 import { Star, MessageSquareText } from 'lucide-react';
 
-import type { StudentMiniRow, FeedbackRow, RowVM } from '../../components/feedback/types';
-import { FEEDBACK_TABLE, PAGE_SIZE } from '../../components/feedback/constants';
+import type { RowVM } from '../../components/feedback/types';
+import { FEEDBACK_TABLE } from '../../components/feedback/constants';
 import { clampRating } from '../../components/feedback/utils';
 import { Stars } from '../../components/feedback/Stars';
 import { FeedbackTable } from '../../components/feedback/FeedbackTable';
+
+const PAGE_SIZE = 10;
 
 export default function StudentFeedbackPage() {
   const { profile } = useAuth();
@@ -38,31 +40,64 @@ export default function StudentFeedbackPage() {
         const from = (page - 1) * PAGE_SIZE;
         const to = from + PAGE_SIZE - 1;
 
-        const studentsRes = await supabase.from('students').select('id, full_name', { count: 'exact' }).eq('school_id', schoolId).order('full_name', { ascending: true }).range(from, to);
-        if (studentsRes.error) { console.error(studentsRes.error); setError('Αποτυχία φόρτωσης μαθητών.'); setRows([]); setTotal(0); return; }
-        const students = (studentsRes.data ?? []) as StudentMiniRow[];
-        setTotal(studentsRes.count ?? 0);
+        // Only fetch rows with rating > 0 OR non-empty feedback
+        const fbRes = await supabase
+          .from(FEEDBACK_TABLE)
+          .select('student_id, rating, feedback, updated_at', { count: 'exact' })
+          .eq('school_id', schoolId)
+          .or('rating.gt.0,feedback.neq.')
+          .order('updated_at', { ascending: false })
+          .range(from, to);
 
-        const avgRes = await supabase.from(FEEDBACK_TABLE).select('rating', { count: 'exact' }).eq('school_id', schoolId).gt('rating', 0);
+        if (fbRes.error) {
+          console.error(fbRes.error);
+          setError('Αποτυχία φόρτωσης.');
+          setRows([]); setTotal(0); return;
+        }
+
+        setTotal(fbRes.count ?? 0);
+
+        // Avg rating across ALL feedback (not just current page)
+        const avgRes = await supabase
+          .from(FEEDBACK_TABLE)
+          .select('rating', { count: 'exact' })
+          .eq('school_id', schoolId)
+          .gt('rating', 0);
+
         if (!avgRes.error) {
-          const ratings = (avgRes.data ?? []).map((x: any) => Number(x.rating)).filter((n: number) => Number.isFinite(n) && n > 0);
+          const ratings = (avgRes.data ?? [])
+            .map((x: any) => Number(x.rating))
+            .filter((n: number) => Number.isFinite(n) && n > 0);
           setRatingsCount(avgRes.count ?? ratings.length);
           setAvgRating(ratings.length === 0 ? null : ratings.reduce((a, b) => a + b, 0) / ratings.length);
         } else { setAvgRating(null); setRatingsCount(0); }
 
-        const studentIds = students.map((s) => s.id).filter(Boolean);
-        const feedbackByStudent = new Map<string, FeedbackRow>();
+        // Fetch student names for current page
+        const studentIds = (fbRes.data ?? []).map((fb: any) => fb.student_id).filter(Boolean);
+        const studentNames = new Map<string, string>();
+
         if (studentIds.length > 0) {
-          const fbRes = await supabase.from(FEEDBACK_TABLE).select('student_id, rating, feedback, updated_at').eq('school_id', schoolId).in('student_id', studentIds).order('updated_at', { ascending: false });
-          if (!fbRes.error) { ((fbRes.data ?? []) as FeedbackRow[]).forEach((fb) => { if (fb.student_id) feedbackByStudent.set(fb.student_id, fb); }); }
+          const studRes = await supabase
+            .from('students')
+            .select('id, full_name')
+            .in('id', studentIds);
+          if (!studRes.error) {
+            (studRes.data ?? []).forEach((s: any) => studentNames.set(s.id, s.full_name ?? '—'));
+          }
         }
 
-        setRows(students.map((s) => {
-          const fb = feedbackByStudent.get(s.id);
-          return { studentId: s.id, fullName: (s.full_name ?? '').trim() || '—', rating: clampRating(Number(fb?.rating ?? 0)), feedback: (fb?.feedback ?? '').trim(), updatedAt: fb?.updated_at ?? null };
-        }));
+        setRows((fbRes.data ?? []).map((fb: any) => ({
+          studentId: fb.student_id,
+          fullName: studentNames.get(fb.student_id) ?? '—',
+          rating: clampRating(Number(fb.rating ?? 0)),
+          feedback: (fb.feedback ?? '').trim(),
+          updatedAt: fb.updated_at ?? null,
+        })));
+
       } catch (e) {
-        console.error(e); setError('Αποτυχία φόρτωσης δεδομένων.'); setRows([]); setTotal(0); setAvgRating(null); setRatingsCount(0);
+        console.error(e);
+        setError('Αποτυχία φόρτωσης δεδομένων.');
+        setRows([]); setTotal(0); setAvgRating(null); setRatingsCount(0);
       } finally { setLoading(false); }
     };
     load();
@@ -95,7 +130,7 @@ export default function StudentFeedbackPage() {
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] ${isDark ? 'border-slate-700/60 bg-slate-800/50 text-slate-300' : 'border-slate-200 bg-slate-100 text-slate-600'}`}>
                   <MessageSquareText className={`h-3 w-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
-                  {total} μαθητές
+                  {total} αξιολογήσεις
                 </span>
                 {avgRating != null && (
                   <span className="inline-flex items-center gap-2 rounded-full border px-2.5 py-0.5 text-[11px]"
