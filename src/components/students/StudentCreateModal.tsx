@@ -2,13 +2,13 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import {
   User, Phone, Mail, Calendar, FileText, Lock, Loader2,
-  X, GraduationCap, Layers, UserCheck,
+  X, GraduationCap, Layers, UserCheck, Eye, EyeOff,
 } from 'lucide-react';
-import { supabase } from '../../lib/supabaseClient';
-import { useTheme } from '../../context/ThemeContext';
-import DatePickerField from '../ui/AppDatePicker';
-import type { StudentRow, LevelRow } from './types';
-import { STUDENT_SELECT, displayToIso } from './types';
+import { supabase } from '../../lib/supabaseClient.ts';
+import { useTheme } from '../../context/ThemeContext.tsx';
+import DatePickerField from '../ui/AppDatePicker.tsx';
+import type { StudentRow, LevelRow } from './types.ts';
+import { displayToIso } from './types.ts';
 
 type TabKey = 'student' | 'parents';
 
@@ -59,6 +59,9 @@ export default function StudentCreateModal({ schoolId, levels, onCreated, onClos
   const [motherPhone, setMotherPhone] = useState('');
   const [motherEmail, setMotherEmail] = useState('');
 
+
+  const [passwordVisible, setPasswordVisible] = useState(false);
+
   const inputCls = `h-9 w-full rounded-lg border px-3 text-xs outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 focus:border-[color:var(--color-accent)] ${isDark ? 'border-slate-700/70 bg-slate-900/60 text-slate-100 placeholder-slate-500' : 'border-slate-200 bg-slate-50 text-slate-800 placeholder-slate-400'}`;
   const modalBg = isDark ? 'border-slate-700/60 bg-[#1f2d3d]' : 'border-slate-200 bg-white';
   const parentBoxCls = `rounded-xl border p-4 ${isDark ? 'border-slate-700/50 bg-slate-900/30' : 'border-slate-200 bg-slate-50'}`;
@@ -66,36 +69,73 @@ export default function StudentCreateModal({ schoolId, levels, onCreated, onClos
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+
     const nameTrimmed = fullName.trim();
     if (!nameTrimmed) return;
-    if (password.trim().length < 6) { setError('Ο κωδικός πρέπει να έχει τουλάχιστον 6 χαρακτήρες.'); return; }
+
+    if (password.trim().length < 6) {
+      setError('Ο κωδικός πρέπει να έχει τουλάχιστον 6 χαρακτήρες.');
+      return;
+    }
+
     const emailTrimmed = email.trim();
     const phoneTrimmed = phone.trim();
-    if (!emailTrimmed && !phoneTrimmed) { setError('Βάλε Email ή Τηλέφωνο για να μπορεί να κάνει login στο mobile app.'); return; }
 
-    setSaving(true); setError(null);
+    if (!emailTrimmed && !phoneTrimmed) {
+      setError('Βάλε Email ή Τηλέφωνο για να μπορεί να κάνει login στο mobile app.');
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+
     const payload = {
-      school_id: schoolId, full_name: nameTrimmed,
+      full_name: nameTrimmed,
       date_of_birth: displayToIso(dateOfBirth) || null,
-      phone: phoneTrimmed || null, email: emailTrimmed || null,
-      special_notes: specialNotes.trim() || null, level_id: levelId || null,
-      father_name: fatherName.trim() || null, father_date_of_birth: displayToIso(fatherDob) || null,
-      father_phone: fatherPhone.trim() || null, father_email: fatherEmail.trim() || null,
-      mother_name: motherName.trim() || null, mother_date_of_birth: displayToIso(motherDob) || null,
-      mother_phone: motherPhone.trim() || null, mother_email: motherEmail.trim() || null,
+      phone: phoneTrimmed || null,
+      email: emailTrimmed || null,
+      special_notes: specialNotes.trim() || null,
+      level_id: levelId || null,
+      father_name: fatherName.trim() || null,
+      father_date_of_birth: displayToIso(fatherDob) || null,
+      father_phone: fatherPhone.trim() || null,
+      father_email: fatherEmail.trim() || null,
+      mother_name: motherName.trim() || null,
+      mother_date_of_birth: displayToIso(motherDob) || null,
+      mother_phone: motherPhone.trim() || null,
+      mother_email: motherEmail.trim() || null,
     };
 
     try {
-      const res = await supabase.from('students').insert(payload).select(STUDENT_SELECT);
-      const dbError = (res as any).error; const data = (res as any).data as StudentRow[] | null;
-      if (dbError || !data?.length) { console.error(dbError); setError('Αποτυχία δημιουργίας μαθητή.'); return; }
-      const created = data[0] as StudentRow;
-      onCreated(created);
-      const { error: fnErr } = await supabase.functions.invoke('create-student-user', {
-        body: { school_id: schoolId, student_id: created.id, email: payload.email, phone: payload.phone, password: password.trim() },
+      const { data, error: fnError } = await supabase.functions.invoke('student-create', {
+        body: payload,
       });
-      if (fnErr) console.error('create-student-user error:', fnErr);
-    } finally { setSaving(false); }
+
+      if (fnError || !data?.item) {
+        console.error(fnError ?? data);
+        setError('Αποτυχία δημιουργίας μαθητή.');
+        return;
+      }
+
+      const created = data.item as StudentRow;
+      onCreated(created);
+
+      const { error: createUserError } = await supabase.functions.invoke('create-student-user', {
+        body: {
+          school_id: schoolId,
+          student_id: created.id,
+          email: payload.email,
+          phone: payload.phone,
+          password: password.trim(),
+        },
+      });
+
+      if (createUserError) {
+        console.error('create-student-user error:', createUserError);
+      }
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -173,8 +213,38 @@ export default function StudentCreateModal({ schoolId, levels, onCreated, onClos
                 <FormField label="Ειδικές σημειώσεις" icon={<FileText className="h-3 w-3" />} isDark={isDark}>
                   <input className={inputCls} placeholder="π.χ. αλλεργίες / παρατηρήσεις" value={specialNotes} onChange={(e) => setSpecialNotes(e.target.value)} />
                 </FormField>
-                <FormField label="Κωδικός" icon={<Lock className="h-3 w-3" />} hint="Θα δημιουργηθεί λογαριασμός για login στο mobile app." isDark={isDark}>
-                  <input type="password" className={inputCls} placeholder="Τουλάχιστον 6 χαρακτήρες" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
+                <FormField
+                  label="Κωδικός"
+                  icon={<Lock className="h-3 w-3" />}
+                  hint="Θα δημιουργηθεί λογαριασμός για login στο mobile app."
+                  isDark={isDark}
+                >
+                  <div className="relative">
+                    <input
+                      type={passwordVisible ? "text" : "password"}
+                      className={`${inputCls} pr-9`}
+                      placeholder="Τουλάχιστον 6 χαρακτήρες"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      minLength={6}
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => setPasswordVisible((v) => !v)}
+                      className={`absolute right-2 top-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center rounded-md transition ${isDark
+                          ? "text-slate-400 hover:text-slate-200"
+                          : "text-slate-500 hover:text-slate-700"
+                        }`}
+                    >
+                      {passwordVisible ? (
+                        <EyeOff className="h-3.5 w-3.5" />
+                      ) : (
+                        <Eye className="h-3.5 w-3.5" />
+                      )}
+                    </button>
+                  </div>
                 </FormField>
               </div>
             ) : (

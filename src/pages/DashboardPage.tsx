@@ -1,9 +1,9 @@
 // src/pages/DashboardPage.tsx
-import { useAuth } from '../auth';
-import DashboardMetricsSection from '../components/dashboard/DashboardMetricsSection';
-import DashboardMonthlyTestsAvgGradesSection from '../components/dashboard/DashboardMonthlyTestsAvgGradesSection';
-import DashboardNotesSection from '../components/dashboard/DashboardNotesSection';
-import DashboardCalendarSection from '../components/dashboard/DashboardCalendarSection';
+import { useAuth } from '../auth.tsx';
+import DashboardMetricsSection from '../components/dashboard/DashboardMetricsSection.tsx';
+import DashboardMonthlyTestsAvgGradesSection from '../components/dashboard/DashboardMonthlyTestsAvgGradesSection.tsx';
+import DashboardNotesSection from '../components/dashboard/DashboardNotesSection.tsx';
+import DashboardCalendarSection from '../components/dashboard/DashboardCalendarSection.tsx';
 
 export default function DashboardPage() {
   const { profile } = useAuth();

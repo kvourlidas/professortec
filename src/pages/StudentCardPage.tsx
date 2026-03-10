@@ -7,31 +7,31 @@ import {
   Users, BookOpen, UserCheck, AlertCircle, ChevronLeft, ChevronRight,
   GraduationCap, TrendingUp, Wallet, Receipt,
 } from 'lucide-react';
-import { supabase } from '../lib/supabaseClient';
-import { useAuth } from '../auth';
-import { useTheme } from '../context/ThemeContext';
-import DatePickerField from '../components/ui/AppDatePicker';
-import type { StudentRow, LevelRow, SubscriptionRow, ClassEnrollment, ProgramSlot } from '../components/students/types';
-import { STUDENT_SELECT, formatDateToGreek, isoToDisplay, displayToIso } from '../components/students/types';
+import { supabase } from '../lib/supabaseClient.ts';
+import { useAuth } from '../auth.tsx';
+import { useTheme } from '../context/ThemeContext.tsx';
+import DatePickerField from '../components/ui/AppDatePicker.tsx';
+import type { StudentRow, LevelRow, SubscriptionRow, ClassEnrollment, ProgramSlot } from '../components/students/types.ts';
+import { STUDENT_SELECT, formatDateToGreek, isoToDisplay, displayToIso } from '../components/students/types.ts';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
 const DAYS = [
-  { value: 'monday',    label: 'Δευτέρα',   js: 1 },
-  { value: 'tuesday',   label: 'Τρίτη',     js: 2 },
-  { value: 'wednesday', label: 'Τετάρτη',   js: 3 },
-  { value: 'thursday',  label: 'Πέμπτη',    js: 4 },
-  { value: 'friday',    label: 'Παρασκευή', js: 5 },
-  { value: 'saturday',  label: 'Σάββατο',   js: 6 },
-  { value: 'sunday',    label: 'Κυριακή',   js: 0 },
+  { value: 'monday', label: 'Δευτέρα', js: 1 },
+  { value: 'tuesday', label: 'Τρίτη', js: 2 },
+  { value: 'wednesday', label: 'Τετάρτη', js: 3 },
+  { value: 'thursday', label: 'Πέμπτη', js: 4 },
+  { value: 'friday', label: 'Παρασκευή', js: 5 },
+  { value: 'saturday', label: 'Σάββατο', js: 6 },
+  { value: 'sunday', label: 'Κυριακή', js: 0 },
 ];
 
 const MONTH_NAMES = [
-  'Ιανουάριος','Φεβρουάριος','Μάρτιος','Απρίλιος','Μάιος','Ιούνιος',
-  'Ιούλιος','Αύγουστος','Σεπτέμβριος','Οκτώβριος','Νοέμβριος','Δεκέμβριος',
+  'Ιανουάριος', 'Φεβρουάριος', 'Μάρτιος', 'Απρίλιος', 'Μάιος', 'Ιούνιος',
+  'Ιούλιος', 'Αύγουστος', 'Σεπτέμβριος', 'Οκτώβριος', 'Νοέμβριος', 'Δεκέμβριος',
 ];
 
-const CLASS_COLORS = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316'];
+const CLASS_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316'];
 const PAYMENTS_PER_PAGE = 5;
 
 type PaymentRow = { subscription_id: string; amount: number; created_at: string | null };
@@ -39,7 +39,7 @@ type PaymentRow = { subscription_id: string; amount: number; created_at: string 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function toISODate(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 function fmt12(t: string | null): string {
@@ -48,14 +48,14 @@ function fmt12(t: string | null): string {
   const h = Number(hStr); const m = Number(mStr ?? 0);
   const period = h < 12 ? 'πμ' : 'μμ';
   const h12 = h % 12 || 12;
-  return `${h12}:${String(m).padStart(2,'0')} ${period}`;
+  return `${h12}:${String(m).padStart(2, '0')} ${period}`;
 }
 
 function fmtDateTime(iso: string | null): string {
   if (!iso) return '—';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString('el-GR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+  return d.toLocaleString('el-GR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 function fmtDateLong(iso: string): string {
@@ -71,8 +71,8 @@ const jsToGrid = (js: number) => (js === 0 ? 6 : js - 1);
 
 function MonthCalendar({ slots, isDark }: { slots: ProgramSlot[]; isDark: boolean }) {
   const today = new Date();
-  const [year, setYear]     = useState(today.getFullYear());
-  const [month, setMonth]   = useState(today.getMonth());
+  const [year, setYear] = useState(today.getFullYear());
+  const [month, setMonth] = useState(today.getMonth());
   const [selected, setSelected] = useState<string>(toISODate(today));
 
   const uniqueClasses = useMemo(() => {
@@ -99,10 +99,10 @@ function MonthCalendar({ slots, isDark }: { slots: ProgramSlot[]; isDark: boolea
     return m;
   }, [slots]);
 
-  const todayStr       = toISODate(today);
-  const firstOfMonth   = new Date(year, month, 1);
-  const lastOfMonth    = new Date(year, month + 1, 0);
-  const startPad       = jsToGrid(firstOfMonth.getDay());
+  const todayStr = toISODate(today);
+  const firstOfMonth = new Date(year, month, 1);
+  const lastOfMonth = new Date(year, month + 1, 0);
+  const startPad = jsToGrid(firstOfMonth.getDay());
 
   // 42-cell grid (6 rows × 7 cols), filling prev/next month overflow
   const cells: { date: Date; current: boolean }[] = [];
@@ -113,14 +113,14 @@ function MonthCalendar({ slots, isDark }: { slots: ProgramSlot[]; isDark: boolea
   while (cells.length < 42)
     cells.push({ date: new Date(year, month + 1, cells.length - startPad - lastOfMonth.getDate() + 1), current: false });
 
-  const selJsDay    = selected ? new Date(selected + 'T12:00:00').getDay() : -1;
-  const selSlots    = slotsByJsDay.get(selJsDay) ?? [];
+  const selJsDay = selected ? new Date(selected + 'T12:00:00').getDay() : -1;
+  const selSlots = slotsByJsDay.get(selJsDay) ?? [];
 
-  function prev() { if (month === 0) { setMonth(11); setYear(y => y-1); } else setMonth(m => m-1); }
-  function next() { if (month === 11) { setMonth(0); setYear(y => y+1); } else setMonth(m => m+1); }
+  function prev() { if (month === 0) { setMonth(11); setYear(y => y - 1); } else setMonth(m => m - 1); }
+  function next() { if (month === 11) { setMonth(0); setYear(y => y + 1); } else setMonth(m => m + 1); }
 
-  const headerBg  = isDark ? 'bg-slate-900/60' : 'bg-slate-50';
-  const border    = isDark ? 'border-slate-700/50' : 'border-slate-200';
+  const headerBg = isDark ? 'bg-slate-900/60' : 'bg-slate-50';
+  const border = isDark ? 'border-slate-700/50' : 'border-slate-200';
 
   return (
     <div className={`rounded-xl border overflow-hidden ${border} ${isDark ? 'bg-slate-900/30' : 'bg-white'}`}>
@@ -142,7 +142,7 @@ function MonthCalendar({ slots, isDark }: { slots: ProgramSlot[]; isDark: boolea
 
       {/* ── Day headers ── */}
       <div className={`grid grid-cols-7 border-b ${border} ${headerBg}`}>
-        {['Δ','Τ','Τ','Π','Π','Σ','Κ'].map((h, i) => (
+        {['Δ', 'Τ', 'Τ', 'Π', 'Π', 'Σ', 'Κ'].map((h, i) => (
           <div key={i} className={`py-2 text-center text-[11px] font-semibold ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{h}</div>
         ))}
       </div>
@@ -150,11 +150,11 @@ function MonthCalendar({ slots, isDark }: { slots: ProgramSlot[]; isDark: boolea
       {/* ── Grid ── */}
       <div className="grid grid-cols-7 p-2 gap-y-0.5">
         {cells.map((cell, i) => {
-          const dStr      = toISODate(cell.date);
-          const jsDay     = cell.date.getDay();
-          const daySlots  = cell.current ? (slotsByJsDay.get(jsDay) ?? []) : [];
-          const isToday   = dStr === todayStr;
-          const isSel     = dStr === selected;
+          const dStr = toISODate(cell.date);
+          const jsDay = cell.date.getDay();
+          const daySlots = cell.current ? (slotsByJsDay.get(jsDay) ?? []) : [];
+          const isToday = dStr === todayStr;
+          const isSel = dStr === selected;
 
           return (
             <button key={i} type="button" onClick={() => setSelected(dStr)}
@@ -165,15 +165,15 @@ function MonthCalendar({ slots, isDark }: { slots: ProgramSlot[]; isDark: boolea
                   isSel
                     ? 'font-bold text-white'
                     : isToday
-                    ? 'font-bold'
-                    : cell.current
-                    ? isDark ? 'text-slate-200 group-hover:bg-slate-800' : 'text-slate-700 group-hover:bg-slate-100'
-                    : isDark ? 'text-slate-700' : 'text-slate-300',
+                      ? 'font-bold'
+                      : cell.current
+                        ? isDark ? 'text-slate-200 group-hover:bg-slate-800' : 'text-slate-700 group-hover:bg-slate-100'
+                        : isDark ? 'text-slate-700' : 'text-slate-300',
                 ].join(' ')}
                 style={
-                  isSel    ? { background: 'var(--color-accent)' }
-                  : isToday ? { color: 'var(--color-accent)', outline: '2px solid var(--color-accent)', outlineOffset: '-2px' }
-                  : undefined
+                  isSel ? { background: 'var(--color-accent)' }
+                    : isToday ? { color: 'var(--color-accent)', outline: '2px solid var(--color-accent)', outlineOffset: '-2px' }
+                      : undefined
                 }>
                 {cell.date.getDate()}
               </span>
@@ -279,12 +279,12 @@ function DashCard({ title, icon, isDark, onEdit, editing, accentTop, children }:
 
 // ── Stat tile ──────────────────────────────────────────────────────────────
 
-function StatTile({ label, value, color, isDark }: { label: string; value: string; color: 'green'|'red'|'blue'|'neutral'; isDark: boolean }) {
-  const bg = { green: isDark?'border-emerald-500/30 bg-emerald-950/30':'border-emerald-200 bg-emerald-50', red: isDark?'border-rose-500/30 bg-rose-950/30':'border-rose-200 bg-rose-50', blue: isDark?'border-blue-500/30 bg-blue-950/20':'border-blue-200 bg-blue-50', neutral: isDark?'border-slate-700/50 bg-slate-900/30':'border-slate-200 bg-slate-50' };
-  const vc = { green: isDark?'text-emerald-300':'text-emerald-700', red: isDark?'text-rose-300':'text-rose-700', blue: isDark?'text-blue-300':'text-blue-700', neutral: isDark?'text-slate-200':'text-slate-700' };
+function StatTile({ label, value, color, isDark }: { label: string; value: string; color: 'green' | 'red' | 'blue' | 'neutral'; isDark: boolean }) {
+  const bg = { green: isDark ? 'border-emerald-500/30 bg-emerald-950/30' : 'border-emerald-200 bg-emerald-50', red: isDark ? 'border-rose-500/30 bg-rose-950/30' : 'border-rose-200 bg-rose-50', blue: isDark ? 'border-blue-500/30 bg-blue-950/20' : 'border-blue-200 bg-blue-50', neutral: isDark ? 'border-slate-700/50 bg-slate-900/30' : 'border-slate-200 bg-slate-50' };
+  const vc = { green: isDark ? 'text-emerald-300' : 'text-emerald-700', red: isDark ? 'text-rose-300' : 'text-rose-700', blue: isDark ? 'text-blue-300' : 'text-blue-700', neutral: isDark ? 'text-slate-200' : 'text-slate-700' };
   return (
     <div className={`rounded-xl border px-3 py-2 ${bg[color]}`}>
-      <p className={`text-[9px] font-semibold uppercase tracking-wider mb-0.5 ${isDark?'text-slate-500':'text-slate-400'}`}>{label}</p>
+      <p className={`text-[9px] font-semibold uppercase tracking-wider mb-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{label}</p>
       <p className={`text-sm font-bold tabular-nums ${vc[color]}`}>{value}</p>
     </div>
   );
@@ -300,54 +300,54 @@ export default function StudentCardPage() {
   const isDark = theme === 'dark';
   const schoolId = profile?.school_id ?? null;
 
-  const [student, setStudent]         = useState<StudentRow | null>(null);
-  const [levels, setLevels]           = useState<LevelRow[]>([]);
+  const [student, setStudent] = useState<StudentRow | null>(null);
+  const [levels, setLevels] = useState<LevelRow[]>([]);
   const [subscriptions, setSubscriptions] = useState<SubscriptionRow[]>([]);
-  const [payments, setPayments]       = useState<PaymentRow[]>([]);
-  const [classes, setClasses]         = useState<ClassEnrollment[]>([]);
+  const [payments, setPayments] = useState<PaymentRow[]>([]);
+  const [classes, setClasses] = useState<ClassEnrollment[]>([]);
   const [scheduleSlots, setScheduleSlots] = useState<ProgramSlot[]>([]);
-  const [loading, setLoading]         = useState(true);
-  const [notFound, setNotFound]       = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
 
   // payment pagination per subscription
   const [payPages, setPayPages] = useState<Record<string, number>>({});
 
   const [editingStudent, setEditingStudent] = useState(false);
-  const [savingStudent, setSavingStudent]   = useState(false);
-  const [studentError, setStudentError]     = useState<string | null>(null);
+  const [savingStudent, setSavingStudent] = useState(false);
+  const [studentError, setStudentError] = useState<string | null>(null);
   const [studentSuccess, setStudentSuccess] = useState(false);
-  const [fullName, setFullName]             = useState('');
-  const [dateOfBirth, setDateOfBirth]       = useState('');
-  const [phone, setPhone]                   = useState('');
-  const [email, setEmail]                   = useState('');
-  const [specialNotes, setSpecialNotes]     = useState('');
-  const [levelId, setLevelId]               = useState('');
-  const [newPassword, setNewPassword]       = useState('');
+  const [fullName, setFullName] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [specialNotes, setSpecialNotes] = useState('');
+  const [levelId, setLevelId] = useState('');
+  const [newPassword, setNewPassword] = useState('');
 
   const [editingParents, setEditingParents] = useState(false);
-  const [savingParents, setSavingParents]   = useState(false);
-  const [parentsError, setParentsError]     = useState<string | null>(null);
+  const [savingParents, setSavingParents] = useState(false);
+  const [parentsError, setParentsError] = useState<string | null>(null);
   const [parentsSuccess, setParentsSuccess] = useState(false);
-  const [fatherName, setFatherName]         = useState('');
-  const [fatherDob, setFatherDob]           = useState('');
-  const [fatherPhone, setFatherPhone]       = useState('');
-  const [fatherEmail, setFatherEmail]       = useState('');
-  const [motherName, setMotherName]         = useState('');
-  const [motherDob, setMotherDob]           = useState('');
-  const [motherPhone, setMotherPhone]       = useState('');
-  const [motherEmail, setMotherEmail]       = useState('');
+  const [fatherName, setFatherName] = useState('');
+  const [fatherDob, setFatherDob] = useState('');
+  const [fatherPhone, setFatherPhone] = useState('');
+  const [fatherEmail, setFatherEmail] = useState('');
+  const [motherName, setMotherName] = useState('');
+  const [motherDob, setMotherDob] = useState('');
+  const [motherPhone, setMotherPhone] = useState('');
+  const [motherEmail, setMotherEmail] = useState('');
 
   const inputCls = `h-8 w-full rounded-lg border px-2.5 text-xs outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 focus:border-[color:var(--color-accent)] ${isDark ? 'border-slate-700/70 bg-slate-900/60 text-slate-100 placeholder-slate-500' : 'border-slate-200 bg-slate-50 text-slate-800 placeholder-slate-400'}`;
   const cancelBtnCls = `btn border px-3 py-1.5 text-xs disabled:opacity-50 ${isDark ? 'border-slate-600/60 bg-slate-800/50 text-slate-200 hover:bg-slate-700/60' : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'}`;
 
   const levelNameById = useMemo(() => new Map(levels.map(l => [l.id, l.name])), [levels]);
 
-  const activeSub      = useMemo(() => subscriptions.find(s => s.status === 'active') ?? null, [subscriptions]);
-  const totalCharged   = useMemo(() => subscriptions.reduce((a, s) => a + Number(s.charge_amount ?? s.price ?? 0), 0), [subscriptions]);
-  const totalPaid      = useMemo(() => payments.reduce((a, p) => a + Number(p.amount ?? 0), 0), [payments]);
-  const totalBalance   = useMemo(() => subscriptions.filter(s => s.status === 'active').reduce((a, s) => a + Number(s.balance ?? 0), 0), [subscriptions]);
+  const activeSub = useMemo(() => subscriptions.find(s => s.status === 'active') ?? null, [subscriptions]);
+  const totalCharged = useMemo(() => subscriptions.reduce((a, s) => a + Number(s.charge_amount ?? s.price ?? 0), 0), [subscriptions]);
+  const totalPaid = useMemo(() => payments.reduce((a, p) => a + Number(p.amount ?? 0), 0), [payments]);
+  const totalBalance = useMemo(() => subscriptions.filter(s => s.status === 'active').reduce((a, s) => a + Number(s.balance ?? 0), 0), [subscriptions]);
   const hasBalanceData = activeSub && activeSub.balance != null;
-  const owes           = hasBalanceData && totalBalance > 0;
+  const owes = hasBalanceData && totalBalance > 0;
 
   useEffect(() => {
     if (!id || !schoolId) return;
@@ -415,46 +415,120 @@ export default function StudentCardPage() {
 
   const handleSaveStudent = async () => {
     if (!student || !schoolId) return;
+
     const nameTrimmed = fullName.trim();
-    if (!nameTrimmed) { setStudentError('Το ονοματεπώνυμο είναι υποχρεωτικό.'); return; }
-    setSavingStudent(true); setStudentError(null);
-    const { data, error } = await supabase.from('students').update({
-      full_name: nameTrimmed, date_of_birth: displayToIso(dateOfBirth) || null,
-      phone: phone.trim() || null, email: email.trim() || null,
-      special_notes: specialNotes.trim() || null, level_id: levelId || null,
-    }).eq('id', student.id).eq('school_id', schoolId).select(STUDENT_SELECT).maybeSingle();
-    if (error || !data) { console.error(error); setStudentError('Αποτυχία αποθήκευσης.'); setSavingStudent(false); return; }
-    setStudent(data as StudentRow);
+    if (!nameTrimmed) {
+      setStudentError('Το ονοματεπώνυμο είναι υποχρεωτικό.');
+      return;
+    }
+
+    setSavingStudent(true);
+    setStudentError(null);
+
+    const payload = {
+      student_id: student.id,
+      full_name: nameTrimmed,
+      date_of_birth: displayToIso(dateOfBirth) || null,
+      phone: phone.trim() || null,
+      email: email.trim() || null,
+      special_notes: specialNotes.trim() || null,
+      level_id: levelId || null,
+      father_name: student.father_name ?? null,
+      father_date_of_birth: student.father_date_of_birth ?? null,
+      father_phone: student.father_phone ?? null,
+      father_email: student.father_email ?? null,
+      mother_name: student.mother_name ?? null,
+      mother_date_of_birth: student.mother_date_of_birth ?? null,
+      mother_phone: student.mother_phone ?? null,
+      mother_email: student.mother_email ?? null,
+    };
+
+    const { data, error } = await supabase.functions.invoke('student-update', {
+      body: payload,
+    });
+
+    if (error || !data?.item) {
+      console.error(error ?? data);
+      setStudentError('Αποτυχία αποθήκευσης.');
+      setSavingStudent(false);
+      return;
+    }
+
+    const updated = data.item as StudentRow;
+    setStudent(updated);
+
     const np = newPassword.trim();
     if (np) {
-      if (np.length < 6) { setStudentError('Ο κωδικός πρέπει ≥ 6 χαρακτήρες.'); setSavingStudent(false); return; }
-      const { error: pwErr } = await supabase.functions.invoke('set-student-password', { body: { school_id: schoolId, student_id: student.id, new_password: np } });
+      if (np.length < 6) {
+        setStudentError('Ο κωδικός πρέπει ≥ 6 χαρακτήρες.');
+        setSavingStudent(false);
+        return;
+      }
+
+      const { error: pwErr } = await supabase.functions.invoke('set-student-password', {
+        body: {
+          school_id: schoolId,
+          student_id: student.id,
+          new_password: np,
+        },
+      });
+
       if (pwErr) console.error(pwErr);
     }
-    setSavingStudent(false); setEditingStudent(false);
-    setStudentSuccess(true); setTimeout(() => setStudentSuccess(false), 3000);
+
+    setSavingStudent(false);
+    setEditingStudent(false);
+    setStudentSuccess(true);
+    setTimeout(() => setStudentSuccess(false), 3000);
   };
 
   const handleSaveParents = async () => {
     if (!student || !schoolId) return;
-    setSavingParents(true); setParentsError(null);
-    const { data, error } = await supabase.from('students').update({
-      father_name: fatherName.trim() || null, father_date_of_birth: displayToIso(fatherDob) || null,
-      father_phone: fatherPhone.trim() || null, father_email: fatherEmail.trim() || null,
-      mother_name: motherName.trim() || null, mother_date_of_birth: displayToIso(motherDob) || null,
-      mother_phone: motherPhone.trim() || null, mother_email: motherEmail.trim() || null,
-    }).eq('id', student.id).eq('school_id', schoolId).select(STUDENT_SELECT).maybeSingle();
-    if (error || !data) { console.error(error); setParentsError('Αποτυχία αποθήκευσης.'); setSavingParents(false); return; }
-    setStudent(data as StudentRow);
-    setSavingParents(false); setEditingParents(false);
-    setParentsSuccess(true); setTimeout(() => setParentsSuccess(false), 3000);
+
+    setSavingParents(true);
+    setParentsError(null);
+
+    const payload = {
+      student_id: student.id,
+      full_name: student.full_name ?? null,
+      date_of_birth: student.date_of_birth ?? null,
+      phone: student.phone ?? null,
+      email: student.email ?? null,
+      special_notes: student.special_notes ?? null,
+      level_id: student.level_id ?? null,
+      father_name: fatherName.trim() || null,
+      father_date_of_birth: displayToIso(fatherDob) || null,
+      father_phone: fatherPhone.trim() || null,
+      father_email: fatherEmail.trim() || null,
+      mother_name: motherName.trim() || null,
+      mother_date_of_birth: displayToIso(motherDob) || null,
+      mother_phone: motherPhone.trim() || null,
+      mother_email: motherEmail.trim() || null,
+    };
+
+    const { data, error } = await supabase.functions.invoke('student-update', {
+      body: payload,
+    });
+
+    if (error || !data?.item) {
+      console.error(error ?? data);
+      setParentsError('Αποτυχία αποθήκευσης.');
+      setSavingParents(false);
+      return;
+    }
+
+    setStudent(data.item as StudentRow);
+    setSavingParents(false);
+    setEditingParents(false);
+    setParentsSuccess(true);
+    setTimeout(() => setParentsSuccess(false), 3000);
   };
 
   function statusBadge(status: SubscriptionRow['status']) {
     const map = {
-      active:    { label: 'Ενεργή',      cls: isDark ? 'border-emerald-500/40 bg-emerald-950/30 text-emerald-300' : 'border-emerald-300 bg-emerald-50 text-emerald-700' },
-      completed: { label: 'Ολοκλ.',      cls: isDark ? 'border-slate-600/50 bg-slate-800/40 text-slate-400' : 'border-slate-200 bg-slate-100 text-slate-500' },
-      canceled:  { label: 'Ακυρώθηκε',  cls: isDark ? 'border-red-500/40 bg-red-950/30 text-red-400' : 'border-red-200 bg-red-50 text-red-600' },
+      active: { label: 'Ενεργή', cls: isDark ? 'border-emerald-500/40 bg-emerald-950/30 text-emerald-300' : 'border-emerald-300 bg-emerald-50 text-emerald-700' },
+      completed: { label: 'Ολοκλ.', cls: isDark ? 'border-slate-600/50 bg-slate-800/40 text-slate-400' : 'border-slate-200 bg-slate-100 text-slate-500' },
+      canceled: { label: 'Ακυρώθηκε', cls: isDark ? 'border-red-500/40 bg-red-950/30 text-red-400' : 'border-red-200 bg-red-50 text-red-600' },
     };
     const { label, cls } = map[status] ?? map.completed;
     return <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${cls}`}>{label}</span>;
@@ -475,7 +549,7 @@ export default function StudentCardPage() {
       <div className="flex flex-col items-center justify-center gap-4 py-24 text-center">
         <Users className={`h-10 w-10 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />
         <p className={`text-sm font-medium ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>Ο μαθητής δεν βρέθηκε.</p>
-        <button onClick={() => navigate('/students')} className="btn-primary px-4 py-2 text-xs font-semibold">Επιστροφή</button>
+        <button type='button' onClick={() => navigate('/students')} className="btn-primary px-4 py-2 text-xs font-semibold">Επιστροφή</button>
       </div>
     );
   }
@@ -567,8 +641,8 @@ export default function StudentCardPage() {
               <div className="space-y-3">
                 <div className="grid gap-3 sm:grid-cols-2">
                   {[
-                    { title:'Πατέρας', name:fatherName, setName:setFatherName, dob:fatherDob, setDob:setFatherDob, dobId:'card-fdob', phone:fatherPhone, setPhone:setFatherPhone, email:fatherEmail, setEmail:setFatherEmail },
-                    { title:'Μητέρα',  name:motherName, setName:setMotherName, dob:motherDob, setDob:setMotherDob, dobId:'card-mdob', phone:motherPhone, setPhone:setMotherPhone, email:motherEmail, setEmail:setMotherEmail },
+                    { title: 'Πατέρας', name: fatherName, setName: setFatherName, dob: fatherDob, setDob: setFatherDob, dobId: 'card-fdob', phone: fatherPhone, setPhone: setFatherPhone, email: fatherEmail, setEmail: setFatherEmail },
+                    { title: 'Μητέρα', name: motherName, setName: setMotherName, dob: motherDob, setDob: setMotherDob, dobId: 'card-mdob', phone: motherPhone, setPhone: setMotherPhone, email: motherEmail, setEmail: setMotherEmail },
                   ].map(({ title, name, setName, dob, setDob, dobId, phone: ph, setPhone: setPh, email: em, setEmail: setEm }) => (
                     <div key={title} className={`rounded-xl border p-3 ${isDark ? 'border-slate-700/50 bg-slate-900/20' : 'border-slate-200 bg-slate-50'}`}>
                       <p className={`mb-2 text-[10px] font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{title}</p>
@@ -591,8 +665,8 @@ export default function StudentCardPage() {
             ) : (
               <div className="grid gap-3 sm:grid-cols-2">
                 {[
-                  { title:'Πατέρας', name:student.father_name, dob:student.father_date_of_birth, phone:student.father_phone, email:student.father_email },
-                  { title:'Μητέρα',  name:student.mother_name, dob:student.mother_date_of_birth, phone:student.mother_phone, email:student.mother_email },
+                  { title: 'Πατέρας', name: student.father_name, dob: student.father_date_of_birth, phone: student.father_phone, email: student.father_email },
+                  { title: 'Μητέρα', name: student.mother_name, dob: student.mother_date_of_birth, phone: student.mother_phone, email: student.mother_email },
                 ].map(({ title, name, dob, phone: ph, email: em }) => (
                   <div key={title}>
                     <p className={`mb-1.5 text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{title}</p>
@@ -612,9 +686,9 @@ export default function StudentCardPage() {
           <DashCard title="Οικονομικά & Ιστορικό" icon={<Wallet className="h-3.5 w-3.5" />} isDark={isDark} accentTop>
             {subscriptions.length > 0 && (
               <div className="mb-4 grid grid-cols-3 gap-2">
-                <StatTile label="Χρέωση"    value={`${totalCharged.toFixed(2)}€`} color="blue"  isDark={isDark} />
-                <StatTile label="Πληρωμένο" value={`${totalPaid.toFixed(2)}€`}    color="green" isDark={isDark} />
-                <StatTile label="Υπόλοιπο"  value={`${totalBalance.toFixed(2)}€`} color={totalBalance > 0 ? 'red' : 'green'} isDark={isDark} />
+                <StatTile label="Χρέωση" value={`${totalCharged.toFixed(2)}€`} color="blue" isDark={isDark} />
+                <StatTile label="Πληρωμένο" value={`${totalPaid.toFixed(2)}€`} color="green" isDark={isDark} />
+                <StatTile label="Υπόλοιπο" value={`${totalBalance.toFixed(2)}€`} color={totalBalance > 0 ? 'red' : 'green'} isDark={isDark} />
               </div>
             )}
             {subscriptions.length === 0 ? (
@@ -623,10 +697,10 @@ export default function StudentCardPage() {
               <div className="space-y-3">
                 {subscriptions.map(sub => {
                   const subPayments = payments.filter(p => p.subscription_id === sub.id);
-                  const subPaid     = subPayments.reduce((a, p) => a + Number(p.amount ?? 0), 0);
-                  const page        = getPayPage(sub.id);
-                  const pageCount   = Math.max(1, Math.ceil(subPayments.length / PAYMENTS_PER_PAGE));
-                  const pagePays    = subPayments.slice(page * PAYMENTS_PER_PAGE, (page + 1) * PAYMENTS_PER_PAGE);
+                  const subPaid = subPayments.reduce((a, p) => a + Number(p.amount ?? 0), 0);
+                  const page = getPayPage(sub.id);
+                  const pageCount = Math.max(1, Math.ceil(subPayments.length / PAYMENTS_PER_PAGE));
+                  const pagePays = subPayments.slice(page * PAYMENTS_PER_PAGE, (page + 1) * PAYMENTS_PER_PAGE);
 
                   return (
                     <div key={sub.id} className={`rounded-xl border overflow-hidden ${isDark ? 'border-slate-700/50' : 'border-slate-200'}`}>
@@ -645,12 +719,12 @@ export default function StudentCardPage() {
                       {/* financials */}
                       <div className={`grid grid-cols-3 gap-px ${isDark ? 'bg-slate-800/40' : 'bg-slate-200'}`}>
                         {[
-                          { label:'Χρέωση',    val:`${Number(sub.charge_amount ?? sub.price ?? 0).toFixed(2)}€`, color: isDark?'text-slate-200':'text-slate-700' },
-                          { label:'Πληρωμένο', val:`${subPaid.toFixed(2)}€`,                                     color: isDark?'text-emerald-300':'text-emerald-700' },
-                          { label:'Υπόλοιπο',  val:`${Number(sub.balance ?? 0).toFixed(2)}€`,                    color: Number(sub.balance??0)>0?(isDark?'text-rose-300':'text-rose-600'):(isDark?'text-emerald-300':'text-emerald-700') },
+                          { label: 'Χρέωση', val: `${Number(sub.charge_amount ?? sub.price ?? 0).toFixed(2)}€`, color: isDark ? 'text-slate-200' : 'text-slate-700' },
+                          { label: 'Πληρωμένο', val: `${subPaid.toFixed(2)}€`, color: isDark ? 'text-emerald-300' : 'text-emerald-700' },
+                          { label: 'Υπόλοιπο', val: `${Number(sub.balance ?? 0).toFixed(2)}€`, color: Number(sub.balance ?? 0) > 0 ? (isDark ? 'text-rose-300' : 'text-rose-600') : (isDark ? 'text-emerald-300' : 'text-emerald-700') },
                         ].map(({ label, val, color }) => (
                           <div key={label} className={`px-2 py-2 text-center ${isDark ? 'bg-slate-900/60' : 'bg-white'}`}>
-                            <p className={`text-[9px] font-semibold uppercase tracking-wider mb-0.5 ${isDark?'text-slate-500':'text-slate-400'}`}>{label}</p>
+                            <p className={`text-[9px] font-semibold uppercase tracking-wider mb-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{label}</p>
                             <p className={`text-[11px] font-bold tabular-nums ${color}`}>{val}</p>
                           </div>
                         ))}
@@ -660,16 +734,16 @@ export default function StudentCardPage() {
                         <>
                           <div className={`divide-y ${isDark ? 'divide-slate-800/50' : 'divide-slate-100'}`}>
                             <div className={`flex items-center gap-1.5 px-3 py-1.5 ${isDark ? 'bg-slate-900/20' : 'bg-slate-50/80'}`}>
-                              <Receipt className={`h-2.5 w-2.5 ${isDark?'text-slate-500':'text-slate-400'}`} />
-                              <span className={`text-[9px] font-semibold uppercase tracking-wider ${isDark?'text-slate-500':'text-slate-400'}`}>Πληρωμές ({subPayments.length})</span>
+                              <Receipt className={`h-2.5 w-2.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+                              <span className={`text-[9px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Πληρωμές ({subPayments.length})</span>
                             </div>
                             {pagePays.map((p, i) => (
-                              <div key={i} className={`flex items-center justify-between px-3 py-2 ${isDark?'bg-slate-950/20':'bg-white'}`}>
+                              <div key={i} className={`flex items-center justify-between px-3 py-2 ${isDark ? 'bg-slate-950/20' : 'bg-white'}`}>
                                 <div className="flex items-center gap-2">
-                                  <span className={`h-1.5 w-1.5 rounded-full ${isDark?'bg-emerald-400':'bg-emerald-500'}`} />
-                                  <span className={`text-[11px] tabular-nums ${isDark?'text-slate-400':'text-slate-500'}`}>{fmtDateTime(p.created_at)}</span>
+                                  <span className={`h-1.5 w-1.5 rounded-full ${isDark ? 'bg-emerald-400' : 'bg-emerald-500'}`} />
+                                  <span className={`text-[11px] tabular-nums ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{fmtDateTime(p.created_at)}</span>
                                 </div>
-                                <span className={`text-xs font-semibold tabular-nums ${isDark?'text-emerald-300':'text-emerald-700'}`}>+{Number(p.amount).toFixed(2)}€</span>
+                                <span className={`text-xs font-semibold tabular-nums ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>+{Number(p.amount).toFixed(2)}€</span>
                               </div>
                             ))}
                           </div>
@@ -680,7 +754,7 @@ export default function StudentCardPage() {
                                 className={`flex h-6 w-6 items-center justify-center rounded border transition disabled:opacity-30 ${isDark ? 'border-slate-700 bg-slate-800 text-slate-400 hover:text-slate-200' : 'border-slate-200 bg-white text-slate-500 hover:text-slate-700'}`}>
                                 <ChevronLeft className="h-3 w-3" />
                               </button>
-                              <span className={`text-[10px] ${isDark?'text-slate-500':'text-slate-400'}`}>{page + 1} / {pageCount}</span>
+                              <span className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{page + 1} / {pageCount}</span>
                               <button type="button" disabled={page >= pageCount - 1} onClick={() => setPayPage(sub.id, page + 1)}
                                 className={`flex h-6 w-6 items-center justify-center rounded border transition disabled:opacity-30 ${isDark ? 'border-slate-700 bg-slate-800 text-slate-400 hover:text-slate-200' : 'border-slate-200 bg-white text-slate-500 hover:text-slate-700'}`}>
                                 <ChevronRight className="h-3 w-3" />
@@ -689,9 +763,9 @@ export default function StudentCardPage() {
                           )}
                         </>
                       ) : sub.status === 'active' ? (
-                        <div className={`flex items-center gap-2 px-3 py-2.5 ${isDark?'bg-slate-950/20':'bg-white'}`}>
-                          <TrendingUp className={`h-3 w-3 ${isDark?'text-slate-600':'text-slate-400'}`} />
-                          <span className={`text-[11px] ${isDark?'text-slate-600':'text-slate-400'}`}>Δεν έχουν καταχωρηθεί πληρωμές.</span>
+                        <div className={`flex items-center gap-2 px-3 py-2.5 ${isDark ? 'bg-slate-950/20' : 'bg-white'}`}>
+                          <TrendingUp className={`h-3 w-3 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />
+                          <span className={`text-[11px] ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>Δεν έχουν καταχωρηθεί πληρωμές.</span>
                         </div>
                       ) : null}
                     </div>

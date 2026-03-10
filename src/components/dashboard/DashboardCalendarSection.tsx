@@ -153,6 +153,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
   const [holidays, setHolidays] = useState<HolidayRow[]>([]);
   const [schoolEvents, setSchoolEvents] = useState<SchoolEventRow[]>([]);
 
+  console.log(program, calendarView);
   const [schoolEventModalOpen, setSchoolEventModalOpen] = useState(false);
   const [schoolEventModalMode, setSchoolEventModalMode] = useState<'create' | 'edit'>('edit');
   const [schoolEventEditing, setSchoolEventEditing] = useState<SchoolEventForEdit | null>(null);
@@ -822,7 +823,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
   const programSubjectOptions = useMemo(() => { if (!eventModal?.classId) return []; return getSubjectsForClass(eventModal.classId); }, [eventModal?.classId, classes, classSubjects, subjects, subjectById]);
   const testSubjectOptions = useMemo(() => { if (!testModal?.classId) return []; return getSubjectsForClass(testModal.classId); }, [testModal?.classId, classes, classSubjects, subjects, subjectById]);
 
-  const requestDeleteSchoolEventFromModal = () => { if (!schoolEventEditing) return; setSchoolEventDeleteTarget({ id: schoolEventEditing.id, name: schoolEventEditing.name }); };
+  // const requestDeleteSchoolEventFromModal = () => { if (!schoolEventEditing) return; setSchoolEventDeleteTarget({ id: schoolEventEditing.id, name: schoolEventEditing.name }); };
 
   /* -------- Shared form components -------- */
   function FormField({ label, icon, children }: { label: string; icon?: React.ReactNode; children: React.ReactNode }) {

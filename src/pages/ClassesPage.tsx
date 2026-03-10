@@ -1,14 +1,14 @@
 import { useEffect, useState, useMemo } from 'react';
-import { supabase } from '../lib/supabaseClient';
-import { useAuth } from '../auth';
-import { useTheme } from '../context/ThemeContext';
-import ClassFormModal from '../components/classes/ClassFormModal';
-import ClassStudentsModal from '../components/classes/ClassStudentsModal';
-import ClassDeleteModal from '../components/classes/ClassDeleteModal';
-import ClassesTable from '../components/classes/ClassesTable';
+import { supabase } from '../lib/supabaseClient.ts';
+import { useAuth } from '../auth.tsx';
+import { useTheme } from '../context/ThemeContext.tsx';
+import ClassFormModal from '../components/classes/ClassFormModal.tsx';
+import ClassStudentsModal from '../components/classes/ClassStudentsModal.tsx';
+import ClassDeleteModal from '../components/classes/ClassDeleteModal.tsx';
+import ClassesTable from '../components/classes/ClassesTable.tsx';
 import { Plus, School, Search, GraduationCap } from 'lucide-react';
-import type { ClassRow, SubjectRow, LevelRow, ModalMode, ClassFormState } from '../components/classes/types';
-import { normalizeText } from '../components/classes/utils';
+import type { ClassRow, SubjectRow, LevelRow, ModalMode, ClassFormState } from '../components/classes/types.ts';
+import { normalizeText } from '../components/classes/utils.ts';
 
 export default function ClassesPage() {
   const { profile } = useAuth();
@@ -80,23 +80,54 @@ export default function ClassesPage() {
     const payload = { school_id: schoolId, title: form.title.trim(), subject: subjectText, subject_id: primarySubjectId };
     setSaving(true);
     if (modalMode === 'create') {
-      const { data, error } = await supabase.from('classes').insert(payload).select('*').maybeSingle();
+      const { data, error } = await supabase.functions.invoke('classes-create', {
+        body: {
+          title: payload.title,
+          subject: payload.subject,
+          subject_id: payload.subject_id,
+        },
+      });
       setSaving(false);
-      if (error || !data) { console.error(error); setError('Αποτυχία δημιουργίας τμήματος.'); return; }
-      setClasses((prev) => [data as ClassRow, ...prev]); closeModal();
+      if (error || !data?.item) {
+        console.error(error ?? data);
+        setError('Αποτυχία δημιουργίας τμήματος.');
+        return;
+      }
+
+      setClasses((prev) => [data.item as ClassRow, ...prev]);
+      closeModal();
     } else {
       if (!editingClass) { setSaving(false); return; }
-      const { data, error } = await supabase.from('classes').update({ title: payload.title, subject: payload.subject, subject_id: payload.subject_id }).eq('id', editingClass.id).select('*').maybeSingle();
+      const { data, error } = await supabase.functions.invoke('classes-update', {
+        body: {
+          class_id: editingClass.id,
+          title: payload.title,
+          subject: payload.subject,
+          subject_id: payload.subject_id,
+        },
+      });
       setSaving(false);
-      if (error || !data) { console.error(error); setError('Αποτυχία ενημέρωσης τμήματος.'); return; }
-      setClasses((prev) => prev.map((c) => (c.id === editingClass.id ? (data as ClassRow) : c))); closeModal();
+      if (error || !data?.item) {
+        console.error(error ?? data);
+        setError('Αποτυχία ενημέρωσης τμήματος.');
+        return;
+      }
+
+      setClasses((prev) =>
+        prev.map((c) => (c.id === editingClass.id ? (data.item as ClassRow) : c))
+      );
+      closeModal();
     }
   };
 
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
     setError(null); setDeleting(true);
-    const { error } = await supabase.from('classes').delete().eq('id', deleteTarget.id);
+    const { error } = await supabase.functions.invoke('classes-delete', {
+      body: {
+        class_id: deleteTarget.id,
+      },
+    });
     setDeleting(false);
     if (error) { console.error(error); setError('Αποτυχία διαγραφής τμήματος.'); return; }
     setClasses((prev) => prev.filter((c) => c.id !== deleteTarget.id));

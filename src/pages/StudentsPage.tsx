@@ -6,25 +6,25 @@ import {
   User, Phone, Mail, Calendar, FileText, Layers,
   Loader2, Eye, Trash2,
 } from 'lucide-react';
-import { supabase } from '../lib/supabaseClient';
-import { useAuth } from '../auth';
-import { useTheme } from '../context/ThemeContext';
-import StudentCreateModal from '../components/students/StudentCreateModal';
+import { supabase } from '../lib/supabaseClient.ts';
+import { useAuth } from '../auth.tsx';
+import { useTheme } from '../context/ThemeContext.tsx';
+import StudentCreateModal from '../components/students/StudentCreateModal.tsx';
 import ColumnFilterDropdown, {
   ALL_COLUMNS, DEFAULT_VISIBLE, type ColumnKey,
-} from '../components/students/ColumnFilterDropdown';
+} from '../components/students/ColumnFilterDropdown.tsx';
 import SortDropdown, {
   DEFAULT_SORT, type SortState, type SortField,
-} from '../components/students/SortDropdown';
+} from '../components/students/SortDropdown.tsx';
 import PageSizeDropdown, {
   type PageSizeOption,
-} from '../components/students/PageSizeDropdown';
-import type { StudentRow, LevelRow } from '../components/students/types';
-import { STUDENT_SELECT, formatDateToGreek, normalizeText } from '../components/students/types';
+} from '../components/students/PageSizeDropdown.tsx';
+import type { StudentRow, LevelRow } from '../components/students/types.ts';
+import { STUDENT_SELECT, formatDateToGreek, normalizeText } from '../components/students/types.ts';
 
 const FETCH_TIMEOUT_MS = 8000;
 const COLUMNS_STORAGE_KEY = 'pt_students_visible_columns_v1';
-const SORT_STORAGE_KEY    = 'pt_students_sort_v1';
+const SORT_STORAGE_KEY = 'pt_students_sort_v1';
 const PAGE_SIZE_STORAGE_KEY = 'pt_students_page_size_v1';
 
 function withTimeout<T>(p: PromiseLike<T>, ms: number): Promise<T> {
@@ -81,15 +81,15 @@ function sortStudents(
     let vb: string | null = null;
 
     switch (field as SortField) {
-      case 'full_name':   va = a.full_name;    vb = b.full_name;    break;
+      case 'full_name': va = a.full_name; vb = b.full_name; break;
       case 'level':
         va = a.level_id ? (levelNameById.get(a.level_id) ?? null) : null;
         vb = b.level_id ? (levelNameById.get(b.level_id) ?? null) : null;
         break;
       case 'date_of_birth': va = a.date_of_birth; vb = b.date_of_birth; break;
-      case 'created_at':    va = a.created_at;    vb = b.created_at;    break;
-      case 'phone':  va = a.phone;  vb = b.phone;  break;
-      case 'email':  va = a.email;  vb = b.email;  break;
+      case 'created_at': va = a.created_at; vb = b.created_at; break;
+      case 'phone': va = a.phone; vb = b.phone; break;
+      case 'email': va = a.email; vb = b.email; break;
     }
 
     // nulls always last regardless of direction
@@ -110,25 +110,25 @@ export default function StudentsPage() {
   const navigate = useNavigate();
 
   const studentsCacheKey = schoolId ? `pt_students_cache_v1_${schoolId}` : '';
-  const levelsCacheKey   = schoolId ? `pt_levels_cache_v1_${schoolId}`   : '';
+  const levelsCacheKey = schoolId ? `pt_levels_cache_v1_${schoolId}` : '';
 
-  const [students, setStudents]   = useState<StudentRow[]>([]);
-  const [levels, setLevels]       = useState<LevelRow[]>([]);
-  const [loading, setLoading]     = useState(true);
+  const [students, setStudents] = useState<StudentRow[]>([]);
+  const [levels, setLevels] = useState<LevelRow[]>([]);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError]         = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget]       = useState<StudentRow | null>(null);
-  const [deleting, setDeleting]               = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<StudentRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
-  const [search, setSearch]   = useState('');
-  const [page, setPage]       = useState(1);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
 
   // ── Persisted preferences ──
   const [visibleColumns, setVisibleColumns] = useState<Set<ColumnKey>>(loadSavedColumns);
-  const [sort, setSort]                     = useState<SortState>(loadSavedSort);
-  const [pageSize, setPageSize]             = useState<PageSizeOption>(loadSavedPageSize);
+  const [sort, setSort] = useState<SortState>(loadSavedSort);
+  const [pageSize, setPageSize] = useState<PageSizeOption>(loadSavedPageSize);
 
   const handleColumnsChange = (next: Set<ColumnKey>) => {
     setVisibleColumns(next);
@@ -145,7 +145,7 @@ export default function StudentsPage() {
   };
 
   const studentsReqRef = useRef(0);
-  const levelsReqRef   = useRef(0);
+  const levelsReqRef = useRef(0);
 
   useEffect(() => { setPage(1); }, [search]);
 
@@ -158,7 +158,7 @@ export default function StudentsPage() {
   const hintHydrate = useCallback(() => {
     if (!schoolId) return;
     const cachedStudents = safeParseJSON<StudentRow[]>(sessionStorage.getItem(studentsCacheKey));
-    const cachedLevels   = safeParseJSON<LevelRow[]>(sessionStorage.getItem(levelsCacheKey));
+    const cachedLevels = safeParseJSON<LevelRow[]>(sessionStorage.getItem(levelsCacheKey));
     if (cachedStudents?.length) { setStudents(cachedStudents); setLoading(false); } else { setLoading(true); }
     if (cachedLevels) setLevels(cachedLevels);
   }, [schoolId, studentsCacheKey, levelsCacheKey]);
@@ -206,9 +206,9 @@ export default function StudentsPage() {
     if (!schoolId) return;
     const refetch = () => { hintHydrate(); loadStudents({ silent: true }); loadLevels(); };
     const onVisibility = () => { if (document.visibilityState === 'visible') refetch(); };
-    window.addEventListener('focus', refetch); window.addEventListener('online', refetch);
+    globalThis.addEventListener('focus', refetch); globalThis.addEventListener('online', refetch);
     document.addEventListener('visibilitychange', onVisibility);
-    return () => { window.removeEventListener('focus', refetch); window.removeEventListener('online', refetch); document.removeEventListener('visibilitychange', onVisibility); };
+    return () => { globalThis.removeEventListener('focus', refetch); globalThis.removeEventListener('online', refetch); document.removeEventListener('visibilitychange', onVisibility); };
   }, [schoolId, loadStudents, loadLevels, hintHydrate]);
 
   const handleCreated = (student: StudentRow) => {
@@ -219,12 +219,27 @@ export default function StudentsPage() {
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
-    setDeleting(true); setError(null);
-    const { error: dbError } = await supabase.from('students').delete().eq('id', deleteTarget.id).eq('school_id', schoolId ?? '');
+
+    setDeleting(true);
+    setError(null);
+
+    const { error } = await supabase.functions.invoke('student-delete', {
+      body: {
+        student_id: deleteTarget.id,
+      },
+    });
+
     setDeleting(false);
-    if (dbError) { console.error(dbError); setError('Αποτυχία διαγραφής μαθητή.'); return; }
+
+    if (error) {
+      console.error(error);
+      setError('Αποτυχία διαγραφής μαθητή.');
+      return;
+    }
+
     const nextList = students.filter((s) => s.id !== deleteTarget.id);
-    setStudents(nextList); sessionStorage.setItem(studentsCacheKey, JSON.stringify(nextList));
+    setStudents(nextList);
+    sessionStorage.setItem(studentsCacheKey, JSON.stringify(nextList));
     setDeleteTarget(null);
   };
 
@@ -252,7 +267,7 @@ export default function StudentsPage() {
   }, [sortedStudents, page, pageSize]);
 
   const showingFrom = sortedStudents.length === 0 ? 0 : (page - 1) * pageSize + 1;
-  const showingTo   = Math.min(page * pageSize, sortedStudents.length);
+  const showingTo = Math.min(page * pageSize, sortedStudents.length);
 
   const visibleColumnDefs = useMemo(
     () => ALL_COLUMNS.filter((c) => visibleColumns.has(c.key)),
@@ -271,19 +286,19 @@ export default function StudentsPage() {
           ? <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] ${isDark ? 'border-slate-600/50 bg-slate-800/60 text-slate-300' : 'border-slate-200 bg-slate-100 text-slate-600'}`}>{lvl}</span>
           : empty;
       }
-      case 'date_of_birth':       return s.date_of_birth       ? <span className={`tabular-nums ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{formatDateToGreek(s.date_of_birth)}</span>       : empty;
-      case 'phone':                return s.phone               ? <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{s.phone}</span>               : empty;
-      case 'email':                return s.email               ? <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{s.email}</span>               : empty;
-      case 'special_notes':        return s.special_notes?.trim() ? <span className={`truncate block text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{s.special_notes}</span> : empty;
-      case 'father_name':          return s.father_name          ? <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{s.father_name}</span>          : empty;
+      case 'date_of_birth': return s.date_of_birth ? <span className={`tabular-nums ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{formatDateToGreek(s.date_of_birth)}</span> : empty;
+      case 'phone': return s.phone ? <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{s.phone}</span> : empty;
+      case 'email': return s.email ? <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{s.email}</span> : empty;
+      case 'special_notes': return s.special_notes?.trim() ? <span className={`truncate block text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{s.special_notes}</span> : empty;
+      case 'father_name': return s.father_name ? <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{s.father_name}</span> : empty;
       case 'father_date_of_birth': return s.father_date_of_birth ? <span className={`tabular-nums ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{formatDateToGreek(s.father_date_of_birth)}</span> : empty;
-      case 'father_phone':         return s.father_phone         ? <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{s.father_phone}</span>         : empty;
-      case 'father_email':         return s.father_email         ? <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{s.father_email}</span>         : empty;
-      case 'mother_name':          return s.mother_name          ? <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{s.mother_name}</span>          : empty;
+      case 'father_phone': return s.father_phone ? <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{s.father_phone}</span> : empty;
+      case 'father_email': return s.father_email ? <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{s.father_email}</span> : empty;
+      case 'mother_name': return s.mother_name ? <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{s.mother_name}</span> : empty;
       case 'mother_date_of_birth': return s.mother_date_of_birth ? <span className={`tabular-nums ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{formatDateToGreek(s.mother_date_of_birth)}</span> : empty;
-      case 'mother_phone':         return s.mother_phone         ? <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{s.mother_phone}</span>         : empty;
-      case 'mother_email':         return s.mother_email         ? <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{s.mother_email}</span>         : empty;
-      case 'created_at':           return s.created_at           ? <span className={`tabular-nums ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{formatDateToGreek(s.created_at.slice(0, 10))}</span> : empty;
+      case 'mother_phone': return s.mother_phone ? <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{s.mother_phone}</span> : empty;
+      case 'mother_email': return s.mother_email ? <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{s.mother_email}</span> : empty;
+      case 'created_at': return s.created_at ? <span className={`tabular-nums ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{formatDateToGreek(s.created_at.slice(0, 10))}</span> : empty;
       default: return empty;
     }
   };
