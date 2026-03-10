@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
 import { useTheme } from '../context/ThemeContext';
-import { BarChart3, Users, GraduationCap } from 'lucide-react';
+import { BarChart3 } from 'lucide-react';
 import type { StudentRow, TutorRow, StudentGradeRow, TutorGradeRow, GradeRow, GradesTab, SelectionType } from '../components/grades/types';
 import { getScrollbarStyle } from '../components/grades/utils';
 import GradesListCard from '../components/grades/GradesListCard';
@@ -116,28 +116,21 @@ const GradesPage = () => {
       </div>
 
       <div className="flex flex-col gap-6 lg:flex-row">
-        {/* LEFT: Students + Tutors */}
-        <div className="w-full lg:w-[280px] xl:w-[300px] flex flex-col gap-4 shrink-0">
+        {/* LEFT: unified Students + Tutors card */}
+        <div className="w-full lg:w-[280px] xl:w-[300px] shrink-0">
           <GradesListCard
-            title="Μαθητές"
-            icon={<Users className="h-4 w-4" />}
-            search={studentSearch}
-            onSearch={setStudentSearch}
-            loading={loadingStudents}
-            items={filteredStudents}
-            onSelect={handleSelectStudent}
-            selectedId={selectedStudent?.id}
-            isDark={isDark}
-          />
-          <GradesListCard
-            title="Καθηγητές"
-            icon={<GraduationCap className="h-4 w-4" />}
-            search={tutorSearch}
-            onSearch={setTutorSearch}
-            loading={loadingTutors}
-            items={filteredTutors}
-            onSelect={handleSelectTutor}
-            selectedId={selectedTutor?.id}
+            studentSearch={studentSearch}
+            onStudentSearch={setStudentSearch}
+            loadingStudents={loadingStudents}
+            students={filteredStudents}
+            onSelectStudent={handleSelectStudent}
+            selectedStudentId={selectedStudent?.id}
+            tutorSearch={tutorSearch}
+            onTutorSearch={setTutorSearch}
+            loadingTutors={loadingTutors}
+            tutors={filteredTutors}
+            onSelectTutor={handleSelectTutor}
+            selectedTutorId={selectedTutor?.id}
             isDark={isDark}
           />
         </div>

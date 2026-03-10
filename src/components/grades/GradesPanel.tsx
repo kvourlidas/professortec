@@ -62,7 +62,14 @@ export default function GradesPanel({
     : 'h-8 rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-700 outline-none focus:border-[color:var(--color-accent)]';
 
   return (
-    <div className={panelCardCls}>
+    <div className={`overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-md ring-1 ring-inset ${
+      isDark
+        ? 'border-slate-700/50 bg-slate-950/40 ring-white/[0.04]'
+        : 'border-slate-200 bg-white/80 ring-black/[0.02]'
+    }`}>
+      {/* Top accent line */}
+      <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 30%, transparent))' }} />
+
       {/* Panel header */}
       <div className={panelHeaderCls}>
         <div className="flex h-7 w-7 items-center justify-center rounded-lg"

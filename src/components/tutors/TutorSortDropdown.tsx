@@ -6,7 +6,6 @@ import { triggerCls } from '../students/dropdownTriggerCls';
 export type TutorSortField = 'full_name' | 'date_of_birth' | 'afm' | 'phone' | 'email';
 export type SortDir = 'asc' | 'desc';
 export interface TutorSortState { field: TutorSortField; dir: SortDir; }
-
 export const DEFAULT_TUTOR_SORT: TutorSortState = { field: 'full_name', dir: 'asc' };
 
 const SORT_OPTIONS: { field: TutorSortField; label: string }[] = [
@@ -55,9 +54,13 @@ export default function TutorSortDropdown({ sort, onChange, isDark }: Props) {
           <div className={`px-3.5 py-2.5 border-b text-[11px] font-semibold ${isDark ? 'border-white/[0.07] text-slate-200' : 'border-slate-100 text-slate-700'}`}>
             Ταξινόμηση κατά
           </div>
+
           {SORT_OPTIONS.map(({ field, label }) =>
             (['asc', 'desc'] as SortDir[]).map(dir => {
               const active = sort.field === field && sort.dir === dir;
+              const dirLabel = field === 'full_name'
+                ? (dir === 'asc' ? '↑ Α→Ω' : '↓ Ω→Α')
+                : (dir === 'asc' ? '↑' : '↓');
               return (
                 <button
                   key={`${field}-${dir}`}
@@ -69,7 +72,7 @@ export default function TutorSortDropdown({ sort, onChange, isDark }: Props) {
                       : isDark ? 'text-slate-400 hover:bg-white/[0.05] hover:text-slate-200' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'
                     }`}
                 >
-                  <span>{label} <span className="opacity-50">{dir === 'asc' ? '↑ Α→Ω' : '↓ Ω→Α'}</span></span>
+                  <span>{label} <span className="opacity-50">{dirLabel}</span></span>
                   {active && <Check className="h-3 w-3 shrink-0" style={{ color: 'var(--color-accent)' }} />}
                 </button>
               );
