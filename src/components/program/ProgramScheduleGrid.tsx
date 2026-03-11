@@ -32,7 +32,7 @@ export default function ProgramScheduleGrid({
     <section className={`flex-1 ${panelCls}`}>
       <div className={panelHeaderCls}>
         <h2 className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'color-mix(in srgb, var(--color-accent) 80%, white)' }}>
-          Εβδομαδιαίο πλάνο
+          ΕΒΔΟΜΑΔΙΑΙΟ ΠΛΑΝΟ
         </h2>
       </div>
 

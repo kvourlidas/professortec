@@ -114,16 +114,16 @@ export default function TutorFormModal({
 
         <form onSubmit={handleSubmit}>
           <div className="space-y-4 px-6 pb-2">
-            <FormField label="Ονοματεπώνυμο" icon={<User className="h-3 w-3" />} isDark={isDark}>
+            <FormField label="Ονοματεπωνυμο" icon={<User className="h-3 w-3" />} isDark={isDark}>
               <input className={inputCls} placeholder="π.χ. Γιάννης Παπαδόπουλος" value={form.fullName} onChange={handleChange('fullName')} required />
             </FormField>
-            <FormField label="Ημερομηνία γέννησης" icon={<Calendar className="h-3 w-3" />} isDark={isDark}>
+            <FormField label="Ημερομηνια γεννησης" icon={<Calendar className="h-3 w-3" />} isDark={isDark}>
               <DatePickerField label="" value={form.dateOfBirth} onChange={(value) => setForm((prev) => ({ ...prev, dateOfBirth: value }))} placeholder="π.χ. 24/12/1985" id="tutor-dob" />
             </FormField>
             <FormField label="ΑΦΜ" icon={<Hash className="h-3 w-3" />} isDark={isDark}>
               <input className={inputCls} placeholder="π.χ. 123456789" value={form.afm} onChange={handleChange('afm')} />
             </FormField>
-            <FormField label="Τηλέφωνο" icon={<Phone className="h-3 w-3" />} isDark={isDark}>
+            <FormField label="Τηλεφωνο" icon={<Phone className="h-3 w-3" />} isDark={isDark}>
               <input className={inputCls} placeholder="π.χ. 6900000000" value={form.phone} onChange={handleChange('phone')} />
             </FormField>
             <FormField label="Email" icon={<Mail className="h-3 w-3" />} isDark={isDark}>

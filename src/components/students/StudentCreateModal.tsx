@@ -192,29 +192,29 @@ export default function StudentCreateModal({ schoolId, levels, onCreated, onClos
           <div className="max-h-[60vh] overflow-y-auto px-6 pb-2">
             {tab === 'student' ? (
               <div className="space-y-4">
-                <FormField label="Ονοματεπώνυμο" icon={<User className="h-3 w-3" />} isDark={isDark}>
+                <FormField label="Ονοματεπωνυμο" icon={<User className="h-3 w-3" />} isDark={isDark}>
                   <input className={inputCls} placeholder="π.χ. Γιάννης Παπαδόπουλος" value={fullName} onChange={(e) => setFullName(e.target.value)} required autoFocus />
                 </FormField>
-                <FormField label="Επίπεδο" icon={<Layers className="h-3 w-3" />} isDark={isDark}>
+                <FormField label="Επιπεδο" icon={<Layers className="h-3 w-3" />} isDark={isDark}>
                   <select className={inputCls} value={levelId} onChange={(e) => setLevelId(e.target.value)}>
                     <option value="">Χωρίς επίπεδο</option>
                     {levels.map((lvl) => <option key={lvl.id} value={lvl.id}>{lvl.name}</option>)}
                   </select>
                 </FormField>
-                <FormField label="Ημερομηνία γέννησης" icon={<Calendar className="h-3 w-3" />} isDark={isDark}>
+                <FormField label="Ημερομηνια γεννησης" icon={<Calendar className="h-3 w-3" />} isDark={isDark}>
                   <DatePickerField label="" value={dateOfBirth} onChange={setDateOfBirth} placeholder="π.χ. 24/12/2010" id="create-student-dob" />
                 </FormField>
-                <FormField label="Τηλέφωνο" icon={<Phone className="h-3 w-3" />} isDark={isDark}>
+                <FormField label="Τηλεφωνο" icon={<Phone className="h-3 w-3" />} isDark={isDark}>
                   <input className={inputCls} placeholder="π.χ. 6900000000" value={phone} onChange={(e) => setPhone(e.target.value)} />
                 </FormField>
                 <FormField label="Email" icon={<Mail className="h-3 w-3" />} isDark={isDark}>
                   <input type="email" className={inputCls} placeholder="π.χ. student@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
                 </FormField>
-                <FormField label="Ειδικές σημειώσεις" icon={<FileText className="h-3 w-3" />} isDark={isDark}>
+                <FormField label="Ειδικες σημειωσεις" icon={<FileText className="h-3 w-3" />} isDark={isDark}>
                   <input className={inputCls} placeholder="π.χ. αλλεργίες / παρατηρήσεις" value={specialNotes} onChange={(e) => setSpecialNotes(e.target.value)} />
                 </FormField>
                 <FormField
-                  label="Κωδικός"
+                  label="Κωδικος"
                   icon={<Lock className="h-3 w-3" />}
                   hint="Θα δημιουργηθεί λογαριασμός για login στο mobile app."
                   isDark={isDark}
@@ -256,13 +256,13 @@ export default function StudentCreateModal({ schoolId, levels, onCreated, onClos
                   <div key={title} className={parentBoxCls}>
                     <p className={`mb-3 text-xs font-semibold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{title}</p>
                     <div className="space-y-3">
-                      <FormField label="Ονοματεπώνυμο" icon={<User className="h-3 w-3" />} isDark={isDark}>
+                      <FormField label="Ονοματεπωνυμο" icon={<User className="h-3 w-3" />} isDark={isDark}>
                         <input className={inputCls} placeholder={`π.χ. ${title === 'Πατέρας' ? 'Δημήτρης' : 'Μαρία'} Παπαδόπουλος`} value={name} onChange={(e) => setName(e.target.value)} />
                       </FormField>
-                      <FormField label="Ημερομηνία γέννησης" icon={<Calendar className="h-3 w-3" />} isDark={isDark}>
+                      <FormField label="Ημερομηνια γεννησης" icon={<Calendar className="h-3 w-3" />} isDark={isDark}>
                         <DatePickerField label="" value={dob} onChange={setDob} placeholder="π.χ. 24/12/1980" id={dobId} />
                       </FormField>
-                      <FormField label="Τηλέφωνο" icon={<Phone className="h-3 w-3" />} isDark={isDark}>
+                      <FormField label="Τηλεφωνο" icon={<Phone className="h-3 w-3" />} isDark={isDark}>
                         <input className={inputCls} placeholder="π.χ. 6900000000" value={ph} onChange={(e) => setPh(e.target.value)} />
                       </FormField>
                       <FormField label="Email" icon={<Mail className="h-3 w-3" />} isDark={isDark}>

@@ -107,7 +107,7 @@ export default function LevelFormModal({
             <div className="space-y-1.5">
               <label className={formLabelCls}>
                 <span className="opacity-70"><Layers className="h-3 w-3" /></span>
-                Όνομα επιπέδου *
+                Ονομα επιπεδου *
               </label>
               <input
                 className={inputCls}

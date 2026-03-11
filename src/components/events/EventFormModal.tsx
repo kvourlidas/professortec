@@ -216,7 +216,7 @@ export default function EventFormModal({
           <div className="max-h-[60vh] overflow-y-auto px-6 pb-2 space-y-4">
 
             {/* Name */}
-            <FormField label="Όνομα event *" icon={<CalendarDays className="h-3 w-3" />}>
+            <FormField label="ΟΝΟΜΑ EVENT *" icon={<CalendarDays className="h-3 w-3" />}>
               <input
                 className={inputCls}
                 placeholder="π.χ. Παράσταση Χριστουγέννων"
@@ -228,7 +228,7 @@ export default function EventFormModal({
             </FormField>
 
             {/* Date */}
-            <FormField label="Ημερομηνία *" icon={<CalendarDays className="h-3 w-3" />}>
+            <FormField label="ΗΜΕΡΟΜΗΝΙΑ *" icon={<CalendarDays className="h-3 w-3" />}>
               <DatePickerField
                 label=""
                 value={dateDisplay}
@@ -239,7 +239,7 @@ export default function EventFormModal({
 
             {/* Time fields */}
             <div className="grid gap-3 sm:grid-cols-2">
-              <FormField label="Ώρα έναρξης *" icon={<Clock className="h-3 w-3" />}>
+              <FormField label="ΩΡΑ ΕΝΑΡΞΗΣ *" icon={<Clock className="h-3 w-3" />}>
                 <div className="relative">
                   <input
                     type="text"
@@ -257,7 +257,7 @@ export default function EventFormModal({
                 </div>
               </FormField>
 
-              <FormField label="Ώρα λήξης *" icon={<Clock className="h-3 w-3" />}>
+              <FormField label="ΩΡΑ ΛΗΞΗΣ *" icon={<Clock className="h-3 w-3" />}>
                 <div className="relative">
                   <input
                     type="text"
@@ -277,7 +277,7 @@ export default function EventFormModal({
             </div>
 
             {/* Description */}
-            <FormField label="Περιγραφή (προαιρετικά)" icon={<FileText className="h-3 w-3" />}>
+            <FormField label="ΠΕΡΙΓΡΑΦΗ (ΠΡΟΑΙΡΕΤΙΚΑ)" icon={<FileText className="h-3 w-3" />}>
               <textarea
                 className={textareaCls}
                 placeholder="π.χ. Παράσταση με όλους τους μαθητές της Γ' Γυμνασίου"

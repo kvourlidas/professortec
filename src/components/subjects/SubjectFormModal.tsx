@@ -130,7 +130,7 @@ export default function SubjectFormModal({
 
         <form onSubmit={handleSubmit}>
           <div className="space-y-4 px-6 pb-2">
-            <FormField label="Όνομα μαθήματος" icon={<BookOpen className="h-3 w-3" />}>
+            <FormField label="ΟΝΟΜΑ ΜΑΘΗΜΑΤΟΣ" icon={<BookOpen className="h-3 w-3" />}>
               <input
                 className={inputCls}
                 placeholder="π.χ. Αγγλικά"
@@ -140,7 +140,7 @@ export default function SubjectFormModal({
               />
             </FormField>
 
-            <FormField label="Επίπεδο" icon={<Layers className="h-3 w-3" />}>
+            <FormField label="ΕΠΙΠΕΔΟ" icon={<Layers className="h-3 w-3" />}>
               <select
                 className={inputCls}
                 value={levelId}

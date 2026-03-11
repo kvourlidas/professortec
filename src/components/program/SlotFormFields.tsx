@@ -79,10 +79,10 @@ export function SlotFormFields({
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2">
-        <FormField label="Τμήμα" icon={<GraduationCap className="h-3 w-3" />} isDark={isDark}>
+        <FormField label="ΤΜΗΜΑ" icon={<GraduationCap className="h-3 w-3" />} isDark={isDark}>
           <input disabled value={classTitle} className={inputCls} />
         </FormField>
-        <FormField label="Ημέρα" icon={<CalendarDays className="h-3 w-3" />} isDark={isDark}>
+        <FormField label="ΗΜΕΡΑ" icon={<CalendarDays className="h-3 w-3" />} isDark={isDark}>
           {isEdit && onDayChange ? (
             <select className={selectCls} value={dayValue} onChange={onDayChange}>
               {DAY_OPTIONS.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
@@ -94,14 +94,14 @@ export function SlotFormFields({
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <FormField label="Μάθημα" icon={<BookOpen className="h-3 w-3" />} isDark={isDark}
+        <FormField label="ΜΑΘΗΜΑ" icon={<BookOpen className="h-3 w-3" />} isDark={isDark}
           hint={subjOptions.length === 0 ? 'Ρυθμίστε τα μαθήματα στη σελίδα «Τμήματα».' : undefined}>
           <select className={selectCls} value={subjectId ?? ''} onChange={onSubjectChange} disabled={subjOptions.length === 0}>
             <option value="">{subjOptions.length === 0 ? 'Δεν έχουν οριστεί μαθήματα' : 'Επιλέξτε μάθημα'}</option>
             {subjOptions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </FormField>
-        <FormField label="Καθηγητής" icon={<Layers className="h-3 w-3" />} isDark={isDark}>
+        <FormField label="ΚΑΘΗΓΗΤΗΣ" icon={<Layers className="h-3 w-3" />} isDark={isDark}>
           <select className={selectCls} value={tutorId ?? ''} onChange={onTutorChange} disabled={!subjectId || tutorOptions.length === 0}>
             <option value="">{tutorOptions.length === 0 ? 'Δεν έχουν οριστεί καθηγητές' : 'Επιλέξτε (προαιρετικό)'}</option>
             {tutorOptions.map((t) => <option key={t.id} value={t.id}>{t.full_name}</option>)}
@@ -111,8 +111,8 @@ export function SlotFormFields({
 
       <div className="grid gap-3 sm:grid-cols-2">
         {[
-          { label: 'Ώρα έναρξης', time: startTime, onChange: onStartTimeChange, period: startPeriod, onPeriod: onStartPeriodChange },
-          { label: 'Ώρα λήξης', time: endTime, onChange: onEndTimeChange, period: endPeriod, onPeriod: onEndPeriodChange },
+          { label: 'ΩΡΑ ΕΝΑΡΞΗΣ', time: startTime, onChange: onStartTimeChange, period: startPeriod, onPeriod: onStartPeriodChange },
+          { label: 'ΩΡΑ ΛΗΞΗΣ', time: endTime, onChange: onEndTimeChange, period: endPeriod, onPeriod: onEndPeriodChange },
         ].map(({ label, time, onChange, period, onPeriod }) => (
           <FormField key={label} label={label} icon={<Clock className="h-3 w-3" />} isDark={isDark}>
             <div className="relative">
@@ -127,10 +127,10 @@ export function SlotFormFields({
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <FormField label="Ημερομηνία έναρξης" icon={<Calendar className="h-3 w-3" />} isDark={isDark}>
+        <FormField label="ΗΜΕΡΟΜΗΝΙΑ ΕΝΑΡΞΗΣ" icon={<Calendar className="h-3 w-3" />} isDark={isDark}>
           <AppDatePicker value={startDate} onChange={onStartDateChange} placeholder="π.χ. 12/05/2025" />
         </FormField>
-        <FormField label="Ημερομηνία λήξης" icon={<Calendar className="h-3 w-3" />} isDark={isDark}>
+        <FormField label="ΗΜΕΡΟΜΗΝΙΑ ΛΗΞΗΣ" icon={<Calendar className="h-3 w-3" />} isDark={isDark}>
           <AppDatePicker value={endDate} onChange={onEndDateChange} placeholder="π.χ. 12/05/2025" />
         </FormField>
       </div>

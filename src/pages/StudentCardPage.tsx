@@ -587,7 +587,7 @@ export default function StudentCardPage() {
         <div className="flex flex-col gap-4">
 
           {/* Student info */}
-          <DashCard title="Στοιχεία Μαθητή" icon={<User className="h-3.5 w-3.5" />} isDark={isDark} accentTop
+          <DashCard title="Στοιχεια Μαθητη" icon={<User className="h-3.5 w-3.5" />} isDark={isDark} accentTop
             onEdit={() => { setStudentError(null); setEditingStudent(true); }} editing={editingStudent}>
             {studentError && (
               <div className={`mb-2 flex items-start gap-2 rounded-lg border px-2.5 py-2 text-xs ${isDark ? 'border-red-500/30 bg-red-950/40 text-red-200' : 'border-red-200 bg-red-50 text-red-700'}`}>
@@ -630,7 +630,7 @@ export default function StudentCardPage() {
           </DashCard>
 
           {/* Parents */}
-          <DashCard title="Στοιχεία Γονέων" icon={<UserCheck className="h-3.5 w-3.5" />} isDark={isDark}
+          <DashCard title="Στοιχεια Γονεων" icon={<UserCheck className="h-3.5 w-3.5" />} isDark={isDark}
             onEdit={() => { setParentsError(null); setEditingParents(true); }} editing={editingParents}>
             {parentsError && (
               <div className={`mb-2 flex items-start gap-2 rounded-lg border px-2.5 py-2 text-xs ${isDark ? 'border-red-500/30 bg-red-950/40 text-red-200' : 'border-red-200 bg-red-50 text-red-700'}`}>
@@ -665,15 +665,15 @@ export default function StudentCardPage() {
             ) : (
               <div className="grid gap-3 sm:grid-cols-2">
                 {[
-                  { title: 'Πατέρας', name: student.father_name, dob: student.father_date_of_birth, phone: student.father_phone, email: student.father_email },
-                  { title: 'Μητέρα', name: student.mother_name, dob: student.mother_date_of_birth, phone: student.mother_phone, email: student.mother_email },
+                  { title: 'Πατερας', name: student.father_name, dob: student.father_date_of_birth, phone: student.father_phone, email: student.father_email },
+                  { title: 'Μητερα', name: student.mother_name, dob: student.mother_date_of_birth, phone: student.mother_phone, email: student.mother_email },
                 ].map(({ title, name, dob, phone: ph, email: em }) => (
                   <div key={title}>
                     <p className={`mb-1.5 text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{title}</p>
                     <div className="grid gap-1.5 grid-cols-2">
-                      <ReadField label="Ονοματεπώνυμο" value={name} isDark={isDark} />
-                      <ReadField label="Ημ. Γέννησης" value={formatDateToGreek(dob)} isDark={isDark} />
-                      <ReadField label="Τηλέφωνο" value={ph} isDark={isDark} />
+                      <ReadField label="Ονοματεπωνυμο" value={name} isDark={isDark} />
+                      <ReadField label="Ημ. Γεννησης" value={formatDateToGreek(dob)} isDark={isDark} />
+                      <ReadField label="Τηλεφωνο" value={ph} isDark={isDark} />
                       <ReadField label="Email" value={em} isDark={isDark} />
                     </div>
                   </div>
@@ -683,12 +683,12 @@ export default function StudentCardPage() {
           </DashCard>
 
           {/* Economics */}
-          <DashCard title="Οικονομικά & Ιστορικό" icon={<Wallet className="h-3.5 w-3.5" />} isDark={isDark} accentTop>
+          <DashCard title="Οικονομικα & Ιστορικο" icon={<Wallet className="h-3.5 w-3.5" />} isDark={isDark} accentTop>
             {subscriptions.length > 0 && (
               <div className="mb-4 grid grid-cols-3 gap-2">
-                <StatTile label="Χρέωση" value={`${totalCharged.toFixed(2)}€`} color="blue" isDark={isDark} />
-                <StatTile label="Πληρωμένο" value={`${totalPaid.toFixed(2)}€`} color="green" isDark={isDark} />
-                <StatTile label="Υπόλοιπο" value={`${totalBalance.toFixed(2)}€`} color={totalBalance > 0 ? 'red' : 'green'} isDark={isDark} />
+                <StatTile label="Χρεωση" value={`${totalCharged.toFixed(2)}€`} color="blue" isDark={isDark} />
+                <StatTile label="Πληρωμενο" value={`${totalPaid.toFixed(2)}€`} color="green" isDark={isDark} />
+                <StatTile label="Υπολοιπο" value={`${totalBalance.toFixed(2)}€`} color={totalBalance > 0 ? 'red' : 'green'} isDark={isDark} />
               </div>
             )}
             {subscriptions.length === 0 ? (
@@ -719,9 +719,9 @@ export default function StudentCardPage() {
                       {/* financials */}
                       <div className={`grid grid-cols-3 gap-px ${isDark ? 'bg-slate-800/40' : 'bg-slate-200'}`}>
                         {[
-                          { label: 'Χρέωση', val: `${Number(sub.charge_amount ?? sub.price ?? 0).toFixed(2)}€`, color: isDark ? 'text-slate-200' : 'text-slate-700' },
-                          { label: 'Πληρωμένο', val: `${subPaid.toFixed(2)}€`, color: isDark ? 'text-emerald-300' : 'text-emerald-700' },
-                          { label: 'Υπόλοιπο', val: `${Number(sub.balance ?? 0).toFixed(2)}€`, color: Number(sub.balance ?? 0) > 0 ? (isDark ? 'text-rose-300' : 'text-rose-600') : (isDark ? 'text-emerald-300' : 'text-emerald-700') },
+                          { label: 'Χρεωση', val: `${Number(sub.charge_amount ?? sub.price ?? 0).toFixed(2)}€`, color: isDark ? 'text-slate-200' : 'text-slate-700' },
+                          { label: 'Πληρωμενο', val: `${subPaid.toFixed(2)}€`, color: isDark ? 'text-emerald-300' : 'text-emerald-700' },
+                          { label: 'Υπολοιπο', val: `${Number(sub.balance ?? 0).toFixed(2)}€`, color: Number(sub.balance ?? 0) > 0 ? (isDark ? 'text-rose-300' : 'text-rose-600') : (isDark ? 'text-emerald-300' : 'text-emerald-700') },
                         ].map(({ label, val, color }) => (
                           <div key={label} className={`px-2 py-2 text-center ${isDark ? 'bg-slate-900/60' : 'bg-white'}`}>
                             <p className={`text-[9px] font-semibold uppercase tracking-wider mb-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{label}</p>
@@ -779,7 +779,7 @@ export default function StudentCardPage() {
         {/* ── Right: program + calendar ── */}
         <div className="flex flex-col gap-4">
 
-          <DashCard title="Πρόγραμμα" icon={<BookOpen className="h-3.5 w-3.5" />} isDark={isDark}>
+          <DashCard title="Προγραμμα" icon={<BookOpen className="h-3.5 w-3.5" />} isDark={isDark}>
             {classes.length > 0 && (
               <div className={`mb-3 flex flex-wrap gap-1.5 pb-3 border-b ${isDark ? 'border-slate-800/60' : 'border-slate-100'}`}>
                 {classes.map(c => {

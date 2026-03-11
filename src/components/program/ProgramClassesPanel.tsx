@@ -46,7 +46,7 @@ export default function ProgramClassesPanel({
     <section className={`${panelCls} lg:w-[320px] shrink-0`}>
       <div className={panelHeaderCls}>
         <h2 className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'color-mix(in srgb, var(--color-accent) 80%, white)' }}>
-          Διαθέσιμα τμήματα
+          ΔΙΑΘΕΣΙΜΑ ΤΜΗΜΑΤΑ
         </h2>
         <p className={`mt-0.5 text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
           Σύρετε ή επιλέξτε μέρα για προσθήκη.
