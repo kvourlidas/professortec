@@ -167,12 +167,30 @@ export default function StudentMessagesPage() {
     finally { setSending(false); }
   };
 
+  // Initial load + unread counts polling every 12s
   useEffect(() => {
     loadStudents();
     loadUnreadCounts();
     const t = setInterval(() => { loadUnreadCounts(); }, 12000);
     return () => clearInterval(t);
   }, []);
+
+  // Auto-refresh chat messages every 60 seconds when a thread is open
+  const activeThreadRef = useRef<ThreadRow | null>(null);
+  useEffect(() => {
+    activeThreadRef.current = activeThread;
+  }, [activeThread]);
+
+  useEffect(() => {
+    if (!activeThread) return;
+    const t = setInterval(async () => {
+      // Use the ref so the interval always sees the latest thread
+      if (activeThreadRef.current) {
+        await refreshChat();
+      }
+    }, 60000);
+    return () => clearInterval(t);
+  }, [activeThread?.id]);
 
   const formatTime = (iso: string) => {
     try { return new Date(iso).toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit' }); }

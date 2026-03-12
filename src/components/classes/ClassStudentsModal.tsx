@@ -81,6 +81,13 @@ export default function ClassStudentsModal({ open, onClose, classId, classTitle 
   const cancelBtnCls = `btn border px-4 py-1.5 disabled:opacity-50 ${isDark ? 'border-slate-600/60 bg-slate-800/50 text-slate-200 hover:bg-slate-700/60' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'}`;
   const closeBtnCls = `flex h-7 w-7 items-center justify-center rounded-lg border transition ${isDark ? 'border-slate-700/60 bg-slate-800/50 text-slate-400 hover:border-slate-600 hover:text-slate-200' : 'border-slate-200 bg-slate-100 text-slate-500 hover:border-slate-300 hover:text-slate-700'}`;
 
+  const scrollStyle: React.CSSProperties = {
+    scrollbarWidth: 'thin',
+    scrollbarColor: isDark
+      ? 'rgba(71,85,105,0.35) transparent'
+      : 'rgba(203,213,225,0.7) transparent',
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className={`relative w-full max-w-3xl overflow-hidden rounded-2xl border shadow-2xl ${modalBg}`}>
@@ -137,7 +144,7 @@ export default function ClassStudentsModal({ open, onClose, classId, classTitle 
               <div className={panelHeaderCls}>
                 <div className="flex items-center gap-1.5">
                   <UserMinus className={`h-3.5 w-3.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
-                  <h3 className={`text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Διαθέσιμοι</h3>
+                  <h3 className={`text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>ΔΙΑΘΕΣΙΜΟΙ</h3>
                   <span className={`rounded-full border px-1.5 py-0.5 text-[10px] ${isDark ? 'border-slate-700 bg-slate-800 text-slate-400' : 'border-slate-200 bg-white text-slate-500'}`}>
                     {availableStudents.length}
                   </span>
@@ -147,7 +154,7 @@ export default function ClassStudentsModal({ open, onClose, classId, classTitle 
                   <input className={searchInputCls} placeholder="Αναζήτηση..." value={searchLeft} onChange={(e) => setSearchLeft(e.target.value)} disabled={saving} />
                 </div>
               </div>
-              <div className="max-h-72 overflow-y-auto">
+              <div className="max-h-72 overflow-y-auto" style={scrollStyle}>
                 {availableStudents.length === 0 ? (
                   <div className="flex flex-col items-center justify-center gap-2 py-10">
                     <Users className={`h-5 w-5 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />
@@ -176,7 +183,7 @@ export default function ClassStudentsModal({ open, onClose, classId, classTitle 
               <div className={panelHeaderCls}>
                 <div className="flex items-center gap-1.5">
                   <UserCheck className="h-3.5 w-3.5" style={{ color: 'var(--color-accent)' }} />
-                  <h3 className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--color-accent)' }}>Στο τμήμα</h3>
+                  <h3 className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--color-accent)' }}>ΣΤΟ ΤΜΗΜΑ</h3>
                   <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
                     style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', color: 'var(--color-accent)', border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>
                     {assignedStudents.length}
@@ -187,7 +194,7 @@ export default function ClassStudentsModal({ open, onClose, classId, classTitle 
                   <input className={searchInputCls} placeholder="Αναζήτηση..." value={searchRight} onChange={(e) => setSearchRight(e.target.value)} disabled={saving} />
                 </div>
               </div>
-              <div className="max-h-72 overflow-y-auto">
+              <div className="max-h-72 overflow-y-auto" style={scrollStyle}>
                 {assignedStudents.length === 0 ? (
                   <div className="flex flex-col items-center justify-center gap-2 py-10">
                     <UserCheck className={`h-5 w-5 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />

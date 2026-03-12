@@ -27,6 +27,11 @@ const COLUMNS_STORAGE_KEY = 'pt_students_visible_columns_v1';
 const SORT_STORAGE_KEY = 'pt_students_sort_v1';
 const PAGE_SIZE_STORAGE_KEY = 'pt_students_page_size_v1';
 
+// Strips Greek accent marks so CSS uppercase doesn't produce e.g. ΟΝΟΜΑΤΕΠΏΝΥΜΟ
+function stripGreekAccents(str: string): string {
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
 function withTimeout<T>(p: PromiseLike<T>, ms: number): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const t = setTimeout(() => reject(new Error('timeout')), ms);
@@ -444,7 +449,7 @@ export default function StudentsPage() {
                       style={{ color: 'color-mix(in srgb, var(--color-accent) 80%, white)' }}>
                       <span className="inline-flex items-center gap-1.5">
                         <span className="opacity-60">{colIcon(col.key)}</span>
-                        {col.label}
+                        {stripGreekAccents(col.label)}
                       </span>
                     </th>
                   ))}

@@ -32,6 +32,11 @@ const COLUMNS_KEY   = 'pt_tutors_visible_columns_v1';
 const SORT_KEY      = 'pt_tutors_sort_v1';
 const PAGE_SIZE_KEY = 'pt_tutors_page_size_v1';
 
+// Strips Greek accent marks so CSS uppercase doesn't produce e.g. ΟΝΟΜΑΤΕΠΏΝΥΜΟ
+function stripGreekAccents(str: string): string {
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
 function loadSavedColumns(): Set<TutorColumnKey> {
   try {
     const raw = localStorage.getItem(COLUMNS_KEY);
@@ -357,7 +362,7 @@ export default function TutorsPage() {
                       style={{ color: 'color-mix(in srgb, var(--color-accent) 80%, white)' }}>
                       <span className="inline-flex items-center gap-1.5">
                         <span className="opacity-60">{colIcon(col.key)}</span>
-                        {col.label}
+                        {stripGreekAccents(col.label)}
                       </span>
                     </th>
                   ))}
