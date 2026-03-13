@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { money } from './utils';
-import type { Point } from './types';
+import { money } from '../utils';
+import type { Point } from '../types';
 
 interface SparkAreaProps {
   points: Point[];

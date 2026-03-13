@@ -1,4 +1,4 @@
-import { money } from './utils';
+import { money } from '../utils';
 
 interface IncomeExpenseDonutProps {
   income: number;

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { X, Save } from 'lucide-react';
-import AppDatePicker from '../ui/AppDatePicker';
-import { useTheme } from '../../context/ThemeContext';
+import AppDatePicker from '../../ui/AppDatePicker';
+import { useTheme } from '../../../context/ThemeContext';
 
 type Props = {
   open: boolean;
@@ -40,7 +40,6 @@ export default function YearlySubscriptionModal({
 
   if (!open) return null;
 
-  // ── Theme classes ──
   const modalCardCls = isDark
     ? 'w-full max-w-xl rounded-xl border border-slate-700 shadow-xl'
     : 'w-full max-w-xl rounded-xl border border-slate-200 bg-white shadow-xl';
@@ -67,62 +66,37 @@ export default function YearlySubscriptionModal({
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/55 p-4">
-      <div
-        className={modalCardCls}
-        style={isDark ? { background: 'var(--color-sidebar)' } : {}}
-      >
-        {/* Header */}
+      <div className={modalCardCls} style={isDark ? { background: 'var(--color-sidebar)' } : {}}>
         <div className={headerCls}>
           <div>
             <div className={titleCls}>Ετήσιο πακέτο</div>
-            <div className={subtitleCls}>
-              Μαθητής:{' '}
-              <span className="font-semibold" style={{ color: 'var(--color-accent)' }}>
-                {studentName}
-              </span>
-            </div>
-            <div className={subtitleCls}>
-              Πακέτο: <span className={pkgNameCls}>{packageName}</span>
-            </div>
+            <div className={subtitleCls}>Μαθητής:{' '}<span className="font-semibold" style={{ color: 'var(--color-accent)' }}>{studentName}</span></div>
+            <div className={subtitleCls}>Πακέτο: <span className={pkgNameCls}>{packageName}</span></div>
           </div>
-          <button type="button" onClick={onCancel} className={closeBtnCls} aria-label="Κλείσιμο">
-            <X className="h-4 w-4" />
-          </button>
+          <button type="button" onClick={onCancel} className={closeBtnCls} aria-label="Κλείσιμο"><X className="h-4 w-4" /></button>
         </div>
 
-        {/* Body */}
         <div className="space-y-3 overflow-visible px-5 py-4">
           {localError && (
-            <div className="rounded border border-red-500/50 bg-red-950/20 px-3 py-2 text-xs text-red-200">
-              {localError}
-            </div>
+            <div className="rounded border border-red-500/50 bg-red-950/20 px-3 py-2 text-xs text-red-200">{localError}</div>
           )}
           <div className={hintCls}>Διάστημα συνδρομής (έναρξη / λήξη)</div>
           <div className="relative z-[70] flex items-center gap-3">
-            <div className="w-[170px]">
-              <AppDatePicker value={start} onChange={setStart} />
-            </div>
-            <div className="w-[170px]">
-              <AppDatePicker value={end} onChange={setEnd} />
-            </div>
+            <div className="w-[170px]"><AppDatePicker value={start} onChange={setStart} /></div>
+            <div className="w-[170px]"><AppDatePicker value={end} onChange={setEnd} /></div>
           </div>
         </div>
 
-        {/* Footer */}
         <div className={footerCls}>
           <button type="button" onClick={onCancel} className={cancelBtnCls}>Άκυρο</button>
-          <button
-            type="button"
-            disabled={!canSave}
+          <button type="button" disabled={!canSave}
             onClick={() => {
               setLocalError(null);
               if (!start.trim() || !end.trim()) { setLocalError('Βάλε ημερομηνία έναρξης και λήξης.'); return; }
               onSave(start.trim(), end.trim());
             }}
-            className="btn-primary gap-2 px-3 py-1.5 font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            <Save className="h-4 w-4" />
-            Αποθήκευση
+            className="btn-primary gap-2 px-3 py-1.5 font-semibold disabled:opacity-60 disabled:cursor-not-allowed">
+            <Save className="h-4 w-4" />Αποθήκευση
           </button>
         </div>
       </div>

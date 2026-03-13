@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { X, Save } from 'lucide-react';
-import AppDatePicker from '../ui/AppDatePicker';
-import { useTheme } from '../../context/ThemeContext';
+import AppDatePicker from '../../ui/AppDatePicker';
+import { useTheme } from '../../../context/ThemeContext';
 
 export type PeriodMode = 'range' | 'month';
 
@@ -70,7 +70,6 @@ export default function MonthlySubscriptionModal({
 
   if (!open) return null;
 
-  // ── Theme classes ──
   const modalCardCls = isDark
     ? 'w-full max-w-2xl rounded-xl border border-slate-700 shadow-xl'
     : 'w-full max-w-2xl rounded-xl border border-slate-200 bg-white shadow-xl';
@@ -97,9 +96,7 @@ export default function MonthlySubscriptionModal({
     'w-full flex items-center justify-start text-left px-2.5 py-1 text-[11px] rounded-md transition',
     active
       ? 'bg-[color:var(--color-accent)]/25 text-[color:var(--color-accent)]'
-      : isDark
-        ? 'text-slate-200 hover:bg-slate-800/40'
-        : 'text-slate-600 hover:bg-slate-200',
+      : isDark ? 'text-slate-200 hover:bg-slate-800/40' : 'text-slate-600 hover:bg-slate-200',
   ].join(' ');
 
   const selectCls = isDark
@@ -114,91 +111,51 @@ export default function MonthlySubscriptionModal({
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/55 p-4">
-      <div
-        className={modalCardCls}
-        style={isDark ? { background: 'var(--color-sidebar)' } : {}}
-      >
-        {/* Header */}
+      <div className={modalCardCls} style={isDark ? { background: 'var(--color-sidebar)' } : {}}>
         <div className={headerCls}>
           <div>
             <div className={titleCls}>Μηνιαίο πακέτο</div>
-            <div className={subtitleCls}>
-              Μαθητής:{' '}
-              <span className="font-semibold" style={{ color: 'var(--color-accent)' }}>
-                {studentName}
-              </span>
-            </div>
-            <div className={subtitleCls}>
-              Πακέτο: <span className={pkgNameCls}>{packageName}</span>
-            </div>
+            <div className={subtitleCls}>Μαθητής:{' '}<span className="font-semibold" style={{ color: 'var(--color-accent)' }}>{studentName}</span></div>
+            <div className={subtitleCls}>Πακέτο: <span className={pkgNameCls}>{packageName}</span></div>
           </div>
-          <button type="button" onClick={onCancel} className={closeBtnCls} aria-label="Κλείσιμο">
-            <X className="h-4 w-4" />
-          </button>
+          <button type="button" onClick={onCancel} className={closeBtnCls} aria-label="Κλείσιμο"><X className="h-4 w-4" /></button>
         </div>
 
-        {/* Body */}
         <div className="space-y-3 overflow-visible px-5 py-4">
           {localError && (
-            <div className="rounded border border-red-500/50 bg-red-950/20 px-3 py-2 text-xs text-red-200">
-              {localError}
-            </div>
+            <div className="rounded border border-red-500/50 bg-red-950/20 px-3 py-2 text-xs text-red-200">{localError}</div>
           )}
-
           <div className={hintCls}>Επίλεξε τρόπο καταχώρησης: μήνας/έτος ή ημερομηνίες.</div>
-
           <div className="flex items-stretch gap-2">
-            {/* Left toggle */}
             <div className={togglePanelCls}>
-              <button type="button" onClick={() => setMode('month')} className={toggleBtnCls(mode === 'month')}>
-                Μήνας
-              </button>
-              <button type="button" onClick={() => setMode('range')} className={toggleBtnCls(mode === 'range')}>
-                Ημερομηνίες
-              </button>
+              <button type="button" onClick={() => setMode('month')} className={toggleBtnCls(mode === 'month')}>Μήνας</button>
+              <button type="button" onClick={() => setMode('range')} className={toggleBtnCls(mode === 'range')}>Ημερομηνίες</button>
             </div>
-
-            {/* Controls */}
             <div className="flex flex-1 flex-col justify-end min-h-[72px]">
               {mode === 'month' ? (
                 <div className="flex items-center gap-2">
-                  <select
-                    value={month}
-                    onChange={e => setMonth(e.target.value)}
-                    className={`w-[240px] ${selectCls}`}
-                  >
+                  <select value={month} onChange={e => setMonth(e.target.value)} className={`w-[240px] ${selectCls}`}>
                     <option value="">— Μήνας —</option>
                     {monthOptions.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                   </select>
-                  <select
-                    value={year}
-                    onChange={e => setYear(e.target.value)}
-                    className={`w-[140px] ${selectCls}`}
-                  >
+                  <select value={year} onChange={e => setYear(e.target.value)} className={`w-[140px] ${selectCls}`}>
                     <option value="">— Έτος —</option>
                     {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
                   </select>
                 </div>
               ) : (
                 <div className="relative z-[70] flex items-center gap-2">
-                  <div className="w-[180px]">
-                    <AppDatePicker value={start} onChange={setStart} />
-                  </div>
-                  <div className="w-[180px]">
-                    <AppDatePicker value={end} onChange={setEnd} />
-                  </div>
+                  <div className="w-[180px]"><AppDatePicker value={start} onChange={setStart} /></div>
+                  <div className="w-[180px]"><AppDatePicker value={end} onChange={setEnd} /></div>
                 </div>
               )}
             </div>
           </div>
         </div>
 
-        {/* Footer */}
         <div className={footerCls}>
           <button type="button" onClick={onCancel} className={cancelBtnCls}>Άκυρο</button>
-          <button
-            type="button"
-            disabled={!canSave}
+          <button type="button" disabled={!canSave}
             onClick={() => {
               setLocalError(null);
               if (mode === 'month') {
@@ -208,10 +165,8 @@ export default function MonthlySubscriptionModal({
               }
               onSave({ mode, month: month.trim(), year: year.trim(), startDisplay: start.trim(), endDisplay: end.trim() });
             }}
-            className="btn-primary gap-2 px-3 py-1.5 font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            <Save className="h-4 w-4" />
-            Αποθήκευση
+            className="btn-primary gap-2 px-3 py-1.5 font-semibold disabled:opacity-60 disabled:cursor-not-allowed">
+            <Save className="h-4 w-4" />Αποθήκευση
           </button>
         </div>
       </div>

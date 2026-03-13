@@ -1,8 +1,8 @@
 import { TrendingUp } from 'lucide-react';
 import { EconomicsPaginationBar } from './EconomicsPaginationBar';
-import { money } from './utils';
-import { PAGE_SIZE } from './constants';
-import type { TxRow } from './types';
+import { money } from '../utils';
+import { PAGE_SIZE } from '../constants';
+import type { TxRow } from '../types';
 
 interface EconomicsTransactionsCardProps {
   txRows: TxRow[];

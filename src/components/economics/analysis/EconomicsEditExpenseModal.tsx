@@ -1,7 +1,7 @@
 import { X, Receipt, Loader2 } from 'lucide-react';
-import AppDatePicker from '../ui/AppDatePicker';
-import { clampNumber } from './utils';
-import type { ExtraExpenseRow } from './types';
+import AppDatePicker from '../../ui/AppDatePicker';
+import { clampNumber } from '../utils';
+import type { ExtraExpenseRow } from '../types';
 
 interface EconomicsEditExpenseModalProps {
   open: boolean;

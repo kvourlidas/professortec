@@ -1,7 +1,7 @@
 import { Tag } from 'lucide-react';
 import { EconomicsPaginationBar } from './EconomicsPaginationBar';
-import { money } from './utils';
-import { PAGE_SIZE } from './constants';
+import { money } from '../utils';
+import { PAGE_SIZE } from '../constants';
 
 interface EconomicsCategoryBreakdownProps {
   expenseByCategory: { category: string; amount: number }[];

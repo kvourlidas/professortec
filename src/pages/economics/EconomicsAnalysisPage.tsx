@@ -13,13 +13,13 @@ import {
   buildSeriesForPeriod, getCurrentPeriod, hasAll, hasAny,
 } from '../../components/economics/utils';
 import { PAGE_SIZE, STUDENT_INCOME_TABLE, EXTRA_EXPENSES_TABLE } from '../../components/economics/constants';
-import { SparkArea } from '../../components/economics/SparkArea';
-import { IncomeExpenseDonut } from '../../components/economics/IncomeExpenseDonut';
-import { EconomicsFilterBar } from '../../components/economics/EconomicsFilterBar';
-import { EconomicsExtraExpenseForm } from '../../components/economics/EconomicsExtraExpenseForm';
-import { EconomicsEditExpenseModal } from '../../components/economics/EconomicsEditExpenseModal';
-import { EconomicsCategoryBreakdown } from '../../components/economics/EconomicsCategoryBreakdown';
-import { EconomicsTransactionsCard } from '../../components/economics/EconomicsTransactionsCard';
+import { SparkArea } from '../../components/economics/analysis/SparkArea';
+import { IncomeExpenseDonut } from '../../components/economics/analysis/IncomeExpenseDonut';
+import { EconomicsFilterBar } from '../../components/economics/analysis/EconomicsFilterBar';
+import { EconomicsExtraExpenseForm } from '../../components/economics/analysis/EconomicsExtraExpenseForm';
+import { EconomicsEditExpenseModal } from '../../components/economics/analysis/EconomicsEditExpenseModal';
+import { EconomicsCategoryBreakdown } from '../../components/economics/analysis/EconomicsCategoryBreakdown';
+import { EconomicsTransactionsCard } from '../../components/economics/analysis/EconomicsTransactionsCard';
 
 export default function EconomicsAnalysisPage() {
   const { user, profile } = useAuth();

@@ -1,6 +1,6 @@
 import { Plus, Loader2, Receipt } from 'lucide-react';
-import AppDatePicker from '../ui/AppDatePicker';
-import { clampNumber } from './utils';
+import AppDatePicker from '../../ui/AppDatePicker';
+import { clampNumber } from '../utils';
 
 interface EconomicsExtraExpenseFormProps {
   expName: string;
