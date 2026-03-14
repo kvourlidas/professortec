@@ -5,7 +5,7 @@ import { useTheme } from '../../../context/ThemeContext';
 import type { PeriodMode, PackageRow, PaymentRow, StudentRow, StudentViewRow, SubscriptionRow } from './types';
 import {
   isoToDisplayDate, isHourlyPackageName, isMonthlyPackageName,
-  isYearlyPackageName, monthKeyToRange, pad2, parseMoney, parsePct, round2, todayLocalISODate,
+  isYearlyPackageName, monthKeyToRange, pad2, parseMoney, parsePct, resolvePackageType, round2, todayLocalISODate,
 } from './utils';
 
 const PAGE_SIZE = 15;
@@ -108,7 +108,7 @@ export function useSubscriptionsPage() {
     if (!schoolId) return;
     const { data, error } = await supabase
       .from('packages')
-      .select('id,school_id,name,price,currency,is_active,sort_order,created_at,package_type,hours,starts_on,ends_on')
+      .select('id,school_id,name,price,currency,is_active,sort_order,created_at,package_type,hours,starts_on,ends_on,is_custom')
       .eq('school_id', schoolId)
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: true });
@@ -225,14 +225,16 @@ export function useSubscriptionsPage() {
     setCustomPrice('');
     setDiscountPct('');
 
-    if (isYearlyPackageName(pkg.name)) {
-      // Lock dates from the package — displayed as read-only in the modal
+    const pt = resolvePackageType(pkg);
+
+    if (pt === 'yearly') {
       setAssignStartsOn(pkg.starts_on ? isoToDisplayDate(pkg.starts_on) : '');
       setAssignEndsOn(pkg.ends_on ? isoToDisplayDate(pkg.ends_on) : '');
       setAssignPeriodMode('range');
-    } else if (isMonthlyPackageName(pkg.name)) {
+    } else if (pt === 'monthly') {
       setAssignPeriodMode('month');
-    } else if (isHourlyPackageName(pkg.name)) {
+    } else {
+      // hourly
       setAssignStartsOn(assignStartsOn || isoToDisplayDate(todayLocalISODate()));
       setAssignEndsOn('');
       setAssignPeriodMode('range');
@@ -244,13 +246,16 @@ export function useSubscriptionsPage() {
     if (!selStudent) { setAssignError('Επίλεξε μαθητή.'); return; }
     if (!selPackage) { setAssignError('Επίλεξε πακέτο.'); return; }
     const pkg = selPackage;
-    const yearly  = isYearlyPackageName(pkg.name);
-    const monthly = isMonthlyPackageName(pkg.name);
-    const hourly  = isHourlyPackageName(pkg.name);
+
+    // Use package_type field first, fall back to name-based detection
+    const pt = resolvePackageType(pkg);
+    const yearly  = pt === 'yearly';
+    const monthly = pt === 'monthly';
+    const hourly  = pt === 'hourly';
+
     let startsISO: string | null = null, endsISO: string | null = null;
 
     if (yearly) {
-      // Always use the package's stored dates
       startsISO = pkg.starts_on ?? null;
       endsISO   = pkg.ends_on   ?? null;
       if (!startsISO || !endsISO) { setAssignError('Το ετήσιο πακέτο δεν έχει ορισμένο διάστημα. Συμπλήρωσέ το πρώτα στη σελίδα Πακέτων.'); return; }
@@ -265,7 +270,8 @@ export function useSubscriptionsPage() {
         startsISO = range.startISO; endsISO = range.endISO;
       }
     } else if (hourly) {
-      startsISO = displayToISODate(assignStartsOn) ?? todayLocalISODate(); endsISO = null;
+      startsISO = displayToISODate(assignStartsOn) ?? todayLocalISODate();
+      endsISO = null;
     }
 
     setSaving(true); setAssignError(null);
@@ -280,17 +286,18 @@ export function useSubscriptionsPage() {
 
   const assignPeriodDisplay = (): string | null => {
     if (!selPackage) return null;
-    if (isYearlyPackageName(selPackage.name)) {
+    const pt = resolvePackageType(selPackage);
+    if (pt === 'yearly') {
       const s = selPackage.starts_on ? isoToDisplayDate(selPackage.starts_on) : '';
       const e = selPackage.ends_on   ? isoToDisplayDate(selPackage.ends_on)   : '';
       if (s && e) return `${s} – ${e}`;
       return null;
     }
-    if (isMonthlyPackageName(selPackage.name)) {
+    if (pt === 'monthly') {
       if (assignPeriodMode === 'range' && assignStartsOn && assignEndsOn) return `${assignStartsOn} – ${assignEndsOn}`;
       if (assignPeriodMode === 'month' && assignMonthNum && assignYear) return `${monthLabel(assignMonthNum)} ${assignYear}`;
     }
-    if (isHourlyPackageName(selPackage.name) && assignStartsOn) return `Από ${assignStartsOn}`;
+    if (pt === 'hourly' && assignStartsOn) return `Από ${assignStartsOn}`;
     return null;
   };
 

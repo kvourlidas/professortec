@@ -332,7 +332,7 @@ export default function TutorsPaymentsPage() {
                       <input value={paymentDesc} onChange={e=>setPaymentDesc(e.target.value)} className={inputCls} placeholder="π.χ. Δεκέμβριος / extra ώρες / παρατηρήσεις"/>
                     </div>
                     <button type="button" onClick={recordPaymentToday} disabled={busy}
-                      className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 text-xs font-semibold text-emerald-400 transition hover:bg-emerald-500/20 disabled:opacity-50">
+                      className="btn-primary shrink-0 gap-2 px-4 py-2 disabled:opacity-50">
                       {busy?<Loader2 className="h-3.5 w-3.5 animate-spin"/>:<HandCoins className="h-3.5 w-3.5"/>}
                       Καταγραφή Πληρωμής
                     </button>
@@ -368,7 +368,7 @@ export default function TutorsPaymentsPage() {
                     <div className="md:col-span-2">
                       <FieldLabel>&nbsp;</FieldLabel>
                       <button type="button" onClick={addBonus} disabled={busy||(Number(bonusValue)||0)<=0}
-                        className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-xs font-semibold text-emerald-400 transition hover:bg-emerald-500/20 disabled:opacity-40">
+                        className="btn-primary h-9 w-full gap-1.5 disabled:opacity-40">
                         {busy?<Loader2 className="h-3.5 w-3.5 animate-spin"/>:<Plus className="h-3.5 w-3.5"/>}
                         Προσθήκη
                       </button>

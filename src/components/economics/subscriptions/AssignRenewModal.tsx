@@ -3,10 +3,7 @@ import { useMemo, useState } from 'react';
 import AppDatePicker from '../../ui/AppDatePicker';
 import { typeColors } from './constants';
 import { CURRENCY_SYMBOL } from './constants';
-import {
-  isHourlyPackageName, isMonthlyPackageName, isYearlyPackageName,
-  money, packageTypeFromName, typeLabel,
-} from './utils';
+import { resolvePackageType, money, typeLabel } from './utils';
 import type { PackageRow, PeriodMode, StudentRow } from './types';
 
 interface Props {
@@ -33,8 +30,6 @@ interface Props {
   setCustomPrice: (v: string) => void;
   discountPct: string;
   setDiscountPct: (v: string) => void;
-  /** The hook's computed final price — used only when submitting.
-   *  Display uses localFinalPrice computed here based on discountMode. */
   assignFinalPrice: number;
   assignPeriodMode: PeriodMode;
   setAssignPeriodMode: (m: PeriodMode) => void;
@@ -65,7 +60,6 @@ export function AssignRenewModal({
 }: Props) {
   const [discountMode, setDiscountMode] = useState<'pct' | 'amount'>('pct');
 
-  // Compute final price locally so it reacts to discountMode immediately
   const localFinalPrice = useMemo(() => {
     const base = customPrice.trim()
       ? Math.max(0, Number(customPrice.replace(',', '.')) || 0)
@@ -84,7 +78,13 @@ export function AssignRenewModal({
   const filtPackages = packages.filter(p => p.name.toLowerCase().includes(packageQ.toLowerCase()));
 
   const accentVar = 'var(--color-accent)';
-  const basePrice  = selPackage ? Number(selPackage.price ?? 0) : 0;
+  const basePrice = selPackage ? Number(selPackage.price ?? 0) : 0;
+
+  // Resolve package type using package_type field first, then name fallback
+  const selPkgType = selPackage ? resolvePackageType(selPackage) : null;
+  const isYearly  = selPkgType === 'yearly';
+  const isMonthly = selPkgType === 'monthly';
+  const isHourly  = selPkgType === 'hourly';
 
   // ── Styles ────────────────────────────────────────────────────────────────
   const inputCls = isDark
@@ -152,17 +152,13 @@ export function AssignRenewModal({
         ].join(' ')}
         style={isDark ? { background: 'var(--color-sidebar)' } : {}}
       >
-        {/* ── Accent bar — inside overflow:hidden so corners clip cleanly ── */}
+        {/* Accent bar */}
         <div className="h-[3px] w-full" style={{
           background: isRenew
             ? 'linear-gradient(90deg,#38bdf8,color-mix(in srgb,#38bdf8 15%,transparent))'
             : `linear-gradient(90deg,${accentVar},color-mix(in srgb,${accentVar} 15%,transparent))`,
         }} />
 
-        {/*
-          Dropdowns need overflow:visible — wrap body+footer in a separate div
-          with overflow:visible while the card itself has overflow:hidden for the bar.
-        */}
         <div style={{ overflow: 'visible' }}>
 
           {/* Header */}
@@ -252,8 +248,8 @@ export function AssignRenewModal({
                     onClick={() => { setPackageDrop(v => !v); setStudentDrop(false); }}>
                     {selPackage ? (
                       <>
-                        <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold ${typeColors(packageTypeFromName(selPackage.name), isDark).badge}`}>
-                          {typeLabel(packageTypeFromName(selPackage.name))}
+                        <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold ${typeColors(resolvePackageType(selPackage), isDark).badge}`}>
+                          {typeLabel(resolvePackageType(selPackage))}
                         </span>
                         <span className={`flex-1 truncate font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{selPackage.name}</span>
                         <span className={`shrink-0 tabular-nums text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{money(selPackage.price)} {CURRENCY_SYMBOL}</span>
@@ -275,7 +271,7 @@ export function AssignRenewModal({
                         {filtPackages.length === 0
                           ? <p className={`px-3 py-3 text-xs ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>Δεν βρέθηκαν.</p>
                           : filtPackages.map(pkg => {
-                            const pt = packageTypeFromName(pkg.name);
+                            const pt = resolvePackageType(pkg);
                             return (
                               <div key={pkg.id} className={dropRowCls(selPackage?.id === pkg.id)}
                                 onClick={() => { onPackageSelect(pkg); setPackageDrop(false); }}>
@@ -302,7 +298,6 @@ export function AssignRenewModal({
               <div>
                 <label className={labelCls}>Τιμολόγηση</label>
 
-                {/* Base price */}
                 <div className={`mb-2 flex items-center justify-between rounded-lg border px-3 py-2 ${isDark ? 'border-slate-700/50 bg-slate-800/30' : 'border-slate-200 bg-slate-50'}`}>
                   <span className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Βασική τιμή</span>
                   <span className={`text-xs font-semibold tabular-nums ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
@@ -310,24 +305,14 @@ export function AssignRenewModal({
                   </span>
                 </div>
 
-                {/* Discount box */}
                 <div className={`rounded-lg border ${isDark ? 'border-slate-700/50 bg-slate-800/30' : 'border-slate-200 bg-slate-50'}`}>
-                  {/* Mode toggle */}
                   <div className={`flex items-center border-b px-2 py-1.5 ${isDark ? 'border-slate-700/50' : 'border-slate-200'}`}>
                     <span className={`mr-auto text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Έκπτωση</span>
                     <div className={`flex rounded p-0.5 ${isDark ? 'bg-slate-900/60' : 'bg-slate-200/60'}`}>
-                      <button
-                        type="button"
-                        className={discountTabCls(discountMode === 'pct')}
-                        onClick={() => { setDiscountMode('pct'); setDiscountPct(''); }}>
-                        %
-                      </button>
-                      <button
-                        type="button"
-                        className={discountTabCls(discountMode === 'amount')}
-                        onClick={() => { setDiscountMode('amount'); setDiscountPct(''); }}>
-                        €
-                      </button>
+                      <button type="button" className={discountTabCls(discountMode === 'pct')}
+                        onClick={() => { setDiscountMode('pct'); setDiscountPct(''); }}>%</button>
+                      <button type="button" className={discountTabCls(discountMode === 'amount')}
+                        onClick={() => { setDiscountMode('amount'); setDiscountPct(''); }}>€</button>
                     </div>
                   </div>
                   <div className="px-3 py-2">
@@ -342,7 +327,6 @@ export function AssignRenewModal({
                   </div>
                 </div>
 
-                {/* Final price — uses localFinalPrice which respects discountMode */}
                 <div className="mt-2 flex items-center justify-between">
                   <span className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Τελική τιμή</span>
                   <span className="text-sm font-bold tabular-nums" style={{ color: accentVar }}>
@@ -358,15 +342,18 @@ export function AssignRenewModal({
                     <label className={labelCls}>Περίοδος</label>
 
                     {/* Hourly */}
-                    {isHourlyPackageName(selPackage.name) && (
+                    {isHourly && (
                       <div>
                         <AppDatePicker value={assignStartsOn} onChange={setAssignStartsOn} />
-                        <p className={`mt-1.5 text-[10px] ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>Ωριαίο — χωρίς ημ. λήξης.</p>
+                        <p className={`mt-1.5 text-[10px] ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
+                          Ωριαίο — χωρίς ημ. λήξης.
+                          {selPackage.hours ? ` ${selPackage.hours} ώρες συνολικά.` : ''}
+                        </p>
                       </div>
                     )}
 
                     {/* Monthly */}
-                    {isMonthlyPackageName(selPackage.name) && (
+                    {isMonthly && (
                       <div className="space-y-2">
                         <div className="flex gap-1.5">
                           {(['month', 'range'] as PeriodMode[]).map(m => (
@@ -395,8 +382,8 @@ export function AssignRenewModal({
                       </div>
                     )}
 
-                    {/* Yearly — locked */}
-                    {isYearlyPackageName(selPackage.name) && (
+                    {/* Yearly — locked dates from package */}
+                    {isYearly && (
                       <div>
                         {assignStartsOn && assignEndsOn ? (
                           <div className={lockedRowCls}>
@@ -418,7 +405,7 @@ export function AssignRenewModal({
                     )}
 
                     {/* Period summary (non-yearly) */}
-                    {!isYearlyPackageName(selPackage.name) && assignPeriodDisplay() && (
+                    {!isYearly && assignPeriodDisplay() && (
                       <div className={`mt-2 inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] ${isDark ? 'bg-slate-800/60 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>
                         <CalendarDays className="h-3 w-3 opacity-50" />
                         {assignPeriodDisplay()}
@@ -439,8 +426,7 @@ export function AssignRenewModal({
           <div className={`mt-4 flex justify-end gap-2 px-6 py-4 ${isDark ? 'border-t border-slate-800/60' : 'border-t border-slate-100 bg-slate-50/60'}`}>
             <button type="button" onClick={onClose} className={cancelCls}>Ακύρωση</button>
             <button type="button" onClick={onSubmit} disabled={saving}
-              className={`flex items-center gap-2 rounded-lg px-5 py-2 text-xs font-semibold transition hover:brightness-110 active:scale-[0.97] disabled:opacity-50 ${isDark ? 'text-black' : 'text-white'}`}
-              style={{ background: isDark ? accentVar : '#2563eb' }}>
+              className="btn-primary gap-2 px-5 py-2 disabled:opacity-50">
               {saving
                 ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 : isRenew ? <RefreshCw className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
@@ -448,7 +434,7 @@ export function AssignRenewModal({
             </button>
           </div>
 
-        </div>{/* end overflow:visible wrapper */}
+        </div>
       </div>
     </div>
   );

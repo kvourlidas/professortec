@@ -35,9 +35,7 @@ export default function StudentsSubscriptionsPage() {
               <Search className={`absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 pointer-events-none ${p.isDark ? 'text-slate-500' : 'text-slate-400'}`} />
               <input className={searchInputCls} placeholder="Αναζήτηση μαθητή..." value={p.search} onChange={e => p.setSearch(e.target.value)} />
             </div>
-            <button type="button" onClick={p.openAssign}
-              className={`flex shrink-0 items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition hover:brightness-110 active:scale-[0.97] ${p.isDark ? 'text-black' : 'text-white'}`}
-              style={{ background: p.isDark ? 'var(--color-accent)' : '#2563eb' }}>
+            <button type="button" onClick={p.openAssign} className="btn-primary shrink-0 gap-2 px-4 py-2">
               <Plus className="h-3.5 w-3.5" />Ανάθεση
             </button>
           </div>

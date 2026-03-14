@@ -1,4 +1,4 @@
-import type { PackageType, SubscriptionRow } from './types';
+import type { PackageRow, PackageType, SubscriptionRow } from './types';
 
 export function money(n: number | null | undefined): string {
   const v = Number(n ?? 0);
@@ -60,6 +60,8 @@ export function normalizeText(value: string | null | undefined): string {
   if (!value) return '';
   return value.toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
+
+// ── Name-based fallback detectors (used only when package_type is not set) ──
 export function isYearlyPackageName(name: string | null | undefined): boolean {
   const n = normalizeText(name);
   return n.includes('ετησι') || n.includes('annual') || n.includes('year');
@@ -72,11 +74,13 @@ export function isHourlyPackageName(name: string | null | undefined): boolean {
   const n = normalizeText(name);
   return n.includes('ωρια') || n.includes('hour') || n.includes('hourly');
 }
-export function formatDateTime(iso: string | null): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString('el-GR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+// ── Primary type resolver — uses package_type field first, falls back to name ──
+export function resolvePackageType(pkg: PackageRow): PackageType {
+  if (pkg.package_type) return pkg.package_type;
+  return packageTypeFromName(pkg.name);
 }
+
 export function packageTypeFromName(name: string | null | undefined): PackageType {
   if (isYearlyPackageName(name)) return 'yearly';
   if (isMonthlyPackageName(name)) return 'monthly';

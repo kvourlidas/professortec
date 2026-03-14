@@ -1,9 +1,5 @@
-// src/components/economics/subscriptions/types.ts
-
 export type PeriodMode = 'range' | 'month';
-
 export type PackageType = 'hourly' | 'monthly' | 'yearly';
-
 export type PackageRow = {
   id: string;
   school_id: string;
@@ -15,22 +11,20 @@ export type PackageRow = {
   created_at?: string;
   package_type: PackageType | null | undefined;
   hours: number | null;
-  starts_on: string | null;  // ISO yyyy-mm-dd, set on yearly packages
-  ends_on: string | null;    // ISO yyyy-mm-dd, set on yearly packages
+  starts_on: string | null;
+  ends_on: string | null;
+  is_custom?: boolean | null;
 };
-
 export type PaymentRow = {
   subscription_id: string;
   amount: number | null;
   created_at?: string | null;
 };
-
 export type StudentRow = {
   id: string;
   school_id: string;
   full_name: string | null;
 };
-
 export type SubscriptionRow = {
   id: string;
   school_id: string;
@@ -48,7 +42,6 @@ export type SubscriptionRow = {
   paid_amount?: number | null;
   balance?: number | null;
 };
-
 export type StudentViewRow = {
   student_id: string;
   student_name: string;
@@ -57,7 +50,6 @@ export type StudentViewRow = {
   balance: number;
   payments: PaymentRow[];
 };
-
 export type SubModal = {
   pkgId: string;
   pkgName: string;

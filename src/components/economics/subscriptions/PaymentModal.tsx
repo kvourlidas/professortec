@@ -117,8 +117,7 @@ export function PaymentModal({
                   type="button"
                   onClick={onSubmit}
                   disabled={payingLoading}
-                  className={`flex items-center gap-1.5 rounded-lg border border-transparent px-4 py-2 text-xs font-semibold transition hover:brightness-110 active:scale-[0.97] disabled:opacity-60 ${isDark ? 'text-black' : 'text-white'}`}
-                  style={{ background: isDark ? 'var(--color-accent)' : '#2563eb' }}
+                  className="btn-primary gap-1.5 px-4 py-2 disabled:opacity-60"
                 >
                   {payingLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <HandCoins className="h-3.5 w-3.5" />}
                   Καταχώρηση
