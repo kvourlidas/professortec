@@ -24,11 +24,11 @@ export function PaymentModal({
 }: Props) {
   if (!row) return null;
 
-  const sub         = row.sub!;
-  const pkgType     = packageTypeFromName(sub.package_name);
-  const colors      = typeColors(pkgType, isDark);
-  const isHourly    = isHourlyPackageName(sub.package_name);
-  const dispPrice   = isHourly ? Number(sub.price ?? 0) : pmBilled;
+  const sub       = row.sub!;
+  const pkgType   = packageTypeFromName(sub.package_name);
+  const colors    = typeColors(pkgType, isDark);
+  const isHourly  = isHourlyPackageName(sub.package_name);
+  const dispPrice = isHourly ? Number(sub.price ?? 0) : pmBilled;
 
   const inputCls = isDark
     ? 'rounded-lg border border-slate-700/70 bg-slate-900/60 px-2.5 py-2 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/20'
@@ -44,11 +44,12 @@ export function PaymentModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-      <div className={`relative w-full max-w-2xl overflow-hidden rounded-2xl border shadow-2xl ${isDark ? 'border-slate-700/60' : 'border-slate-200 bg-white'}`}
-        style={isDark ? { background: 'var(--color-sidebar)' } : {}}>
-
+      <div
+        className={`relative w-full max-w-2xl overflow-hidden rounded-2xl border shadow-2xl ${isDark ? 'border-slate-700/60' : 'border-slate-200 bg-white'}`}
+        style={isDark ? { background: 'var(--color-sidebar)' } : {}}
+      >
         {/* Accent bar */}
-        <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg,var(--color-accent),color-mix(in srgb,var(--color-accent) 30%,transparent))' }} />
+        <div className="h-[3px] w-full" style={{ background: 'linear-gradient(90deg,var(--color-accent),color-mix(in srgb,var(--color-accent) 30%,transparent))' }} />
 
         {/* Header */}
         <div className={`flex items-center justify-between px-6 pt-5 pb-4 ${isDark ? 'border-b border-slate-800/60' : 'border-b border-slate-100'}`}>
@@ -112,9 +113,13 @@ export function PaymentModal({
                   className={`flex-1 ${inputCls} ${payingLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                   onKeyDown={e => { if (e.key === 'Enter') onSubmit(); }}
                 />
-                <button type="button" onClick={onSubmit} disabled={payingLoading}
-                  className="flex items-center gap-1.5 rounded-lg border border-transparent px-4 py-2 text-xs font-semibold text-white transition hover:brightness-110 active:scale-[0.97] disabled:opacity-60"
-                  style={{ background: 'var(--color-accent)' }}>
+                <button
+                  type="button"
+                  onClick={onSubmit}
+                  disabled={payingLoading}
+                  className={`flex items-center gap-1.5 rounded-lg border border-transparent px-4 py-2 text-xs font-semibold transition hover:brightness-110 active:scale-[0.97] disabled:opacity-60 ${isDark ? 'text-black' : 'text-white'}`}
+                  style={{ background: isDark ? 'var(--color-accent)' : '#2563eb' }}
+                >
                   {payingLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <HandCoins className="h-3.5 w-3.5" />}
                   Καταχώρηση
                 </button>
@@ -135,8 +140,10 @@ export function PaymentModal({
                   <div className="max-h-52 overflow-y-auto ss-thin">
                     <table className="min-w-full border-collapse text-xs">
                       <thead className="sticky top-0">
-                        <tr className={`${isDark ? 'border-b border-slate-700/60 bg-slate-900/60' : 'border-b border-slate-200 bg-slate-50'} text-[10px] font-semibold uppercase tracking-widest`}
-                          style={{ color: 'color-mix(in srgb,var(--color-accent) 70%,white)' }}>
+                        <tr
+                          className={`${isDark ? 'border-b border-slate-700/60 bg-slate-900/60' : 'border-b border-slate-200 bg-slate-50'} text-[10px] font-semibold uppercase tracking-widest`}
+                          style={{ color: 'color-mix(in srgb,var(--color-accent) 70%,white)' }}
+                        >
                           <th className="px-3 py-2.5 text-left">Ημερομηνία</th>
                           <th className="px-3 py-2.5 text-right">Ποσό</th>
                         </tr>
@@ -144,8 +151,13 @@ export function PaymentModal({
                       <tbody className={isDark ? 'divide-y divide-slate-800/40' : 'divide-y divide-slate-100'}>
                         {row.payments.map((p, i) => (
                           <tr key={`${p.created_at ?? 'na'}-${i}`} className={isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-slate-50'}>
-                            <td className={`px-3 py-2.5 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{formatDateTime(p.created_at)}</td>
-                            <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-emerald-400">{money(p.amount)} {CURRENCY_SYMBOL}</td>
+                            {/* Fix: created_at is string | null | undefined — coerce to string | null */}
+                            <td className={`px-3 py-2.5 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                              {formatDateTime(p.created_at ?? null)}
+                            </td>
+                            <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-emerald-400">
+                              {money(p.amount)} {CURRENCY_SYMBOL}
+                            </td>
                           </tr>
                         ))}
                       </tbody>

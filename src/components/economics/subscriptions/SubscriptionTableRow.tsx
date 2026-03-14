@@ -78,18 +78,18 @@ export function SubscriptionTableRow({ row, isDark, onPayment, onRenew, onDelete
       {/* Actions */}
       <td className="px-4 py-3 align-middle">
         <div className="flex items-center justify-end gap-1.5">
-          <button type="button" onClick={() => onPayment(row)}
-            className="flex h-8 w-8 items-center justify-center rounded-lg border transition border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
-            title="Πληρωμή / Ιστορικό">
-            <HandCoins className="h-3.5 w-3.5" />
-          </button>
           {isExpired && (
             <button type="button" onClick={() => onRenew(row)}
-              className={`flex h-8 w-8 items-center justify-center rounded-lg border transition active:scale-95 ${isDark ? 'border-sky-500/40 bg-sky-500/10 text-sky-400 hover:bg-sky-500/20' : 'border-sky-300 bg-sky-50 text-sky-600 hover:bg-sky-100'}`}
+              className={`flex h-8 w-8 items-center justify-center rounded-lg border transition active:scale-95 hover:shadow-[0_0_10px_rgba(56,189,248,0.45)] ${isDark ? 'border-sky-500/40 bg-sky-500/10 text-sky-400 hover:bg-sky-500/20' : 'border-sky-300 bg-sky-50 text-sky-600 hover:bg-sky-100'}`}
               title="Ανανέωση συνδρομής">
               <RefreshCw className="h-3.5 w-3.5" />
             </button>
           )}
+          <button type="button" onClick={() => onPayment(row)}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border transition border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:shadow-[0_0_10px_rgba(52,211,153,0.45)]"
+            title="Πληρωμή / Ιστορικό">
+            <HandCoins className="h-3.5 w-3.5" />
+          </button>
           <button type="button" onClick={() => onDelete(row)}
             className={`flex h-8 w-8 items-center justify-center rounded-lg border transition hover:border-red-500/40 hover:bg-red-950/30 hover:text-red-400 ${isDark ? 'border-slate-700/60 bg-slate-900/30 text-slate-500' : 'border-slate-200 bg-white text-slate-400'}`}
             title="Διαγραφή">

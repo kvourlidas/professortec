@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../auth';
 import { useTheme } from '../../../context/ThemeContext';
-import type { PeriodMode, PackageRow, PaymentRow, StudentRow, StudentViewRow, SubModal, SubscriptionRow } from './types';
+import type { PeriodMode, PackageRow, PaymentRow, StudentRow, StudentViewRow, SubscriptionRow } from './types';
 import {
-  displayToISODate, isoToDisplayDate, isHourlyPackageName, isMonthlyPackageName,
+  isoToDisplayDate, isHourlyPackageName, isMonthlyPackageName,
   isYearlyPackageName, monthKeyToRange, pad2, parseMoney, parsePct, round2, todayLocalISODate,
 } from './utils';
 
@@ -28,9 +28,9 @@ export function useSubscriptionsPage() {
   const [allStudents, setAllStudents] = useState<StudentRow[]>([]);
 
   // ── Payment modal ──────────────────────────────────────────────────────────
-  const [paymentModal,   setPaymentModal]   = useState<{ row: StudentViewRow } | null>(null);
-  const [paymentInput,   setPaymentInput]   = useState('');
-  const [payingLoading,  setPayingLoading]  = useState(false);
+  const [paymentModal,  setPaymentModal]  = useState<{ row: StudentViewRow } | null>(null);
+  const [paymentInput,  setPaymentInput]  = useState('');
+  const [payingLoading, setPayingLoading] = useState(false);
 
   const pmPaid = useMemo(() => paymentModal?.row.paid ?? 0, [paymentModal]);
   const pmBilled = useMemo(() => {
@@ -55,6 +55,7 @@ export function useSubscriptionsPage() {
   const [selPackage,       setSelPackage]       = useState<PackageRow | null>(null);
   const [customPrice,      setCustomPrice]      = useState('');
   const [discountPct,      setDiscountPct]      = useState('');
+  const [discountMode,     setDiscountMode]     = useState<'pct' | 'amount'>('pct');
   const [studentQ,         setStudentQ]         = useState('');
   const [packageQ,         setPackageQ]         = useState('');
   const [studentDrop,      setStudentDrop]      = useState(false);
@@ -64,14 +65,16 @@ export function useSubscriptionsPage() {
   const [assignPeriodMode, setAssignPeriodMode] = useState<PeriodMode>('month');
   const [assignMonthNum,   setAssignMonthNum]   = useState(pad2(new Date().getMonth() + 1));
   const [assignYear,       setAssignYear]       = useState(String(new Date().getFullYear()));
-  const [yearlyModal,      setYearlyModal]      = useState<SubModal | null>(null);
-  const [monthlyModal,     setMonthlyModal]     = useState<SubModal | null>(null);
 
   // ── Derived ────────────────────────────────────────────────────────────────
   useEffect(() => setPage(1), [search]);
   const pageCount   = useMemo(() => Math.max(1, Math.ceil(totalCount / PAGE_SIZE)), [totalCount]);
   useEffect(() => setPage(p => Math.min(Math.max(1, p), pageCount)), [pageCount]);
-  const packageById = useMemo(() => { const m = new Map<string, PackageRow>(); for (const p of packages) m.set(p.id, p); return m; }, [packages]);
+  const packageById = useMemo(() => {
+    const m = new Map<string, PackageRow>();
+    for (const p of packages) m.set(p.id, p);
+    return m;
+  }, [packages]);
 
   const monthOptions = useMemo(() => [
     { value: '01', label: 'Ιανουάριος' }, { value: '02', label: 'Φεβρουάριος' }, { value: '03', label: 'Μάρτιος' },
@@ -79,25 +82,33 @@ export function useSubscriptionsPage() {
     { value: '07', label: 'Ιούλιος' },    { value: '08', label: 'Αύγουστος' },    { value: '09', label: 'Σεπτέμβριος' },
     { value: '10', label: 'Οκτώβριος' },  { value: '11', label: 'Νοέμβριος' },    { value: '12', label: 'Δεκέμβριος' },
   ], []);
-  const yearOptions = useMemo(() => { const y = new Date().getFullYear(); return Array.from({ length: 6 }, (_, i) => String(y + i)); }, []);
-  const monthLabel  = (m: string) => monthOptions.find(x => x.value === m)?.label ?? '';
+  const yearOptions = useMemo(() => {
+    const y = new Date().getFullYear();
+    return Array.from({ length: 6 }, (_, i) => String(y + i));
+  }, []);
+  const monthLabel = (m: string) => monthOptions.find(x => x.value === m)?.label ?? '';
 
   const assignFinalPrice = useMemo(() => {
     const base = customPrice.trim() ? parseMoney(customPrice) : Number(selPackage?.price ?? 0);
-    return round2(Math.max(0, base * (1 - parsePct(discountPct) / 100)));
-  }, [selPackage, customPrice, discountPct]);
+    const disc = parseMoney(discountPct);
+    if (discountMode === 'pct') {
+      return round2(Math.max(0, base * (1 - disc / 100)));
+    } else {
+      return round2(Math.max(0, base - disc));
+    }
+  }, [selPackage, customPrice, discountPct, discountMode]);
 
-  const showingFrom   = totalCount === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
-  const showingTo     = Math.min(page * PAGE_SIZE, totalCount);
-  const filtStudents  = allStudents.filter(s => (s.full_name ?? '').toLowerCase().includes(studentQ.toLowerCase()));
-  const filtPackages  = packages.filter(p => p.name.toLowerCase().includes(packageQ.toLowerCase()));
+  const showingFrom  = totalCount === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const showingTo    = Math.min(page * PAGE_SIZE, totalCount);
+  const filtStudents = allStudents.filter(s => (s.full_name ?? '').toLowerCase().includes(studentQ.toLowerCase()));
+  const filtPackages = packages.filter(p => p.name.toLowerCase().includes(packageQ.toLowerCase()));
 
   // ── Loaders ────────────────────────────────────────────────────────────────
   const loadPackages = async () => {
     if (!schoolId) return;
     const { data, error } = await supabase
       .from('packages')
-      .select('id,school_id,name,price,currency,is_active,sort_order,created_at,package_type,hours')
+      .select('id,school_id,name,price,currency,is_active,sort_order,created_at,package_type,hours,starts_on,ends_on')
       .eq('school_id', schoolId)
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: true });
@@ -143,8 +154,12 @@ export function useSubscriptionsPage() {
     const payMap = new Map<string, PaymentRow[]>();
     if (subIds.length > 0) {
       const { data: pd } = await supabase.from('student_subscription_payments').select('subscription_id,amount,created_at').eq('school_id', schoolId).in('subscription_id', subIds);
-      for (const p of (pd ?? []) as PaymentRow[]) { const l = payMap.get(p.subscription_id) ?? []; l.push(p); payMap.set(p.subscription_id, l); }
-      for (const [sid, l] of payMap.entries()) { l.sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? '')); payMap.set(sid, l); }
+      for (const p of (pd ?? []) as PaymentRow[]) {
+        const l = payMap.get(p.subscription_id) ?? []; l.push(p); payMap.set(p.subscription_id, l);
+      }
+      for (const [sid, l] of payMap.entries()) {
+        l.sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? '')); payMap.set(sid, l);
+      }
     }
     const view: StudentViewRow[] = subs.map(sub => ({
       student_id: sub.student_id, student_name: nameById.get(sub.student_id) ?? '—',
@@ -184,7 +199,7 @@ export function useSubscriptionsPage() {
   };
 
   const resetModal = () => {
-    setSelPackage(null); setCustomPrice(''); setDiscountPct(''); setPackageQ('');
+    setSelPackage(null); setCustomPrice(''); setDiscountPct(''); setDiscountMode('pct'); setPackageQ('');
     setAssignStartsOn(isoToDisplayDate(todayLocalISODate())); setAssignEndsOn('');
     setAssignPeriodMode('month'); setAssignMonthNum(pad2(new Date().getMonth() + 1)); setAssignYear(String(new Date().getFullYear()));
     setAssignError(null);
@@ -204,11 +219,24 @@ export function useSubscriptionsPage() {
   };
 
   const handlePackageSelect = (pkg: PackageRow) => {
-    const prev = selPackage;
-    setSelPackage(pkg); setPackageDrop(false); setPackageQ(''); setCustomPrice(''); setDiscountPct('');
-    if (isYearlyPackageName(pkg.name))       setYearlyModal({ pkgId: pkg.id, pkgName: pkg.name, prevPkgId: prev?.id ?? '' });
-    else if (isMonthlyPackageName(pkg.name)) setMonthlyModal({ pkgId: pkg.id, pkgName: pkg.name, prevPkgId: prev?.id ?? '' });
-    else if (isHourlyPackageName(pkg.name))  { setAssignStartsOn(assignStartsOn || isoToDisplayDate(todayLocalISODate())); setAssignEndsOn(''); setAssignPeriodMode('range'); }
+    setSelPackage(pkg);
+    setPackageDrop(false);
+    setPackageQ('');
+    setCustomPrice('');
+    setDiscountPct('');
+
+    if (isYearlyPackageName(pkg.name)) {
+      // Lock dates from the package — displayed as read-only in the modal
+      setAssignStartsOn(pkg.starts_on ? isoToDisplayDate(pkg.starts_on) : '');
+      setAssignEndsOn(pkg.ends_on ? isoToDisplayDate(pkg.ends_on) : '');
+      setAssignPeriodMode('range');
+    } else if (isMonthlyPackageName(pkg.name)) {
+      setAssignPeriodMode('month');
+    } else if (isHourlyPackageName(pkg.name)) {
+      setAssignStartsOn(assignStartsOn || isoToDisplayDate(todayLocalISODate()));
+      setAssignEndsOn('');
+      setAssignPeriodMode('range');
+    }
   };
 
   const submitAssign = async () => {
@@ -216,13 +244,16 @@ export function useSubscriptionsPage() {
     if (!selStudent) { setAssignError('Επίλεξε μαθητή.'); return; }
     if (!selPackage) { setAssignError('Επίλεξε πακέτο.'); return; }
     const pkg = selPackage;
-    const yearly = isYearlyPackageName(pkg.name), monthly = isMonthlyPackageName(pkg.name), hourly = isHourlyPackageName(pkg.name);
+    const yearly  = isYearlyPackageName(pkg.name);
+    const monthly = isMonthlyPackageName(pkg.name);
+    const hourly  = isHourlyPackageName(pkg.name);
     let startsISO: string | null = null, endsISO: string | null = null;
+
     if (yearly) {
-      const s = displayToISODate(assignStartsOn), e = displayToISODate(assignEndsOn);
-      if (!s || !e) { setAssignError('Βάλε έγκυρη έναρξη και λήξη.'); return; }
-      if (new Date(s) > new Date(e)) { setAssignError('Η έναρξη δεν μπορεί να είναι μετά τη λήξη.'); return; }
-      startsISO = s; endsISO = e;
+      // Always use the package's stored dates
+      startsISO = pkg.starts_on ?? null;
+      endsISO   = pkg.ends_on   ?? null;
+      if (!startsISO || !endsISO) { setAssignError('Το ετήσιο πακέτο δεν έχει ορισμένο διάστημα. Συμπλήρωσέ το πρώτα στη σελίδα Πακέτων.'); return; }
     } else if (monthly) {
       if (assignPeriodMode === 'range') {
         const s = displayToISODate(assignStartsOn), e = displayToISODate(assignEndsOn);
@@ -236,6 +267,7 @@ export function useSubscriptionsPage() {
     } else if (hourly) {
       startsISO = displayToISODate(assignStartsOn) ?? todayLocalISODate(); endsISO = null;
     }
+
     setSaving(true); setAssignError(null);
     const { error } = await supabase.from('student_subscriptions').insert({
       school_id: schoolId, student_id: selStudent.id, package_id: pkg.id,
@@ -248,7 +280,13 @@ export function useSubscriptionsPage() {
 
   const assignPeriodDisplay = (): string | null => {
     if (!selPackage) return null;
-    if (isYearlyPackageName(selPackage.name) || isMonthlyPackageName(selPackage.name)) {
+    if (isYearlyPackageName(selPackage.name)) {
+      const s = selPackage.starts_on ? isoToDisplayDate(selPackage.starts_on) : '';
+      const e = selPackage.ends_on   ? isoToDisplayDate(selPackage.ends_on)   : '';
+      if (s && e) return `${s} – ${e}`;
+      return null;
+    }
+    if (isMonthlyPackageName(selPackage.name)) {
       if (assignPeriodMode === 'range' && assignStartsOn && assignEndsOn) return `${assignStartsOn} – ${assignEndsOn}`;
       if (assignPeriodMode === 'month' && assignMonthNum && assignYear) return `${monthLabel(assignMonthNum)} ${assignYear}`;
     }
@@ -258,29 +296,30 @@ export function useSubscriptionsPage() {
 
   return {
     isDark, schoolId,
-    // Feedback
     error, setError, info, setInfo,
-    // List
     loading, search, setSearch, page, setPage, pageCount, totalCount, rows,
     showingFrom, showingTo, packages, allStudents, packageById,
-    // Payment modal
     paymentModal, setPaymentModal, paymentInput, setPaymentInput,
     payingLoading, pmPaid, pmBilled, pmBalance, pmHistoryTotal,
     openPaymentModal, submitPayment,
-    // Delete
     deleteTarget, setDeleteTarget, deleting, confirmDelete,
-    // Assign/Renew
     assignOpen, setAssignOpen, isRenew, saving, assignError, setAssignError,
     selStudent, setSelStudent, selPackage, setSelPackage,
-    customPrice, setCustomPrice, discountPct, setDiscountPct,
+    customPrice, setCustomPrice, discountPct, setDiscountPct, discountMode, setDiscountMode,
     studentQ, setStudentQ, packageQ, setPackageQ,
     studentDrop, setStudentDrop, packageDrop, setPackageDrop,
     assignStartsOn, setAssignStartsOn, assignEndsOn, setAssignEndsOn,
     assignPeriodMode, setAssignPeriodMode,
     assignMonthNum, setAssignMonthNum, assignYear, setAssignYear,
-    yearlyModal, setYearlyModal, monthlyModal, setMonthlyModal,
     monthOptions, yearOptions, monthLabel, assignFinalPrice,
     filtStudents, filtPackages,
     openAssign, openRenew, handlePackageSelect, submitAssign, assignPeriodDisplay,
   };
+}
+
+function displayToISODate(display: string): string | null {
+  if (!display) return null;
+  const [d, m, y] = display.split('/');
+  if (!d || !m || !y) return null;
+  return `${y}-${m}-${d}`;
 }

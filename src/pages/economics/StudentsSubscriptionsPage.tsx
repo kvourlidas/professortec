@@ -36,7 +36,8 @@ export default function StudentsSubscriptionsPage() {
               <input className={searchInputCls} placeholder="Αναζήτηση μαθητή..." value={p.search} onChange={e => p.setSearch(e.target.value)} />
             </div>
             <button type="button" onClick={p.openAssign}
-              className="btn-primary shrink-0 gap-2 rounded-xl px-4 py-2 font-semibold hover:brightness-110 active:scale-[0.97]">
+              className={`flex shrink-0 items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition hover:brightness-110 active:scale-[0.97] ${p.isDark ? 'text-black' : 'text-white'}`}
+              style={{ background: p.isDark ? 'var(--color-accent)' : '#2563eb' }}>
               <Plus className="h-3.5 w-3.5" />Ανάθεση
             </button>
           </div>
@@ -109,13 +110,6 @@ export default function StudentsSubscriptionsPage() {
           monthOptions={p.monthOptions}
           yearOptions={p.yearOptions}
           assignPeriodDisplay={p.assignPeriodDisplay}
-          yearlyModal={p.yearlyModal}
-          setYearlyModal={p.setYearlyModal}
-          monthlyModal={p.monthlyModal}
-          setMonthlyModal={p.setMonthlyModal}
-          packageById={p.packageById}
-          setSelPackage={p.setSelPackage}
-          setAssignPeriodModeRaw={p.setAssignPeriodMode}
           onClose={() => { p.setAssignOpen(false); p.setAssignError(null); }}
           onSubmit={p.submitAssign}
         />
