@@ -259,7 +259,8 @@ export function useSubscriptionsPage() {
     } else {
       // hourly
       setAssignStartsOn(assignStartsOn || isoToDisplayDate(todayLocalISODate()));
-      setAssignEndsOn('');
+      // For custom packages, pre-fill ends_on from the package definition if available
+      setAssignEndsOn(pkg.is_custom && pkg.ends_on ? isoToDisplayDate(pkg.ends_on) : '');
       setAssignPeriodMode('range');
     }
   };
@@ -294,7 +295,13 @@ export function useSubscriptionsPage() {
       }
     } else if (hourly) {
       startsISO = displayToISODate(assignStartsOn) ?? todayLocalISODate();
-      endsISO = null;
+      if (pkg.is_custom && assignEndsOn) {
+        const e = displayToISODate(assignEndsOn);
+        if (!e) { setAssignError('Βάλε έγκυρη ημερομηνία λήξης.'); setSaving(false); return; }
+        endsISO = e;
+      } else {
+        endsISO = null;
+      }
     }
 
     setSaving(true); setAssignError(null);
@@ -324,7 +331,10 @@ export function useSubscriptionsPage() {
       if (assignPeriodMode === 'range' && assignStartsOn && assignEndsOn) return `${assignStartsOn} – ${assignEndsOn}`;
       if (assignPeriodMode === 'month' && assignMonthNum && assignYear) return `${monthLabel(assignMonthNum)} ${assignYear}`;
     }
-    if (pt === 'hourly' && assignStartsOn) return `Από ${assignStartsOn}`;
+    if (pt === 'hourly') {
+      if (selPackage.is_custom && assignStartsOn && assignEndsOn) return `${assignStartsOn} – ${assignEndsOn}`;
+      if (assignStartsOn) return `Από ${assignStartsOn}`;
+    }
     return null;
   };
 

@@ -85,6 +85,7 @@ export function AssignRenewModal({
   const isYearly  = selPkgType === 'yearly';
   const isMonthly = selPkgType === 'monthly';
   const isHourly  = selPkgType === 'hourly';
+  const isCustom  = !!(selPackage?.is_custom);
 
   // ── Styles ────────────────────────────────────────────────────────────────
   const inputCls = isDark
@@ -362,8 +363,8 @@ export function AssignRenewModal({
                   <>
                     <label className={labelCls}>Περίοδος</label>
 
-                    {/* Hourly */}
-                    {isHourly && (
+                    {/* Hourly (non-custom) */}
+                    {isHourly && !isCustom && (
                       <div>
                         <AppDatePicker value={assignStartsOn} onChange={setAssignStartsOn} />
                         <p className={`mt-1.5 text-[10px] ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
@@ -373,8 +374,16 @@ export function AssignRenewModal({
                       </div>
                     )}
 
+                    {/* Custom package — always uses date range */}
+                    {isCustom && (
+                      <div className="flex flex-col gap-2">
+                        <AppDatePicker value={assignStartsOn} onChange={setAssignStartsOn} />
+                        <AppDatePicker value={assignEndsOn} onChange={setAssignEndsOn} />
+                      </div>
+                    )}
+
                     {/* Monthly */}
-                    {isMonthly && (
+                    {isMonthly && !isCustom && (
                       <div className="space-y-2">
                         <div className="flex gap-1.5">
                           {(['month', 'range'] as PeriodMode[]).map(m => (
@@ -404,7 +413,7 @@ export function AssignRenewModal({
                     )}
 
                     {/* Yearly — locked dates from package */}
-                    {isYearly && (
+                    {isYearly && !isCustom && (
                       <div>
                         {assignStartsOn && assignEndsOn ? (
                           <div className={lockedRowCls}>

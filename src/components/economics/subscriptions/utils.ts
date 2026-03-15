@@ -101,9 +101,13 @@ export function typeLabel(t: PackageType): string {
 }
 export function periodSummary(sub: SubscriptionRow | null): string {
   if (!sub) return '—';
-  if (!isHourlyPackageName(sub.package_name)) {
+  // If ends_on is set, always show the date range (covers custom packages)
+  if (sub.ends_on) {
     const s = isoToDisplayDate(sub.starts_on), e = isoToDisplayDate(sub.ends_on);
     return s && e ? `${s} – ${e}` : s || '—';
+  }
+  if (!isHourlyPackageName(sub.package_name)) {
+    return isoToDisplayDate(sub.starts_on) || '—';
   }
   const s = isoToDisplayDate(sub.starts_on);
   return s ? `Από ${s} · ${money(Math.abs(Number((sub as any).used_hours ?? 0)))} ώρες` : '—';

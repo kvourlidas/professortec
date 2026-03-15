@@ -26,7 +26,10 @@ export function SubscriptionTableRow({ row, isDark, packageById, onPayment, onRe
   const billed     = isHourly ? Math.abs(billedRaw) : billedRaw;
   const balance    = isHourly ? Math.max(0, billed - paid) : Number(row.balance ?? 0);
   const dispPrice  = isHourly ? Number(sub.price ?? 0) : Number(sub.price ?? billed);
-  const isExpired  = sub.ends_on ? new Date(sub.ends_on) < new Date() : false;
+  const effectiveEndsOn = sub.ends_on ?? (isCustom ? (pkg?.ends_on ?? null) : null);
+  const dateExpired  = effectiveEndsOn ? new Date(effectiveEndsOn) < new Date() : false;
+  const hoursExpired = isCustom && pkg?.hours != null && Number(sub.used_hours ?? 0) >= pkg.hours;
+  const isExpired    = dateExpired || hoursExpired;
 
   const paidCls    = paid > 0 ? (isDark ? 'text-emerald-400' : 'text-emerald-600') : (isDark ? 'text-slate-400' : 'text-slate-400');
   const balanceCls = balance > 0 ? (isDark ? 'text-amber-400' : 'text-amber-600') : (isDark ? 'text-emerald-400' : 'text-emerald-600');

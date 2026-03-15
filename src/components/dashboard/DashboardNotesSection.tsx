@@ -1,5 +1,6 @@
 // src/components/dashboard/DashboardNotesSection.tsx
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabaseClient';
 import { Palette, StickyNote, ChevronLeft, ChevronRight, Loader2, AlertTriangle, Undo2 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
@@ -39,14 +40,26 @@ export default function DashboardNotesSection({ schoolId }: DashboardNotesSectio
 
   const [paletteOpen, setPaletteOpen] = useState(false);
   const paletteWrapRef = useRef<HTMLDivElement | null>(null);
+  const palettePortalRef = useRef<HTMLDivElement | null>(null);
+  const paletteButtonRef = useRef<HTMLButtonElement | null>(null);
+  const [palettePos, setPalettePos] = useState<{ bottom: number; left: number } | null>(null);
+
   const [notePaletteOpenId, setNotePaletteOpenId] = useState<string | null>(null);
   const notePaletteWrapRef = useRef<HTMLDivElement | null>(null);
+  const notePalettePortalRef = useRef<HTMLDivElement | null>(null);
+  const [notePalettePos, setNotePalettePos] = useState<{ bottom: number; left: number } | null>(null);
 
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
       const target = e.target as Node;
-      if (paletteWrapRef.current && !paletteWrapRef.current.contains(target)) setPaletteOpen(false);
-      if (notePaletteWrapRef.current && !notePaletteWrapRef.current.contains(target)) setNotePaletteOpenId(null);
+      if (
+        paletteWrapRef.current && !paletteWrapRef.current.contains(target) &&
+        (!palettePortalRef.current || !palettePortalRef.current.contains(target))
+      ) setPaletteOpen(false);
+      if (
+        notePaletteWrapRef.current && !notePaletteWrapRef.current.contains(target) &&
+        (!notePalettePortalRef.current || !notePalettePortalRef.current.contains(target))
+      ) setNotePaletteOpenId(null);
     };
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { setPaletteOpen(false); setNotePaletteOpenId(null); } };
     window.addEventListener('mousedown', onDown);
@@ -173,13 +186,13 @@ export default function DashboardNotesSection({ schoolId }: DashboardNotesSectio
         </span>
       </div>
 
-      {/* Card — no overflow-hidden so palette popup is never clipped */}
-      <div className={`rounded-2xl border shadow-2xl backdrop-blur-md ring-1 ring-inset ${
+      {/* Card */}
+      <div className={`overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-md ring-1 ring-inset ${
         isDark
           ? 'border-slate-700/50 bg-slate-950/40 ring-white/[0.04]'
           : 'border-slate-200 bg-white/80 ring-black/[0.02]'
       }`}>
-        <div className="h-0.5 w-full rounded-t-2xl" style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 30%, transparent))' }} />
+        <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 30%, transparent))' }} />
 
         {/* Add note form */}
         <div className="p-4">
@@ -198,7 +211,13 @@ export default function DashboardNotesSection({ schoolId }: DashboardNotesSectio
           <div className="mt-2.5 flex flex-wrap items-center gap-2">
             {/* Color picker */}
             <div ref={paletteWrapRef} className="relative">
-              <button type="button" onClick={() => setPaletteOpen((v) => !v)}
+              <button ref={paletteButtonRef} type="button" onClick={() => {
+                if (paletteButtonRef.current) {
+                  const r = paletteButtonRef.current.getBoundingClientRect();
+                  setPalettePos({ bottom: window.innerHeight - r.top + 8, left: r.left });
+                }
+                setPaletteOpen((v) => !v);
+              }}
                 className={`inline-flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-[11px] transition ${
                   isDark
                     ? 'border-slate-700/60 bg-slate-800/50 text-slate-300 hover:border-slate-600 hover:bg-slate-700/60'
@@ -209,12 +228,13 @@ export default function DashboardNotesSection({ schoolId }: DashboardNotesSectio
                 <span>Χρώμα</span>
                 <span className="h-3 w-3 rounded-full border border-white/10" style={{ backgroundColor: noteColor || DEFAULT_NOTE_COLOR }} />
               </button>
-              {paletteOpen && (
-                <div className="absolute left-0 bottom-full z-50 mb-2">
-                  <ColorPalette currentColor={noteColor} onSelect={(c) => { setNoteColor(c); setPaletteOpen(false); }} onReset={() => { setNoteColor(DEFAULT_NOTE_COLOR); setPaletteOpen(false); }} />
-                </div>
-              )}
             </div>
+            {paletteOpen && palettePos && createPortal(
+              <div ref={palettePortalRef} style={{ position: 'fixed', bottom: palettePos.bottom, left: palettePos.left, zIndex: 9999 }}>
+                <ColorPalette currentColor={noteColor} onSelect={(c) => { setNoteColor(c); setPaletteOpen(false); }} onReset={() => { setNoteColor(DEFAULT_NOTE_COLOR); setPaletteOpen(false); }} />
+              </div>,
+              document.body
+            )}
 
             {/* Urgent toggle */}
             <button type="button" onClick={() => setNoteUrgent((v) => !v)}
@@ -281,7 +301,11 @@ export default function DashboardNotesSection({ schoolId }: DashboardNotesSectio
                           </button>
                           <div ref={paletteOpenForThis ? notePaletteWrapRef : null} className="relative">
                             <button type="button"
-                              onClick={() => setNotePaletteOpenId((curr) => curr === note.id ? null : note.id)}
+                              onClick={(e) => {
+                                const r = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+                                setNotePalettePos({ bottom: window.innerHeight - r.top + 8, left: r.left });
+                                setNotePaletteOpenId((curr) => curr === note.id ? null : note.id);
+                              }}
                               className={`inline-flex h-6 w-6 items-center justify-center rounded-lg border transition ${
                                 isDark
                                   ? 'border-slate-700/60 bg-slate-800/50 text-slate-400 hover:border-slate-600 hover:text-slate-200'
@@ -290,12 +314,13 @@ export default function DashboardNotesSection({ schoolId }: DashboardNotesSectio
                               title="Αλλαγή χρώματος" aria-haspopup="dialog" aria-expanded={paletteOpenForThis}>
                               <Palette className="h-3 w-3" />
                             </button>
-                            {paletteOpenForThis && (
-                              <div className="absolute left-0 bottom-full z-50 mb-2">
-                                <ColorPalette currentColor={note.color} onSelect={(c) => { handleChangeNoteColor(note.id, c); setNotePaletteOpenId(null); }} />
-                              </div>
-                            )}
                           </div>
+                          {paletteOpenForThis && notePalettePos && createPortal(
+                            <div ref={notePalettePortalRef} style={{ position: 'fixed', bottom: notePalettePos.bottom, left: notePalettePos.left, zIndex: 9999 }}>
+                              <ColorPalette currentColor={note.color} onSelect={(c) => { handleChangeNoteColor(note.id, c); setNotePaletteOpenId(null); }} />
+                            </div>,
+                            document.body
+                          )}
                           <button type="button" onClick={() => handleDeleteNote(note.id)}
                             className={`ml-auto rounded-lg border border-transparent px-2 py-0.5 text-[10px] opacity-0 transition group-hover:opacity-100 ${
                               isDark
