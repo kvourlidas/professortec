@@ -56,6 +56,14 @@ export function monthKeyToRange(monthKey: string): { startISO: string; endISO: s
   const end = new Date(y, m, 0);
   return { startISO: `${y}-${pad2(m)}-01`, endISO: `${y}-${pad2(m)}-${pad2(end.getDate())}` };
 }
+export function formatDateTime(iso: string | null | undefined): string {
+  const v = (iso ?? '').trim();
+  if (!v) return '—';
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return v;
+  return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+
 export function normalizeText(value: string | null | undefined): string {
   if (!value) return '';
   return value.toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();

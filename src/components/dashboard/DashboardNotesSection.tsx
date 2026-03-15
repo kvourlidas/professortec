@@ -115,13 +115,12 @@ export default function DashboardNotesSection({ schoolId }: DashboardNotesSectio
     if (error) { console.error(error); setNotes(prev); }
   };
 
+  // overflow-hidden added so rainbow line stays inside rounded corners
   const ColorPalette = ({ onSelect, onReset, currentColor }: { onSelect: (c: string) => void; onReset?: () => void; currentColor?: string }) => (
-    <div className={`rounded-2xl border shadow-[0_8px_32px_rgba(0,0,0,0.35)] backdrop-blur-2xl ${
+    <div className={`rounded-2xl border shadow-[0_8px_32px_rgba(0,0,0,0.35)] backdrop-blur-2xl overflow-hidden ${
       isDark ? 'border-white/10 bg-slate-900/95' : 'border-slate-200 bg-white/95'
     }`} style={{ width: 216 }}>
-      {/* Gradient accent top strip */}
-      <div className="h-0.5 w-full rounded-t-2xl" style={{ background: 'linear-gradient(90deg, #6366f1, #f43f5e, #f97316, #a855f7)' }} />
-      {/* Header */}
+      <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, #6366f1, #f43f5e, #f97316, #a855f7)' }} />
       <div className="flex items-center justify-between px-4 pt-3 pb-2">
         <span className={`text-[9px] font-bold uppercase tracking-[0.15em] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Χρώμα</span>
         {onReset && (
@@ -131,7 +130,6 @@ export default function DashboardNotesSection({ schoolId }: DashboardNotesSectio
           </button>
         )}
       </div>
-      {/* 4×2 grid */}
       <div className="grid grid-cols-4 gap-2.5 px-4 pb-4">
         {NOTE_COLORS.map((c) => {
           const isActive = currentColor === c.value;
@@ -164,7 +162,7 @@ export default function DashboardNotesSection({ schoolId }: DashboardNotesSectio
         <div className="flex items-center gap-3">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
             style={{ background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 60%, transparent))'}}>
-            <StickyNote className="h-4 w-4" style= {{ color: 'var(--color-input-bg)'}}/>
+            <StickyNote className="h-4 w-4" style={{ color: 'var(--color-input-bg)' }} />
           </div>
           <h2 className={`text-sm font-semibold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Σημειώσεις</h2>
         </div>
@@ -175,8 +173,8 @@ export default function DashboardNotesSection({ schoolId }: DashboardNotesSectio
         </span>
       </div>
 
-      {/* Card */}
-      <div className={`overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-md ring-1 ring-inset ${
+      {/* Card — no overflow-hidden so palette popup is never clipped */}
+      <div className={`rounded-2xl border shadow-2xl backdrop-blur-md ring-1 ring-inset ${
         isDark
           ? 'border-slate-700/50 bg-slate-950/40 ring-white/[0.04]'
           : 'border-slate-200 bg-white/80 ring-black/[0.02]'

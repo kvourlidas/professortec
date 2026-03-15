@@ -49,6 +49,7 @@ export function useSubscriptionsPage() {
   // ── Assign / Renew modal ───────────────────────────────────────────────────
   const [assignOpen,       setAssignOpen]       = useState(false);
   const [isRenew,          setIsRenew]          = useState(false);
+  const [renewFromSubId,   setRenewFromSubId]   = useState<string | null>(null);
   const [saving,           setSaving]           = useState(false);
   const [assignError,      setAssignError]      = useState<string | null>(null);
   const [selStudent,       setSelStudent]       = useState<StudentRow | null>(null);
@@ -108,7 +109,7 @@ export function useSubscriptionsPage() {
     if (!schoolId) return;
     const { data, error } = await supabase
       .from('packages')
-      .select('id,school_id,name,price,currency,is_active,sort_order,created_at,package_type,hours,starts_on,ends_on,is_custom')
+      .select('id,school_id,name,price,currency,is_active,sort_order,created_at,package_type,hours,starts_on,ends_on,is_custom,avatar_color')
       .eq('school_id', schoolId)
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: true });
@@ -161,10 +162,31 @@ export function useSubscriptionsPage() {
         l.sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? '')); payMap.set(sid, l);
       }
     }
+    // Fetch carried debts from 'renewed' subscriptions for these students
+    const carriedDebtMap = new Map<string, { amount: number; fromName: string }>();
+    if (studentIds.length > 0) {
+      const { data: renewedData } = await supabase
+        .from('student_subscriptions_with_totals')
+        .select('student_id,package_name,paid_amount,charge_amount,price')
+        .eq('school_id', schoolId)
+        .eq('status', 'renewed')
+        .in('student_id', studentIds)
+        .order('created_at', { ascending: false });
+      for (const rs of (renewedData ?? []) as any[]) {
+        if (carriedDebtMap.has(rs.student_id)) continue; // keep most recent per student
+        const hourly = isHourlyPackageName(rs.package_name ?? '');
+        const billedRaw = Number(rs.charge_amount ?? rs.price ?? 0);
+        const billed = hourly ? Math.abs(billedRaw) : billedRaw;
+        const debt = Math.max(0, billed - Number(rs.paid_amount ?? 0));
+        if (debt > 0) carriedDebtMap.set(rs.student_id, { amount: debt, fromName: rs.package_name ?? '—' });
+      }
+    }
+
     const view: StudentViewRow[] = subs.map(sub => ({
       student_id: sub.student_id, student_name: nameById.get(sub.student_id) ?? '—',
       sub, paid: Number((sub as any).paid_amount ?? 0), balance: Number((sub as any).balance ?? 0),
       payments: payMap.get(sub.id) ?? [],
+      carriedDebt: carriedDebtMap.get(sub.student_id) ?? null,
     }));
     setRows(view);
     setLoading(false);
@@ -202,13 +224,14 @@ export function useSubscriptionsPage() {
     setSelPackage(null); setCustomPrice(''); setDiscountPct(''); setDiscountMode('pct'); setPackageQ('');
     setAssignStartsOn(isoToDisplayDate(todayLocalISODate())); setAssignEndsOn('');
     setAssignPeriodMode('month'); setAssignMonthNum(pad2(new Date().getMonth() + 1)); setAssignYear(String(new Date().getFullYear()));
-    setAssignError(null);
+    setAssignError(null); setRenewFromSubId(null);
   };
 
   const openAssign = () => { setIsRenew(false); setSelStudent(null); setStudentQ(''); resetModal(); setAssignOpen(true); };
 
   const openRenew = (row: StudentViewRow) => {
     setIsRenew(true);
+    setRenewFromSubId(row.sub?.id ?? null);
     setSelStudent({ id: row.student_id, school_id: schoolId ?? '', full_name: row.student_name });
     setStudentQ('');
     const pkg = row.sub?.package_id ? packageById.get(row.sub.package_id) ?? null : null;
@@ -281,6 +304,10 @@ export function useSubscriptionsPage() {
       status: 'active', starts_on: startsISO, ends_on: endsISO,
     });
     if (error) { setAssignError(error.message); setSaving(false); return; }
+    if (isRenew && renewFromSubId) {
+      await supabase.from('student_subscriptions').update({ status: 'renewed' }).eq('id', renewFromSubId).eq('school_id', schoolId);
+      setRenewFromSubId(null);
+    }
     setAssignOpen(false); setInfo(isRenew ? 'Ανανεώθηκε η συνδρομή.' : 'Ανατέθηκε πακέτο.'); await load(); setSaving(false);
   };
 

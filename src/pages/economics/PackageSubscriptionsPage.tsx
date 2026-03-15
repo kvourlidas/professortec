@@ -249,6 +249,7 @@ export default function PackageSubscriptionsPage() {
         price: Number(safePrice.toFixed(2)), currency: r.currency || 'EUR',
         is_active: r.is_active, sort_order: r.sort_order ?? 0,
         package_type: type, hours: safeHours,
+        period: type, // keep period in sync with package_type for the view/triggers
         starts_on: type === 'yearly' ? (displayToIso(r.starts_on) ?? null) : null,
         ends_on:   type === 'yearly' ? (displayToIso(r.ends_on)   ?? null) : null,
         avatar_color: r.avatar_color ?? AVATAR_COLORS[0].value,
@@ -290,6 +291,7 @@ export default function PackageSubscriptionsPage() {
       school_id: schoolId, name, price: Number(safePrice.toFixed(2)),
       currency: 'EUR', is_active: newActive, sort_order: nextOrder,
       package_type: type, hours: safeHours,
+      period: type, // keep period in sync so view/triggers detect package type correctly
       starts_on: type === 'yearly' ? (displayToIso(newStartsOn) ?? null) : null,
       ends_on:   type === 'yearly' ? (displayToIso(newEndsOn)   ?? null) : null,
       avatar_color: newAvatarColor,

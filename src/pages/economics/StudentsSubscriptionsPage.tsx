@@ -62,6 +62,7 @@ export default function StudentsSubscriptionsPage() {
           showingFrom={p.showingFrom}
           showingTo={p.showingTo}
           isDark={p.isDark}
+          packageById={p.packageById}
           onPageChange={p.setPage}
           onOpenAssign={p.openAssign}
           onPayment={p.openPaymentModal}

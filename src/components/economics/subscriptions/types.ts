@@ -14,6 +14,7 @@ export type PackageRow = {
   starts_on: string | null;
   ends_on: string | null;
   is_custom?: boolean | null;
+  avatar_color?: string | null;
 };
 export type PaymentRow = {
   subscription_id: string;
@@ -49,6 +50,7 @@ export type StudentViewRow = {
   paid: number;
   balance: number;
   payments: PaymentRow[];
+  carriedDebt?: { amount: number; fromName: string } | null;
 };
 export type SubModal = {
   pkgId: string;

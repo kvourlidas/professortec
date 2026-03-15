@@ -2,19 +2,22 @@ import { AlertCircle, CalendarDays, CheckCircle2, HandCoins, RefreshCw, Trash2, 
 import { CURRENCY_SYMBOL, typeColors } from './constants';
 import { TypeIcon } from './TypeIcon';
 import { isHourlyPackageName, money, packageTypeFromName, periodSummary } from './utils';
-import type { StudentViewRow } from './types';
+import type { PackageRow, StudentViewRow } from './types';
 
 interface Props {
   row: StudentViewRow;
   isDark: boolean;
+  packageById: Map<string, PackageRow>;
   onPayment: (row: StudentViewRow) => void;
   onRenew: (row: StudentViewRow) => void;
   onDelete: (row: StudentViewRow) => void;
 }
 
-export function SubscriptionTableRow({ row, isDark, onPayment, onRenew, onDelete }: Props) {
+export function SubscriptionTableRow({ row, isDark, packageById, onPayment, onRenew, onDelete }: Props) {
   const sub        = row.sub!;
   const pkgName    = sub.package_name ?? '';
+  const pkg        = sub.package_id ? packageById.get(sub.package_id) : undefined;
+  const isCustom   = !!(pkg?.is_custom && pkg?.avatar_color);
   const isHourly   = isHourlyPackageName(pkgName);
   const pkgType    = packageTypeFromName(pkgName);
   const colors     = typeColors(pkgType, isDark);
@@ -39,15 +42,32 @@ export function SubscriptionTableRow({ row, isDark, onPayment, onRenew, onDelete
 
       {/* Student */}
       <td className="px-4 py-3 align-middle">
-        <span className={`font-medium ${isDark ? 'text-slate-100' : 'text-slate-700'}`}>{row.student_name}</span>
+        <div className="flex flex-col gap-0.5">
+          <span className={`font-medium ${isDark ? 'text-slate-100' : 'text-slate-700'}`}>{row.student_name}</span>
+          {row.carriedDebt && (
+            <span className={`inline-flex items-center gap-1 text-[10px] font-medium ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
+              <AlertCircle className="h-2.5 w-2.5 shrink-0" />
+              Οφειλή {money(row.carriedDebt.amount)} € από «{row.carriedDebt.fromName}»
+            </span>
+          )}
+        </div>
       </td>
 
       {/* Package badge */}
       <td className="px-4 py-3 align-middle">
-        <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${colors.badge}`}>
-          <TypeIcon type={pkgType} className={`h-3 w-3 ${colors.icon}`} />
-          {pkgType === 'hourly' ? 'Ωριαίο' : pkgType === 'monthly' ? 'Μηνιαίο' : 'Ετήσιο'}
-        </span>
+        {isCustom ? (
+          <span
+            className="inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold"
+            style={{ background: `${pkg!.avatar_color}22`, borderColor: `${pkg!.avatar_color}55`, color: pkg!.avatar_color }}
+          >
+            {pkgName || '?'}
+          </span>
+        ) : (
+          <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${colors.badge}`}>
+            <TypeIcon type={pkgType} className={`h-3 w-3 ${colors.icon}`} />
+            {pkgType === 'hourly' ? 'Ωριαίο' : pkgType === 'monthly' ? 'Μηνιαίο' : 'Ετήσιο'}
+          </span>
+        )}
       </td>
 
       {/* Period */}

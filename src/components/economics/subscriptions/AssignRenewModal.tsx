@@ -248,10 +248,21 @@ export function AssignRenewModal({
                     onClick={() => { setPackageDrop(v => !v); setStudentDrop(false); }}>
                     {selPackage ? (
                       <>
-                        <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold ${typeColors(resolvePackageType(selPackage), isDark).badge}`}>
-                          {typeLabel(resolvePackageType(selPackage))}
-                        </span>
-                        <span className={`flex-1 truncate font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{selPackage.name}</span>
+                        {selPackage.is_custom ? (
+                          <span
+                            className="shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold"
+                            style={{ background: `${selPackage.avatar_color ?? '#6366f1'}22`, borderColor: `${selPackage.avatar_color ?? '#6366f1'}55`, color: selPackage.avatar_color ?? '#6366f1' }}
+                          >
+                            {selPackage.name}
+                          </span>
+                        ) : (
+                          <>
+                            <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold ${typeColors(resolvePackageType(selPackage), isDark).badge}`}>
+                              {typeLabel(resolvePackageType(selPackage))}
+                            </span>
+                            <span className={`flex-1 truncate font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{selPackage.name}</span>
+                          </>
+                        )}
                         <span className={`shrink-0 tabular-nums text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{money(selPackage.price)} {CURRENCY_SYMBOL}</span>
                       </>
                     ) : (
@@ -272,14 +283,24 @@ export function AssignRenewModal({
                           ? <p className={`px-3 py-3 text-xs ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>Δεν βρέθηκαν.</p>
                           : filtPackages.map(pkg => {
                             const pt = resolvePackageType(pkg);
+                            const customColor = pkg.is_custom ? (pkg.avatar_color ?? '#6366f1') : null;
                             return (
                               <div key={pkg.id} className={dropRowCls(selPackage?.id === pkg.id)}
                                 onClick={() => { onPackageSelect(pkg); setPackageDrop(false); }}>
-                                <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold ${typeColors(pt, isDark).badge}`}>
-                                  {typeLabel(pt)}
-                                </span>
+                                {customColor ? (
+                                  <span
+                                    className="shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold"
+                                    style={{ background: `${customColor}22`, borderColor: `${customColor}55`, color: customColor }}
+                                  >
+                                    {pkg.name}
+                                  </span>
+                                ) : (
+                                  <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold ${typeColors(pt, isDark).badge}`}>
+                                    {typeLabel(pt)}
+                                  </span>
+                                )}
                                 <div className="min-w-0 flex-1">
-                                  <p className={`truncate font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{pkg.name}</p>
+                                  {!customColor && <p className={`truncate font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{pkg.name}</p>}
                                   {pkg.hours && <p className={`text-[10px] ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>{pkg.hours} ώρες</p>}
                                 </div>
                                 <span className={`shrink-0 tabular-nums text-[11px] font-semibold ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
