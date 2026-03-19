@@ -9,6 +9,8 @@ import { getScrollbarStyle } from '../../components/notifications/utils';
 import { NotificationSendForm } from '../../components/notifications/NotificationSendForm';
 import { NotificationHistory } from '../../components/notifications/NotificationHistory';
 
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 export default function SendNotificationsPage() {
   const { profile } = useAuth();
   const { theme } = useTheme();
@@ -110,7 +112,6 @@ export default function SendNotificationsPage() {
 
     setLoadingSend(true);
     try {
-      // Build RPC params based on recipient mode
       const rpcParams: Record<string, any> = {
         p_title: title.trim(),
         p_body: body.trim(),
@@ -124,13 +125,10 @@ export default function SendNotificationsPage() {
             ? classes.filter(c => selectedClassIds.includes(c.id)).map(c => c.title)
             : [],
         },
+        // Always include both ID arrays so PostgREST resolves the correct overload
+        p_student_ids: recipientMode === 'students' ? selectedStudentIds : [],
+        p_class_ids:   recipientMode === 'classes'  ? selectedClassIds   : [],
       };
-
-      if (recipientMode === 'students') {
-        rpcParams.p_student_ids = selectedStudentIds;
-      } else if (recipientMode === 'classes') {
-        rpcParams.p_class_ids = selectedClassIds;
-      }
 
       const { data, error } = await supabase.rpc('send_school_notification', rpcParams);
 
@@ -146,6 +144,9 @@ export default function SendNotificationsPage() {
       setRecipientMode('all');
       setSelectedStudentIds([]);
       setSelectedClassIds([]);
+
+      // ✅ Wait briefly for the DB to finish committing before refreshing history
+      await sleep(800);
       await loadHistory();
     } catch (e: any) {
       console.error(e);

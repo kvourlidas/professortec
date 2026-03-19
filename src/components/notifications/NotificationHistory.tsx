@@ -125,8 +125,6 @@ function RecipientBadge({ n, isDark, onClick }: { n: NotificationRow; isDark: bo
   else if (mode === 'classes') { label = `${names.length} Τμήματα`; Icon = GraduationCap; }
   else { label = 'Όλοι'; Icon = Globe; }
 
-  const isClickable = mode !== 'all' || true; // always clickable for consistency
-
   return (
     <button
       type="button"
@@ -151,9 +149,14 @@ export function NotificationHistory({
   const [page, setPage] = useState(1);
   const [modalItem, setModalItem] = useState<NotificationRow | null>(null);
 
-  const pageCount = Math.max(1, Math.ceil(historyItems.length / PAGE_SIZE));
+  // ✅ Sort newest first
+  const sorted = [...historyItems].sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
+
+  const pageCount = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount);
-  const paged = historyItems.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const paged = sorted.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   const cardCls = isDark
     ? 'flex flex-col overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-2xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]'
@@ -205,7 +208,7 @@ export function NotificationHistory({
                 Ιστορικό αποστολών
               </span>
               <p className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                {historyItems.length > 0 ? `${historyItems.length} ειδοποιήσεις` : 'Τελευταίες αποστολές'}
+                {sorted.length > 0 ? `${sorted.length} ειδοποιήσεις` : 'Τελευταίες αποστολές'}
               </p>
             </div>
           </div>
@@ -233,7 +236,7 @@ export function NotificationHistory({
                 </div>
               ))}
             </div>
-          ) : historyItems.length === 0 ? (
+          ) : sorted.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
               <div className={emptyBoxCls}>
                 <Bell className={`h-5 w-5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
@@ -261,15 +264,15 @@ export function NotificationHistory({
         </div>
 
         {/* Pagination */}
-        {!historyLoading && historyItems.length > PAGE_SIZE && (
+        {!historyLoading && sorted.length > PAGE_SIZE && (
           <div className={`flex items-center justify-between border-t px-5 py-3 ${isDark ? 'border-slate-800/70 bg-slate-900/20' : 'border-slate-100 bg-slate-50/50'}`}>
             <p className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
               <span className={isDark ? 'font-medium text-slate-300' : 'font-medium text-slate-600'}>
-                {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, historyItems.length)}
+                {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, sorted.length)}
               </span>
               {' '}από{' '}
               <span className={isDark ? 'font-medium text-slate-300' : 'font-medium text-slate-600'}>
-                {historyItems.length}
+                {sorted.length}
               </span>
             </p>
             <div className="flex items-center gap-1.5">
