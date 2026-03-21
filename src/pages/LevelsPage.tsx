@@ -11,6 +11,21 @@ import LevelDeleteModal from '../components/levels/LevelDeleteModal';
 
 const PAGE_SIZE = 10;
 
+// ── Edge function helper ──────────────────────────────────────────────────────
+async function callEdgeFunction(name: string, body: Record<string, unknown>) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (!token) throw new Error('Not authenticated');
+
+  const res = await supabase.functions.invoke(name, {
+    body,
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (res.error) throw new Error(res.error.message ?? 'Edge function error');
+  return res.data;
+}
+
 export default function LevelsPage() {
   const { profile } = useAuth();
   const { theme } = useTheme();
@@ -59,6 +74,7 @@ export default function LevelsPage() {
   const openEditModal = (id: string) => { setEditingId(id); setError(null); setModalOpen(true); };
   const closeModal = () => { if (saving) return; setModalOpen(false); setEditingId(null); setSaving(false); };
 
+  // ── Create / Update via edge functions ───────────────────────────────────
   const handleSubmit = async (name: string) => {
     const trimmed = name.trim();
     if (!trimmed) return;
@@ -67,41 +83,39 @@ export default function LevelsPage() {
     setError(null);
     try {
       if (editingId == null) {
-        const { data, error } = await supabase
-          .from('levels')
-          .insert({ school_id: schoolId, name: trimmed })
-          .select('*')
-          .maybeSingle();
-        if (error || !data) { console.error(error); setError('Αποτυχία δημιουργίας επιπέδου.'); }
-        else { setLevels((prev) => [...prev, data as LevelRow]); closeModal(); }
+        const data = await callEdgeFunction('levels-create', { name: trimmed });
+        setLevels((prev) => [...prev, data.item as LevelRow]);
+        closeModal();
       } else {
-        const { data, error } = await supabase
-          .from('levels')
-          .update({ name: trimmed })
-          .eq('id', editingId)
-          .select('*')
-          .maybeSingle();
-        if (error || !data) { console.error(error); setError('Αποτυχία ενημέρωσης επιπέδου.'); }
-        else {
-          setLevels((prev) => prev.map((lvl) => (lvl.id === editingId ? (data as LevelRow) : lvl)));
-          closeModal();
-        }
+        const data = await callEdgeFunction('levels-update', { level_id: editingId, name: trimmed });
+        setLevels((prev) => prev.map((lvl) => (lvl.id === editingId ? (data.item as LevelRow) : lvl)));
+        closeModal();
       }
-    } finally { setSaving(false); }
+    } catch (err) {
+      console.error(err);
+      setError(editingId == null ? 'Αποτυχία δημιουργίας επιπέδου.' : 'Αποτυχία ενημέρωσης επιπέδου.');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  // Delete handlers
+  // ── Delete via edge function ─────────────────────────────────────────────
   const askDeleteLevel = (row: LevelRow) => { setError(null); setDeleteTarget(row); };
   const handleCancelDelete = () => { if (deleting) return; setDeleteTarget(null); };
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
     setError(null);
-    const { error } = await supabase.from('levels').delete().eq('id', deleteTarget.id);
-    setDeleting(false);
-    if (error) { console.error(error); setError('Αποτυχία διαγραφής επιπέδου.'); return; }
-    setLevels((prev) => prev.filter((lvl) => lvl.id !== deleteTarget.id));
-    setDeleteTarget(null);
+    try {
+      await callEdgeFunction('levels-delete', { level_id: deleteTarget.id });
+      setLevels((prev) => prev.filter((lvl) => lvl.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } catch (err) {
+      console.error(err);
+      setError('Αποτυχία διαγραφής επιπέδου.');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   // Filtering & pagination

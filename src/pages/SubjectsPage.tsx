@@ -13,6 +13,21 @@ import { normalizeText } from '../components/subjects/utils';
 
 const PAGE_SIZE = 10;
 
+// ── Edge function helper ──────────────────────────────────────────────────────
+async function callEdgeFunction(name: string, body: Record<string, unknown>) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (!token) throw new Error('Not authenticated');
+
+  const res = await supabase.functions.invoke(name, {
+    body,
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (res.error) throw new Error(res.error.message ?? 'Edge function error');
+  return res.data;
+}
+
 export default function SubjectsPage() {
   const { profile } = useAuth();
   const { theme } = useTheme();
@@ -100,43 +115,53 @@ export default function SubjectsPage() {
   const openEditModal = (row: SubjectRow) => { setError(null); setModalMode('edit'); setEditingSubject(row); setModalOpen(true); };
   const closeModal = () => { if (saving) return; setModalOpen(false); setEditingSubject(null); setModalMode('create'); };
 
+  // ── Create / Update via edge functions ───────────────────────────────────
   const handleSubmit = async (name: string, levelId: string) => {
     if (!schoolId) { setError('Το προφίλ σας δεν είναι συνδεδεμένο με σχολείο.'); return; }
     const nameTrimmed = name.trim();
     if (!nameTrimmed) return;
     if (!levelId) { setError('Παρακαλώ επιλέξτε επίπεδο.'); return; }
     setSaving(true); setError(null);
-    const payload = { school_id: schoolId, name: nameTrimmed, level_id: levelId };
 
-    if (modalMode === 'create') {
-      const { data, error } = await supabase.from('subjects').insert(payload)
-        .select('id, school_id, name, level_id, created_at').maybeSingle();
+    try {
+      if (modalMode === 'create') {
+        const data = await callEdgeFunction('subjects-create', {
+          name: nameTrimmed,
+          level_id: levelId,
+        });
+        setSubjects((prev) => [...prev, data.item as SubjectRow].sort((a, b) => a.name.localeCompare(b.name, 'el')));
+        closeModal();
+      } else if (modalMode === 'edit' && editingSubject) {
+        const data = await callEdgeFunction('subjects-update', {
+          subject_id: editingSubject.id,
+          name: nameTrimmed,
+          level_id: levelId,
+        });
+        setSubjects((prev) => prev.map((s) => (s.id === editingSubject.id ? (data.item as SubjectRow) : s)));
+        closeModal();
+      }
+    } catch (err) {
+      console.error(err);
+      setError(modalMode === 'create' ? 'Αποτυχία δημιουργίας μαθήματος.' : 'Αποτυχία ενημέρωσης μαθήματος.');
+    } finally {
       setSaving(false);
-      if (error || !data) { console.error(error); setError('Αποτυχία δημιουργίας μαθήματος.'); return; }
-      setSubjects((prev) => [...prev, data as SubjectRow].sort((a, b) => a.name.localeCompare(b.name, 'el')));
-      closeModal();
-    } else if (modalMode === 'edit' && editingSubject) {
-      const { data, error } = await supabase.from('subjects')
-        .update({ name: payload.name, level_id: payload.level_id })
-        .eq('id', editingSubject.id).eq('school_id', schoolId)
-        .select('id, school_id, name, level_id, created_at').maybeSingle();
-      setSaving(false);
-      if (error || !data) { console.error(error); setError('Αποτυχία ενημέρωσης μαθήματος.'); return; }
-      setSubjects((prev) => prev.map((s) => (s.id === editingSubject.id ? (data as SubjectRow) : s)));
-      closeModal();
-    } else { setSaving(false); }
+    }
   };
 
-  // Delete handlers
+  // ── Delete via edge function ─────────────────────────────────────────────
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true); setError(null);
-    const { error } = await supabase.from('subjects').delete()
-      .eq('id', deleteTarget.id).eq('school_id', schoolId ?? '');
-    setDeleting(false);
-    if (error) { console.error(error); setError('Αποτυχία διαγραφής μαθήματος.'); return; }
-    setSubjects((prev) => prev.filter((s) => s.id !== deleteTarget.id));
-    setDeleteTarget(null);
+    try {
+      await callEdgeFunction('subjects-delete', { subject_id: deleteTarget.id });
+      setSubjects((prev) => prev.filter((s) => s.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } catch (err) {
+      console.error(err);
+      setError('Αποτυχία διαγραφής μαθήματος.');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   // Filtering & pagination

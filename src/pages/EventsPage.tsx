@@ -18,6 +18,41 @@ import {
 
 const PAGE_SIZE = 10;
 
+// ── Date helper: DD-MM-YYYY or DD/MM/YYYY → YYYY-MM-DD ───────────────────────
+function toISODate(display: string): string | null {
+  const parts = display.split(/[-/]/);
+  if (parts.length !== 3) return null;
+  const [dd, mm, yyyy] = parts;
+  if (!dd || !mm || !yyyy) return null;
+  return `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
+}
+
+// ── Date helper: ensures date is always YYYY-MM-DD for PostgreSQL ────────────
+function normalizeEventDate(date: string): string {
+  const match = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return date;
+  const [, year, second, third] = match;
+  // If the middle part > 12 it must be the day, so format is YYYY-DD-MM → swap
+  if (parseInt(second, 10) > 12) return `${year}-${third}-${second}`;
+  // Otherwise already YYYY-MM-DD
+  return date;
+}
+
+// ── Edge function helper ──────────────────────────────────────────────────────
+async function callEdgeFunction(name: string, body: Record<string, unknown>) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (!token) throw new Error('Not authenticated');
+
+  const res = await supabase.functions.invoke(name, {
+    body,
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (res.error) throw new Error(res.error.message ?? 'Edge function error');
+  return res.data;
+}
+
 export default function EventsPage() {
   const { profile } = useAuth();
   const { theme } = useTheme();
@@ -40,7 +75,6 @@ export default function EventsPage() {
   useEffect(() => { setPage(1); }, [search]);
 
   // ── Dynamic classes ──
-
   const tableCardCls = isDark
     ? 'overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-2xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]'
     : 'overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md';
@@ -82,6 +116,7 @@ export default function EventsPage() {
     ? 'h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 pl-9 pr-3 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30 sm:w-52'
     : 'h-9 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-xs text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30 sm:w-52';
 
+  // ── Load ──
   useEffect(() => {
     if (!schoolId) { setLoading(false); setEvents([]); return; }
     const loadEvents = async () => {
@@ -104,6 +139,7 @@ export default function EventsPage() {
   };
   const closeModal = () => { setModalOpen(false); setEditingEvent(null); setSaving(false); };
 
+  // ── Create / Update via edge functions ────────────────────────────────────
   const handleSaveEvent = async (form: EventFormState) => {
     setError(null);
     if (!schoolId) { setError('Το προφίλ σας δεν είναι συνδεδεμένο με σχολείο.'); return; }
@@ -111,38 +147,55 @@ export default function EventsPage() {
     if (!form.date) { setError('Η ημερομηνία είναι υποχρεωτική.'); return; }
     if (!form.startTime || !form.endTime) { setError('Η ώρα έναρξης και λήξης είναι υποχρεωτικές.'); return; }
 
-    const payload = {
-      school_id: schoolId, name: form.name.trim(),
-      description: form.description?.trim() || null,
-      date: form.date, start_time: `${form.startTime}:00`, end_time: `${form.endTime}:00`,
-    };
     setSaving(true);
-
-    if (modalMode === 'create') {
-      const { data, error } = await supabase.from('school_events').insert(payload).select('*').maybeSingle();
+    try {
+      if (modalMode === 'create') {
+        const isoDate = normalizeEventDate(form.date);
+        const data = await callEdgeFunction('events-create', {
+          name: form.name.trim(),
+          description: form.description?.trim() || null,
+          date: isoDate,
+          start_time: `${form.startTime}:00`,
+          end_time: `${form.endTime}:00`,
+        });
+        setEvents((prev) => [data.item as SchoolEventRow, ...prev]);
+        closeModal();
+      } else {
+        if (!editingEvent) { setSaving(false); return; }
+        const isoDate = normalizeEventDate(form.date);
+        const data = await callEdgeFunction('events-update', {
+          event_id: editingEvent.id,
+          name: form.name.trim(),
+          description: form.description?.trim() || null,
+          date: isoDate,
+          start_time: `${form.startTime}:00`,
+          end_time: `${form.endTime}:00`,
+        });
+        setEvents((prev) => prev.map((ev) => ev.id === editingEvent.id ? (data.item as SchoolEventRow) : ev));
+        closeModal();
+      }
+    } catch (err) {
+      console.error(err);
+      setError(modalMode === 'create' ? 'Αποτυχία δημιουργίας event.' : 'Αποτυχία ενημέρωσης event.');
+    } finally {
       setSaving(false);
-      if (error || !data) { console.error(error); setError('Αποτυχία δημιουργίας event.'); return; }
-      setEvents((prev) => [data as SchoolEventRow, ...prev]); closeModal();
-    } else {
-      if (!editingEvent) { setSaving(false); return; }
-      const { data, error } = await supabase.from('school_events')
-        .update({ name: payload.name, description: payload.description, date: payload.date, start_time: payload.start_time, end_time: payload.end_time })
-        .eq('id', editingEvent.id).select('*').maybeSingle();
-      setSaving(false);
-      if (error || !data) { console.error(error); setError('Αποτυχία ενημέρωσης event.'); return; }
-      setEvents((prev) => prev.map((ev) => ev.id === editingEvent.id ? (data as SchoolEventRow) : ev));
-      closeModal();
     }
   };
 
+  // ── Delete via edge function ──────────────────────────────────────────────
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
     setError(null); setDeleting(true);
-    const { error } = await supabase.from('school_events').delete().eq('id', deleteTarget.id).eq('school_id', schoolId ?? '');
-    setDeleting(false);
-    if (error) { console.error(error); setError('Αποτυχία διαγραφής εκδήλωσης.'); return; }
-    setEvents((prev) => prev.filter((ev) => ev.id !== deleteTarget.id));
-    setDeleteTarget(null);
+    try {
+      await callEdgeFunction('events-delete', { event_id: deleteTarget.id });
+      setEvents((prev) => prev.filter((ev) => ev.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } catch (err) {
+      console.error(err);
+      setError('Αποτυχία διαγραφής εκδήλωσης.');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const filteredEvents = useMemo(() => {
@@ -239,7 +292,6 @@ export default function EventsPage() {
 
       {/* ── Table card ── */}
       <div className={tableCardCls}>
-
         {loading ? (
           <div className={`divide-y ${isDark ? 'divide-slate-800/60' : 'divide-slate-100'}`}>
             {[...Array(4)].map((_, i) => (

@@ -12,6 +12,21 @@ import ProgramDeleteSlotModal from '../components/program/ProgramDeleteSlotModal
 import ProgramClassesPanel from '../components/program/ProgramClassesPanel';
 import ProgramScheduleGrid from '../components/program/ProgramScheduleGrid';
 
+// ── Edge function helper ──────────────────────────────────────────────────────
+async function callEdgeFunction(name: string, body: Record<string, unknown>) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (!token) throw new Error('Not authenticated');
+
+  const res = await supabase.functions.invoke(name, {
+    body,
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (res.error) throw new Error(res.error.message ?? 'Edge function error');
+  return res.data;
+}
+
 export default function ProgramPage() {
   const { profile } = useAuth();
   const { theme } = useTheme();
@@ -43,7 +58,6 @@ export default function ProgramPage() {
   const [deletingSlot, setDeletingSlot] = useState(false);
 
   // ── Maps ──
-
   const levelNameById = useMemo(() => { const m = new Map<string, string>(); levels.forEach((lvl) => m.set(lvl.id, lvl.name)); return m; }, [levels]);
   const tutorNameById = useMemo(() => { const m = new Map<string, string>(); tutors.forEach((t) => m.set(t.id, t.full_name)); return m; }, [tutors]);
   const subjectById = useMemo(() => { const m = new Map<string, SubjectRow>(); subjects.forEach((s) => m.set(s.id, s)); return m; }, [subjects]);
@@ -77,7 +91,6 @@ export default function ProgramPage() {
   }, [programItems]);
 
   // ── Load ──
-
   useEffect(() => {
     if (!schoolId) { setLoading(false); return; }
     const load = async () => {
@@ -134,7 +147,6 @@ export default function ProgramPage() {
   }, [schoolId]);
 
   // ── Subject / tutor helpers ───────────────────────────────────────────────
-
   const getSubjectsForClass = (classId: string | null): SubjectRow[] => {
     if (!classId) return [];
     const cls = classes.find((c) => c.id === classId) ?? null;
@@ -162,7 +174,6 @@ export default function ProgramPage() {
   };
 
   // ── Add slot ──────────────────────────────────────────────────────────────
-
   const openAddSlotModal = (classId: string, day: string) => {
     const displayToday = formatDateDisplay(todayISO());
     setError(null);
@@ -187,6 +198,7 @@ export default function ProgramPage() {
   const handleAddDateChange = (field: 'startDate' | 'endDate') => (v: string) =>
     setAddForm((prev) => ({ ...prev, [field]: v }));
 
+  // ── Confirm add slot via edge function ────────────────────────────────────
   const handleConfirmAddSlot = async () => {
     if (!program) return;
     if (!addForm.classId || !addForm.day) { setError('Επιλέξτε τμήμα και ημέρα.'); return; }
@@ -202,16 +214,32 @@ export default function ProgramPage() {
     if (!startDateISO || !endDateISO) { setError('Συμπληρώστε σωστά τις ημερομηνίες (π.χ. 12/05/2025).'); return; }
     const itemsForDay = programItems.filter((i) => i.day_of_week === addForm.day && i.program_id === program.id);
     const maxPos = itemsForDay.reduce((max, i) => Math.max(max, i.position ?? 0), 0);
+
     setSavingSlot(true); setError(null);
-    const { data, error } = await supabase.from('program_items').insert({ program_id: program.id, class_id: addForm.classId, subject_id: addForm.subjectId, tutor_id: addForm.tutorId, day_of_week: addForm.day, position: maxPos + 1, start_time: start24, end_time: end24, start_date: startDateISO, end_date: endDateISO }).select('*').maybeSingle();
-    setSavingSlot(false);
-    if (error || !data) { console.error(error); setError('Αποτυχία προσθήκης τμήματος στο πρόγραμμα.'); return; }
-    setProgramItems((prev) => [...prev, data as ProgramItemRow]);
-    closeAddSlotModal();
+    try {
+      const data = await callEdgeFunction('program-create', {
+        program_id: program.id,
+        class_id: addForm.classId,
+        subject_id: addForm.subjectId,
+        tutor_id: addForm.tutorId,
+        day_of_week: addForm.day,
+        position: maxPos + 1,
+        start_time: start24,
+        end_time: end24,
+        start_date: startDateISO,
+        end_date: endDateISO,
+      });
+      setProgramItems((prev) => [...prev, data.item as ProgramItemRow]);
+      closeAddSlotModal();
+    } catch (err) {
+      console.error(err);
+      setError('Αποτυχία προσθήκης τμήματος στο πρόγραμμα.');
+    } finally {
+      setSavingSlot(false);
+    }
   };
 
   // ── Edit slot ─────────────────────────────────────────────────────────────
-
   const openEditSlotModal = (item: ProgramItemRow) => {
     const { time: startTime, period: startPeriod } = convert24To12(item.start_time);
     const { time: endTime, period: endPeriod } = convert24To12(item.end_time);
@@ -238,6 +266,7 @@ export default function ProgramPage() {
   const handleEditDateChange = (field: 'startDate' | 'endDate') => (v: string) =>
     setEditForm((prev) => prev ? { ...prev, [field]: v } : prev);
 
+  // ── Confirm edit slot via edge function ───────────────────────────────────
   const handleConfirmEditSlot = async () => {
     if (!program || !editForm) return;
     if (!editForm.classId || !editForm.day) { setError('Επιλέξτε τμήμα και ημέρα.'); return; }
@@ -249,27 +278,47 @@ export default function ProgramPage() {
     const startDateISO = parseDateDisplayToISO(editForm.startDate);
     const endDateISO = parseDateDisplayToISO(editForm.endDate);
     if (!startDateISO || !endDateISO) { setError('Συμπληρώστε σωστά τις ημερομηνίες.'); return; }
+
     setSavingEdit(true); setError(null);
-    const { data, error } = await supabase.from('program_items').update({ class_id: editForm.classId, subject_id: editForm.subjectId, tutor_id: editForm.tutorId, day_of_week: editForm.day, start_time: start24, end_time: end24, start_date: startDateISO, end_date: endDateISO }).eq('id', editForm.id).select('*').maybeSingle();
-    setSavingEdit(false);
-    if (error || !data) { console.error(error); setError('Αποτυχία ενημέρωσης τμήματος στο πρόγραμμα.'); return; }
-    setProgramItems((prev) => prev.map((i) => (i.id === editForm.id ? (data as ProgramItemRow) : i)));
-    closeEditSlotModal();
+    try {
+      const data = await callEdgeFunction('program-update', {
+        program_item_id: editForm.id,
+        class_id: editForm.classId,
+        subject_id: editForm.subjectId,
+        tutor_id: editForm.tutorId,
+        day_of_week: editForm.day,
+        start_time: start24,
+        end_time: end24,
+        start_date: startDateISO,
+        end_date: endDateISO,
+      });
+      setProgramItems((prev) => prev.map((i) => (i.id === editForm.id ? (data.item as ProgramItemRow) : i)));
+      closeEditSlotModal();
+    } catch (err) {
+      console.error(err);
+      setError('Αποτυχία ενημέρωσης τμήματος στο πρόγραμμα.');
+    } finally {
+      setSavingEdit(false);
+    }
   };
 
-  // ── Delete slot ───────────────────────────────────────────────────────────
-
+  // ── Confirm delete slot via edge function ─────────────────────────────────
   const handleConfirmDeleteSlot = async () => {
     if (!deleteSlotTarget) return;
     const id = deleteSlotTarget.id;
     const previous = programItems;
+    setDeletingSlot(true); setError(null);
+    setProgramItems((prev) => prev.filter((i) => i.id !== id));
     try {
-      setDeletingSlot(true); setError(null);
-      setProgramItems((prev) => prev.filter((i) => i.id !== id));
-      const { error } = await supabase.from('program_items').delete().eq('id', id);
-      if (error) { console.error(error); setError('Αποτυχία διαγραφής από το πρόγραμμα.'); setProgramItems(previous); return; }
+      await callEdgeFunction('program-delete', { program_item_id: id });
       setDeleteSlotTarget(null);
-    } finally { setDeletingSlot(false); }
+    } catch (err) {
+      console.error(err);
+      setError('Αποτυχία διαγραφής από το πρόγραμμα.');
+      setProgramItems(previous);
+    } finally {
+      setDeletingSlot(false);
+    }
   };
 
   const handleDropOnDay = (day: string) => {
@@ -279,14 +328,12 @@ export default function ProgramPage() {
   };
 
   // ── Computed options for open modals ──────────────────────────────────────
-
   const addSubjOptions = useMemo(() => getSubjectsForClass(addForm.classId), [addForm.classId, classSubjects, subjectById, subjects]);
   const addTutorOptions = useMemo(() => getTutorsForSubject(addForm.subjectId), [addForm.subjectId, subjectTutors, tutors]);
   const editSubjOptions = useMemo(() => getSubjectsForClass(editForm?.classId ?? null), [editForm?.classId, classSubjects, subjectById, subjects]);
   const editTutorOptions = useMemo(() => getTutorsForSubject(editForm?.subjectId ?? null), [editForm?.subjectId, subjectTutors, tutors]);
 
   // ── Render ────────────────────────────────────────────────────────────────
-
   return (
     <div className="space-y-6 px-1">
 

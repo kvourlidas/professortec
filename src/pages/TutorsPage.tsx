@@ -32,6 +32,21 @@ const COLUMNS_KEY   = 'pt_tutors_visible_columns_v1';
 const SORT_KEY      = 'pt_tutors_sort_v1';
 const PAGE_SIZE_KEY = 'pt_tutors_page_size_v1';
 
+// ── Edge function helper ──────────────────────────────────────────────────────
+async function callEdgeFunction(name: string, body: Record<string, unknown>) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (!token) throw new Error('Not authenticated');
+
+  const res = await supabase.functions.invoke(name, {
+    body,
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (res.error) throw new Error(res.error.message ?? 'Edge function error');
+  return res.data;
+}
+
 // Strips Greek accent marks so CSS uppercase doesn't produce e.g. ΟΝΟΜΑΤΕΠΏΝΥΜΟ
 function stripGreekAccents(str: string): string {
   return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -145,42 +160,63 @@ export default function TutorsPage() {
   const openEditModal = (row: TutorRow) => { setError(null); setModalMode('edit'); setEditingTutor(row); setModalOpen(true); };
   const closeModal = () => { if (saving) return; setModalOpen(false); setEditingTutor(null); setModalMode('create'); };
 
+  // ── Create / Update via edge functions ───────────────────────────────────
   const handleSubmit = async (form: TutorFormState) => {
     if (!schoolId) { setError('Το προφίλ σας δεν είναι συνδεδεμένο με σχολείο.'); return; }
     const fullNameTrimmed = form.fullName.trim();
     if (!fullNameTrimmed) return;
     setSaving(true); setError(null);
-    const payload = {
-      school_id: schoolId,
-      full_name: fullNameTrimmed,
-      date_of_birth: displayToIso(form.dateOfBirth) || null,
-      afm: form.afm.trim() || null,
-      phone: form.phone.trim() || null,
-      email: form.email.trim() || null,
-    };
-    if (modalMode === 'create') {
-      const { data, error } = await supabase.from('tutors').insert(payload).select(TUTOR_SELECT).maybeSingle();
+
+    try {
+      if (modalMode === 'create') {
+        const data = await callEdgeFunction('tutors-create', {
+          full_name: fullNameTrimmed,
+          date_of_birth: displayToIso(form.dateOfBirth) || null,
+          afm: form.afm.trim() || null,
+          phone: form.phone.trim() || null,
+          email: form.email.trim() || null,
+        });
+        setTutors((prev) => [...prev, data.item as TutorRow]);
+        closeModal();
+      } else if (modalMode === 'edit' && editingTutor) {
+        const data = await callEdgeFunction('tutors-update', {
+          tutor_id: editingTutor.id,
+          full_name: fullNameTrimmed,
+          date_of_birth: displayToIso(form.dateOfBirth) || null,
+          afm: form.afm.trim() || null,
+          phone: form.phone.trim() || null,
+          email: form.email.trim() || null,
+        });
+        setTutors((prev) => prev.map((t) => (t.id === editingTutor.id ? (data.item as TutorRow) : t)));
+        closeModal();
+      }
+    } catch (err) {
+      console.error(err);
+      setError(
+        modalMode === 'create'
+          ? 'Αποτυχία δημιουργίας καθηγητή.'
+          : 'Αποτυχία ενημέρωσης καθηγητή.',
+      );
+    } finally {
       setSaving(false);
-      if (error || !data) { console.error(error); setError('Αποτυχία δημιουργίας καθηγητή.'); return; }
-      setTutors((prev) => [...prev, data as TutorRow]); closeModal();
-    } else if (modalMode === 'edit' && editingTutor) {
-      const { data, error } = await supabase.from('tutors')
-        .update({ full_name: payload.full_name, date_of_birth: payload.date_of_birth, afm: payload.afm, phone: payload.phone, email: payload.email })
-        .eq('id', editingTutor.id).eq('school_id', schoolId).select(TUTOR_SELECT).maybeSingle();
-      setSaving(false);
-      if (error || !data) { console.error(error); setError('Αποτυχία ενημέρωσης καθηγητή.'); return; }
-      setTutors((prev) => prev.map((t) => (t.id === editingTutor.id ? (data as TutorRow) : t))); closeModal();
-    } else { setSaving(false); }
+    }
   };
 
-  // Delete handlers
+  // ── Delete via edge function ─────────────────────────────────────────────
   const handleConfirmDelete = async () => {
-    if (!deleteTarget || !schoolId) return;
+    if (!deleteTarget) return;
     setDeleting(true); setError(null);
-    const { error } = await supabase.from('tutors').delete().eq('id', deleteTarget.id).eq('school_id', schoolId);
-    setDeleting(false);
-    if (error) { console.error(error); setError('Αποτυχία διαγραφής καθηγητή.'); return; }
-    setTutors((prev) => prev.filter((t) => t.id !== deleteTarget.id)); setDeleteTarget(null);
+
+    try {
+      await callEdgeFunction('tutors-delete', { tutor_id: deleteTarget.id });
+      setTutors((prev) => prev.filter((t) => t.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } catch (err) {
+      console.error(err);
+      setError('Αποτυχία διαγραφής καθηγητή.');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   // ── Pipeline: filter → sort → paginate ──────────────────────────────────
