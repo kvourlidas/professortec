@@ -9,6 +9,21 @@ type ThreadRow = { id: string; school_id: string; student_id: string };
 type MsgRow = { id: string; body: string; sender_role: 'student' | 'school'; created_at: string };
 type UnreadRow = { student_id: string; thread_id: string; unread_count: number };
 
+// ── Edge function helper ──────────────────────────────────────────────────────
+async function callEdgeFunction(name: string, body: Record<string, unknown>) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (!token) throw new Error('Not authenticated');
+
+  const res = await supabase.functions.invoke(name, {
+    body,
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (res.error) throw new Error(res.error.message ?? 'Edge function error');
+  return res.data;
+}
+
 export default function StudentMessagesPage() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
@@ -49,7 +64,6 @@ export default function StudentMessagesPage() {
     });
   };
 
-  // Fire scroll after messages actually render
   useEffect(() => {
     if (pendingScrollRef.current && messages.length > 0) {
       pendingScrollRef.current = false;
@@ -142,6 +156,7 @@ export default function StudentMessagesPage() {
     } catch (e) { console.error('refreshChat error:', e); }
   };
 
+  // ── Send message via edge function ────────────────────────────────────────
   const sendMessage = async () => {
     const body = draft.trim();
     if (!body || !activeThread || sending) return;
@@ -151,15 +166,15 @@ export default function StudentMessagesPage() {
       if (userErr) throw userErr;
       const uid = user?.id;
       if (!uid) throw new Error('No auth user');
-      const { error } = await supabase.from('messages').insert({
+
+      await callEdgeFunction('studentmessages-create', {
         thread_id: activeThread.id,
         school_id: activeThread.school_id,
         student_id: activeThread.student_id,
-        sender_role: 'school',
         sender_user_id: uid,
         body,
       });
-      if (error) throw error;
+
       setDraft('');
       await refreshChat();
       await loadUnreadCounts();
@@ -175,7 +190,6 @@ export default function StudentMessagesPage() {
     return () => clearInterval(t);
   }, []);
 
-  // Auto-refresh chat messages every 60 seconds when a thread is open
   const activeThreadRef = useRef<ThreadRow | null>(null);
   useEffect(() => {
     activeThreadRef.current = activeThread;
@@ -184,7 +198,6 @@ export default function StudentMessagesPage() {
   useEffect(() => {
     if (!activeThread) return;
     const t = setInterval(async () => {
-      // Use the ref so the interval always sees the latest thread
       if (activeThreadRef.current) {
         await refreshChat();
       }
@@ -206,7 +219,6 @@ export default function StudentMessagesPage() {
     } catch { return ''; }
   };
 
-  // Group messages by date
   const groupedMessages = useMemo(() => {
     const groups: { date: string; msgs: MsgRow[] }[] = [];
     messages.forEach((m) => {
@@ -238,14 +250,12 @@ export default function StudentMessagesPage() {
           isDark ? 'bg-[#111827]' : 'bg-slate-50',
         ].join(' ')}>
 
-          {/* Header */}
           <div className={`border-b px-4 py-3 ${divider}`}>
             <p className={`text-[11px] font-semibold uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
               Μηνύματα
             </p>
           </div>
 
-          {/* Search */}
           <div className={`border-b px-3 py-2 ${divider}`}>
             <div className="relative">
               <Search className={`pointer-events-none absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />
@@ -263,7 +273,6 @@ export default function StudentMessagesPage() {
             </div>
           </div>
 
-          {/* Student list */}
           <div className="flex-1 overflow-y-auto py-1" style={scrollStyle}>
             {loadingStudents ? (
               <div className="flex justify-center py-10">
@@ -288,7 +297,6 @@ export default function StudentMessagesPage() {
                         : isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-white/80',
                     ].join(' ')}
                   >
-                    {/* Avatar */}
                     <div
                       className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
                       style={
@@ -300,7 +308,6 @@ export default function StudentMessagesPage() {
                       {initial}
                     </div>
 
-                    {/* Name */}
                     <span className={[
                       'flex-1 truncate text-[12px]',
                       active
@@ -310,7 +317,6 @@ export default function StudentMessagesPage() {
                       {s.full_name ?? '—'}
                     </span>
 
-                    {/* Unread badge */}
                     {unread > 0 && (
                       <span className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-blue-500 px-1 text-[9px] font-bold text-white">
                         {unread > 9 ? '9+' : unread}
@@ -326,7 +332,6 @@ export default function StudentMessagesPage() {
         {/* ── Chat panel ──────────────────────────────────────────────── */}
         <div className={`flex flex-1 flex-col ${isDark ? 'bg-[#0f172a]' : 'bg-white'}`}>
 
-          {/* Header */}
           <div className={`flex h-11 shrink-0 items-center justify-between border-b px-5 ${divider}`}>
             {activeStudent ? (
               <div className="flex items-center gap-2.5">
@@ -353,7 +358,6 @@ export default function StudentMessagesPage() {
             </button>
           </div>
 
-          {/* Messages */}
           <div className="flex-1 overflow-y-auto px-5 py-4" style={scrollStyle}>
             {!activeThread ? (
               <div className="flex h-full flex-col items-center justify-center gap-2">
@@ -377,14 +381,12 @@ export default function StudentMessagesPage() {
                 {groupedMessages.map((group) => (
                   <div key={group.date} className="flex flex-col gap-1">
 
-                    {/* Date separator */}
                     <div className="flex items-center gap-3 py-1">
                       <div className={`h-px flex-1 ${isDark ? 'bg-slate-800/80' : 'bg-slate-100'}`} />
                       <span className={`text-[10px] ${isDark ? 'text-slate-700' : 'text-slate-400'}`}>{group.date}</span>
                       <div className={`h-px flex-1 ${isDark ? 'bg-slate-800/80' : 'bg-slate-100'}`} />
                     </div>
 
-                    {/* Bubbles */}
                     {group.msgs.map((m, i) => {
                       const mine = m.sender_role === 'school';
                       const sameSenderAsPrev = i > 0 && group.msgs[i - 1].sender_role === m.sender_role;
@@ -396,7 +398,6 @@ export default function StudentMessagesPage() {
                           key={m.id}
                           className={`flex items-end gap-2 ${mine ? 'justify-end' : 'justify-start'} ${sameSenderAsPrev ? 'mt-0.5' : 'mt-2.5'}`}
                         >
-                          {/* Student avatar - left side, only on last in run */}
                           {!mine && (
                             <div className="w-6 shrink-0 mb-0.5">
                               {isLastInRun ? (
@@ -411,7 +412,6 @@ export default function StudentMessagesPage() {
                           )}
 
                           <div className="flex flex-col">
-                            {/* Time label on first bubble of a run */}
                             {!sameSenderAsPrev && (
                               <span className={`mb-1 px-1 text-[10px] ${mine ? 'text-right' : 'text-left'} ${isDark ? 'text-slate-700' : 'text-slate-400'}`}>
                                 {formatTime(m.created_at)}
@@ -432,7 +432,6 @@ export default function StudentMessagesPage() {
                             </div>
                           </div>
 
-                          {/* School avatar - right side, only on last in run */}
                           {mine && (
                             <div className="w-6 shrink-0 mb-0.5">
                               {isLastInRun ? (
@@ -450,13 +449,11 @@ export default function StudentMessagesPage() {
                     })}
                   </div>
                 ))}
-                {/* Scroll anchor */}
                 <div ref={listEndRef} />
               </div>
             )}
           </div>
 
-          {/* Composer */}
           <div className={`border-t px-4 py-3 ${divider}`}>
             <div className="flex items-end gap-2">
               <textarea

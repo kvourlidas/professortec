@@ -21,6 +21,21 @@ import { EconomicsEditExpenseModal } from '../../components/economics/analysis/E
 import { EconomicsCategoryBreakdown } from '../../components/economics/analysis/EconomicsCategoryBreakdown';
 import { EconomicsTransactionsCard } from '../../components/economics/analysis/EconomicsTransactionsCard';
 
+// ── Edge function helper ──────────────────────────────────────────────────────
+async function callEdgeFunction(name: string, body: Record<string, unknown>) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (!token) throw new Error('Not authenticated');
+
+  const res = await supabase.functions.invoke(name, {
+    body,
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (res.error) throw new Error(res.error.message ?? 'Edge function error');
+  return res.data;
+}
+
 export default function EconomicsAnalysisPage() {
   const { user, profile } = useAuth();
   const { theme } = useTheme();
@@ -41,7 +56,6 @@ export default function EconomicsAnalysisPage() {
   const [mode, setMode] = useState<Mode>('month');
   const [month, setMonth] = useState(currentMonth);
   const [year, setYear] = useState(currentYear);
-
 
   const [rangeStart, setRangeStart] = useState(startOfMonthISO(currentYear, currentMonth));
   const [rangeEnd, setRangeEnd] = useState(isoToday());
@@ -77,10 +91,24 @@ export default function EconomicsAnalysisPage() {
     return res;
   }
   async function safeStudentIncomes(start: string, end: string) {
-    let res: any = await supabase.from(STUDENT_INCOME_TABLE).select('id,school_id,amount,paid_on,notes,created_at,student_id,students(full_name)').eq('school_id', schoolId!).gte('paid_on', start).lte('paid_on', end).order('paid_on', { ascending: false }).limit(800);
-    if (res.error && hasAll(res.error, 'student_id', 'does not exist')) res = await supabase.from(STUDENT_INCOME_TABLE).select('id,school_id,amount,paid_on,notes,created_at,students(full_name)').eq('school_id', schoolId!).gte('paid_on', start).lte('paid_on', end).order('paid_on', { ascending: false }).limit(800);
-    if (res.error && hasAny(res.error, 'relationship', 'foreign key', 'schema cache')) res = await supabase.from(STUDENT_INCOME_TABLE).select('id,school_id,amount,paid_on,notes,created_at').eq('school_id', schoolId!).gte('paid_on', start).lte('paid_on', end).order('paid_on', { ascending: false }).limit(800);
-    if (res.error && hasAll(res.error, 'paid_on', 'does not exist')) res = await supabase.from(STUDENT_INCOME_TABLE).select('id,school_id,amount,notes,created_at').eq('school_id', schoolId!).gte('created_at', startOfDayTs(start)).lte('created_at', endOfDayTs(end)).order('created_at', { ascending: false }).limit(800);
+    let res: any = await supabase
+      .from(STUDENT_INCOME_TABLE)
+      .select('id, school_id, amount, paid_on, notes, created_at, subscription_id, student_subscriptions(student_id, students(full_name))')
+      .eq('school_id', schoolId!)
+      .gte('paid_on', start)
+      .lte('paid_on', end)
+      .order('paid_on', { ascending: false })
+      .limit(800);
+    if (res.error && hasAny(res.error, 'relationship', 'foreign key', 'schema cache')) {
+      res = await supabase
+        .from(STUDENT_INCOME_TABLE)
+        .select('id, school_id, amount, paid_on, notes, created_at, subscription_id')
+        .eq('school_id', schoolId!)
+        .gte('paid_on', start)
+        .lte('paid_on', end)
+        .order('paid_on', { ascending: false })
+        .limit(800);
+    }
     return res;
   }
   async function safeExtraExpenses(start: string, end: string) {
@@ -98,7 +126,7 @@ export default function EconomicsAnalysisPage() {
     const expRows = (expRes.data ?? []) as ExtraExpenseRow[];
     const mappedExtra: TxRow[] = expRows.map(r => ({ id: r.id, kind: 'expense', source: 'extra_expense', date: (r.occurred_on ?? r.created_at?.slice(0, 10) ?? isoToday()).slice(0, 10), amount: Number(r.amount) || 0, label: r.name, category: r.name, notes: r.notes ?? null }));
     const mappedTutor: TxRow[] = (tutorRes.data ?? []).map((p: any) => ({ id: p.id, kind: 'expense', source: 'tutor_payment', date: (p.paid_on ?? p.created_at ?? isoToday()).slice(0, 10), amount: Number(p.net_total) || 0, label: `Πληρωμή Καθηγητή: ${p?.tutors?.full_name ?? 'Καθηγητής'}`, category: 'Καθηγητές', notes: p.notes ?? null }));
-    const mappedStudent: TxRow[] = ((studentRes.data as any[] | null) ?? []).map((p: any) => ({ id: p.id, kind: 'income', source: 'student_subscription', date: (p.paid_on ?? p.created_at ?? isoToday()).slice(0, 10), amount: Number(p.amount) || 0, label: `Συνδρομή: ${p?.students?.full_name ?? 'Μαθητής'}`, notes: p.notes ?? null }));
+    const mappedStudent: TxRow[] = ((studentRes.data as any[] | null) ?? []).map((p: any) => ({ id: p.id, kind: 'income', source: 'student_subscription', date: (p.paid_on ?? p.created_at ?? isoToday()).slice(0, 10), amount: Number(p.amount) || 0, label: `Συνδρομή: ${p?.student_subscriptions?.students?.full_name ?? 'Μαθητής'}`, notes: p.notes ?? null }));
     return [...mappedStudent, ...mappedTutor, ...mappedExtra].sort((a, b) => a.date < b.date ? 1 : -1);
   }
 
@@ -131,16 +159,21 @@ export default function EconomicsAnalysisPage() {
   const catPageRows = useMemo(() => { const s = (catPage - 1) * PAGE_SIZE; return expenseByCategory.slice(s, s + PAGE_SIZE); }, [expenseByCategory, catPage]);
   const txPageRows = useMemo(() => { const s = (txPage - 1) * PAGE_SIZE; return txRows.slice(s, s + PAGE_SIZE); }, [txRows, txPage]);
 
+  // ── Add extra expense via edge function ───────────────────────────────────
   async function addExtraExpense() {
     if (!schoolId || !user?.id) return;
-    const name = expName.trim(); const amt = Number(expAmount) || 0;
+    const name = expName.trim();
+    const amt = Number(expAmount) || 0;
     if (!name || amt <= 0) return;
     setBusy(true); setError(null);
     try {
-      const payload: any = { school_id: schoolId, occurred_on: expDate || isoToday(), name, amount: amt, notes: expNotes.trim() || null, created_by: user.id };
-      let ins: any = await supabase.from(EXTRA_EXPENSES_TABLE).insert(payload);
-      if (ins.error && hasAll(ins.error, 'occurred_on', 'does not exist')) ins = await supabase.from(EXTRA_EXPENSES_TABLE).insert({ school_id: schoolId, name, amount: amt, notes: expNotes.trim() || null, created_by: user.id });
-      if (ins.error) throw ins.error;
+      await callEdgeFunction('economicsanalysis-create', {
+        occurred_on: expDate || isoToday(),
+        name,
+        amount: amt,
+        notes: expNotes.trim() || null,
+        created_by: user.id,
+      });
       setExpName(''); setExpAmount(0); setExpNotes(''); setExpDate(isoToday());
       await loadAll();
     } catch (e: any) { setError(e?.message ?? 'Αποτυχία προσθήκης εξόδου.'); }
@@ -154,17 +187,21 @@ export default function EconomicsAnalysisPage() {
   }
   function closeEditExpense() { if (busy) return; setEditOpen(false); setEditing(null); }
 
+  // ── Save edit via edge function ───────────────────────────────────────────
   async function saveEditExpense() {
     if (!schoolId || !user?.id || !editing) return;
-    const name = editName.trim(); const amt = Number(editAmount) || 0;
+    const name = editName.trim();
+    const amt = Number(editAmount) || 0;
     if (!name || amt <= 0) return;
     setBusy(true); setError(null);
     try {
-      const patch: any = { name, amount: amt, notes: editNotes.trim() || null };
-      if (editDate) patch.occurred_on = editDate;
-      let upd: any = await supabase.from(EXTRA_EXPENSES_TABLE).update(patch).eq('id', editing.id);
-      if (upd.error && hasAll(upd.error, 'occurred_on', 'does not exist')) { const { occurred_on: _, ...rest } = patch; upd = await supabase.from(EXTRA_EXPENSES_TABLE).update(rest).eq('id', editing.id); }
-      if (upd.error) throw upd.error;
+      await callEdgeFunction('economicsanalysis-update', {
+        expense_id: editing.id,
+        name,
+        amount: amt,
+        occurred_on: editDate || null,
+        notes: editNotes.trim() || null,
+      });
       closeEditExpense(); await loadAll();
     } catch (e: any) { setError(e?.message ?? 'Αποτυχία αποθήκευσης.'); }
     finally { setBusy(false); }
@@ -173,12 +210,12 @@ export default function EconomicsAnalysisPage() {
   function askDeleteExpense(r: ExtraExpenseRow) { setDeleting(r); setDeleteOpen(true); }
   function closeDeleteExpense() { if (busy) return; setDeleteOpen(false); setDeleting(null); }
 
+  // ── Delete via edge function ──────────────────────────────────────────────
   async function confirmDeleteExpense() {
     if (!deleting) return;
     setBusy(true); setError(null);
     try {
-      const { error: delErr } = await supabase.from(EXTRA_EXPENSES_TABLE).delete().eq('id', deleting.id);
-      if (delErr) throw delErr;
+      await callEdgeFunction('economicsanalysis-delete', { expense_id: deleting.id });
       closeDeleteExpense(); await loadAll();
     } catch (e: any) { setError(e?.message ?? 'Αποτυχία διαγραφής.'); }
     finally { setBusy(false); }

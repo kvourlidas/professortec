@@ -22,6 +22,21 @@ import {
 
 const PAGE_SIZE = 10;
 
+// ── Edge function helper ──────────────────────────────────────────────────────
+async function callEdgeFunction(name: string, body: Record<string, unknown>) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (!token) throw new Error('Not authenticated');
+
+  const res = await supabase.functions.invoke(name, {
+    body,
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (res.error) throw new Error(res.error.message ?? 'Edge function error');
+  return res.data;
+}
+
 export default function TestsPage() {
   const { profile } = useAuth();
   const { theme } = useTheme();
@@ -108,22 +123,37 @@ export default function TestsPage() {
   const openModal = () => { setError(null); setModalOpen(true); };
   const closeModal = () => { if (saving) return; setModalOpen(false); };
 
+  // ── Create via edge function ──────────────────────────────────────────────
   const handleSubmit = async (form: AddTestForm) => {
     if (!schoolId) { setError('Το προφίλ σας δεν είναι συνδεδεμένο με σχολείο.'); return; }
     if (!form.classId) { setError('Επιλέξτε τμήμα.'); return; }
     if (!form.date) { setError('Επιλέξτε ημερομηνία.'); return; }
-    const testDateISO = parseDateDisplayToISO(form.date); if (!testDateISO) { setError('Μη έγκυρη ημερομηνία.'); return; }
+    const testDateISO = parseDateDisplayToISO(form.date);
+    if (!testDateISO) { setError('Μη έγκυρη ημερομηνία.'); return; }
     if (!form.startTime || !form.endTime) { setError('Συμπληρώστε ώρες.'); return; }
-    const start24 = convert12To24(form.startTime, form.startPeriod); const end24 = convert12To24(form.endTime, form.endPeriod);
+    const start24 = convert12To24(form.startTime, form.startPeriod);
+    const end24 = convert12To24(form.endTime, form.endPeriod);
     if (!start24 || !end24) { setError('Συμπληρώστε σωστά τις ώρες.'); return; }
+
     setSaving(true); setError(null);
-    const { data, error: insertErr } = await supabase.from('tests').insert({
-      school_id: schoolId, class_id: form.classId, subject_id: form.subjectId,
-      test_date: testDateISO, start_time: start24, end_time: end24, title: form.title || null, description: null,
-    }).select('*').maybeSingle();
-    setSaving(false);
-    if (insertErr || !data) { setError('Αποτυχία δημιουργίας διαγωνίσματος.'); return; }
-    setTests((prev) => [...prev, data as TestRow]); setModalOpen(false);
+    try {
+      const data = await callEdgeFunction('tests-create', {
+        class_id: form.classId,
+        subject_id: form.subjectId,
+        test_date: testDateISO,
+        start_time: start24,
+        end_time: end24,
+        title: form.title || null,
+        description: null,
+      });
+      setTests((prev) => [...prev, data.item as TestRow]);
+      setModalOpen(false);
+    } catch (err) {
+      console.error(err);
+      setError('Αποτυχία δημιουργίας διαγωνίσματος.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Edit handlers
@@ -137,21 +167,36 @@ export default function TestsPage() {
   };
   const closeEditModal = () => { if (savingEdit) return; setEditModalOpen(false); setEditForm(null); };
 
+  // ── Update via edge function ──────────────────────────────────────────────
   const handleEditSubmit = async (form: AddTestForm) => {
     if (!schoolId || !editForm) return;
     if (!form.classId) { setError('Επιλέξτε τμήμα.'); return; }
-    const testDateISO = parseDateDisplayToISO(form.date); if (!testDateISO) { setError('Μη έγκυρη ημερομηνία.'); return; }
+    const testDateISO = parseDateDisplayToISO(form.date);
+    if (!testDateISO) { setError('Μη έγκυρη ημερομηνία.'); return; }
     if (!form.startTime || !form.endTime) { setError('Συμπληρώστε ώρες.'); return; }
-    const start24 = convert12To24(form.startTime, form.startPeriod); const end24 = convert12To24(form.endTime, form.endPeriod);
+    const start24 = convert12To24(form.startTime, form.startPeriod);
+    const end24 = convert12To24(form.endTime, form.endPeriod);
     if (!start24 || !end24) { setError('Συμπληρώστε σωστά τις ώρες.'); return; }
+
     setSavingEdit(true); setError(null);
-    const { data, error: updateErr } = await supabase.from('tests').update({
-      class_id: form.classId, subject_id: form.subjectId,
-      test_date: testDateISO, start_time: start24, end_time: end24, title: form.title || null,
-    }).eq('id', editForm.id).select('*').maybeSingle();
-    setSavingEdit(false);
-    if (updateErr || !data) { setError('Αποτυχία ενημέρωσης.'); return; }
-    setTests((prev) => prev.map((t) => (t.id === editForm.id ? (data as TestRow) : t))); closeEditModal();
+    try {
+      const data = await callEdgeFunction('tests-update', {
+        test_id: editForm.id,
+        class_id: form.classId,
+        subject_id: form.subjectId,
+        test_date: testDateISO,
+        start_time: start24,
+        end_time: end24,
+        title: form.title || null,
+      });
+      setTests((prev) => prev.map((t) => (t.id === editForm.id ? (data.item as TestRow) : t)));
+      closeEditModal();
+    } catch (err) {
+      console.error(err);
+      setError('Αποτυχία ενημέρωσης.');
+    } finally {
+      setSavingEdit(false);
+    }
   };
 
   // Delete handlers
@@ -160,11 +205,21 @@ export default function TestsPage() {
     const cls = classById.get(t.class_id); const subj = subjectById.get(t.subject_id);
     setDeleteTarget({ id: t.id, dateDisplay: formatDateDisplay(t.test_date), timeRange: t.start_time && t.end_time ? `${formatTimeDisplay(t.start_time)} – ${formatTimeDisplay(t.end_time)}` : '', classTitle: cls?.title ?? '—', subjectName: subj?.name ?? '—' });
   };
+
+  // ── Delete via edge function ──────────────────────────────────────────────
   const handleConfirmDelete = async () => {
-    if (!deleteTarget) return; setDeleting(true); setError(null);
-    const { error: deleteErr } = await supabase.from('tests').delete().eq('id', deleteTarget.id);
-    setDeleting(false); if (deleteErr) { setError('Αποτυχία διαγραφής.'); return; }
-    setTests((prev) => prev.filter((t) => t.id !== deleteTarget.id)); setDeleteTarget(null);
+    if (!deleteTarget) return;
+    setDeleting(true); setError(null);
+    try {
+      await callEdgeFunction('tests-delete', { test_id: deleteTarget.id });
+      setTests((prev) => prev.filter((t) => t.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } catch (err) {
+      console.error(err);
+      setError('Αποτυχία διαγραφής.');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   // Results modal

@@ -617,3 +617,179 @@ entrypoint = "./functions/events-delete/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/events-delete/*.html" ]
+
+[functions.holidays-create]
+enabled = true
+verify_jwt = true
+import_map = "./functions/holidays-create/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/holidays-create/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/holidays-create/*.html" ]
+
+[functions.holidays-delete]
+enabled = true
+verify_jwt = true
+import_map = "./functions/holidays-delete/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/holidays-delete/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/holidays-delete/*.html" ]
+
+[functions.tests-create]
+enabled = true
+verify_jwt = true
+import_map = "./functions/tests-create/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/tests-create/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/tests-create/*.html" ]
+
+[functions.tests-update]
+enabled = true
+verify_jwt = true
+import_map = "./functions/tests-update/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/tests-update/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/tests-update/*.html" ]
+
+[functions.tests-delete]
+enabled = true
+verify_jwt = true
+import_map = "./functions/tests-delete/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/tests-delete/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/tests-delete/*.html" ]
+
+[functions.studentmessages-create]
+enabled = true
+verify_jwt = true
+import_map = "./functions/studentmessages-create/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/studentmessages-create/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/studentmessages-create/*.html" ]
+
+[functions.packagesubscriptions-create]
+enabled = true
+verify_jwt = true
+import_map = "./functions/packagesubscriptions-create/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/packagesubscriptions-create/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/packagesubscriptions-create/*.html" ]
+
+[functions.packagesubscriptions-update]
+enabled = true
+verify_jwt = true
+import_map = "./functions/packagesubscriptions-update/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/packagesubscriptions-update/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/packagesubscriptions-update/*.html" ]
+
+[functions.packagesubscriptions-delete]
+enabled = true
+verify_jwt = true
+import_map = "./functions/packagesubscriptions-delete/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/packagesubscriptions-delete/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/packagesubscriptions-delete/*.html" ]
+
+[functions.tutorspayments-create]
+enabled = true
+verify_jwt = true
+import_map = "./functions/tutorspayments-create/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/tutorspayments-create/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/tutorspayments-create/*.html" ]
+
+[functions.tutorspayments-update]
+enabled = true
+verify_jwt = true
+import_map = "./functions/tutorspayments-update/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/tutorspayments-update/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/tutorspayments-update/*.html" ]
+
+[functions.tutorspayments-delete]
+enabled = true
+verify_jwt = true
+import_map = "./functions/tutorspayments-delete/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/tutorspayments-delete/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/tutorspayments-delete/*.html" ]
+
+[functions.economicsanalysis-create]
+enabled = true
+verify_jwt = true
+import_map = "./functions/economicsanalysis-create/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/economicsanalysis-create/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/economicsanalysis-create/*.html" ]
+
+[functions.economicsanalysis-update]
+enabled = true
+verify_jwt = true
+import_map = "./functions/economicsanalysis-update/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/economicsanalysis-update/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/economicsanalysis-update/*.html" ]
+
+[functions.economicsanalysis-delete]
+enabled = true
+verify_jwt = true
+import_map = "./functions/economicsanalysis-delete/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/economicsanalysis-delete/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/economicsanalysis-delete/*.html" ]
+
+[functions.schoolinfo-update]
+enabled = true
+verify_jwt = true
+import_map = "./functions/schoolinfo-update/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/schoolinfo-update/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/schoolinfo-update/*.html" ]

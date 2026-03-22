@@ -8,6 +8,21 @@ import { Building2, MapPin, Phone, Mail, Loader2, CheckCircle2, Pencil, X } from
 import type { SchoolForm, SchoolRow } from '../components/school-info/types';
 import { emptyForm } from '../components/school-info/types';
 
+// ── Edge function helper ──────────────────────────────────────────────────────
+async function callEdgeFunction(name: string, body: Record<string, unknown>) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (!token) throw new Error('Not authenticated');
+
+  const res = await supabase.functions.invoke(name, {
+    body,
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (res.error) throw new Error(res.error.message ?? 'Edge function error');
+  return res.data;
+}
+
 export default function SchoolInfoPage() {
   const { profile } = useAuth();
   const { theme } = useTheme();
@@ -36,9 +51,7 @@ export default function SchoolInfoPage() {
     : 'flex h-10 w-full items-center rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700';
 
   const emptyValueCls = isDark ? 'text-slate-600 italic' : 'text-slate-400 italic';
-
   const labelCls = `block mb-1.5 text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`;
-
   const iconCls = `h-3.5 w-3.5 inline-block mr-1.5 opacity-60`;
 
   useEffect(() => {
@@ -71,27 +84,29 @@ export default function SchoolInfoPage() {
     setSuccess(false);
   };
 
+  // ── Update via edge function ──────────────────────────────────────────────
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!schoolId) return;
     if (!form.name.trim()) { setError('Το όνομα σχολείου είναι υποχρεωτικό.'); return; }
     setSaving(true); setError(null); setSuccess(false);
-    const { error } = await supabase
-      .from('schools')
-      .update({
+    try {
+      await callEdgeFunction('schoolinfo-update', {
+        school_id: schoolId,
         name: form.name.trim(),
         address: form.address.trim() || null,
         phone: form.phone.trim() || null,
         email: form.email.trim() || null,
-      })
-      .eq('id', schoolId);
-    setSaving(false);
-    if (error) { console.error(error); setError('Αποτυχία αποθήκευσης. Δοκιμάστε ξανά.'); }
-    else {
+      });
       setSaved(form);
       setEditing(false);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
+    } catch (err: any) {
+      console.error(err);
+      setError('Αποτυχία αποθήκευσης. Δοκιμάστε ξανά.');
+    } finally {
+      setSaving(false);
     }
   };
 

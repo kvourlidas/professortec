@@ -78,7 +78,6 @@ function PackageAvatar({ name, color }: { name: string; color: string }) {
   );
 }
 
-// The palette from DashboardNotesSection
 function ColorPalette({ currentColor, onSelect, onReset, isDark }: {
   currentColor: string; onSelect: (c: string) => void; onReset?: () => void; isDark: boolean;
 }) {
@@ -125,6 +124,21 @@ function ColorPalette({ currentColor, onSelect, onReset, isDark }: {
   );
 }
 
+// ── Edge function helper ──────────────────────────────────────────────────────
+async function callEdgeFunction(name: string, body: Record<string, unknown>) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (!token) throw new Error('Not authenticated');
+
+  const res = await supabase.functions.invoke(name, {
+    body,
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (res.error) throw new Error(res.error.message ?? 'Edge function error');
+  return res.data;
+}
+
 export default function PackageSubscriptionsPage() {
   const { profile } = useAuth();
   const { theme }   = useTheme();
@@ -139,7 +153,6 @@ export default function PackageSubscriptionsPage() {
   const [rows,     setRows]     = useState<FormRow[] | null>(null);
   const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set());
 
-  // ── Inline new-package row state ──────────────────────────────────────────
   const [addOpen,        setAddOpen]        = useState(false);
   const [newName,        setNewName]        = useState('');
   const [newInputType,   setNewInputType]   = useState<'date_range' | 'hours'>('date_range');
@@ -154,11 +167,9 @@ export default function PackageSubscriptionsPage() {
 
   const newType: PackageType = newInputType === 'hours' ? 'hourly' : 'yearly';
 
-  // ── Delete modal ──────────────────────────────────────────────────────────
   const [deleteOpen,   setDeleteOpen]   = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
-  // ── Theme tokens ──────────────────────────────────────────────────────────
   const pageCardCls = isDark
     ? 'rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]'
     : 'rounded-2xl border border-slate-200 bg-white shadow-md';
@@ -235,32 +246,41 @@ export default function PackageSubscriptionsPage() {
     });
   };
 
+  // ── Save all via edge function ─────────────────────────────────────────────
   const saveAll = async () => {
     if (!schoolId || !rows) return;
     setSaving(true); setError(null); setInfo(null);
-    const payload = rows.map(r => {
+
+    const packages = rows.map(r => {
       const pn = Number((r.price ?? '0').trim().replace(',', '.').replace(/[^0-9.]/g, ''));
       const safePrice = Number.isFinite(pn) ? Math.max(0, pn) : 0;
       const type = (r.package_type ?? 'monthly') as PackageType;
       const hn = Number((r.hours ?? '').trim().replace(/[^0-9]/g, ''));
       const safeHours = type === 'hourly' ? (Number.isFinite(hn) ? Math.max(1, Math.floor(hn)) : 0) : null;
       return {
-        id: r.id, school_id: schoolId, name: r.name.trim(),
+        id: r.id, name: r.name.trim(),
         price: Number(safePrice.toFixed(2)), currency: r.currency || 'EUR',
         is_active: r.is_active, sort_order: r.sort_order ?? 0,
         package_type: type, hours: safeHours,
-        period: type, // keep period in sync with package_type for the view/triggers
         starts_on: type === 'yearly' ? (displayToIso(r.starts_on) ?? null) : null,
         ends_on:   type === 'yearly' ? (displayToIso(r.ends_on)   ?? null) : null,
         avatar_color: r.avatar_color ?? AVATAR_COLORS[0].value,
         is_custom: r.is_custom ?? false,
       };
     });
-    if (payload.find(p => !p.name)) { setError('Το όνομα πακέτου είναι υποχρεωτικό.'); setSaving(false); return; }
-    if (payload.find(p => p.package_type === 'hourly' && (!p.hours || p.hours <= 0))) { setError('Για ωριαίο πακέτο, οι ώρες είναι υποχρεωτικές (>= 1).'); setSaving(false); return; }
-    const { error } = await supabase.from('packages').upsert(payload, { onConflict: 'id' });
-    if (error) { setError(error.message); setSaving(false); return; }
-    setInfo('Αποθηκεύτηκε!'); await load(); setSaving(false);
+
+    if (packages.find(p => !p.name)) { setError('Το όνομα πακέτου είναι υποχρεωτικό.'); setSaving(false); return; }
+    if (packages.find(p => p.package_type === 'hourly' && (!p.hours || p.hours <= 0))) { setError('Για ωριαίο πακέτο, οι ώρες είναι υποχρεωτικές (>= 1).'); setSaving(false); return; }
+
+    try {
+      await callEdgeFunction('packagesubscriptions-update', { packages });
+      setInfo('Αποθηκεύτηκε!');
+      await load();
+    } catch (err: any) {
+      setError(err?.message ?? 'Αποτυχία αποθήκευσης.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const resetChanges = () => { if (!initial) return; setRows(initial); setError(null); setInfo(null); };
@@ -275,6 +295,7 @@ export default function PackageSubscriptionsPage() {
 
   const cancelAdd = () => { setAddOpen(false); setAddError(null); };
 
+  // ── Add package via edge function ─────────────────────────────────────────
   const addPackage = async () => {
     if (!schoolId) return;
     const name = newName.trim();
@@ -286,31 +307,48 @@ export default function PackageSubscriptionsPage() {
     const safeHours = type === 'hourly' ? (Number.isFinite(hn) ? Math.max(1, Math.floor(hn)) : 0) : null;
     if (type === 'hourly' && (!safeHours || safeHours <= 0)) { setAddError('Για ωριαίο πακέτο, βάλε ώρες (>= 1).'); return; }
     const nextOrder = rows && rows.length ? Math.max(...rows.map(r => r.sort_order ?? 0)) + 1 : 1;
+
     setSaving(true); setAddError(null);
-    const { error } = await supabase.from('packages').insert({
-      school_id: schoolId, name, price: Number(safePrice.toFixed(2)),
-      currency: 'EUR', is_active: newActive, sort_order: nextOrder,
-      package_type: type, hours: safeHours,
-      period: type, // keep period in sync so view/triggers detect package type correctly
-      starts_on: type === 'yearly' ? (displayToIso(newStartsOn) ?? null) : null,
-      ends_on:   type === 'yearly' ? (displayToIso(newEndsOn)   ?? null) : null,
-      avatar_color: newAvatarColor,
-      is_custom: true,
-    });
-    if (error) { setAddError(error.message); setSaving(false); return; }
-    setAddOpen(false); setInfo('Το πακέτο προστέθηκε.'); await load(); setSaving(false);
+    try {
+      await callEdgeFunction('packagesubscriptions-create', {
+        name,
+        price: Number(safePrice.toFixed(2)),
+        currency: 'EUR',
+        is_active: newActive,
+        sort_order: nextOrder,
+        package_type: type,
+        hours: safeHours,
+        starts_on: type === 'yearly' ? (displayToIso(newStartsOn) ?? null) : null,
+        ends_on:   type === 'yearly' ? (displayToIso(newEndsOn)   ?? null) : null,
+        avatar_color: newAvatarColor,
+        is_custom: true,
+      });
+      setAddOpen(false); setInfo('Το πακέτο προστέθηκε.');
+      await load();
+    } catch (err: any) {
+      setAddError(err?.message ?? 'Αποτυχία προσθήκης πακέτου.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const requestDelete = (id: string, name: string) => {
     setError(null); setInfo(null); setDeleteTarget({ id, name }); setDeleteOpen(true);
   };
 
+  // ── Delete package via edge function ──────────────────────────────────────
   const confirmDelete = async () => {
     if (!deleteTarget) return;
     setSaving(true); setError(null); setInfo(null);
-    const { error } = await supabase.from('packages').delete().eq('id', deleteTarget.id);
-    if (error) { setError(error.message); setSaving(false); return; }
-    setDeleteOpen(false); setDeleteTarget(null); setInfo('Διαγράφηκε.'); await load(); setSaving(false);
+    try {
+      await callEdgeFunction('packagesubscriptions-delete', { package_id: deleteTarget.id });
+      setDeleteOpen(false); setDeleteTarget(null); setInfo('Διαγράφηκε.');
+      await load();
+    } catch (err: any) {
+      setError(err?.message ?? 'Αποτυχία διαγραφής.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const tc = (t: PackageType) => isDark ? TYPE_COLORS[t] : TYPE_COLORS_LIGHT[t];
@@ -367,14 +405,12 @@ export default function PackageSubscriptionsPage() {
                 const hasDateRange = !!(r.starts_on || r.ends_on);
                 const isEditing = editingId === r.id;
 
-                // ── Custom package in edit mode: full inline form ──
                 if (r.is_custom && isEditing) {
                   const inputType: 'date_range' | 'hours' = r.package_type === 'hourly' ? 'hours' : 'date_range';
                   return (
                     <div key={r.id} className={`relative rounded-xl border-2 border-dashed overflow-hidden ${isDark ? 'border-slate-700/80 bg-slate-900/40' : 'border-slate-300 bg-slate-50/80'}`}>
                       <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: `linear-gradient(90deg, ${r.avatar_color}, ${r.avatar_color}55)` }} />
                       <div className="p-4 pt-5 space-y-4">
-                        {/* Row 1: Avatar preview + Name + Palette */}
                         <div className="flex flex-wrap items-center gap-3">
                           <PackageAvatar name={r.name} color={r.avatar_color} />
                           <input autoFocus value={r.name} onChange={e => updateRow(r.id, { name: e.target.value })}
@@ -385,7 +421,6 @@ export default function PackageSubscriptionsPage() {
                             onReset={() => updateRow(r.id, { avatar_color: AVATAR_COLORS[0].value })} />
                         </div>
 
-                        {/* Row 2: Type + inputs + Price + Active */}
                         <div className="flex flex-wrap items-center gap-3">
                           <div className="flex items-center gap-1.5">
                             <span className={`text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Τύπος</span>
@@ -429,7 +464,6 @@ export default function PackageSubscriptionsPage() {
                           </button>
                         </div>
 
-                        {/* Actions */}
                         <div className="flex items-center justify-between gap-2">
                           <button type="button" onClick={() => requestDelete(r.id, r.name)}
                             className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs transition hover:border-red-500/40 hover:text-red-400 ${isDark ? 'border-slate-700/60 bg-slate-900/30 text-slate-500' : 'border-slate-200 bg-white text-slate-400'}`}>
@@ -445,7 +479,6 @@ export default function PackageSubscriptionsPage() {
                   );
                 }
 
-                // ── All other rows (built-in, or custom read-only) ──
                 return (
                   <div key={r.id} className={pkgCardCls}>
                     <div className="absolute left-0 top-3 bottom-3 w-0.5 rounded-full" style={{
@@ -467,10 +500,8 @@ export default function PackageSubscriptionsPage() {
                         )
                       }
 
-                      {/* Name — left */}
                       <span className={`text-sm font-medium min-w-0 flex-1 ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{r.name}</span>
 
-                      {/* Right section — type info + price + edit button */}
                       <div className="ml-auto flex items-center gap-2">
                         {isEditing ? (
                           <div className="flex flex-wrap items-center gap-2">
@@ -505,7 +536,6 @@ export default function PackageSubscriptionsPage() {
                           </div>
                         )}
 
-                        {/* Edit / cancel button */}
                         {isEditing ? (
                           <button type="button" onClick={() => setEditingId(null)}
                             className={`flex h-8 w-8 items-center justify-center rounded-lg border transition ${isDark ? 'border-slate-700/60 bg-slate-900/30 text-slate-400 hover:text-slate-200' : 'border-slate-200 bg-white text-slate-500 hover:text-slate-700'}`}>
@@ -544,69 +574,35 @@ export default function PackageSubscriptionsPage() {
               {addOpen && (
                 <div className={`relative rounded-xl border-2 border-dashed overflow-hidden ${isDark ? 'border-slate-700/80 bg-slate-900/40' : 'border-slate-300 bg-slate-50/80'}`}>
                   <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: `linear-gradient(90deg, ${newAvatarColor}, ${newAvatarColor}55)` }} />
-
                   <div className="p-4 pt-5 space-y-4">
-                    {/* Row 1: Avatar preview + Name + Color picker */}
                     <div className="flex flex-wrap items-center gap-3">
-                      {/* Live avatar preview */}
                       <PackageAvatar name={newName || 'Νέο'} color={newAvatarColor} />
-
-                      {/* Name input */}
-                      <input
-                        autoFocus
-                        value={newName}
-                        onChange={e => setNewName(e.target.value)}
-                        placeholder="Όνομα πακέτου…"
-                        className={`flex-1 min-w-[160px] rounded-lg border px-3 py-1.5 text-sm font-medium outline-none transition ${isDark ? 'border-slate-700/70 bg-slate-900/60 text-slate-100 placeholder-slate-500 focus:border-[color:var(--color-accent)]/70' : 'border-slate-300 bg-white text-slate-800 placeholder-slate-400 focus:border-[color:var(--color-accent)]/70'}`}
-                      />
-
-                      {/* Inline always-visible palette */}
-                      <ColorPalette
-                        isDark={isDark}
-                        currentColor={newAvatarColor}
-                        onSelect={c => setNewAvatarColor(c)}
-                        onReset={() => setNewAvatarColor(AVATAR_COLORS[0].value)}
-                      />
+                      <input autoFocus value={newName} onChange={e => setNewName(e.target.value)} placeholder="Όνομα πακέτου…"
+                        className={`flex-1 min-w-[160px] rounded-lg border px-3 py-1.5 text-sm font-medium outline-none transition ${isDark ? 'border-slate-700/70 bg-slate-900/60 text-slate-100 placeholder-slate-500 focus:border-[color:var(--color-accent)]/70' : 'border-slate-300 bg-white text-slate-800 placeholder-slate-400 focus:border-[color:var(--color-accent)]/70'}`} />
+                      <ColorPalette isDark={isDark} currentColor={newAvatarColor} onSelect={c => setNewAvatarColor(c)} onReset={() => setNewAvatarColor(AVATAR_COLORS[0].value)} />
                     </div>
 
-                    {/* Row 2: Type + conditional inputs + Price */}
                     <div className="flex flex-wrap items-center gap-3">
-                      {/* Type */}
                       <div className="flex items-center gap-1.5">
                         <span className={`text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Τύπος</span>
                         <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: isDark ? 'rgba(51,65,85,0.7)' : '#e2e8f0' }}>
                           {(['date_range', 'hours'] as const).map(t => (
-                            <button
-                              key={t}
-                              type="button"
-                              onClick={() => setNewInputType(t)}
-                              className={`px-3 py-1.5 text-[11px] font-medium transition ${newInputType === t
-                                ? 'text-white'
-                                : isDark ? 'bg-slate-900/60 text-slate-400 hover:text-slate-200' : 'bg-white text-slate-500 hover:text-slate-700'
-                              }`}
-                              style={newInputType === t ? { background: 'var(--color-accent)' } : {}}
-                            >
+                            <button key={t} type="button" onClick={() => setNewInputType(t)}
+                              className={`px-3 py-1.5 text-[11px] font-medium transition ${newInputType === t ? 'text-white' : isDark ? 'bg-slate-900/60 text-slate-400 hover:text-slate-200' : 'bg-white text-slate-500 hover:text-slate-700'}`}
+                              style={newInputType === t ? { background: 'var(--color-accent)' } : {}}>
                               {t === 'date_range' ? 'Ημερομηνίες' : 'Ώρες'}
                             </button>
                           ))}
                         </div>
                       </div>
 
-                      {/* Hours input */}
                       {newInputType === 'hours' && (
                         <div className="flex items-center gap-1.5">
                           <span className={`text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>ΩΡ</span>
-                          <input
-                            value={newHours}
-                            onChange={e => setNewHours(e.target.value.replace(/[^0-9]/g, ''))}
-                            inputMode="numeric"
-                            className={`w-16 ${smallInputCls}`}
-                            placeholder="10"
-                          />
+                          <input value={newHours} onChange={e => setNewHours(e.target.value.replace(/[^0-9]/g, ''))} inputMode="numeric" className={`w-16 ${smallInputCls}`} placeholder="10" />
                         </div>
                       )}
 
-                      {/* Date range */}
                       {newInputType === 'date_range' && (
                         <div className="flex items-center gap-2">
                           <div className="w-36"><AppDatePicker value={newStartsOn} onChange={setNewStartsOn} /></div>
@@ -615,47 +611,32 @@ export default function PackageSubscriptionsPage() {
                         </div>
                       )}
 
-                      {/* Price */}
                       <div className="flex items-center gap-1.5">
                         <span className={`text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>€</span>
-                        <input
-                          value={newPrice}
-                          onChange={e => setNewPrice(e.target.value.replace(',', '.').replace(/[^0-9.]/g, ''))}
-                          inputMode="decimal"
-                          className={`w-24 ${smallInputCls}`}
-                          placeholder="0.00"
-                        />
+                        <input value={newPrice} onChange={e => setNewPrice(e.target.value.replace(',', '.').replace(/[^0-9.]/g, ''))} inputMode="decimal" className={`w-24 ${smallInputCls}`} placeholder="0.00" />
                       </div>
 
-                      {/* Active toggle */}
                       <button type="button" onClick={() => setNewActive(v => !v)}
                         className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold transition ${newActive ? (isDark ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : 'border-emerald-300 bg-emerald-50 text-emerald-600') : (isDark ? 'border-slate-700/60 bg-slate-900/30 text-slate-400' : 'border-slate-200 bg-white text-slate-500')}`}>
                         {newActive ? <><CheckCircle2 className="h-3 w-3" />Ενεργό</> : <><XCircle className="h-3 w-3" />Ανενεργό</>}
                       </button>
                     </div>
 
-                    {/* Error */}
-                    {addError && (
-                      <p className="text-xs text-red-400">{addError}</p>
-                    )}
+                    {addError && <p className="text-xs text-red-400">{addError}</p>}
 
-                    {/* Actions */}
                     <div className="flex items-center justify-end gap-2">
                       <button type="button" onClick={cancelAdd} disabled={saving}
                         className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs transition ${isDark ? 'border-slate-700/60 bg-slate-900/30 text-slate-400 hover:text-slate-200' : 'border-slate-200 bg-white text-slate-500 hover:text-slate-700'}`}>
                         <X className="h-3 w-3" />Ακύρωση
                       </button>
-                      <button type="button" onClick={addPackage} disabled={saving}
-                        className="btn-primary gap-2 px-4 py-1.5 text-xs disabled:opacity-60">
-                        {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
-                        Προσθήκη
+                      <button type="button" onClick={addPackage} disabled={saving} className="btn-primary gap-2 px-4 py-1.5 text-xs disabled:opacity-60">
+                        {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}Προσθήκη
                       </button>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Empty state (no rows, not adding) */}
               {(!rows || rows.length === 0) && !addOpen && (
                 <div className={`flex flex-col items-center gap-3 py-12 text-center ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                   <Package className="h-8 w-8 opacity-30" />
@@ -666,7 +647,6 @@ export default function PackageSubscriptionsPage() {
                 </div>
               )}
 
-              {/* Save / cancel footer — only show when there are existing rows with changes */}
               {rows && rows.length > 0 && (
                 <div className={`flex items-center justify-end gap-2 pt-3 border-t ${isDark ? 'border-slate-800/60' : 'border-slate-200'}`}>
                   <button type="button" onClick={resetChanges} disabled={!isDirty || saving}
@@ -675,8 +655,7 @@ export default function PackageSubscriptionsPage() {
                   </button>
                   <button type="button" onClick={saveAll} disabled={!isDirty || saving}
                     className="btn-primary gap-2 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                    {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                    Αποθήκευση
+                    {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}Αποθήκευση
                   </button>
                 </div>
               )}

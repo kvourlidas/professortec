@@ -22,6 +22,21 @@ function isoToday() { return new Date().toISOString().slice(0,10); }
 function isoDateFromTs(ts: string|null|undefined) { if (!ts) return '—'; return ts.length>=10?ts.slice(0,10):ts; }
 function getCurrentPeriod() { const d=new Date(); return {year:d.getFullYear(),month:d.getMonth()+1}; }
 
+// ── Edge function helper ──────────────────────────────────────────────────────
+async function callEdgeFunction(name: string, body: Record<string, unknown>) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (!token) throw new Error('Not authenticated');
+
+  const res = await supabase.functions.invoke(name, {
+    body,
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (res.error) throw new Error(res.error.message ?? 'Edge function error');
+  return res.data;
+}
+
 export default function TutorsPaymentsPage() {
   const { user, profile } = useAuth();
   const { theme } = useTheme();
@@ -142,11 +157,17 @@ export default function TutorsPaymentsPage() {
   useEffect(() => { loadTutorsAndProfiles(); }, [schoolId]);
   useEffect(() => { if (selectedTutorId) loadTutorDetails(selectedTutorId); }, [selectedTutorId]);
 
+  // ── Save base pay via edge function ───────────────────────────────────────
   async function saveBasePay() {
     if (!schoolId||!user?.id||!selectedTutorId) return;
     setBusy(true); setError(null);
     try {
-      const payload={school_id:schoolId,tutor_id:selectedTutorId,base_gross:Number(baseGross)||0,base_net:Number(baseNet)||0,currency:CURRENCY_CODE,updated_by:user.id,updated_at:new Date().toISOString()};
+        const net=Number(baseNet)||0, gross=Number(baseGross)||0;
+      const payload = {
+        school_id: schoolId, tutor_id: selectedTutorId,
+        base_gross: gross, base_net: net, currency: CURRENCY_CODE,
+        updated_by: user.id, updated_at: new Date().toISOString(),
+      };
       const {data,error}=await supabase.from('tutor_payment_profiles').upsert(payload,{onConflict:'school_id,tutor_id'}).select().single();
       if (error) throw error;
       setProfilesMap(prev=>({...prev,[selectedTutorId]:data as TutorPaymentProfileRow}));
@@ -154,42 +175,54 @@ export default function TutorsPaymentsPage() {
     finally { setBusy(false); }
   }
 
-  async function insertPaymentRow(args: {netAmount:number;grossAmount:number;bonusAmount:number;notes:string|null}) {
-    if (!schoolId||!user?.id||!selectedTutorId) return;
-    const net=Number(args.netAmount)||0,gross=Number(args.grossAmount)||0,bonus=Number(args.bonusAmount)||0;
-    if (net<=0&&gross<=0&&bonus<=0) throw new Error('Το ποσό πληρωμής είναι 0.');
-    const {year,month}=getCurrentPeriod();
-    const {error}=await supabase.from('tutor_payments').insert({school_id:schoolId,tutor_id:selectedTutorId,period_year:year,period_month:month,base_net:net,base_gross:gross,net_total:net,gross_total:gross,bonus_total:bonus,status:'paid',paid_on:isoToday(),notes:args.notes,created_by:user.id});
-    if (error) throw error;
-  }
-
+  // ── Record payment via edge function ──────────────────────────────────────
   async function recordPaymentToday() {
     if (!schoolId||!user?.id||!selectedTutorId) return;
     setBusy(true); setError(null);
     try {
-      const bn=Number(baseNet)||0,bg=Number(baseGross)||0;
+      const bn=Number(baseNet)||0, bg=Number(baseGross)||0;
       if (bn<=0&&bg<=0) throw new Error('Βάλε πρώτα Καθαρά/Μικτά (δεν γίνεται πληρωμή 0).');
-      await insertPaymentRow({netAmount:bn,grossAmount:bg,bonusAmount:0,notes:paymentDesc.trim()||null});
+      const {year,month}=getCurrentPeriod();
+      await callEdgeFunction('tutorspayments-create', {
+        payment: {
+          tutor_id: selectedTutorId, period_year: year, period_month: month,
+          base_net: bn, base_gross: bg, net_total: bn, gross_total: bg, bonus_total: 0,
+          paid_on: isoToday(), notes: paymentDesc.trim()||null, created_by: user.id,
+        },
+      });
       setPaymentDesc(''); await loadTutorDetails(selectedTutorId);
       requestAnimationFrame(()=>historyRef.current?.scrollIntoView({behavior:'smooth',block:'start'}));
     } catch (e: any) { setError(e?.message??'Αποτυχία καταγραφής πληρωμής.'); }
     finally { setBusy(false); }
   }
 
+  // ── Add bonus via edge function ───────────────────────────────────────────
   async function addBonus() {
     if (!schoolId||!user?.id||!selectedTutorId) return;
     if ((Number(bonusValue)||0)<=0) return;
     setBusy(true); setError(null);
     try {
       const {year,month}=getCurrentPeriod();
-      const {error:insBonusErr}=await supabase.from('tutor_payment_bonuses').insert({school_id:schoolId,tutor_id:selectedTutorId,period_year:year,period_month:month,kind:bonusKind,value:Number(bonusValue)||0,description:bonusDesc?.trim()||null,is_active:true,created_by:user.id});
-      if (insBonusErr) throw insBonusErr;
-      const defaultNet=Number(selectedProfile?.base_net??baseNet)||0,defaultGross=Number(selectedProfile?.base_gross??baseGross)||0;
-      let netBonus=0,grossBonus=0;
+      const defaultNet=Number(selectedProfile?.base_net??baseNet)||0;
+      const defaultGross=Number(selectedProfile?.base_gross??baseGross)||0;
+      let netBonus=0, grossBonus=0;
       if (bonusKind==='amount'){netBonus=Number(bonusValue)||0;grossBonus=Number(bonusValue)||0;}
       else{const pct=(Number(bonusValue)||0)/100;netBonus=defaultNet*pct;grossBonus=defaultGross*pct;}
       if (netBonus<=0&&grossBonus<=0) throw new Error('Το μπόνους βγήκε 0 (έλεγξε τη βασική αμοιβή προφίλ).');
-      await insertPaymentRow({netAmount:netBonus,grossAmount:grossBonus,bonusAmount:netBonus,notes:bonusDesc?.trim()||(bonusKind==='percent'?`Μπόνους ${money(bonusValue)}%`:`Μπόνους ${money(bonusValue)} ${CURRENCY_SYMBOL}`)});
+      const notes = bonusDesc?.trim()||(bonusKind==='percent'?`Μπόνους ${money(bonusValue)}%`:`Μπόνους ${money(bonusValue)} ${CURRENCY_SYMBOL}`);
+      await callEdgeFunction('tutorspayments-create', {
+        bonus: {
+          tutor_id: selectedTutorId, period_year: year, period_month: month,
+          kind: bonusKind, value: Number(bonusValue)||0,
+          description: bonusDesc?.trim()||null, created_by: user.id,
+        },
+        payment: {
+          tutor_id: selectedTutorId, period_year: year, period_month: month,
+          base_net: netBonus, base_gross: grossBonus,
+          net_total: netBonus, gross_total: grossBonus, bonus_total: netBonus,
+          paid_on: isoToday(), notes, created_by: user.id,
+        },
+      });
       setBonusValue(0); setBonusDesc(''); await loadTutorDetails(selectedTutorId);
       requestAnimationFrame(()=>historyRef.current?.scrollIntoView({behavior:'smooth',block:'start'}));
     } catch (e: any) { setError(e?.message??'Αποτυχία προσθήκης μπόνους.'); }
@@ -199,14 +232,20 @@ export default function TutorsPaymentsPage() {
   function openEditPayment(p: TutorPaymentRow){setEditingPayment(p);setEditNet(Number(p.net_total)||0);setEditGross(Number(p.gross_total)||0);setEditBonusTotal(Number(p.bonus_total)||0);setEditPaidOn(p.paid_on??isoDateFromTs(p.created_at));setEditNotes(p.notes??'');setEditOpen(true);}
   function closeEditPayment(){if(busy)return;setEditOpen(false);setEditingPayment(null);}
 
+  // ── Save edited payment via edge function ─────────────────────────────────
   async function saveEditedPayment(){
     if (!schoolId||!selectedTutorId||!editingPayment) return;
     setBusy(true); setError(null);
     try {
-      const net=Number(editNet)||0,gross=Number(editGross)||0,bonus=Number(editBonusTotal)||0;
+      const net=Number(editNet)||0, gross=Number(editGross)||0, bonus=Number(editBonusTotal)||0;
       if (net<=0&&gross<=0&&bonus<=0) throw new Error('Δεν γίνεται αποθήκευση με 0 ποσά.');
-      const {error}=await supabase.from('tutor_payments').update({base_net:net,base_gross:gross,net_total:net,gross_total:gross,bonus_total:bonus,status:'paid',paid_on:editPaidOn||isoToday(),notes:editNotes.trim()||null}).eq('id',editingPayment.id);
-      if (error) throw error;
+      await callEdgeFunction('tutorspayments-update', {
+        payment_id: editingPayment.id,
+        base_net: net, base_gross: gross,
+        net_total: net, gross_total: gross, bonus_total: bonus,
+        paid_on: editPaidOn||isoToday(),
+        notes: editNotes.trim()||null,
+      });
       setEditOpen(false); setEditingPayment(null); await loadTutorDetails(selectedTutorId);
     } catch (e: any) { setError(e?.message??'Αποτυχία αποθήκευσης αλλαγών.'); }
     finally { setBusy(false); }
@@ -215,12 +254,12 @@ export default function TutorsPaymentsPage() {
   function askDeletePayment(p: TutorPaymentRow){setDeletingPayment(p);setDeleteOpen(true);}
   function closeDeletePayment(){if(busy)return;setDeleteOpen(false);setDeletingPayment(null);}
 
+  // ── Delete payment via edge function ──────────────────────────────────────
   async function confirmDeletePayment(){
     if (!selectedTutorId||!deletingPayment) return;
     setBusy(true); setError(null);
     try {
-      const {error}=await supabase.from('tutor_payments').delete().eq('id',deletingPayment.id);
-      if (error) throw error;
+      await callEdgeFunction('tutorspayments-delete', { payment_id: deletingPayment.id });
       closeDeletePayment(); await loadTutorDetails(selectedTutorId);
     } catch (e: any) { setError(e?.message??'Αποτυχία διαγραφής.'); }
     finally { setBusy(false); }

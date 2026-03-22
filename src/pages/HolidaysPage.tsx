@@ -9,6 +9,21 @@ import type { HolidayRow, HolidayGroup, Mode } from '../components/holidays/type
 import { formatLocalYMD, addDays, parseYMD, formatDisplay, formatDateDisplayFromDate, parseDisplayToDate } from '../components/holidays/utils';
 import HolidayDeleteModal from '../components/holidays/HolidayDeleteModal';
 
+// ── Edge function helper ──────────────────────────────────────────────────────
+async function callEdgeFunction(name: string, body: Record<string, unknown>) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (!token) throw new Error('Not authenticated');
+
+  const res = await supabase.functions.invoke(name, {
+    body,
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (res.error) throw new Error(res.error.message ?? 'Edge function error');
+  return res.data;
+}
+
 export default function HolidaysPage() {
   const { profile } = useAuth();
   const { theme } = useTheme();
@@ -30,7 +45,6 @@ export default function HolidaysPage() {
   const [deleting, setDeleting] = useState(false);
 
   // ── Dynamic classes ──
-
   const inputCls = isDark
     ? 'h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30'
     : 'h-9 w-full rounded-lg border border-slate-300 bg-white px-3 text-xs text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30';
@@ -63,6 +77,7 @@ export default function HolidaysPage() {
 
   const labelCls = `flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`;
 
+  // ── Load (still direct read — no list edge function) ──
   const loadHolidays = useCallback(async () => {
     if (!schoolId) { setHolidays([]); return; }
     setLoading(true); setPageError(null);
@@ -74,31 +89,38 @@ export default function HolidaysPage() {
 
   useEffect(() => { loadHolidays(); }, [loadHolidays]);
 
+  // ── Add via edge function ────────────────────────────────────────────────
   const handleAdd = async () => {
     if (!schoolId) return;
     const trimmedName = name.trim() || null;
+    setSaving(true); setPageError(null);
     try {
-      setSaving(true); setPageError(null);
       if (mode === 'single') {
         if (!singleDate) return;
-        const { error } = await supabase.from('school_holidays').upsert({ school_id: schoolId, date: formatLocalYMD(singleDate), name: trimmedName }, { onConflict: 'school_id,date' });
-        if (error) throw error;
-        setSingleDate(null); setName(''); await loadHolidays();
+        await callEdgeFunction('holidays-create', {
+          rows: [{ date: formatLocalYMD(singleDate), name: trimmedName }],
+        });
+        setSingleDate(null); setName('');
       } else {
         if (!rangeStart || !rangeEnd) return;
         let start = rangeStart; let end = rangeEnd;
         if (end < start) { const tmp = start; start = end; end = tmp; }
-        const rowsToUpsert: { school_id: string; date: string; name: string | null }[] = [];
+        const rows: { date: string; name: string | null }[] = [];
         let current = new Date(start);
-        while (current <= end) { rowsToUpsert.push({ school_id: schoolId, date: formatLocalYMD(current), name: trimmedName }); current = addDays(current, 1); }
-        const { error } = await supabase.from('school_holidays').upsert(rowsToUpsert, { onConflict: 'school_id,date' });
-        if (error) throw error;
-        setRangeStart(null); setRangeEnd(null); setName(''); await loadHolidays();
+        while (current <= end) {
+          rows.push({ date: formatLocalYMD(current), name: trimmedName });
+          current = addDays(current, 1);
+        }
+        await callEdgeFunction('holidays-create', { rows });
+        setRangeStart(null); setRangeEnd(null); setName('');
       }
+      await loadHolidays();
     } catch (err: any) {
       console.error(err);
       setPageError(err?.message ? `Αποτυχία αποθήκευσης: ${err.message}` : 'Αποτυχία αποθήκευσης αργίας.');
-    } finally { setSaving(false); }
+    } finally {
+      setSaving(false);
+    }
   };
 
   const groupedHolidays = useMemo<HolidayGroup[]>(() => {
@@ -118,18 +140,25 @@ export default function HolidaysPage() {
     return result;
   }, [holidays]);
 
+  // ── Delete via edge function ─────────────────────────────────────────────
   const handleConfirmDelete = async () => {
     if (!deleteGroup) return;
-    const idsToDelete = deleteGroup.ids; const prev = holidays;
+    const idsToDelete = deleteGroup.ids;
+    const prev = holidays;
+    setDeleting(true); setPageError(null);
+    setHolidays((list) => list.filter((h) => !idsToDelete.includes(h.id)));
     try {
-      setDeleting(true); setPageError(null);
-      setHolidays((list) => list.filter((h) => !idsToDelete.includes(h.id)));
-      const { error } = await supabase.from('school_holidays').delete().in('id', idsToDelete);
-      if (error) { console.error(error); setPageError('Αποτυχία διαγραφής αργίας.'); setHolidays(prev); }
-      else { await loadHolidays(); }
+      await callEdgeFunction('holidays-delete', { ids: idsToDelete });
+      await loadHolidays();
       setDeleteGroup(null);
-    } catch (err) { console.error(err); setPageError('Αποτυχία διαγραφής αργίας.'); setHolidays(prev); setDeleteGroup(null); }
-    finally { setDeleting(false); }
+    } catch (err) {
+      console.error(err);
+      setPageError('Αποτυχία διαγραφής αργίας.');
+      setHolidays(prev);
+      setDeleteGroup(null);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const canSave = mode === 'single' ? !!singleDate : !!rangeStart && !!rangeEnd;
