@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
-import { X, ClipboardList, BookOpen, Tag, Calendar, Clock, Loader2 } from 'lucide-react';
+import { X, ClipboardList, BookOpen, Tag, Calendar, Loader2 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import AppDatePicker from '../ui/AppDatePicker';
+import TimePicker from '../ui/TimePicker';
 import type { AddTestForm, ClassRow, ClassSubjectRow, EditTestForm, SubjectRow } from './types';
 import { emptyForm } from './types';
-import { convert12To24, convert24To12, formatTimeInput, parseDateDisplayToISO } from './utils';
+import { parseDateDisplayToISO } from './utils';
 
 type TestFormModalProps = {
   open: boolean;
@@ -70,9 +71,6 @@ export default function TestFormModal({
       return { ...prev, [field]: value as any };
     });
   };
-  const handleTimeChange = (field: 'startTime' | 'endTime') => (e: ChangeEvent<HTMLInputElement>) =>
-    setForm((prev) => ({ ...prev, [field]: formatTimeInput(e.target.value) }));
-
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     await onSubmit(form);
@@ -80,15 +78,9 @@ export default function TestFormModal({
 
   // ── Styles ──
   const inputCls = isDark
-    ? 'h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30'
-    : 'h-9 w-full rounded-lg border border-slate-300 bg-white px-3 text-xs text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30';
-  const timeInputCls = isDark
-    ? 'h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 pl-3 pr-16 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30'
-    : 'h-9 w-full rounded-lg border border-slate-300 bg-white pl-3 pr-16 text-xs text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30';
-  const periodSelectCls = isDark
-    ? 'absolute inset-y-1 right-1 rounded-md border border-slate-600/60 bg-slate-800/80 px-1.5 text-[10px] text-slate-300 outline-none'
-    : 'absolute inset-y-1 right-1 rounded-md border border-slate-200 bg-slate-100 px-1.5 text-[10px] text-slate-700 outline-none';
-  const labelCls = `flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`;
+    ? 'h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 text-sm text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30'
+    : 'h-9 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30';
+  const labelCls = `flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`;
   const modalCardCls = isDark
     ? 'relative w-full max-w-md overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl'
     : 'relative w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 shadow-2xl';
@@ -110,16 +102,6 @@ export default function TestFormModal({
     </div>
   );
 
-  const TimeField = ({ label, value, onChange, period, onPeriod }: { label: string; value: string; onChange: (e: ChangeEvent<HTMLInputElement>) => void; period: 'AM' | 'PM'; onPeriod: (p: 'AM' | 'PM') => void }) => (
-    <FormField label={label} icon={<Clock className="h-3 w-3" />}>
-      <div className="relative">
-        <input type="text" inputMode="numeric" placeholder="π.χ. 08:00" value={value} onChange={onChange} className={timeInputCls} />
-        <select value={period} onChange={(e) => onPeriod(e.target.value as 'AM' | 'PM')} className={periodSelectCls}>
-          <option value="AM">AM</option><option value="PM">PM</option>
-        </select>
-      </div>
-    </FormField>
-  );
 
   const subOpts = getSubjectsForClass(form.classId);
 
@@ -168,8 +150,14 @@ export default function TestFormModal({
                 <AppDatePicker value={form.date} onChange={(v) => handleFieldChange('date')({ target: { value: v } } as any)} placeholder="π.χ. 12/05/2025" />
               </FormField>
               <div className="grid gap-3 sm:grid-cols-2">
-                <TimeField label="Ώρα έναρξης *" value={form.startTime} onChange={handleTimeChange('startTime')} period={form.startPeriod} onPeriod={(p) => handleFieldChange('startPeriod')({ target: { value: p } } as any)} />
-                <TimeField label="Ώρα λήξης *" value={form.endTime} onChange={handleTimeChange('endTime')} period={form.endPeriod} onPeriod={(p) => handleFieldChange('endPeriod')({ target: { value: p } } as any)} />
+                <div className="space-y-1.5">
+                  <label className={labelCls}>Ώρα έναρξης *</label>
+                  <TimePicker value={form.startTime} onChange={(t) => setForm((p) => ({ ...p, startTime: t }))} required />
+                </div>
+                <div className="space-y-1.5">
+                  <label className={labelCls}>Ώρα λήξης *</label>
+                  <TimePicker value={form.endTime} onChange={(t) => setForm((p) => ({ ...p, endTime: t }))} required />
+                </div>
               </div>
               <FormField label="Τίτλος (προαιρετικό)" icon={<Tag className="h-3 w-3" />}>
                 <input className={inputCls} placeholder="π.χ. Διαγώνισμα Κεφαλαίου 3" value={form.title} onChange={handleFieldChange('title')} />
@@ -189,4 +177,4 @@ export default function TestFormModal({
   );
 }
 
-export { parseDateDisplayToISO, convert12To24 };
+export { parseDateDisplayToISO };

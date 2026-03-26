@@ -263,7 +263,7 @@ function DashCard({ title, icon, isDark, onEdit, editing, accentTop, children }:
       <div className={`flex items-center justify-between px-4 py-3 border-b ${isDark ? 'border-slate-800/60' : 'border-slate-100'}`}>
         <div className="flex items-center gap-2">
           <span style={{ color: 'var(--color-accent)' }}>{icon}</span>
-          <h2 className={`text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-300' : 'text-slate-500'}`}>{title}</h2>
+          <h2 className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-300' : 'text-slate-500'}`}>{title}</h2>
         </div>
         {onEdit && !editing && (
           <button type="button" onClick={onEdit}

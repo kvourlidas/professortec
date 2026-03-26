@@ -9,7 +9,7 @@ export type TestRow = {
 };
 export type AddTestForm = {
   classId: string | null; subjectId: string | null; date: string;
-  startTime: string; startPeriod: 'AM' | 'PM'; endTime: string; endPeriod: 'AM' | 'PM'; title: string;
+  startTime: string; endTime: string; title: string;
 };
 export type EditTestForm = AddTestForm & { id: string };
 export type StudentRow = { id: string; school_id: string; full_name: string | null };
@@ -24,5 +24,5 @@ export type DeleteTarget = {
 };
 
 export const emptyForm: AddTestForm = {
-  classId: null, subjectId: null, date: '', startTime: '', startPeriod: 'PM', endTime: '', endPeriod: 'PM', title: '',
+  classId: null, subjectId: null, date: '', startTime: '', endTime: '', title: '',
 };

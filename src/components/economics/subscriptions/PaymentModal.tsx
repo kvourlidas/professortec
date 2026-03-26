@@ -31,8 +31,8 @@ export function PaymentModal({
   const dispPrice = isHourly ? Number(sub.price ?? 0) : pmBilled;
 
   const inputCls = isDark
-    ? 'rounded-lg border border-slate-700/70 bg-slate-900/60 px-2.5 py-2 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/20'
-    : 'rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/20';
+    ? 'rounded-lg border border-slate-700/70 bg-slate-900/60 px-2.5 py-2 text-sm text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/20'
+    : 'rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/20';
 
   const cancelBtnCls = isDark
     ? 'rounded-lg border border-slate-700/60 bg-slate-800/50 px-4 py-2 text-xs font-medium text-slate-200 hover:bg-slate-700/60 transition'

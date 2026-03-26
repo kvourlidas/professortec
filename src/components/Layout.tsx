@@ -33,6 +33,7 @@ export default function Layout({ children }: LayoutProps) {
   const { theme, toggleTheme } = useTheme();
   const [schoolName, setSchoolName] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [openGroup, setOpenGroup] = useState<string | null>('Μαθήματα');
   const location = useLocation();
 
@@ -54,6 +55,7 @@ export default function Layout({ children }: LayoutProps) {
       (it) => it.children?.some((ch) => ch.to && (path === ch.to || path.startsWith(ch.to + '/')))
     );
     if (match?.label) setOpenGroup(match.label);
+    setMobileOpen(false);
   }, [location.pathname]);
 
   const renderLink = (item: NavLinkItem) => {
@@ -202,11 +204,21 @@ export default function Layout({ children }: LayoutProps) {
   return (
     <div className="flex h-screen overflow-hidden">
 
+      {/* ── Mobile backdrop ── */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/50 md:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
       {/* ── Sidebar ── */}
       <aside
-        className={`hidden md:flex h-full flex-shrink-0 flex-col border-r transition-all duration-200 ${
-          sidebarCollapsed ? 'w-16' : 'w-60'
-        }`}
+        className={`fixed inset-y-0 left-0 z-40 flex h-full flex-shrink-0 flex-col border-r transition-all duration-200
+          ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
+          md:relative md:translate-x-0
+          ${sidebarCollapsed ? 'w-16' : 'w-60'}
+        `}
         style={{
           background: 'var(--color-sidebar-bg)',
           backdropFilter: 'blur(20px)',
@@ -425,9 +437,32 @@ export default function Layout({ children }: LayoutProps) {
         )}
       </aside>
 
-      {/* ── Main column (no header) ── */}
-      <main className="flex flex-1 flex-col overflow-y-auto px-4 py-6">
-        <div className="page-shell">{children}</div>
+      {/* ── Main column ── */}
+      <main className="flex flex-1 flex-col overflow-y-auto">
+        {/* Mobile top bar */}
+        <div
+          className="flex items-center gap-3 border-b px-4 py-3 md:hidden"
+          style={{ background: 'var(--color-sidebar-bg)', borderColor: 'var(--color-border)' }}
+        >
+          <button
+            type="button"
+            onClick={() => setMobileOpen(true)}
+            className={`flex h-8 w-8 items-center justify-center rounded-lg border transition ${
+              isDark
+                ? 'border-slate-700/70 bg-slate-800/60 text-slate-400 hover:text-slate-200'
+                : 'border-slate-200 bg-white text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <Menu className="h-4 w-4" />
+          </button>
+          <img
+            src={isDark ? logoDark : logoLight}
+            alt="edra"
+            className="h-8 w-auto"
+          />
+        </div>
+
+        <div className="page-shell px-4 py-6">{children}</div>
       </main>
     </div>
   );

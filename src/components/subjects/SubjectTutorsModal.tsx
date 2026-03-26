@@ -146,8 +146,8 @@ export default function SubjectTutorsModal({
     : 'flex items-center justify-between border-b border-slate-200 bg-white px-3.5 py-2.5';
 
   const panelHeaderLabelCls = isDark
-    ? 'text-[11px] font-semibold uppercase tracking-wider text-slate-400'
-    : 'text-[11px] font-semibold uppercase tracking-wider text-slate-500';
+    ? 'text-xs font-semibold uppercase tracking-wider text-slate-400'
+    : 'text-xs font-semibold uppercase tracking-wider text-slate-500';
 
   const panelCountBadgeCls = isDark
     ? 'rounded-full border border-slate-700 bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-400'
@@ -286,7 +286,7 @@ export default function SubjectTutorsModal({
               <div className={panelHeaderCls}>
                 <div className="flex items-center gap-1.5">
                   <UserCheck className="h-3.5 w-3.5" style={{ color: 'var(--color-accent)' }} />
-                  <h3 className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--color-accent)' }}>Στο μάθημα</h3>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--color-accent)' }}>Στο μάθημα</h3>
                   <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
                     style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', color: 'var(--color-accent)', border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>
                     {assignedTutors.length}

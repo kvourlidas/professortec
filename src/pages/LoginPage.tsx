@@ -4,7 +4,7 @@ import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
 import { useTheme } from '../context/ThemeContext';
-import { Loader2, Mail, Lock, AlertCircle } from 'lucide-react';
+import { Loader2, Mail, Lock, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import logoDark from '../assets/edra-primary-transparent-dark(PNG).png';
 import logoLight from '../assets/edra-primary-transparent-light(PNG)(1).png';
 
@@ -17,6 +17,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [pw, setPw] = useState('');
   const [pending, setPending] = useState(false);
+  const [showPw, setShowPw] = useState(false);
 
   useEffect(() => {
     if (user) navigate('/dashboard', { replace: true });
@@ -107,7 +108,7 @@ export default function LoginPage() {
         <img
           src={isDark ? logoDark : logoLight}
           alt="Edra"
-          style={{ width: 620, maxWidth: '96vw', height: 'auto', marginBottom: '-230px' }}
+          style={{ width: 620, maxWidth: '96vw', height: 'auto', marginBottom: 'max(-230px, -37vw)' }}
           className="object-contain drop-shadow-2xl"
           draggable={false}
         />
@@ -162,7 +163,7 @@ export default function LoginPage() {
             <form onSubmit={onSubmit} className="space-y-4">
               {/* Email */}
               <div className="space-y-1.5">
-                <label className={`block text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                <label className={`block text-xs font-bold uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                   Email
                 </label>
                 <div className="relative">
@@ -185,24 +186,31 @@ export default function LoginPage() {
 
               {/* Password */}
               <div className="space-y-1.5">
-                <label className={`block text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                <label className={`block text-xs font-bold uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                   Κωδικός
                 </label>
                 <div className="relative">
                   <Lock className={`absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 pointer-events-none ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
                   <input
-                    type="password"
+                    type={showPw ? 'text' : 'password'}
                     value={pw}
                     onChange={e => setPw(e.target.value)}
                     required
                     autoComplete="current-password"
                     placeholder="••••••••"
-                    className={`h-11 w-full rounded-xl border pl-10 pr-3.5 text-sm outline-none transition-all duration-200 ${
+                    className={`h-11 w-full rounded-xl border pl-10 pr-10 text-sm outline-none transition-all duration-200 ${
                       isDark
                         ? 'border-white/[0.08] bg-white/[0.05] text-slate-100 placeholder-slate-600 focus:border-[color:var(--color-accent)]/40 focus:bg-white/[0.08] focus:ring-2 focus:ring-[color:var(--color-accent)]/10'
                         : 'border-slate-200 bg-white/70 text-slate-800 placeholder-slate-400 focus:border-[color:var(--color-accent)]/50 focus:bg-white focus:ring-2 focus:ring-[color:var(--color-accent)]/10'
                     }`}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPw(v => !v)}
+                    className={`absolute right-3.5 top-1/2 -translate-y-1/2 ${isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}
+                  >
+                    {showPw ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                  </button>
                 </div>
               </div>
 

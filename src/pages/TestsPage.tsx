@@ -13,7 +13,7 @@ import type {
 } from '../components/tests/types';
 import { emptyForm } from '../components/tests/types';
 import {
-  convert24To12, formatDateDisplay, formatTimeDisplay, parseDateDisplayToISO, convert12To24,
+  formatDateDisplay, formatTimeDisplay, parseDateDisplayToISO,
 } from '../components/tests/utils';
 import {
   Search, ClipboardList, Users, Percent, Clock, Calendar, BookOpen, Tag,
@@ -131,18 +131,14 @@ export default function TestsPage() {
     const testDateISO = parseDateDisplayToISO(form.date);
     if (!testDateISO) { setError('Μη έγκυρη ημερομηνία.'); return; }
     if (!form.startTime || !form.endTime) { setError('Συμπληρώστε ώρες.'); return; }
-    const start24 = convert12To24(form.startTime, form.startPeriod);
-    const end24 = convert12To24(form.endTime, form.endPeriod);
-    if (!start24 || !end24) { setError('Συμπληρώστε σωστά τις ώρες.'); return; }
-
     setSaving(true); setError(null);
     try {
       const data = await callEdgeFunction('tests-create', {
         class_id: form.classId,
         subject_id: form.subjectId,
         test_date: testDateISO,
-        start_time: start24,
-        end_time: end24,
+        start_time: form.startTime,
+        end_time: form.endTime,
         title: form.title || null,
         description: null,
       });
@@ -159,10 +155,8 @@ export default function TestsPage() {
   // Edit handlers
   const openEditModal = (testId: string) => {
     const t = tests.find((tt) => tt.id === testId); if (!t) return;
-    const { time: startTime, period: startPeriod } = convert24To12(t.start_time);
-    const { time: endTime, period: endPeriod } = convert24To12(t.end_time);
     setError(null);
-    setEditForm({ id: t.id, classId: t.class_id, subjectId: t.subject_id ?? null, date: formatDateDisplay(t.test_date), startTime, startPeriod, endTime, endPeriod, title: t.title ?? '' });
+    setEditForm({ id: t.id, classId: t.class_id, subjectId: t.subject_id ?? null, date: formatDateDisplay(t.test_date), startTime: t.start_time?.slice(0, 5) ?? '', endTime: t.end_time?.slice(0, 5) ?? '', title: t.title ?? '' });
     setEditModalOpen(true);
   };
   const closeEditModal = () => { if (savingEdit) return; setEditModalOpen(false); setEditForm(null); };
@@ -174,10 +168,6 @@ export default function TestsPage() {
     const testDateISO = parseDateDisplayToISO(form.date);
     if (!testDateISO) { setError('Μη έγκυρη ημερομηνία.'); return; }
     if (!form.startTime || !form.endTime) { setError('Συμπληρώστε ώρες.'); return; }
-    const start24 = convert12To24(form.startTime, form.startPeriod);
-    const end24 = convert12To24(form.endTime, form.endPeriod);
-    if (!start24 || !end24) { setError('Συμπληρώστε σωστά τις ώρες.'); return; }
-
     setSavingEdit(true); setError(null);
     try {
       const data = await callEdgeFunction('tests-update', {
@@ -185,8 +175,8 @@ export default function TestsPage() {
         class_id: form.classId,
         subject_id: form.subjectId,
         test_date: testDateISO,
-        start_time: start24,
-        end_time: end24,
+        start_time: form.startTime,
+        end_time: form.endTime,
         title: form.title || null,
       });
       setTests((prev) => prev.map((t) => (t.id === editForm.id ? (data.item as TestRow) : t)));

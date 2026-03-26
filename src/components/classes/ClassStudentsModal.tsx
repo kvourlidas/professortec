@@ -144,7 +144,7 @@ export default function ClassStudentsModal({ open, onClose, classId, classTitle 
               <div className={panelHeaderCls}>
                 <div className="flex items-center gap-1.5">
                   <UserMinus className={`h-3.5 w-3.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
-                  <h3 className={`text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>ΔΙΑΘΕΣΙΜΟΙ</h3>
+                  <h3 className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>ΔΙΑΘΕΣΙΜΟΙ</h3>
                   <span className={`rounded-full border px-1.5 py-0.5 text-[10px] ${isDark ? 'border-slate-700 bg-slate-800 text-slate-400' : 'border-slate-200 bg-white text-slate-500'}`}>
                     {availableStudents.length}
                   </span>
@@ -183,7 +183,7 @@ export default function ClassStudentsModal({ open, onClose, classId, classTitle 
               <div className={panelHeaderCls}>
                 <div className="flex items-center gap-1.5">
                   <UserCheck className="h-3.5 w-3.5" style={{ color: 'var(--color-accent)' }} />
-                  <h3 className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--color-accent)' }}>ΣΤΟ ΤΜΗΜΑ</h3>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--color-accent)' }}>ΣΤΟ ΤΜΗΜΑ</h3>
                   <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
                     style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', color: 'var(--color-accent)', border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>
                     {assignedStudents.length}

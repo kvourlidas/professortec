@@ -89,10 +89,10 @@ export function AssignRenewModal({
 
   // ── Styles ────────────────────────────────────────────────────────────────
   const inputCls = isDark
-    ? 'rounded-lg border border-slate-700/60 bg-slate-800/50 px-3 py-2 text-xs text-slate-100 placeholder-slate-600 outline-none transition focus:border-[color:var(--color-accent)]/70 focus:bg-slate-800/80'
-    : 'rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)]/60 focus:bg-white';
+    ? 'rounded-lg border border-slate-700/60 bg-slate-800/50 px-3 py-2 text-sm text-slate-100 placeholder-slate-600 outline-none transition focus:border-[color:var(--color-accent)]/70 focus:bg-slate-800/80'
+    : 'rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)]/60 focus:bg-white';
 
-  const labelCls = `mb-1.5 block text-[10px] font-semibold uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`;
+  const labelCls = `mb-1.5 block text-xs font-semibold uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`;
 
   const triggerCls = isDark
     ? 'flex w-full items-center gap-2 rounded-lg border border-slate-700/60 bg-slate-800/50 px-3 py-2 text-left text-xs transition hover:border-slate-600'

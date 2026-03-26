@@ -4,7 +4,10 @@
       "Bash(curl -L \"https://raw.githubusercontent.com/kvourlidas/professortec/refs/heads/main/public/edra-primary-light%20\\(PNG\\).png\" -o \"public/edra-primary-light.png\")",
       "Bash(curl -L \"https://raw.githubusercontent.com/kvourlidas/professortec/refs/heads/main/public/edra-primary-dark\\(PNG\\).png\" -o \"public/edra-primary-dark.png\")",
       "Bash(npx tsc --noEmit)",
-      "Bash(npx vite build)"
+      "Bash(npx vite build)",
+      "Bash(find /d/Projects/professortec/src/components -type f -name *.tsx)",
+      "Bash(sed -i 's/text-\\\\[10px\\\\] font-bold uppercase tracking-widest/text-xs font-bold uppercase tracking-widest/g' src/pages/LoginPage.tsx)",
+      "Bash(sed -i 's/mb-1\\\\.5 block text-\\\\[10px\\\\] font-semibold uppercase tracking-widest/mb-1.5 block text-xs font-semibold uppercase tracking-widest/g' src/components/economics/subscriptions/AssignRenewModal.tsx)"
     ]
   }
 }

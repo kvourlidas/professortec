@@ -15,13 +15,14 @@ interface ProgramEditSlotModalProps {
   onClose: () => void;
   onSubmit: () => void;
   onFieldChange: (field: keyof EditSlotForm) => (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
-  onTimeChange: (field: 'startTime' | 'endTime') => (e: ChangeEvent<HTMLInputElement>) => void;
+  onStartTimeChange: (t: string) => void;
+  onEndTimeChange: (t: string) => void;
   onDateChange: (field: 'startDate' | 'endDate') => (v: string) => void;
 }
 
 export default function ProgramEditSlotModal({
   open, form, saving, error, classes, subjOptions, tutorOptions, isDark,
-  onClose, onSubmit, onFieldChange, onTimeChange, onDateChange,
+  onClose, onSubmit, onFieldChange, onStartTimeChange, onEndTimeChange, onDateChange,
 }: ProgramEditSlotModalProps) {
   if (!open || !form) return null;
 
@@ -82,13 +83,9 @@ export default function ProgramEditSlotModal({
             tutorId={form.tutorId}
             onTutorChange={onFieldChange('tutorId')}
             startTime={form.startTime}
-            onStartTimeChange={onTimeChange('startTime')}
-            startPeriod={form.startPeriod}
-            onStartPeriodChange={onFieldChange('startPeriod')}
+            onStartTimeChange={onStartTimeChange}
             endTime={form.endTime}
-            onEndTimeChange={onTimeChange('endTime')}
-            endPeriod={form.endPeriod}
-            onEndPeriodChange={onFieldChange('endPeriod')}
+            onEndTimeChange={onEndTimeChange}
             startDate={form.startDate}
             onStartDateChange={onDateChange('startDate')}
             endDate={form.endDate}

@@ -51,7 +51,7 @@ export default function SchoolInfoPage() {
     : 'flex h-10 w-full items-center rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700';
 
   const emptyValueCls = isDark ? 'text-slate-600 italic' : 'text-slate-400 italic';
-  const labelCls = `block mb-1.5 text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`;
+  const labelCls = `block mb-1.5 text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`;
   const iconCls = `h-3.5 w-3.5 inline-block mr-1.5 opacity-60`;
 
   useEffect(() => {

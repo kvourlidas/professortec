@@ -5,7 +5,7 @@ import { useTheme } from '../context/ThemeContext';
 import { CalendarDays, Loader2 } from 'lucide-react';
 import type { ClassRow, SubjectRow, LevelRow, TutorRow, ProgramRow, ProgramItemRow, ClassSubjectRow, SubjectTutorRow, AddSlotForm, EditSlotForm, DeleteSlotTarget } from '../components/program/types';
 import { DAY_OPTIONS, emptyAddSlotForm } from '../components/program/constants';
-import { convert12To24, convert24To12, formatTimeInput, formatDateDisplay, parseDateDisplayToISO, timeToMinutes, todayISO, normalizeText } from '../components/program/utils';
+import { formatDateDisplay, parseDateDisplayToISO, timeToMinutes, todayISO, normalizeText } from '../components/program/utils';
 import ProgramAddSlotModal from '../components/program/ProgramAddSlotModal';
 import ProgramEditSlotModal from '../components/program/ProgramEditSlotModal';
 import ProgramDeleteSlotModal from '../components/program/ProgramDeleteSlotModal';
@@ -177,14 +177,12 @@ export default function ProgramPage() {
   const openAddSlotModal = (classId: string, day: string) => {
     const displayToday = formatDateDisplay(todayISO());
     setError(null);
-    setAddForm({ classId, subjectId: null, tutorId: null, day, startTime: '', startPeriod: 'PM', endTime: '', endPeriod: 'PM', startDate: displayToday, endDate: displayToday });
+    setAddForm({ classId, subjectId: null, tutorId: null, day, startTime: '', endTime: '', startDate: displayToday, endDate: displayToday });
     setAddModalOpen(true);
   };
 
   const closeAddSlotModal = () => { setAddModalOpen(false); setAddForm(emptyAddSlotForm); setSavingSlot(false); };
 
-  const handleAddTimeChange = (field: 'startTime' | 'endTime') => (e: ChangeEvent<HTMLInputElement>) =>
-    setAddForm((prev) => ({ ...prev, [field]: formatTimeInput(e.target.value) }));
 
   const handleAddFieldChange = (field: keyof AddSlotForm) => (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const value = e.target.value;
@@ -205,9 +203,7 @@ export default function ProgramPage() {
     const subjectsForClass = getSubjectsForClass(addForm.classId);
     if (subjectsForClass.length === 0) { setError('Το τμήμα δεν έχει συνδεδεμένα μαθήματα. Ρυθμίστε τα στη σελίδα «Τμήματα».'); return; }
     if (!addForm.subjectId) { setError('Επιλέξτε μάθημα για το τμήμα.'); return; }
-    const start24 = convert12To24(addForm.startTime, addForm.startPeriod);
-    const end24 = convert12To24(addForm.endTime, addForm.endPeriod);
-    if (!start24 || !end24) { setError('Συμπληρώστε σωστά τις ώρες (π.χ. 08:00).'); return; }
+    if (!addForm.startTime || !addForm.endTime) { setError('Συμπληρώστε τις ώρες έναρξης και λήξης.'); return; }
     if (!addForm.startDate || !addForm.endDate) { setError('Συμπληρώστε ημερομηνία έναρξης και λήξης.'); return; }
     const startDateISO = parseDateDisplayToISO(addForm.startDate);
     const endDateISO = parseDateDisplayToISO(addForm.endDate);
@@ -224,8 +220,8 @@ export default function ProgramPage() {
         tutor_id: addForm.tutorId,
         day_of_week: addForm.day,
         position: maxPos + 1,
-        start_time: start24,
-        end_time: end24,
+        start_time: addForm.startTime,
+        end_time: addForm.endTime,
         start_date: startDateISO,
         end_date: endDateISO,
       });
@@ -241,17 +237,13 @@ export default function ProgramPage() {
 
   // ── Edit slot ─────────────────────────────────────────────────────────────
   const openEditSlotModal = (item: ProgramItemRow) => {
-    const { time: startTime, period: startPeriod } = convert24To12(item.start_time);
-    const { time: endTime, period: endPeriod } = convert24To12(item.end_time);
     setError(null);
-    setEditForm({ id: item.id, classId: item.class_id, subjectId: item.subject_id ?? null, tutorId: item.tutor_id ?? null, day: item.day_of_week, startTime, startPeriod, endTime, endPeriod, startDate: item.start_date ? formatDateDisplay(item.start_date) : '', endDate: item.end_date ? formatDateDisplay(item.end_date) : '' });
+    setEditForm({ id: item.id, classId: item.class_id, subjectId: item.subject_id ?? null, tutorId: item.tutor_id ?? null, day: item.day_of_week, startTime: item.start_time?.slice(0, 5) ?? '', endTime: item.end_time?.slice(0, 5) ?? '', startDate: item.start_date ? formatDateDisplay(item.start_date) : '', endDate: item.end_date ? formatDateDisplay(item.end_date) : '' });
     setEditModalOpen(true);
   };
 
   const closeEditSlotModal = () => { if (savingEdit) return; setEditModalOpen(false); setEditForm(null); };
 
-  const handleEditTimeChange = (field: 'startTime' | 'endTime') => (e: ChangeEvent<HTMLInputElement>) =>
-    setEditForm((prev) => prev ? { ...prev, [field]: formatTimeInput(e.target.value) } : prev);
 
   const handleEditFieldChange = (field: keyof EditSlotForm) => (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const value = e.target.value;
@@ -272,9 +264,7 @@ export default function ProgramPage() {
     if (!editForm.classId || !editForm.day) { setError('Επιλέξτε τμήμα και ημέρα.'); return; }
     const subjectsForClass = getSubjectsForClass(editForm.classId);
     if (subjectsForClass.length > 0 && !editForm.subjectId) { setError('Επιλέξτε μάθημα για το τμήμα.'); return; }
-    const start24 = convert12To24(editForm.startTime, editForm.startPeriod);
-    const end24 = convert12To24(editForm.endTime, editForm.endPeriod);
-    if (!start24 || !end24) { setError('Συμπληρώστε σωστά τις ώρες.'); return; }
+    if (!editForm.startTime || !editForm.endTime) { setError('Συμπληρώστε τις ώρες έναρξης και λήξης.'); return; }
     const startDateISO = parseDateDisplayToISO(editForm.startDate);
     const endDateISO = parseDateDisplayToISO(editForm.endDate);
     if (!startDateISO || !endDateISO) { setError('Συμπληρώστε σωστά τις ημερομηνίες.'); return; }
@@ -287,8 +277,8 @@ export default function ProgramPage() {
         subject_id: editForm.subjectId,
         tutor_id: editForm.tutorId,
         day_of_week: editForm.day,
-        start_time: start24,
-        end_time: end24,
+        start_time: editForm.startTime,
+        end_time: editForm.endTime,
         start_date: startDateISO,
         end_date: endDateISO,
       });
@@ -422,7 +412,8 @@ export default function ProgramPage() {
         onClose={closeAddSlotModal}
         onSubmit={handleConfirmAddSlot}
         onFieldChange={handleAddFieldChange}
-        onTimeChange={handleAddTimeChange}
+        onStartTimeChange={(t) => setAddForm((p) => ({ ...p, startTime: t }))}
+        onEndTimeChange={(t) => setAddForm((p) => ({ ...p, endTime: t }))}
         onDateChange={handleAddDateChange}
       />
 
@@ -438,7 +429,8 @@ export default function ProgramPage() {
         onClose={closeEditSlotModal}
         onSubmit={handleConfirmEditSlot}
         onFieldChange={handleEditFieldChange}
-        onTimeChange={handleEditTimeChange}
+        onStartTimeChange={(t) => setEditForm((p) => p ? { ...p, startTime: t } : p)}
+        onEndTimeChange={(t) => setEditForm((p) => p ? { ...p, endTime: t } : p)}
         onDateChange={handleEditDateChange}
       />
 

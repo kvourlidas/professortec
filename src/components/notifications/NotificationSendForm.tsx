@@ -257,7 +257,7 @@ export function NotificationSendForm({
     ? 'overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-2xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]'
     : 'overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md';
 
-  const labelCls = `text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`;
+  const labelCls = `text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`;
 
   const MODES: { value: RecipientMode; label: string; icon: React.ReactNode }[] = [
     { value: 'all',      label: 'Όλοι',    icon: <Globe className="h-3.5 w-3.5" /> },

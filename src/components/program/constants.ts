@@ -21,9 +21,7 @@ export const emptyAddSlotForm: AddSlotForm = {
   tutorId: null,
   day: '',
   startTime: '',
-  startPeriod: 'PM',
   endTime: '',
-  endPeriod: 'PM',
   startDate: '',
   endDate: '',
 };

@@ -1,6 +1,10 @@
+@import "react-datepicker/dist/react-datepicker.css";
+@tailwind utilities;
 @tailwind base;
 @tailwind components;
-@tailwind utilities;
+
+
+
 
 @layer base {
   /* ─── DARK MODE (default) ─── */
@@ -78,7 +82,7 @@
   }
 
   body {
-    @apply text-sm;
+    @apply text-lg;
     background-color: var(--color-background);
     color: var(--color-text-main);
     transition: background-color 0.2s ease, color 0.2s ease;
@@ -110,7 +114,7 @@
 }
 
 /* bring default react-datepicker styles */
-@import "react-datepicker/dist/react-datepicker.css";
+
 
 /* === Dark Datepicker === */
 .dark .react-datepicker {
@@ -369,7 +373,7 @@
   }
 
   .app-header-title {
-    @apply text-sm;
+    @apply text-lg;
     font-weight: 600;
   }
 

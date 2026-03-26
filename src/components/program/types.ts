@@ -63,9 +63,7 @@ export type AddSlotForm = {
   tutorId: string | null;
   day: string;
   startTime: string;
-  startPeriod: 'AM' | 'PM';
   endTime: string;
-  endPeriod: 'AM' | 'PM';
   startDate: string;
   endDate: string;
 };
@@ -77,9 +75,7 @@ export type EditSlotForm = {
   tutorId: string | null;
   day: string;
   startTime: string;
-  startPeriod: 'AM' | 'PM';
   endTime: string;
-  endPeriod: 'AM' | 'PM';
   startDate: string;
   endDate: string;
 };

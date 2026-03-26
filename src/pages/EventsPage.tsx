@@ -19,13 +19,13 @@ import {
 const PAGE_SIZE = 10;
 
 // ── Date helper: DD-MM-YYYY or DD/MM/YYYY → YYYY-MM-DD ───────────────────────
-function toISODate(display: string): string | null {
-  const parts = display.split(/[-/]/);
-  if (parts.length !== 3) return null;
-  const [dd, mm, yyyy] = parts;
-  if (!dd || !mm || !yyyy) return null;
-  return `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
-}
+// function toISODate(display: string): string | null {
+//   const parts = display.split(/[-/]/);
+//   if (parts.length !== 3) return null;
+//   const [dd, mm, yyyy] = parts;
+//   if (!dd || !mm || !yyyy) return null;
+//   return `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
+// }
 
 // ── Date helper: ensures date is always YYYY-MM-DD for PostgreSQL ────────────
 function normalizeEventDate(date: string): string {

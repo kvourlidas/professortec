@@ -17,6 +17,7 @@ import type {
 import elLocale from '@fullcalendar/core/locales/el';
 
 import AppDatePicker from '../ui/AppDatePicker';
+import TimePicker from '../ui/TimePicker';
 import EventFormModal, {
   type EventFormState,
   type SchoolEventForEdit,
@@ -56,12 +57,12 @@ type TestRow = {
 };
 type CalendarEventModal = {
   programItemId: string; originalDateStr: string; date: string;
-  startTime: string; startPeriod: 'AM' | 'PM'; endTime: string; endPeriod: 'AM' | 'PM';
+  startTime: string; endTime: string;
   classId: string | null; subjectId: string | null; overrideId?: string; activeDuringHoliday: boolean;
 };
 type TestModalState = {
   testId: string; classId: string | null; subjectId: string | null; date: string;
-  startTime: string; startPeriod: 'AM' | 'PM'; endTime: string; endPeriod: 'AM' | 'PM';
+  startTime: string; endTime: string;
   title: string; activeDuringHoliday: boolean;
 };
 
@@ -70,32 +71,6 @@ type TestModalState = {
 const pad2 = (n: number) => n.toString().padStart(2, '0');
 const formatLocalYMD = (d: Date): string => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 
-function convert12To24(time: string, period: 'AM' | 'PM'): string | null {
-  const t = time.trim();
-  if (!t) return null;
-  const [hStr, mStr = '00'] = t.split(':');
-  let h = Number(hStr); let m = Number(mStr);
-  if (Number.isNaN(h) || Number.isNaN(m)) return null;
-  h = h % 12;
-  if (period === 'PM') h += 12;
-  return `${pad2(h)}:${pad2(m)}`;
-}
-
-function convert24To12(time: string | null): { time: string; period: 'AM' | 'PM' } {
-  if (!time) return { time: '', period: 'AM' };
-  const [hStr, mStr = '00'] = time.split(':');
-  let h = Number(hStr); const m = Number(mStr);
-  if (Number.isNaN(h) || Number.isNaN(m)) return { time: '', period: 'AM' };
-  const period: 'AM' | 'PM' = h >= 12 ? 'PM' : 'AM';
-  h = h % 12; if (h === 0) h = 12;
-  return { time: `${pad2(h)}:${pad2(m)}`, period };
-}
-
-function formatTimeInput(raw: string): string {
-  const digits = raw.replace(/\D/g, '').slice(0, 4);
-  if (digits.length <= 2) return digits;
-  return `${digits.slice(0, 2)}:${digits.slice(2)}`;
-}
 
 function formatDateDisplay(iso: string | null): string {
   if (!iso) return '';
@@ -135,7 +110,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
   const isDark = theme === 'dark';
 
   // Dynamic classes based on theme
-  const inputCls = `h-9 w-full rounded-lg border px-3 text-xs outline-none transition disabled:opacity-60 ${
+  const inputCls = `h-9 w-full rounded-lg border px-3 text-sm outline-none transition disabled:opacity-60 ${
     isDark
       ? 'border-slate-700/70 bg-slate-900/60 text-slate-100 placeholder-slate-500 focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30'
       : 'border-slate-200 bg-white text-slate-800 placeholder-slate-400 focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/20'
@@ -619,10 +594,8 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     const isHoliday = holidayDateSet.has(dateIso);
     const start24 = `${pad2(event.start.getHours())}:${pad2(event.start.getMinutes())}`;
     const end24 = `${pad2(event.end.getHours())}:${pad2(event.end.getMinutes())}`;
-    const { time: startTime, period: startPeriod } = convert24To12(start24);
-    const { time: endTime, period: endPeriod } = convert24To12(end24);
     setTestError(null);
-    setTestModal({ testId, classId, subjectId, date: formatDateDisplay(dateIso), startTime, startPeriod, endTime, endPeriod, title: testRow?.title ?? '', activeDuringHoliday: isHoliday ? !!testRow?.active_during_holiday : false });
+    setTestModal({ testId, classId, subjectId, date: formatDateDisplay(dateIso), startTime: start24, endTime: end24, title: testRow?.title ?? '', activeDuringHoliday: isHoliday ? !!testRow?.active_during_holiday : false });
     setShowDeleteConfirm(false); setEventModal(null);
   };
 
@@ -642,11 +615,9 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
       const overrideId = event.extendedProps['overrideId'] as string | null;
       const start24 = `${pad2(event.start.getHours())}:${pad2(event.start.getMinutes())}`;
       const end24 = `${pad2(event.end.getHours())}:${pad2(event.end.getMinutes())}`;
-      const { time: startTime, period: startPeriod } = convert24To12(start24);
-      const { time: endTime, period: endPeriod } = convert24To12(end24);
       const classIdProp = event.extendedProps['classId'] as string | undefined;
       const prefilledSubjectId = (event.extendedProps['subjectId'] as string | null | undefined) ?? null;
-      setEventModal({ programItemId, originalDateStr: dateIso, date: formatDateDisplay(dateIso), startTime, startPeriod, endTime, endPeriod, classId: classIdProp ?? null, subjectId: prefilledSubjectId, overrideId: overrideId ?? undefined, activeDuringHoliday: !!event.extendedProps['activeDuringHoliday'] });
+      setEventModal({ programItemId, originalDateStr: dateIso, date: formatDateDisplay(dateIso), startTime: start24, endTime: end24, classId: classIdProp ?? null, subjectId: prefilledSubjectId, overrideId: overrideId ?? undefined, activeDuringHoliday: !!event.extendedProps['activeDuringHoliday'] });
       setShowDeleteConfirm(false);
     }
   };
@@ -662,23 +633,18 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     });
   };
 
-  const handleEventTimeChange = (field: 'startTime' | 'endTime') => (e: ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatTimeInput(e.target.value);
-    setEventModal((prev) => (prev ? { ...prev, [field]: formatted } : prev));
-  };
 
   const handleEventModalSave = async () => {
     if (!eventModal) return;
-    const { programItemId, originalDateStr, date, startTime, startPeriod, endTime, endPeriod, classId, subjectId, activeDuringHoliday } = eventModal;
+    const { programItemId, originalDateStr, date, startTime, endTime, classId, subjectId, activeDuringHoliday } = eventModal;
     if (!classId) { setEventError('Επιλέξτε τμήμα.'); return; }
     const subjectOptions = getSubjectsForClass(classId);
     if (subjectOptions.length > 0 && !subjectId) { setEventError('Επιλέξτε μάθημα για το τμήμα.'); return; }
     if (!date) { setEventError('Επιλέξτε ημερομηνία μαθήματος.'); return; }
     const newDateStr = parseDateDisplayToISO(date);
     if (!newDateStr) { setEventError('Μη έγκυρη ημερομηνία (π.χ. 12/05/2025).'); return; }
-    const start24 = convert12To24(startTime, startPeriod); const end24 = convert12To24(endTime, endPeriod);
-    if (!start24 || !end24) { setEventError('Συμπληρώστε σωστά τις ώρες (π.χ. 08:00).'); return; }
-    const startTimeDb = `${start24}:00`; const endTimeDb = `${end24}:00`;
+    if (!startTime || !endTime) { setEventError('Συμπληρώστε σωστά τις ώρες.'); return; }
+    const startTimeDb = `${startTime}:00`; const endTimeDb = `${endTime}:00`;
     const isHoliday = holidayDateSet.has(newDateStr);
     const finalHolidayActiveOverride = isHoliday ? !!activeDuringHoliday : false;
     try {
@@ -757,26 +723,21 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     });
   };
 
-  const handleTestTimeChange = (field: 'startTime' | 'endTime') => (e: ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatTimeInput(e.target.value);
-    setTestModal((prev) => (prev ? { ...prev, [field]: formatted } : prev));
-  };
 
   const handleTestModalSave = async () => {
     if (!testModal) return;
-    const { testId, classId, subjectId, date, startTime, startPeriod, endTime, endPeriod, title, activeDuringHoliday } = testModal;
+    const { testId, classId, subjectId, date, startTime, endTime, title, activeDuringHoliday } = testModal;
     if (!classId) { setTestError('Επιλέξτε τμήμα.'); return; }
     const subjectOptions = getSubjectsForClass(classId);
     if (subjectOptions.length > 0 && !subjectId) { setTestError('Επιλέξτε μάθημα για το τμήμα.'); return; }
     if (!date) { setTestError('Επιλέξτε ημερομηνία διαγωνίσματος.'); return; }
     const testDateISO = parseDateDisplayToISO(date);
     if (!testDateISO) { setTestError('Μη έγκυρη ημερομηνία (π.χ. 12/05/2025).'); return; }
-    const start24 = convert12To24(startTime, startPeriod); const end24 = convert12To24(endTime, endPeriod);
-    if (!start24 || !end24) { setTestError('Συμπληρώστε σωστά τις ώρες (π.χ. 08:00).'); return; }
+    if (!startTime || !endTime) { setTestError('Συμπληρώστε σωστά τις ώρες.'); return; }
     const isHoliday = holidayDateSet.has(testDateISO);
     const finalActiveDuringHoliday = isHoliday ? !!activeDuringHoliday : false;
     setSavingTest(true); setTestError(null);
-    const payload = { class_id: classId, subject_id: subjectId ?? subjectOptions[0]?.id, test_date: testDateISO, start_time: `${start24}:00`, end_time: `${end24}:00`, title: title || null, active_during_holiday: finalActiveDuringHoliday };
+    const payload = { class_id: classId, subject_id: subjectId ?? subjectOptions[0]?.id, test_date: testDateISO, start_time: `${startTime}:00`, end_time: `${endTime}:00`, title: title || null, active_during_holiday: finalActiveDuringHoliday };
     const { data, error } = await supabase.from('tests').update(payload).eq('id', testId).select('*').maybeSingle();
     setSavingTest(false);
     if (error || !data) { console.error(error); setTestError('Αποτυχία ενημέρωσης διαγωνίσματος.'); return; }
@@ -829,7 +790,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
   function FormField({ label, icon, children }: { label: string; icon?: React.ReactNode; children: React.ReactNode }) {
     return (
       <div className="space-y-1.5">
-        <label className={`flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+        <label className={`flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
           {icon && <span className="opacity-70">{icon}</span>}
           {label}
         </label>
@@ -873,37 +834,6 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     </div>
   );
 
-  const TimeFields = ({ startTime, onStartTime, startPeriod, onStartPeriod, endTime, onEndTime, endPeriod, onEndPeriod }: {
-    startTime: string; onStartTime: (e: ChangeEvent<HTMLInputElement>) => void;
-    startPeriod: 'AM' | 'PM'; onStartPeriod: (e: ChangeEvent<HTMLSelectElement>) => void;
-    endTime: string; onEndTime: (e: ChangeEvent<HTMLInputElement>) => void;
-    endPeriod: 'AM' | 'PM'; onEndPeriod: (e: ChangeEvent<HTMLSelectElement>) => void;
-  }) => (
-    <div className="grid grid-cols-2 gap-3">
-      {[
-        { label: 'Ώρα έναρξης', time: startTime, onTime: onStartTime, period: startPeriod, onPeriod: onStartPeriod },
-        { label: 'Ώρα λήξης', time: endTime, onTime: onEndTime, period: endPeriod, onPeriod: onEndPeriod },
-      ].map(({ label, time, onTime, period, onPeriod }) => (
-        <FormField key={label} label={label} icon={<Clock className="h-3 w-3" />}>
-          <div className="relative">
-            <input value={time} onChange={onTime} placeholder="08:00"
-              className={`h-9 w-full rounded-lg border pl-3 pr-20 text-xs outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 ${
-                isDark
-                  ? 'border-slate-700/70 bg-slate-900/60 text-slate-100 placeholder-slate-500 focus:border-[color:var(--color-accent)]'
-                  : 'border-slate-200 bg-white text-slate-800 placeholder-slate-400 focus:border-[color:var(--color-accent)]'
-              }`} />
-            <select value={period} onChange={onPeriod}
-              className={`absolute inset-y-1 right-1 w-16 rounded-md border px-1.5 text-[10px] outline-none ${
-                isDark ? 'border-slate-600/60 bg-slate-800 text-slate-200' : 'border-slate-200 bg-slate-50 text-slate-600'
-              }`}>
-              <option value="AM">AM</option>
-              <option value="PM">PM</option>
-            </select>
-          </div>
-        </FormField>
-      ))}
-    </div>
-  );
 
   /* ---- Modal footer helpers ---- */
   const cancelBtnCls = 'btn border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-slate-200 hover:bg-slate-700/60';
@@ -1029,12 +959,14 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
                   <AppDatePicker value={eventModal.date} onChange={(v) => setEventModal((p) => (p ? { ...p, date: v } : p))} placeholder="dd/mm/yyyy" />
                 </FormField>
 
-                <TimeFields
-                  startTime={eventModal.startTime} onStartTime={handleEventTimeChange('startTime')}
-                  startPeriod={eventModal.startPeriod} onStartPeriod={(e) => setEventModal((p) => p ? { ...p, startPeriod: e.target.value as 'AM' | 'PM' } : p)}
-                  endTime={eventModal.endTime} onEndTime={handleEventTimeChange('endTime')}
-                  endPeriod={eventModal.endPeriod} onEndPeriod={(e) => setEventModal((p) => p ? { ...p, endPeriod: e.target.value as 'AM' | 'PM' } : p)}
-                />
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField label="Ώρα έναρξης" icon={<Clock className="h-3 w-3" />}>
+                    <TimePicker value={eventModal.startTime} onChange={(t) => setEventModal((p) => p ? { ...p, startTime: t } : p)} required />
+                  </FormField>
+                  <FormField label="Ώρα λήξης" icon={<Clock className="h-3 w-3" />}>
+                    <TimePicker value={eventModal.endTime} onChange={(t) => setEventModal((p) => p ? { ...p, endTime: t } : p)} required />
+                  </FormField>
+                </div>
 
                 {programModalIsHoliday && (
                   <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-2.5 text-xs text-emerald-700 dark:text-emerald-100">
@@ -1118,12 +1050,14 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
                   <AppDatePicker value={testModal.date} onChange={(v) => setTestModal((p) => (p ? { ...p, date: v } : p))} placeholder="dd/mm/yyyy" />
                 </FormField>
 
-                <TimeFields
-                  startTime={testModal.startTime} onStartTime={handleTestTimeChange('startTime')}
-                  startPeriod={testModal.startPeriod} onStartPeriod={(e) => setTestModal((p) => p ? { ...p, startPeriod: e.target.value as 'AM' | 'PM' } : p)}
-                  endTime={testModal.endTime} onEndTime={handleTestTimeChange('endTime')}
-                  endPeriod={testModal.endPeriod} onEndPeriod={(e) => setTestModal((p) => p ? { ...p, endPeriod: e.target.value as 'AM' | 'PM' } : p)}
-                />
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField label="Ώρα έναρξης" icon={<Clock className="h-3 w-3" />}>
+                    <TimePicker value={testModal.startTime} onChange={(t) => setTestModal((p) => p ? { ...p, startTime: t } : p)} required />
+                  </FormField>
+                  <FormField label="Ώρα λήξης" icon={<Clock className="h-3 w-3" />}>
+                    <TimePicker value={testModal.endTime} onChange={(t) => setTestModal((p) => p ? { ...p, endTime: t } : p)} required />
+                  </FormField>
+                </div>
 
                 {testModalIsHoliday && (
                   <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-2.5 text-xs text-emerald-700 dark:text-emerald-100">

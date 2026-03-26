@@ -1,6 +1,7 @@
 import type { ChangeEvent } from 'react';
-import { CalendarDays, Clock, Calendar, BookOpen, GraduationCap, Layers } from 'lucide-react';
+import { CalendarDays, Calendar, BookOpen, GraduationCap, Layers, Clock } from 'lucide-react';
 import AppDatePicker from '../ui/AppDatePicker';
+import TimePicker from '../ui/TimePicker';
 import { DAY_OPTIONS, DAY_LABEL_BY_VALUE } from './constants';
 import type { SubjectRow, TutorRow } from './types';
 
@@ -15,7 +16,7 @@ interface FormFieldProps {
 export function FormField({ label, icon, hint, children, isDark }: FormFieldProps) {
   return (
     <div className="space-y-1.5">
-      <label className={`flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+      <label className={`flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
         {icon && <span className="opacity-70">{icon}</span>}
         {label}
       </label>
@@ -34,13 +35,9 @@ interface SlotFormFieldsProps {
   tutorId: string | null;
   onTutorChange: (e: ChangeEvent<HTMLSelectElement>) => void;
   startTime: string;
-  onStartTimeChange: (e: ChangeEvent<HTMLInputElement>) => void;
-  startPeriod: 'AM' | 'PM';
-  onStartPeriodChange: (e: ChangeEvent<HTMLSelectElement>) => void;
+  onStartTimeChange: (t: string) => void;
   endTime: string;
-  onEndTimeChange: (e: ChangeEvent<HTMLInputElement>) => void;
-  endPeriod: 'AM' | 'PM';
-  onEndPeriodChange: (e: ChangeEvent<HTMLSelectElement>) => void;
+  onEndTimeChange: (t: string) => void;
   startDate: string;
   onStartDateChange: (v: string) => void;
   endDate: string;
@@ -55,26 +52,18 @@ export function SlotFormFields({
   classTitle, dayValue, onDayChange,
   subjectId, onSubjectChange,
   tutorId, onTutorChange,
-  startTime, onStartTimeChange, startPeriod, onStartPeriodChange,
-  endTime, onEndTimeChange, endPeriod, onEndPeriodChange,
+  startTime, onStartTimeChange,
+  endTime, onEndTimeChange,
   startDate, onStartDateChange,
   endDate, onEndDateChange,
   subjOptions, tutorOptions,
   isEdit, isDark,
 }: SlotFormFieldsProps) {
   const inputCls = isDark
-    ? 'h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30 disabled:opacity-60'
-    : 'h-9 w-full rounded-lg border border-slate-300 bg-white px-3 text-xs text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30 disabled:opacity-60';
+    ? 'h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 text-sm text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30 disabled:opacity-60'
+    : 'h-9 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30 disabled:opacity-60';
 
   const selectCls = inputCls;
-
-  const timeInputCls = isDark
-    ? 'h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 pl-3 pr-20 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30'
-    : 'h-9 w-full rounded-lg border border-slate-300 bg-white pl-3 pr-20 text-xs text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30';
-
-  const periodSelectCls = isDark
-    ? 'absolute inset-y-1 right-1 w-16 rounded-md border border-slate-600/60 bg-slate-800 px-1.5 text-[10px] text-slate-200 outline-none'
-    : 'absolute inset-y-1 right-1 w-16 rounded-md border border-slate-200 bg-slate-100 px-1.5 text-[10px] text-slate-700 outline-none';
 
   return (
     <div className="space-y-4">
@@ -110,20 +99,12 @@ export function SlotFormFields({
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        {[
-          { label: 'ΩΡΑ ΕΝΑΡΞΗΣ', time: startTime, onChange: onStartTimeChange, period: startPeriod, onPeriod: onStartPeriodChange },
-          { label: 'ΩΡΑ ΛΗΞΗΣ', time: endTime, onChange: onEndTimeChange, period: endPeriod, onPeriod: onEndPeriodChange },
-        ].map(({ label, time, onChange, period, onPeriod }) => (
-          <FormField key={label} label={label} icon={<Clock className="h-3 w-3" />} isDark={isDark}>
-            <div className="relative">
-              <input type="text" inputMode="numeric" placeholder="π.χ. 08:00" value={time} onChange={onChange} className={timeInputCls} />
-              <select value={period} onChange={onPeriod} className={periodSelectCls}>
-                <option value="AM">AM</option>
-                <option value="PM">PM</option>
-              </select>
-            </div>
-          </FormField>
-        ))}
+        <FormField label="ΩΡΑ ΕΝΑΡΞΗΣ" icon={<Clock className="h-3 w-3" />} isDark={isDark}>
+          <TimePicker value={startTime} onChange={onStartTimeChange} required />
+        </FormField>
+        <FormField label="ΩΡΑ ΛΗΞΗΣ" icon={<Clock className="h-3 w-3" />} isDark={isDark}>
+          <TimePicker value={endTime} onChange={onEndTimeChange} required />
+        </FormField>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">

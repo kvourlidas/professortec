@@ -39,8 +39,8 @@ export default function LevelFormModal({
   };
 
   const inputCls = isDark
-    ? 'h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30'
-    : 'h-9 w-full rounded-lg border border-slate-300 bg-white px-3 text-xs text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30';
+    ? 'h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 text-sm text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30'
+    : 'h-9 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30';
 
   const modalCardCls = isDark
     ? 'relative w-full max-w-sm overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl'
@@ -61,8 +61,8 @@ export default function LevelFormModal({
     : 'btn border border-slate-300 bg-white px-4 py-1.5 text-slate-700 hover:bg-slate-100 disabled:opacity-50';
 
   const formLabelCls = isDark
-    ? 'flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400'
-    : 'flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500';
+    ? 'flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400'
+    : 'flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
