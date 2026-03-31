@@ -4,6 +4,8 @@ export type CreateTutorInput = {
   afm: string | null;
   phone: string | null;
   email: string | null;
+  iban: string | null;
+  notes: string | null;
 };
 
 export type UpdateTutorInput = {
@@ -13,6 +15,8 @@ export type UpdateTutorInput = {
   afm: string | null;
   phone: string | null;
   email: string | null;
+  iban: string | null;
+  notes: string | null;
 };
 
 export type DeleteTutorInput = {

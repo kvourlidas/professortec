@@ -24,7 +24,7 @@ import { TUTOR_SELECT } from '../components/tutors/types';
 import { formatDateToGreek, normalizeText, displayToIso } from '../components/tutors/utils';
 import {
   Users, Search, UserPlus, ChevronLeft, ChevronRight,
-  User, Phone, Mail, Calendar, Hash,
+  User, Phone, Mail, Calendar, Hash, CreditCard, FileText,
 } from 'lucide-react';
 
 // ── Storage keys ─────────────────────────────────────────────────────────────
@@ -175,6 +175,8 @@ export default function TutorsPage() {
           afm: form.afm.trim() || null,
           phone: form.phone.trim() || null,
           email: form.email.trim() || null,
+          iban: form.iban.trim() || null,
+          notes: form.notes.trim() || null,
         });
         setTutors((prev) => [...prev, data.item as TutorRow]);
         closeModal();
@@ -186,6 +188,8 @@ export default function TutorsPage() {
           afm: form.afm.trim() || null,
           phone: form.phone.trim() || null,
           email: form.email.trim() || null,
+          iban: form.iban.trim() || null,
+          notes: form.notes.trim() || null,
         });
         setTutors((prev) => prev.map((t) => (t.id === editingTutor.id ? (data.item as TutorRow) : t)));
         closeModal();
@@ -225,7 +229,7 @@ export default function TutorsPage() {
     if (!q) return tutors;
     return tutors.filter((t) => {
       const composite = [
-        t.full_name, t.afm, t.phone, t.email,
+        t.full_name, t.afm, t.phone, t.email, t.iban, t.notes,
         t.date_of_birth, t.date_of_birth ? formatDateToGreek(t.date_of_birth) : '',
       ].filter(Boolean).join(' ');
       return normalizeText(composite).includes(q);
@@ -267,6 +271,14 @@ export default function TutorsPage() {
         return t.phone ? <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{t.phone}</span> : empty;
       case 'email':
         return t.email ? <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{t.email}</span> : empty;
+      case 'iban':
+        return t.iban
+          ? <span className={`font-mono text-[11px] tabular-nums ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t.iban}</span>
+          : empty;
+      case 'notes':
+        return t.notes
+          ? <span className={`max-w-xs truncate block ${isDark ? 'text-slate-400' : 'text-slate-500'}`} title={t.notes}>{t.notes}</span>
+          : empty;
       default: return empty;
     }
   };
@@ -278,6 +290,8 @@ export default function TutorsPage() {
       case 'afm':           return <Hash className="h-3 w-3" />;
       case 'phone':         return <Phone className="h-3 w-3" />;
       case 'email':         return <Mail className="h-3 w-3" />;
+      case 'iban':          return <CreditCard className="h-3 w-3" />;
+      case 'notes':         return <FileText className="h-3 w-3" />;
       default:              return <Hash className="h-3 w-3" />;
     }
   };

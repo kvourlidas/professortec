@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
-import { X, GraduationCap, User, Calendar, Hash, Phone, Mail, Loader2 } from 'lucide-react';
+import { X, GraduationCap, User, Calendar, Hash, Phone, Mail, CreditCard, FileText, Loader2 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import DatePickerField from '../ui/AppDatePicker';
 import type { ModalMode, TutorFormState, TutorRow } from './types';
@@ -54,6 +54,8 @@ export default function TutorFormModal({
         afm: editingTutor.afm ?? '',
         phone: editingTutor.phone ?? '',
         email: editingTutor.email ?? '',
+        iban: editingTutor.iban ?? '',
+        notes: editingTutor.notes ?? '',
       });
     } else {
       setForm(emptyForm);
@@ -62,7 +64,7 @@ export default function TutorFormModal({
 
   if (!open) return null;
 
-  const handleChange = (field: keyof TutorFormState) => (e: ChangeEvent<HTMLInputElement>) =>
+  const handleChange = (field: keyof TutorFormState) => (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
 
   const handleSubmit = async (e: FormEvent) => {
@@ -71,10 +73,12 @@ export default function TutorFormModal({
   };
 
   const inputCls = `h-9 w-full rounded-lg border px-3 text-sm outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 focus:border-[color:var(--color-accent)] ${isDark ? 'border-slate-700/70 bg-slate-900/60 text-slate-100 placeholder-slate-500' : 'border-slate-200 bg-slate-50 text-slate-800 placeholder-slate-400'}`;
+  const textareaCls = `w-full rounded-lg border px-3 py-2 text-sm outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 focus:border-[color:var(--color-accent)] resize-none ${isDark ? 'border-slate-700/70 bg-slate-900/60 text-slate-100 placeholder-slate-500' : 'border-slate-200 bg-slate-50 text-slate-800 placeholder-slate-400'}`;
   const modalBg = isDark ? 'border-slate-700/60 bg-[#1f2d3d]' : 'border-slate-200 bg-white';
   const cancelBtnCls = `btn border px-4 py-1.5 disabled:opacity-50 ${isDark ? 'border-slate-600/60 bg-slate-800/50 text-slate-200 hover:bg-slate-700/60' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'}`;
   const closeBtnCls = `flex h-7 w-7 items-center justify-center rounded-lg border transition ${isDark ? 'border-slate-700/60 bg-slate-800/50 text-slate-400 hover:border-slate-600 hover:text-slate-200' : 'border-slate-200 bg-slate-100 text-slate-500 hover:border-slate-300 hover:text-slate-700'}`;
   const modalFooterCls = `flex justify-end gap-2.5 border-t px-6 py-4 mt-4 ${isDark ? 'border-slate-800/70 bg-slate-900/20' : 'border-slate-100 bg-slate-50/50'}`;
+  const dividerCls = `flex items-center gap-3 ${isDark ? 'text-slate-600' : 'text-slate-300'}`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -112,23 +116,59 @@ export default function TutorFormModal({
           </div>
         )}
 
+        {/* Scrollable form body */}
         <form onSubmit={handleSubmit}>
-          <div className="space-y-4 px-6 pb-2">
-            <FormField label="Ονοματεπωνυμο" icon={<User className="h-3 w-3" />} isDark={isDark}>
-              <input className={inputCls} placeholder="π.χ. Γιάννης Παπαδόπουλος" value={form.fullName} onChange={handleChange('fullName')} required />
-            </FormField>
-            <FormField label="Ημερομηνια γεννησης" icon={<Calendar className="h-3 w-3" />} isDark={isDark}>
-              <DatePickerField label="" value={form.dateOfBirth} onChange={(value) => setForm((prev) => ({ ...prev, dateOfBirth: value }))} placeholder="π.χ. 24/12/1985" id="tutor-dob" />
-            </FormField>
-            <FormField label="ΑΦΜ" icon={<Hash className="h-3 w-3" />} isDark={isDark}>
-              <input className={inputCls} placeholder="π.χ. 123456789" value={form.afm} onChange={handleChange('afm')} />
-            </FormField>
-            <FormField label="Τηλεφωνο" icon={<Phone className="h-3 w-3" />} isDark={isDark}>
-              <input className={inputCls} placeholder="π.χ. 6900000000" value={form.phone} onChange={handleChange('phone')} />
-            </FormField>
-            <FormField label="Email" icon={<Mail className="h-3 w-3" />} isDark={isDark}>
-              <input type="email" className={inputCls} placeholder="π.χ. tutor@example.com" value={form.email} onChange={handleChange('email')} />
-            </FormField>
+          <div className="max-h-[60vh] overflow-y-auto">
+            <div className="space-y-4 px-6 pb-2">
+
+              {/* ── Basic info ── */}
+              <FormField label="Ονοματεπωνυμο" icon={<User className="h-3 w-3" />} isDark={isDark}>
+                <input className={inputCls} placeholder="π.χ. Γιάννης Παπαδόπουλος" value={form.fullName} onChange={handleChange('fullName')} required />
+              </FormField>
+              <FormField label="Ημερομηνια γεννησης" icon={<Calendar className="h-3 w-3" />} isDark={isDark}>
+                <DatePickerField label="" value={form.dateOfBirth} onChange={(value) => setForm((prev) => ({ ...prev, dateOfBirth: value }))} placeholder="π.χ. 24/12/1985" id="tutor-dob" />
+              </FormField>
+              <FormField label="ΑΦΜ" icon={<Hash className="h-3 w-3" />} isDark={isDark}>
+                <input className={inputCls} placeholder="π.χ. 123456789" value={form.afm} onChange={handleChange('afm')} />
+              </FormField>
+              <FormField label="Τηλεφωνο" icon={<Phone className="h-3 w-3" />} isDark={isDark}>
+                <input className={inputCls} placeholder="π.χ. 6900000000" value={form.phone} onChange={handleChange('phone')} />
+              </FormField>
+              <FormField label="Email" icon={<Mail className="h-3 w-3" />} isDark={isDark}>
+                <input type="email" className={inputCls} placeholder="π.χ. tutor@example.com" value={form.email} onChange={handleChange('email')} />
+              </FormField>
+
+              {/* ── Divider ── */}
+              <div className={dividerCls}>
+                <div className="flex-1 border-t border-current" />
+                <span className="text-[10px] font-semibold uppercase tracking-widest">Οικονομικά &amp; Σημειώσεις</span>
+                <div className="flex-1 border-t border-current" />
+              </div>
+
+              {/* ── IBAN ── */}
+              <FormField label="IBAN" icon={<CreditCard className="h-3 w-3" />} isDark={isDark}>
+                <input
+                  className={inputCls}
+                  placeholder="π.χ. GR1601101250000000012300695"
+                  value={form.iban}
+                  onChange={handleChange('iban')}
+                  spellCheck={false}
+                  autoComplete="off"
+                />
+              </FormField>
+
+              {/* ── Notes ── */}
+              <FormField label="Σημειωσεις" icon={<FileText className="h-3 w-3" />} isDark={isDark}>
+                <textarea
+                  className={textareaCls}
+                  placeholder="Προαιρετικές σημειώσεις για τον καθηγητή..."
+                  value={form.notes}
+                  onChange={handleChange('notes')}
+                  rows={3}
+                />
+              </FormField>
+
+            </div>
           </div>
 
           <div className={modalFooterCls}>

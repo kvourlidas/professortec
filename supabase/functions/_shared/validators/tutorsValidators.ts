@@ -8,6 +8,8 @@ export function validateCreateTutorBody(body: any) {
   const afm = body?.afm?.trim?.() || null;
   const phone = body?.phone?.trim?.() || null;
   const email = body?.email?.trim?.() || null;
+  const iban = body?.iban?.trim?.() || null;
+  const notes = body?.notes?.trim?.() || null;
 
   if (!full_name) {
     throw new ValidationError("Missing full_name");
@@ -23,6 +25,8 @@ export function validateCreateTutorBody(body: any) {
     afm,
     phone,
     email,
+    iban,
+    notes,
   };
 }
 
@@ -40,6 +44,8 @@ export function validateUpdateTutorBody(body: any): UpdateTutorInput {
     afm: body?.afm?.trim?.() || null,
     phone: body?.phone?.trim?.() || null,
     email: body?.email?.trim?.() || null,
+    iban: body?.iban?.trim?.() || null,
+    notes: body?.notes?.trim?.() || null,
   };
 }
 

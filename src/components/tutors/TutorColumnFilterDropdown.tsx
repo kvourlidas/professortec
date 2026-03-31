@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Columns2, Check, RotateCcw, ChevronDown } from 'lucide-react';
 import { triggerCls } from '../students/dropdownTriggerCls';
 
-export type TutorColumnKey = 'full_name' | 'date_of_birth' | 'afm' | 'phone' | 'email';
+export type TutorColumnKey = 'full_name' | 'date_of_birth' | 'afm' | 'phone' | 'email' | 'iban' | 'notes';
 
 export type TutorColumnDef = {
   key: TutorColumnKey;
@@ -17,6 +17,8 @@ export const ALL_TUTOR_COLUMNS: TutorColumnDef[] = [
   { key: 'afm',           label: 'ΑΦΜ'            },
   { key: 'phone',         label: 'Τηλέφωνο'       },
   { key: 'email',         label: 'Email'           },
+  { key: 'iban',          label: 'IBAN'            },
+  { key: 'notes',         label: 'Σημειώσεις'     },
 ];
 
 export const DEFAULT_TUTOR_VISIBLE = new Set<TutorColumnKey>([

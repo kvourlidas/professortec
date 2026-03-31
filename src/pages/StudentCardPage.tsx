@@ -5,7 +5,7 @@ import {
   ArrowLeft, User, Phone, Mail, Calendar,
   FileText, Layers, Pencil, Loader2, CheckCircle2, Lock,
   Users, BookOpen, UserCheck, AlertCircle, ChevronLeft, ChevronRight,
-  GraduationCap, TrendingUp, Wallet, Receipt,
+  GraduationCap, TrendingUp, Wallet, Receipt, BarChart3,
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient.ts';
 import { useAuth } from '../auth.tsx';
@@ -13,6 +13,7 @@ import { useTheme } from '../context/ThemeContext.tsx';
 import DatePickerField from '../components/ui/AppDatePicker.tsx';
 import type { StudentRow, LevelRow, SubscriptionRow, ClassEnrollment, ProgramSlot } from '../components/students/types.ts';
 import { STUDENT_SELECT, formatDateToGreek, isoToDisplay, displayToIso } from '../components/students/types.ts';
+import type { StudentGradeRow } from '../components/grades/types.ts';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -35,6 +36,16 @@ const CLASS_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#0
 const PAYMENTS_PER_PAGE = 5;
 
 type PaymentRow = { subscription_id: string; amount: number; created_at: string | null };
+
+type CalendarTest = {
+  id: string;
+  test_date: string;
+  title: string | null;
+  class_id: string;
+  class_title: string;
+  start_time: string | null;
+  end_time: string | null;
+};
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -69,7 +80,7 @@ const jsToGrid = (js: number) => (js === 0 ? 6 : js - 1);
 
 // ── Calendar ───────────────────────────────────────────────────────────────
 
-function MonthCalendar({ slots, isDark }: { slots: ProgramSlot[]; isDark: boolean }) {
+function MonthCalendar({ slots, tests, isDark }: { slots: ProgramSlot[]; tests: CalendarTest[]; isDark: boolean }) {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -99,6 +110,16 @@ function MonthCalendar({ slots, isDark }: { slots: ProgramSlot[]; isDark: boolea
     return m;
   }, [slots]);
 
+  const testsByDate = useMemo(() => {
+    const m = new Map<string, CalendarTest[]>();
+    tests.forEach(t => {
+      if (!t.test_date) return;
+      if (!m.has(t.test_date)) m.set(t.test_date, []);
+      m.get(t.test_date)!.push(t);
+    });
+    return m;
+  }, [tests]);
+
   const todayStr = toISODate(today);
   const firstOfMonth = new Date(year, month, 1);
   const lastOfMonth = new Date(year, month + 1, 0);
@@ -114,7 +135,12 @@ function MonthCalendar({ slots, isDark }: { slots: ProgramSlot[]; isDark: boolea
     cells.push({ date: new Date(year, month + 1, cells.length - startPad - lastOfMonth.getDate() + 1), current: false });
 
   const selJsDay = selected ? new Date(selected + 'T12:00:00').getDay() : -1;
-  const selSlots = slotsByJsDay.get(selJsDay) ?? [];
+  const selSlots = (slotsByJsDay.get(selJsDay) ?? []).filter(s => {
+    if (s.start_date && selected < s.start_date) return false;
+    if (s.end_date && selected > s.end_date) return false;
+    return true;
+  });
+  const selTests = testsByDate.get(selected) ?? [];
 
   function prev() { if (month === 0) { setMonth(11); setYear(y => y - 1); } else setMonth(m => m - 1); }
   function next() { if (month === 11) { setMonth(0); setYear(y => y + 1); } else setMonth(m => m + 1); }
@@ -152,7 +178,14 @@ function MonthCalendar({ slots, isDark }: { slots: ProgramSlot[]; isDark: boolea
         {cells.map((cell, i) => {
           const dStr = toISODate(cell.date);
           const jsDay = cell.date.getDay();
-          const daySlots = cell.current ? (slotsByJsDay.get(jsDay) ?? []) : [];
+          const daySlots = cell.current
+            ? (slotsByJsDay.get(jsDay) ?? []).filter(s => {
+                if (s.start_date && dStr < s.start_date) return false;
+                if (s.end_date && dStr > s.end_date) return false;
+                return true;
+              })
+            : [];
+          const dayTests = cell.current ? (testsByDate.get(dStr) ?? []) : [];
           const isToday = dStr === todayStr;
           const isSel = dStr === selected;
 
@@ -177,12 +210,16 @@ function MonthCalendar({ slots, isDark }: { slots: ProgramSlot[]; isDark: boolea
                 }>
                 {cell.date.getDate()}
               </span>
-              {/* class dots */}
+              {/* dots: class slots + test indicator */}
               <span className="flex h-2 items-center gap-0.5 mt-0.5">
                 {daySlots.slice(0, 3).map(s => (
                   <span key={s.id} className="h-1 w-1 rounded-full"
                     style={{ background: isSel ? 'rgba(255,255,255,0.65)' : (colorOf.get(s.class_id) ?? 'var(--color-accent)') }} />
                 ))}
+                {dayTests.length > 0 && (
+                  <span className="h-1 w-1 rounded-full"
+                    style={{ background: isSel ? 'rgba(255,255,255,0.65)' : '#f59e0b' }} />
+                )}
               </span>
             </button>
           );
@@ -197,10 +234,10 @@ function MonthCalendar({ slots, isDark }: { slots: ProgramSlot[]; isDark: boolea
             {selected ? fmtDateLong(selected) : '—'}
           </span>
           <span className={`ml-auto text-[10px] ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
-            {selSlots.length === 0 ? 'Χωρίς μάθημα' : `${selSlots.length} μάθημα`}
+            {selSlots.length === 0 && selTests.length === 0 ? 'Χωρίς δραστηριότητα' : [selSlots.length > 0 && `${selSlots.length} μάθημα`, selTests.length > 0 && `${selTests.length} διαγ.`].filter(Boolean).join(' · ')}
           </span>
         </div>
-        {selSlots.length > 0 && (
+        {(selSlots.length > 0 || selTests.length > 0) && (
           <div className={`divide-y ${isDark ? 'divide-slate-800/60' : 'divide-slate-100'} border-t ${border}`}>
             {selSlots.map(slot => (
               <div key={slot.id} className="flex items-center gap-2.5 px-4 py-2.5">
@@ -212,6 +249,20 @@ function MonthCalendar({ slots, isDark }: { slots: ProgramSlot[]; isDark: boolea
                 {slot.start_time && (
                   <span className={`text-[11px] tabular-nums font-medium shrink-0 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                     {fmt12(slot.start_time)}{slot.end_time ? ` – ${fmt12(slot.end_time)}` : ''}
+                  </span>
+                )}
+              </div>
+            ))}
+            {selTests.map(test => (
+              <div key={test.id} className="flex items-center gap-2.5 px-4 py-2.5">
+                <span className="h-2 w-2 rounded-full shrink-0 bg-amber-400" />
+                <div className="flex-1 min-w-0">
+                  <p className={`text-xs font-semibold truncate ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>{test.title ?? 'Διαγώνισμα'}</p>
+                  <p className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{test.class_title}</p>
+                </div>
+                {test.start_time && (
+                  <span className={`text-[11px] tabular-nums font-medium shrink-0 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    {fmt12(test.start_time)}{test.end_time ? ` – ${fmt12(test.end_time)}` : ''}
                   </span>
                 )}
               </div>
@@ -306,6 +357,9 @@ export default function StudentCardPage() {
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [classes, setClasses] = useState<ClassEnrollment[]>([]);
   const [scheduleSlots, setScheduleSlots] = useState<ProgramSlot[]>([]);
+  const [calendarTests, setCalendarTests] = useState<CalendarTest[]>([]);
+  const [grades, setGrades] = useState<StudentGradeRow[]>([]);
+  const [gradesLoading, setGradesLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -381,21 +435,47 @@ export default function StudentCardPage() {
       setClasses(csData);
       const classIds = csData.map(c => c.class_id).filter(Boolean);
       const programId = (progRes.data as any)?.id;
+
+      const classInfoMap = new Map<string, { title: string; subject: string | null }>();
+      csData.forEach(c => { if (c.classes) classInfoMap.set(c.class_id, { title: c.classes.title, subject: c.classes.subject }); });
+
       if (classIds.length > 0 && programId) {
         const { data: itemData, error: itemErr } = await supabase
-          .from('program_items').select('id, class_id, day_of_week, start_time, end_time, subject')
+          .from('program_items').select('id, class_id, day_of_week, start_time, end_time, subject, start_date, end_date')
           .eq('program_id', programId).in('class_id', classIds);
         if (!itemErr) {
-          const classInfoMap = new Map<string, { title: string; subject: string | null }>();
-          csData.forEach(c => { if (c.classes) classInfoMap.set(c.class_id, { title: c.classes.title, subject: c.classes.subject }); });
           setScheduleSlots((itemData ?? []).map((item: any) => ({
             id: item.id, class_id: item.class_id,
             class_title: classInfoMap.get(item.class_id)?.title ?? '—',
             class_subject: item.subject ?? classInfoMap.get(item.class_id)?.subject ?? null,
             day_of_week: item.day_of_week, start_time: item.start_time, end_time: item.end_time,
+            start_date: item.start_date ?? null, end_date: item.end_date ?? null,
           })));
         }
       }
+
+      if (classIds.length > 0) {
+        const { data: testsData } = await supabase
+          .from('tests').select('id, class_id, test_date, start_time, end_time, title')
+          .eq('school_id', schoolId).in('class_id', classIds);
+        if (testsData) {
+          setCalendarTests(testsData.map((t: any) => ({
+            id: t.id, test_date: t.test_date, title: t.title,
+            class_id: t.class_id, class_title: classInfoMap.get(t.class_id)?.title ?? '—',
+            start_time: t.start_time, end_time: t.end_time,
+          })));
+        }
+      }
+
+      setGradesLoading(true);
+      const { data: gradesData } = await supabase
+        .from('student_test_grades')
+        .select('id, student_id, test_id, test_name, test_date, start_time, end_time, class_title, subject_id, subject_name, grade, graded_at')
+        .eq('school_id', schoolId).eq('student_id', id)
+        .order('test_date', { ascending: false });
+      if (gradesData) setGrades(gradesData as StudentGradeRow[]);
+      setGradesLoading(false);
+
       setLoading(false);
     };
     load();
@@ -794,9 +874,80 @@ export default function StudentCardPage() {
                 })}
               </div>
             )}
-            <MonthCalendar slots={scheduleSlots} isDark={isDark} />
+            <MonthCalendar slots={scheduleSlots} tests={calendarTests} isDark={isDark} />
             {classes.length === 0 && scheduleSlots.length === 0 && (
               <p className={`mt-2 text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Ο μαθητής δεν έχει ενταχθεί σε τμήμα.</p>
+            )}
+          </DashCard>
+
+          {/* ── Grades ── */}
+          <DashCard title="Βαθμοι" icon={<BarChart3 className="h-3.5 w-3.5" />} isDark={isDark} accentTop>
+            {gradesLoading ? (
+              <div className={`divide-y ${isDark ? 'divide-slate-800/50' : 'divide-slate-100'} rounded-xl border overflow-hidden ${isDark ? 'border-slate-700/50' : 'border-slate-200'}`}>
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="flex gap-4 px-4 py-3 animate-pulse">
+                    <div className={`h-3 w-1/5 rounded-full ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`} />
+                    <div className={`h-3 w-2/5 rounded-full ${isDark ? 'bg-slate-800/70' : 'bg-slate-200/70'}`} />
+                    <div className={`h-3 w-1/5 rounded-full ml-auto ${isDark ? 'bg-slate-800/50' : 'bg-slate-200/50'}`} />
+                  </div>
+                ))}
+              </div>
+            ) : grades.length === 0 ? (
+              <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Δεν υπάρχουν καταχωρημένοι βαθμοί.</p>
+            ) : (
+              <>
+                {/* Summary */}
+                {(() => {
+                  const graded = grades.filter(g => g.grade !== null);
+                  const avg = graded.length > 0 ? graded.reduce((a, g) => a + Number(g.grade), 0) / graded.length : null;
+                  return avg !== null ? (
+                    <div className={`mb-3 flex items-center justify-between rounded-xl border px-3 py-2 ${isDark ? 'border-slate-700/60 bg-slate-900/40' : 'border-slate-200 bg-slate-50'}`}>
+                      <div>
+                        <p className={`text-[11px] font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Μέσος όρος βαθμών</p>
+                        <p className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Βασισμένος σε {graded.length} διαγωνίσματα</p>
+                      </div>
+                      <span className="text-xl font-bold" style={{ color: 'var(--color-accent)' }}>{avg.toFixed(1)}</span>
+                    </div>
+                  ) : null;
+                })()}
+                {/* Table */}
+                <div className={`overflow-hidden rounded-xl border ${isDark ? 'border-slate-700/50' : 'border-slate-200'}`}>
+                  <div className="max-h-72 overflow-y-auto">
+                    <table className="min-w-full border-collapse text-xs">
+                      <thead className="sticky top-0 z-10">
+                        <tr className={isDark ? 'border-b border-slate-700/60 bg-slate-900/80' : 'border-b border-slate-200 bg-slate-50'}>
+                          {['Ημερομηνία', 'Διαγώνισμα', 'Τμήμα', 'Βαθμός'].map(h => (
+                            <th key={h} className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-widest"
+                              style={{ color: 'color-mix(in srgb, var(--color-accent) 80%, white)' }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className={isDark ? 'divide-y divide-slate-800/50' : 'divide-y divide-slate-100'}>
+                        {grades.map(g => (
+                          <tr key={g.id} className={isDark ? 'hover:bg-white/[0.025] transition-colors' : 'hover:bg-slate-50 transition-colors'}>
+                            <td className={`px-3 py-2 tabular-nums ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                              {g.test_date ? formatDateToGreek(g.test_date) : '—'}
+                            </td>
+                            <td className={`px-3 py-2 font-medium ${isDark ? 'text-slate-100' : 'text-slate-700'}`}>
+                              <p className="truncate max-w-[140px]">{g.test_name ?? '—'}</p>
+                              {g.subject_name && <p className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{g.subject_name}</p>}
+                            </td>
+                            <td className={`px-3 py-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{g.class_title ?? '—'}</td>
+                            <td className="px-3 py-2">
+                              {g.grade !== null
+                                ? <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold"
+                                    style={{ borderColor: 'color-mix(in srgb, var(--color-accent) 40%, transparent)', background: 'color-mix(in srgb, var(--color-accent) 10%, transparent)', color: 'var(--color-accent)' }}>
+                                    {g.grade}
+                                  </span>
+                                : <span className={isDark ? 'text-slate-600' : 'text-slate-300'}>—</span>}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
             )}
           </DashCard>
 

@@ -274,11 +274,11 @@ export default function Layout({ children }: LayoutProps) {
 
           {/* Row 2: theme toggle */}
           {!sidebarCollapsed ? (
-            <div className={`flex rounded-xl p-1 ${isDark ? 'bg-slate-800/60' : 'bg-slate-100'}`}>
+            <div className={`flex rounded-xl p-0.5 ${isDark ? 'bg-slate-800/60' : 'bg-slate-100'}`}>
               <button
                 type="button"
                 onClick={toggleTheme}
-                className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-[11px] font-semibold transition-all duration-200 ${
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-0.5 text-[11px] font-semibold transition-all duration-200 ${
                   !isDark
                     ? 'bg-white text-amber-500 shadow-sm shadow-black/10'
                     : 'text-slate-500 hover:text-slate-300'
@@ -296,7 +296,7 @@ export default function Layout({ children }: LayoutProps) {
               <button
                 type="button"
                 onClick={toggleTheme}
-                className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-[11px] font-semibold transition-all duration-200 ${
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-0.5 text-[11px] font-semibold transition-all duration-200 ${
                   isDark
                     ? 'bg-slate-700 text-indigo-300 shadow-sm shadow-black/30'
                     : 'text-slate-400 hover:text-slate-600'
@@ -386,10 +386,10 @@ export default function Layout({ children }: LayoutProps) {
         {/* User card — bottom of sidebar */}
         {!sidebarCollapsed && (
           <div
-            className="border-t px-3 py-3"
+            className="border-t px-3 py-1"
             style={{ borderColor: 'var(--color-border-soft)' }}
           >
-            <div className={`flex items-center gap-2.5 rounded-xl border px-2.5 py-2 ${
+            <div className={`flex items-center gap-2.5 rounded-xl border px-2.5 py-0.5 ${
               isDark ? 'border-slate-700/60 bg-slate-800/40' : 'border-slate-200 bg-slate-50'
             }`}>
               <div
@@ -398,7 +398,7 @@ export default function Layout({ children }: LayoutProps) {
               >
                 {(profile?.full_name || user?.email || '?')[0].toUpperCase()}
               </div>
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 flex flex-col gap-0.5">
                 <p className={`truncate text-[12px] font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
                   {profile?.full_name || user?.email}
                 </p>

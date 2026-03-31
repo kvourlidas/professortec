@@ -19,7 +19,7 @@ export function displayToIso(display: string): string {
   if (parts.length !== 3) return '';
   const [d, m, y] = parts;
   if (!d || !m || !y) return '';
-  return `${y}-${d.padStart(2, '0')}-${m.padStart(2, '0')}`;
+  return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
 }
 
 export function normalizeText(value: string | number | null | undefined): string {

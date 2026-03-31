@@ -50,6 +50,8 @@ export type ProgramSlot = {
   day_of_week: string;
   start_time: string | null;
   end_time: string | null;
+  start_date: string | null;
+  end_date: string | null;
 };
 
 export const STUDENT_SELECT = `

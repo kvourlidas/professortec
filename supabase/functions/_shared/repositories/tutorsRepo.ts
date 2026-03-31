@@ -1,6 +1,19 @@
 import type { CreateTutorInput, UpdateTutorInput } from "../types/tutors.ts";
 import { NotFoundError } from "../errors.ts";
 
+const TUTOR_SELECT = `
+  id,
+  school_id,
+  full_name,
+  date_of_birth,
+  afm,
+  phone,
+  email,
+  iban,
+  notes,
+  created_at
+`;
+
 export async function insertTutor(
   supabase: any,
   schoolId: string,
@@ -12,16 +25,7 @@ export async function insertTutor(
       school_id: schoolId,
       ...input,
     })
-    .select(`
-      id,
-      school_id,
-      full_name,
-      date_of_birth,
-      afm,
-      phone,
-      email,
-      created_at
-    `)
+    .select(TUTOR_SELECT)
     .maybeSingle();
 
   if (error || !data) {
@@ -66,18 +70,11 @@ export async function updateTutorById(
       afm: input.afm,
       phone: input.phone,
       email: input.email,
+      iban: input.iban,
+      notes: input.notes,
     })
     .eq("id", input.tutor_id)
-    .select(`
-      id,
-      school_id,
-      full_name,
-      date_of_birth,
-      afm,
-      phone,
-      email,
-      created_at
-    `)
+    .select(TUTOR_SELECT)
     .maybeSingle();
 
   if (error || !data) {
