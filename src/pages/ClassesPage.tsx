@@ -5,7 +5,8 @@ import { useTheme } from '../context/ThemeContext.tsx';
 import ClassFormModal from '../components/classes/ClassFormModal.tsx';
 import ClassStudentsModal from '../components/classes/ClassStudentsModal.tsx';
 import ClassDeleteModal from '../components/classes/ClassDeleteModal.tsx';
-import ClassesTable from '../components/classes/ClassesTable.tsx';
+import ClassesGrid from '../components/classes/ClassesGrid.tsx';
+import type { StudentRow } from '../components/classes/ClassesGrid.tsx';
 import { Plus, School, Search, GraduationCap } from 'lucide-react';
 import type { ClassRow, SubjectRow, LevelRow, ModalMode, ClassFormState } from '../components/classes/types.ts';
 import { normalizeText } from '../components/classes/utils.ts';
@@ -19,6 +20,7 @@ export default function ClassesPage() {
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [subjects, setSubjects] = useState<SubjectRow[]>([]);
   const [levels, setLevels] = useState<LevelRow[]>([]);
+  const [studentsByClass, setStudentsByClass] = useState<Record<string, StudentRow[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -26,9 +28,6 @@ export default function ClassesPage() {
   const [editingClass, setEditingClass] = useState<ClassRow | null>(null);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
-  const pageSize = 10;
-  const [page, setPage] = useState(1);
-  useEffect(() => { setPage(1); }, [search]);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [studentsModalClass, setStudentsModalClass] = useState<{ id: string; title: string } | null>(null);
@@ -39,14 +38,43 @@ export default function ClassesPage() {
     return m;
   }, [levels]);
 
+  /* ── Load students for all classes ── */
+  const loadStudentsByClass = async (classIds: string[]) => {
+    if (classIds.length === 0) { setStudentsByClass({}); return; }
+    const { data, error: err } = await supabase
+      .from('class_students')
+      .select('class_id, student:students(id, full_name)')
+      .eq('school_id', schoolId)
+      .in('class_id', classIds);
+    if (err) { console.error('Failed to load students by class', err); return; }
+    const map: Record<string, StudentRow[]> = {};
+    (data ?? []).forEach((row: any) => {
+      const cid: string = row.class_id;
+      const st: StudentRow = row.student;
+      if (!st) return;
+      if (!map[cid]) map[cid] = [];
+      map[cid].push(st);
+    });
+    setStudentsByClass(map);
+  };
+
   useEffect(() => {
     if (!schoolId) { setLoading(false); return; }
+
     const loadClasses = async () => {
       setLoading(true); setError(null);
-      const { data, error } = await supabase.from('classes').select('id, school_id, title, subject, subject_id, tutor_id').eq('school_id', schoolId).order('title', { ascending: true });
-      if (error) { console.error(error); setError('Αποτυχία φόρτωσης τμημάτων.'); } else { setClasses((data ?? []) as ClassRow[]); }
+      const { data, error } = await supabase
+        .from('classes')
+        .select('id, school_id, title, subject, subject_id, tutor_id')
+        .eq('school_id', schoolId)
+        .order('title', { ascending: true });
+      if (error) { console.error(error); setError('Αποτυχία φόρτωσης τμημάτων.'); setLoading(false); return; }
+      const loaded = (data ?? []) as ClassRow[];
+      setClasses(loaded);
+      await loadStudentsByClass(loaded.map((c) => c.id));
       setLoading(false);
     };
+
     const loadLookups = async () => {
       try {
         const [{ data: subjData, error: subjErr }, { data: levelData, error: lvlErr }] = await Promise.all([
@@ -59,8 +87,21 @@ export default function ClassesPage() {
         if (levelData) setLevels(levelData as LevelRow[]);
       } catch (err) { console.error('Lookup load error', err); }
     };
+
     loadClasses(); loadLookups();
   }, [schoolId]);
+
+  /* ── Refresh students for a single class after modal saves ── */
+  const refreshClassStudents = async (classId: string) => {
+    const { data, error: err } = await supabase
+      .from('class_students')
+      .select('class_id, student:students(id, full_name)')
+      .eq('school_id', schoolId)
+      .eq('class_id', classId);
+    if (err) { console.error(err); return; }
+    const students: StudentRow[] = (data ?? []).map((row: any) => row.student).filter(Boolean);
+    setStudentsByClass((prev) => ({ ...prev, [classId]: students }));
+  };
 
   const openCreateModal = () => { setError(null); setModalMode('create'); setEditingClass(null); setModalOpen(true); };
   const openEditModal = (row: ClassRow) => { setError(null); setModalMode('edit'); setEditingClass(row); setModalOpen(true); };
@@ -79,43 +120,25 @@ export default function ClassesPage() {
     const primarySubjectId = form.subjectIds[0] ?? null;
     const payload = { school_id: schoolId, title: form.title.trim(), subject: subjectText, subject_id: primarySubjectId };
     setSaving(true);
+
     if (modalMode === 'create') {
       const { data, error } = await supabase.functions.invoke('classes-create', {
-        body: {
-          title: payload.title,
-          subject: payload.subject,
-          subject_id: payload.subject_id,
-        },
+        body: { title: payload.title, subject: payload.subject, subject_id: payload.subject_id },
       });
       setSaving(false);
-      if (error || !data?.item) {
-        console.error(error ?? data);
-        setError('Αποτυχία δημιουργίας τμήματος.');
-        return;
-      }
-
-      setClasses((prev) => [data.item as ClassRow, ...prev]);
+      if (error || !data?.item) { console.error(error ?? data); setError('Αποτυχία δημιουργίας τμήματος.'); return; }
+      const newClass = data.item as ClassRow;
+      setClasses((prev) => [newClass, ...prev]);
+      setStudentsByClass((prev) => ({ ...prev, [newClass.id]: [] }));
       closeModal();
     } else {
       if (!editingClass) { setSaving(false); return; }
       const { data, error } = await supabase.functions.invoke('classes-update', {
-        body: {
-          class_id: editingClass.id,
-          title: payload.title,
-          subject: payload.subject,
-          subject_id: payload.subject_id,
-        },
+        body: { class_id: editingClass.id, title: payload.title, subject: payload.subject, subject_id: payload.subject_id },
       });
       setSaving(false);
-      if (error || !data?.item) {
-        console.error(error ?? data);
-        setError('Αποτυχία ενημέρωσης τμήματος.');
-        return;
-      }
-
-      setClasses((prev) =>
-        prev.map((c) => (c.id === editingClass.id ? (data.item as ClassRow) : c))
-      );
+      if (error || !data?.item) { console.error(error ?? data); setError('Αποτυχία ενημέρωσης τμήματος.'); return; }
+      setClasses((prev) => prev.map((c) => (c.id === editingClass.id ? (data.item as ClassRow) : c)));
       closeModal();
     }
   };
@@ -123,15 +146,18 @@ export default function ClassesPage() {
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
     setError(null); setDeleting(true);
-    const { error } = await supabase.functions.invoke('classes-delete', {
-      body: {
-        class_id: deleteTarget.id,
-      },
-    });
+    const { error } = await supabase.functions.invoke('classes-delete', { body: { class_id: deleteTarget.id } });
     setDeleting(false);
     if (error) { console.error(error); setError('Αποτυχία διαγραφής τμήματος.'); return; }
     setClasses((prev) => prev.filter((c) => c.id !== deleteTarget.id));
+    setStudentsByClass((prev) => { const n = { ...prev }; delete n[deleteTarget.id]; return n; });
     setDeleteTarget(null);
+  };
+
+  /* ── Close students modal and refresh that class's students ── */
+  const handleStudentsModalClose = () => {
+    if (studentsModalClass) refreshClassStudents(studentsModalClass.id);
+    setStudentsModalClass(null);
   };
 
   const filteredClasses = useMemo(() => {
@@ -145,14 +171,8 @@ export default function ClassesPage() {
     });
   }, [classes, search, subjects, levelNameById]);
 
-  const pageCount = useMemo(() => Math.max(1, Math.ceil(filteredClasses.length / pageSize)), [filteredClasses.length]);
-  useEffect(() => { setPage((p) => Math.min(Math.max(1, p), pageCount)); }, [pageCount]);
-  const pagedClasses = useMemo(() => { const start = (page - 1) * pageSize; return filteredClasses.slice(start, start + pageSize); }, [filteredClasses, page]);
-  const showingFrom = filteredClasses.length === 0 ? 0 : (page - 1) * pageSize + 1;
-  const showingTo = Math.min(page * pageSize, filteredClasses.length);
-
-  const cardCls = `overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-md ring-1 ring-inset ${isDark ? 'border-slate-700/50 bg-slate-950/40 ring-white/[0.04]' : 'border-slate-200 bg-white/80 ring-black/[0.02]'}`;
   const inputCls = `h-9 w-full rounded-lg border pl-9 pr-3 text-xs outline-none ring-0 backdrop-blur transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 focus:border-[color:var(--color-accent)] ${isDark ? 'border-slate-700/70 bg-slate-900/60 text-slate-100 placeholder-slate-500' : 'border-slate-200 bg-white text-slate-800 placeholder-slate-400'}`;
+  const cardCls = `overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-md ring-1 ring-inset ${isDark ? 'border-slate-700/50 bg-slate-950/40 ring-white/[0.04]' : 'border-slate-200 bg-white/80 ring-black/[0.02]'}`;
 
   return (
     <div className="space-y-6 px-1">
@@ -209,30 +229,28 @@ export default function ClassesPage() {
         </div>
       )}
 
-      {/* ── Table card ── */}
-      <div className={cardCls}>
-        <ClassesTable
-          loading={loading}
-          classes={classes}
-          filteredClasses={filteredClasses}
-          pagedClasses={pagedClasses}
-          subjects={subjects}
-          levelNameById={levelNameById}
-          isDark={isDark}
-          page={page}
-          pageCount={pageCount}
-          showingFrom={showingFrom}
-          showingTo={showingTo}
-          onSetPage={setPage}
-          onEditClass={openEditModal}
-          onDeleteClass={setDeleteTarget}
-          onViewStudents={setStudentsModalClass}
-        />
-      </div>
+      {/* ── Card grid ── */}
+      <ClassesGrid
+        loading={loading}
+        classes={classes}
+        filteredClasses={filteredClasses}
+        subjects={subjects}
+        levelNameById={levelNameById}
+        studentsByClass={studentsByClass}
+        isDark={isDark}
+        onEditClass={openEditModal}
+        onDeleteClass={setDeleteTarget}
+        onViewStudents={setStudentsModalClass}
+      />
 
       {/* ── Modals ── */}
       <ClassFormModal open={modalOpen} mode={modalMode} editingClass={editingClass} subjects={subjects} levels={levels} error={error} saving={saving} onClose={closeModal} onSubmit={handleSaveClass} />
-      <ClassStudentsModal open={!!studentsModalClass} onClose={() => setStudentsModalClass(null)} classId={studentsModalClass?.id ?? null} classTitle={studentsModalClass?.title} />
+      <ClassStudentsModal
+        open={!!studentsModalClass}
+        onClose={handleStudentsModalClose}
+        classId={studentsModalClass?.id ?? null}
+        classTitle={studentsModalClass?.title}
+      />
       <ClassDeleteModal deleteTarget={deleteTarget} deleting={deleting} isDark={isDark} onCancel={() => setDeleteTarget(null)} onConfirm={handleConfirmDelete} />
     </div>
   );

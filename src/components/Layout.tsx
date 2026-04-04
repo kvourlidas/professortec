@@ -68,7 +68,7 @@ export default function Layout({ children }: LayoutProps) {
         to={item.to}
         className={() =>
           [
-            'group flex items-center rounded-xl px-3 py-2 text-[13px] font-medium transition-all duration-150',
+            'group flex items-center rounded-xl px-3 py-1.5 text-[12px] font-medium transition-all duration-150',
             isActive
               ? isDark
                 ? 'bg-white/[0.08] text-slate-50 shadow-sm shadow-black/20'
@@ -80,9 +80,9 @@ export default function Layout({ children }: LayoutProps) {
         }
       >
         {Icon && (
-          <span className={`flex items-center justify-center ${sidebarCollapsed ? 'mx-auto' : 'mr-2.5'}`}>
+          <span className={`flex items-center justify-center ${sidebarCollapsed ? 'mx-auto' : 'mr-2'}`}>
             <Icon
-              className={`h-4 w-4 transition-colors ${
+              className={`h-3.5 w-3.5 transition-colors ${
                 isActive
                   ? 'text-[color:var(--color-accent)]'
                   : isDark
@@ -113,7 +113,7 @@ export default function Layout({ children }: LayoutProps) {
           type="button"
           onClick={() => setOpenGroup(isOpen ? null : item.label)}
           className={[
-            'group flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-[13px] font-medium transition-all duration-150',
+            'group flex w-full items-center justify-between rounded-xl px-3 py-1.5 text-left text-[12px] font-medium transition-all duration-150',
             hasActiveChild
               ? isDark ? 'text-slate-200' : 'text-slate-800'
               : isDark
@@ -123,9 +123,9 @@ export default function Layout({ children }: LayoutProps) {
         >
           <span className="flex items-center">
             {Icon && (
-              <span className={`flex items-center justify-center ${sidebarCollapsed ? 'mx-auto' : 'mr-2.5'}`}>
+              <span className={`flex items-center justify-center ${sidebarCollapsed ? 'mx-auto' : 'mr-2'}`}>
                 <Icon
-                  className={`h-4 w-4 transition-colors ${
+                  className={`h-3.5 w-3.5 transition-colors ${
                     hasActiveChild
                       ? 'text-[color:var(--color-accent)]'
                       : isDark
@@ -162,7 +162,7 @@ export default function Layout({ children }: LayoutProps) {
                       to={child.to}
                       className={() =>
                         [
-                          'group flex items-center rounded-lg px-2.5 py-1.5 text-[12px] font-medium transition-all duration-150',
+                          'group flex items-center rounded-lg px-2.5 py-1 text-[12px] font-medium transition-all duration-150',
                           isChildActive
                             ? isDark
                               ? 'bg-white/[0.08] text-slate-50 shadow-sm shadow-black/20'
@@ -354,7 +354,7 @@ export default function Layout({ children }: LayoutProps) {
             to="/school-info"
             className={() =>
               [
-                'group flex items-center rounded-xl px-3 py-2 text-[13px] font-medium transition-all duration-150',
+                'group flex items-center rounded-xl px-3 py-1.5 text-[12px] font-medium transition-all duration-150',
                 location.pathname === '/school-info'
                   ? isDark
                     ? 'bg-white/[0.08] text-slate-50 shadow-sm shadow-black/20'
@@ -365,9 +365,9 @@ export default function Layout({ children }: LayoutProps) {
               ].join(' ')
             }
           >
-            <span className={`flex items-center justify-center ${sidebarCollapsed ? 'mx-auto' : 'mr-2.5'}`}>
+            <span className={`flex items-center justify-center ${sidebarCollapsed ? 'mx-auto' : 'mr-2'}`}>
               <Building2
-                className={`h-4 w-4 transition-colors ${
+                className={`h-3.5 w-3.5 transition-colors ${
                   location.pathname === '/school-info'
                     ? 'text-[color:var(--color-accent)]'
                     : isDark

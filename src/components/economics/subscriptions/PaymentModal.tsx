@@ -1,8 +1,9 @@
-import { HandCoins, Loader2, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Banknote, CreditCard, HandCoins, Loader2, X } from 'lucide-react';
 import { CURRENCY_SYMBOL, typeColors } from './constants';
 import { TypeIcon } from './TypeIcon';
 import { formatDateTime, isHourlyPackageName, money, packageTypeFromName, typeLabel } from './utils';
-import type { StudentViewRow } from './types';
+import type { PaymentMethod, StudentViewRow } from './types';
 
 interface Props {
   row: StudentViewRow | null;
@@ -14,7 +15,7 @@ interface Props {
   pmHistoryTotal: number;
   isDark: boolean;
   onInputChange: (v: string) => void;
-  onSubmit: () => void;
+  onSubmit: (method: PaymentMethod) => void;
   onClose: () => void;
 }
 
@@ -22,6 +23,9 @@ export function PaymentModal({
   row, paymentInput, payingLoading, pmPaid, pmBilled, pmBalance, pmHistoryTotal,
   isDark, onInputChange, onSubmit, onClose,
 }: Props) {
+  const [method, setMethod] = useState<PaymentMethod>('cash');
+  useEffect(() => { setMethod('cash'); }, [row?.sub.id]);
+
   if (!row) return null;
 
   const sub       = row.sub!;
@@ -102,6 +106,33 @@ export function PaymentModal({
 
             {/* Payment input */}
             <div className="mt-auto">
+              {/* Method toggle */}
+              <p className={`mb-1.5 text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Τρόπος πληρωμής</p>
+              <div className="mb-3 flex gap-2">
+                {(['cash', 'card'] as PaymentMethod[]).map(m => {
+                  const active = method === m;
+                  const Icon = m === 'cash' ? Banknote : CreditCard;
+                  const label = m === 'cash' ? 'Μετρητά' : 'Κάρτα';
+                  return (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setMethod(m)}
+                      disabled={payingLoading}
+                      className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition disabled:opacity-50 ${
+                        active
+                          ? 'border-[color:var(--color-accent)] bg-[color:var(--color-accent)]/10 text-[color:var(--color-accent)]'
+                          : isDark
+                            ? 'border-slate-700/60 bg-slate-800/50 text-slate-400 hover:border-slate-600 hover:text-slate-200'
+                            : 'border-slate-300 bg-white text-slate-500 hover:border-slate-400 hover:text-slate-700'
+                      }`}
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
               <p className={`mb-1.5 text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Ποσό πληρωμής</p>
               <div className="flex gap-2">
                 <input
@@ -111,11 +142,11 @@ export function PaymentModal({
                   inputMode="decimal"
                   placeholder={`π.χ. ${money(pmBalance)}`}
                   className={`flex-1 ${inputCls} ${payingLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  onKeyDown={e => { if (e.key === 'Enter') onSubmit(); }}
+                  onKeyDown={e => { if (e.key === 'Enter') onSubmit(method); }}
                 />
                 <button
                   type="button"
-                  onClick={onSubmit}
+                  onClick={() => onSubmit(method)}
                   disabled={payingLoading}
                   className="btn-primary gap-1.5 px-4 py-2 disabled:opacity-60"
                 >
@@ -144,6 +175,7 @@ export function PaymentModal({
                           style={{ color: 'color-mix(in srgb,var(--color-accent) 70%,white)' }}
                         >
                           <th className="px-3 py-2.5 text-left">Ημερομηνία</th>
+                          <th className="px-3 py-2.5 text-center">Τρόπος</th>
                           <th className="px-3 py-2.5 text-right">Ποσό</th>
                         </tr>
                       </thead>
@@ -153,6 +185,13 @@ export function PaymentModal({
                             {/* Fix: created_at is string | null | undefined — coerce to string | null */}
                             <td className={`px-3 py-2.5 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
                               {formatDateTime(p.created_at ?? null)}
+                            </td>
+                            <td className="px-3 py-2.5 text-center">
+                              {p.payment_method === 'card'
+                                ? <CreditCard className={`inline h-3.5 w-3.5 ${isDark ? 'text-sky-400' : 'text-sky-500'}`} />
+                                : p.payment_method === 'cash'
+                                  ? <Banknote className={`inline h-3.5 w-3.5 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                                  : <span className={`text-[10px] ${isDark ? 'text-slate-600' : 'text-slate-300'}`}>—</span>}
                             </td>
                             <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-emerald-400">
                               {money(p.amount)} {CURRENCY_SYMBOL}

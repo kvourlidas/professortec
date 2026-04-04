@@ -989,7 +989,6 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
                   Ακύρωση για αυτή τη μέρα
                 </button>
                 <div className="flex gap-2.5">
-                  <button type="button" onClick={handleEventModalClose} className={cancelBtnCls}>Ακύρωση</button>
                   <button type="button" onClick={handleEventModalSave}
                     className="btn-primary gap-1.5 px-4 py-1.5 font-semibold shadow-sm hover:brightness-110 active:scale-[0.97]">
                     Ενημέρωση

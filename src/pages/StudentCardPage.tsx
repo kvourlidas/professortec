@@ -5,7 +5,8 @@ import {
   ArrowLeft, User, Phone, Mail, Calendar,
   FileText, Layers, Pencil, Loader2, CheckCircle2, Lock,
   Users, BookOpen, UserCheck, AlertCircle, ChevronLeft, ChevronRight,
-  GraduationCap, TrendingUp, Wallet, Receipt, BarChart3,
+  GraduationCap, TrendingUp, Wallet, Receipt, BarChart3, HandCoins,
+  Banknote, CreditCard, Tag,
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient.ts';
 import { useAuth } from '../auth.tsx';
@@ -14,6 +15,9 @@ import DatePickerField from '../components/ui/AppDatePicker.tsx';
 import type { StudentRow, LevelRow, SubscriptionRow, ClassEnrollment, ProgramSlot } from '../components/students/types.ts';
 import { STUDENT_SELECT, formatDateToGreek, isoToDisplay, displayToIso } from '../components/students/types.ts';
 import type { StudentGradeRow } from '../components/grades/types.ts';
+import { PaymentModal } from '../components/economics/subscriptions/PaymentModal';
+import type { StudentViewRow } from '../components/economics/subscriptions/types';
+import { isHourlyPackageName, parseMoney } from '../components/economics/subscriptions/utils';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -366,6 +370,11 @@ export default function StudentCardPage() {
   // payment pagination per subscription
   const [payPages, setPayPages] = useState<Record<string, number>>({});
 
+  // payment modal
+  const [paymentModal, setPaymentModal] = useState<{ row: StudentViewRow } | null>(null);
+  const [paymentInput, setPaymentInput] = useState('');
+  const [payingLoading, setPayingLoading] = useState(false);
+
   const [editingStudent, setEditingStudent] = useState(false);
   const [savingStudent, setSavingStudent] = useState(false);
   const [studentError, setStudentError] = useState<string | null>(null);
@@ -403,6 +412,16 @@ export default function StudentCardPage() {
   const hasBalanceData = activeSub && activeSub.balance != null;
   const owes = hasBalanceData && totalBalance > 0;
 
+  const pmPaid         = useMemo(() => paymentModal?.row.paid ?? 0, [paymentModal]);
+  const pmBilled       = useMemo(() => {
+    const sub = paymentModal?.row.sub;
+    if (!sub) return 0;
+    const raw = Number((sub as any).charge_amount ?? sub.price ?? 0);
+    return isHourlyPackageName(sub.package_name) ? Math.abs(raw) : raw;
+  }, [paymentModal]);
+  const pmBalance      = useMemo(() => pmBilled - pmPaid, [pmBilled, pmPaid]);
+  const pmHistoryTotal = useMemo(() => paymentModal?.row.payments.reduce((s, p) => s + Number(p.amount ?? 0), 0) ?? 0, [paymentModal]);
+
   useEffect(() => {
     if (!id || !schoolId) return;
     const load = async () => {
@@ -421,16 +440,20 @@ export default function StudentCardPage() {
       setStudent(s); populateStudentForm(s); populateParentsForm(s);
       setLevels((lvlRes.data ?? []) as LevelRow[]);
       const subs = (subRes.data ?? []) as SubscriptionRow[];
-      if (!subRes.error) setSubscriptions(subs);
       const subIds = subs.map(s => s.id);
       if (subIds.length > 0) {
-        const { data: payData } = await supabase
-          .from('student_subscription_payments')
-          .select('subscription_id, amount, created_at')
-          .eq('school_id', schoolId).in('subscription_id', subIds)
-          .order('created_at', { ascending: false });
+        const [{ data: payData }, { data: drData }] = await Promise.all([
+          supabase.from('student_subscription_payments')
+            .select('subscription_id, amount, created_at, payment_method')
+            .eq('school_id', schoolId).in('subscription_id', subIds)
+            .order('created_at', { ascending: false }),
+          supabase.from('student_subscriptions').select('id, discount_reason').in('id', subIds),
+        ]);
         setPayments((payData ?? []) as PaymentRow[]);
+        const drMap = new Map((drData ?? []).map((r: any) => [r.id, r.discount_reason]));
+        for (const sub of subs) { (sub as any).discount_reason = drMap.get(sub.id) ?? null; }
       }
+      if (!subRes.error) setSubscriptions([...subs]);
       const csData = (csRes.data ?? []) as unknown as ClassEnrollment[];
       setClasses(csData);
       const classIds = csData.map(c => c.class_id).filter(Boolean);
@@ -480,6 +503,77 @@ export default function StudentCardPage() {
     };
     load();
   }, [id, schoolId]);
+
+  const reloadSubsAndPayments = async (): Promise<{ subs: SubscriptionRow[]; pays: PaymentRow[] }> => {
+    if (!id || !schoolId) return { subs: [], pays: [] };
+    const { data: subData } = await supabase
+      .from('student_subscriptions_with_totals')
+      .select('id, school_id, student_id, package_id, package_name, price, currency, status, starts_on, ends_on, created_at, balance, paid_amount, charge_amount')
+      .eq('student_id', id).eq('school_id', schoolId).order('created_at', { ascending: false });
+    const subs = (subData ?? []) as SubscriptionRow[];
+    let pays: PaymentRow[] = [];
+    const subIds = subs.map(s => s.id);
+    if (subIds.length > 0) {
+      const [{ data: payData }, { data: drData }] = await Promise.all([
+        supabase.from('student_subscription_payments')
+          .select('subscription_id, amount, created_at, payment_method')
+          .eq('school_id', schoolId).in('subscription_id', subIds)
+          .order('created_at', { ascending: false }),
+        supabase.from('student_subscriptions').select('id, discount_reason').in('id', subIds),
+      ]);
+      pays = (payData ?? []) as PaymentRow[];
+      setPayments(pays);
+      const drMap = new Map((drData ?? []).map((r: any) => [r.id, r.discount_reason]));
+      for (const sub of subs) { (sub as any).discount_reason = drMap.get(sub.id) ?? null; }
+    }
+    setSubscriptions([...subs]);
+    return { subs, pays };
+  };
+
+  const openPaymentModal = (sub: SubscriptionRow) => {
+    if (!student) return;
+    const subPayments = payments.filter(p => p.subscription_id === sub.id);
+    const paid = subPayments.reduce((a, p) => a + Number(p.amount ?? 0), 0);
+    const row: StudentViewRow = {
+      student_id: student.id,
+      student_name: student.full_name ?? '',
+      sub,
+      paid,
+      balance: Number(sub.balance ?? 0),
+      payments: subPayments as any,
+    };
+    setPaymentInput('');
+    setPaymentModal({ row });
+  };
+
+  const submitPayment = async (method: 'cash' | 'card') => {
+    if (!schoolId || !paymentModal?.row.sub || !student) return;
+    const amount = parseMoney(paymentInput);
+    if (amount <= 0) return;
+    setPayingLoading(true);
+    const subId = paymentModal.row.sub.id;
+    const { error } = await supabase.from('student_subscription_payments')
+      .insert({ school_id: schoolId, subscription_id: subId, amount: Number(amount.toFixed(2)), payment_method: method });
+    setPayingLoading(false);
+    if (error) return;
+    setPaymentInput('');
+    const { subs, pays } = await reloadSubsAndPayments();
+    const freshSub = subs.find(s => s.id === subId);
+    if (freshSub) {
+      const freshPays = pays.filter(p => p.subscription_id === subId);
+      const freshPaid = freshPays.reduce((a, p) => a + Number(p.amount ?? 0), 0);
+      setPaymentModal({
+        row: {
+          student_id: student.id,
+          student_name: student.full_name ?? '',
+          sub: freshSub,
+          paid: freshPaid,
+          balance: Number(freshSub.balance ?? 0),
+          payments: freshPays as any,
+        },
+      });
+    }
+  };
 
   function populateStudentForm(s: StudentRow) {
     setFullName(s.full_name ?? ''); setDateOfBirth(isoToDisplay(s.date_of_birth));
@@ -788,13 +882,33 @@ export default function StudentCardPage() {
                       <div className={`flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 ${isDark ? 'bg-slate-900/40' : 'bg-slate-50'}`}>
                         <div className="flex flex-wrap items-center gap-2">
                           {statusBadge(sub.status)}
-                          <span className={`text-xs font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{sub.package_name}</span>
+                          <div className="flex flex-col gap-0.5">
+                            <span className={`text-xs font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{sub.package_name}</span>
+                            {sub.discount_reason && (
+                              <span className={`flex items-center gap-1 text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                <Tag className="h-2.5 w-2.5 shrink-0" />
+                                {sub.discount_reason}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        {(sub.starts_on || sub.ends_on) && (
-                          <span className={`text-[10px] tabular-nums ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                            {sub.starts_on ? formatDateToGreek(sub.starts_on) : '—'} → {sub.ends_on ? formatDateToGreek(sub.ends_on) : '—'}
-                          </span>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {(sub.starts_on || sub.ends_on) && (
+                            <span className={`text-[10px] tabular-nums ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                              {sub.starts_on ? formatDateToGreek(sub.starts_on) : '—'} → {sub.ends_on ? formatDateToGreek(sub.ends_on) : '—'}
+                            </span>
+                          )}
+                          {sub.status === 'active' && (
+                            <button
+                              type="button"
+                              onClick={() => openPaymentModal(sub)}
+                              className="btn-primary flex items-center gap-1 px-2.5 py-1 text-[11px]"
+                            >
+                              <HandCoins className="h-3 w-3" />
+                              Πληρωμή
+                            </button>
+                          )}
+                        </div>
                       </div>
                       {/* financials */}
                       <div className={`grid grid-cols-3 gap-px ${isDark ? 'bg-slate-800/40' : 'bg-slate-200'}`}>
@@ -823,7 +937,19 @@ export default function StudentCardPage() {
                                   <span className={`h-1.5 w-1.5 rounded-full ${isDark ? 'bg-emerald-400' : 'bg-emerald-500'}`} />
                                   <span className={`text-[11px] tabular-nums ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{fmtDateTime(p.created_at)}</span>
                                 </div>
-                                <span className={`text-xs font-semibold tabular-nums ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>+{Number(p.amount).toFixed(2)}€</span>
+                                <div className="flex items-center gap-2">
+                                  {(p as any).payment_method === 'card' && (
+                                    <span className={`flex items-center gap-1 text-[11px] font-medium ${isDark ? 'text-sky-400' : 'text-sky-600'}`}>
+                                      <CreditCard className="h-3 w-3" />Κάρτα
+                                    </span>
+                                  )}
+                                  {(p as any).payment_method === 'cash' && (
+                                    <span className={`flex items-center gap-1 text-[11px] font-medium ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                                      <Banknote className="h-3 w-3" />Μετρητά
+                                    </span>
+                                  )}
+                                  <span className={`text-xs font-semibold tabular-nums ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>+{Number(p.amount).toFixed(2)}€</span>
+                                </div>
                               </div>
                             ))}
                           </div>
@@ -953,6 +1079,21 @@ export default function StudentCardPage() {
 
         </div>
       </div>
+
+      {/* Payment modal */}
+      <PaymentModal
+        row={paymentModal?.row ?? null}
+        paymentInput={paymentInput}
+        payingLoading={payingLoading}
+        pmPaid={pmPaid}
+        pmBilled={pmBilled}
+        pmBalance={pmBalance}
+        pmHistoryTotal={pmHistoryTotal}
+        isDark={isDark}
+        onInputChange={setPaymentInput}
+        onSubmit={submitPayment}
+        onClose={() => setPaymentModal(null)}
+      />
     </div>
   );
 }

@@ -16,10 +16,12 @@ export type PackageRow = {
   is_custom?: boolean | null;
   avatar_color?: string | null;
 };
+export type PaymentMethod = 'cash' | 'card';
 export type PaymentRow = {
   subscription_id: string;
   amount: number | null;
   created_at?: string | null;
+  payment_method?: PaymentMethod | null;
 };
 export type StudentRow = {
   id: string;
@@ -37,11 +39,12 @@ export type SubscriptionRow = {
   status: string;
   starts_on: string | null;
   ends_on: string | null;
-  created_at?: string;
+  created_at?: string | null;
   used_hours?: number | null;
   charge_amount?: number | null;
   paid_amount?: number | null;
   balance?: number | null;
+  discount_reason?: string | null;
 };
 export type StudentViewRow = {
   student_id: string;

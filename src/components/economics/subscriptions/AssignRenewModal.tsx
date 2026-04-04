@@ -30,6 +30,8 @@ interface Props {
   setCustomPrice: (v: string) => void;
   discountPct: string;
   setDiscountPct: (v: string) => void;
+  discountReason: string;
+  setDiscountReason: (v: string) => void;
   assignFinalPrice: number;
   assignPeriodMode: PeriodMode;
   setAssignPeriodMode: (m: PeriodMode) => void;
@@ -52,7 +54,7 @@ export function AssignRenewModal({
   open, isRenew, saving, assignError, isDark,
   selStudent, allStudents, studentQ, setStudentQ, studentDrop, setStudentDrop, onStudentSelect,
   selPackage, packages, packageQ, setPackageQ, packageDrop, setPackageDrop, onPackageSelect,
-  customPrice, setCustomPrice, discountPct, setDiscountPct,
+  customPrice, setCustomPrice, discountPct, setDiscountPct, discountReason, setDiscountReason,
   assignPeriodMode, setAssignPeriodMode, assignMonthNum, setAssignMonthNum, assignYear, setAssignYear,
   assignStartsOn, setAssignStartsOn, assignEndsOn, setAssignEndsOn,
   monthOptions, yearOptions, assignPeriodDisplay,
@@ -347,6 +349,16 @@ export function AssignRenewModal({
                       className={`w-full ${inputCls} ${!selPackage ? 'cursor-not-allowed opacity-40' : ''}`}
                     />
                   </div>
+                  {discountPct.trim() !== '' && Number(discountPct.replace(',', '.')) > 0 && (
+                    <div className={`border-t px-3 py-2 ${isDark ? 'border-slate-700/50' : 'border-slate-200'}`}>
+                      <input
+                        value={discountReason}
+                        onChange={e => setDiscountReason(e.target.value)}
+                        placeholder="Αιτιολογία έκπτωσης…"
+                        className={`w-full ${inputCls}`}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-2 flex items-center justify-between">

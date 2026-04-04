@@ -7,7 +7,8 @@
       "Bash(npx vite build)",
       "Bash(find /d/Projects/professortec/src/components -type f -name *.tsx)",
       "Bash(sed -i 's/text-\\\\[10px\\\\] font-bold uppercase tracking-widest/text-xs font-bold uppercase tracking-widest/g' src/pages/LoginPage.tsx)",
-      "Bash(sed -i 's/mb-1\\\\.5 block text-\\\\[10px\\\\] font-semibold uppercase tracking-widest/mb-1.5 block text-xs font-semibold uppercase tracking-widest/g' src/components/economics/subscriptions/AssignRenewModal.tsx)"
+      "Bash(sed -i 's/mb-1\\\\.5 block text-\\\\[10px\\\\] font-semibold uppercase tracking-widest/mb-1.5 block text-xs font-semibold uppercase tracking-widest/g' src/components/economics/subscriptions/AssignRenewModal.tsx)",
+      "Bash(xargs grep:*)"
     ]
   }
 }

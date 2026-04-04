@@ -95,6 +95,8 @@ export default function StudentsSubscriptionsPage() {
           setCustomPrice={p.setCustomPrice}
           discountPct={p.discountPct}
           setDiscountPct={p.setDiscountPct}
+          discountReason={p.discountReason}
+          setDiscountReason={p.setDiscountReason}
           assignFinalPrice={p.assignFinalPrice}
           assignPeriodMode={p.assignPeriodMode}
           setAssignPeriodMode={p.setAssignPeriodMode}

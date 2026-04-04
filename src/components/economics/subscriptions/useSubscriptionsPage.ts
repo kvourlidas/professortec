@@ -57,6 +57,7 @@ export function useSubscriptionsPage() {
   const [customPrice,      setCustomPrice]      = useState('');
   const [discountPct,      setDiscountPct]      = useState('');
   const [discountMode,     setDiscountMode]     = useState<'pct' | 'amount'>('pct');
+  const [discountReason,   setDiscountReason]   = useState('');
   const [studentQ,         setStudentQ]         = useState('');
   const [packageQ,         setPackageQ]         = useState('');
   const [studentDrop,      setStudentDrop]      = useState(false);
@@ -147,6 +148,13 @@ export function useSubscriptionsPage() {
     const subs = (subRes.data ?? []) as SubscriptionRow[];
     setTotalCount(subRes.count ?? 0);
     if (subs.length === 0) { setRows([]); setLoading(false); return; }
+    // Fetch discount_reason from base table (not in view)
+    const subIds0 = subs.map(s => s.id);
+    if (subIds0.length > 0) {
+      const { data: drData } = await supabase.from('student_subscriptions').select('id,discount_reason').in('id', subIds0);
+      const drMap = new Map((drData ?? []).map((r: any) => [r.id, r.discount_reason]));
+      for (const sub of subs) { (sub as any).discount_reason = drMap.get(sub.id) ?? null; }
+    }
     const studentIds = [...new Set(subs.map(s => s.student_id))];
     const { data: sd } = await supabase.from('students').select('id,full_name').in('id', studentIds);
     const nameById = new Map<string, string>();
@@ -154,7 +162,7 @@ export function useSubscriptionsPage() {
     const subIds = subs.map(s => s.id);
     const payMap = new Map<string, PaymentRow[]>();
     if (subIds.length > 0) {
-      const { data: pd } = await supabase.from('student_subscription_payments').select('subscription_id,amount,created_at').eq('school_id', schoolId).in('subscription_id', subIds);
+      const { data: pd } = await supabase.from('student_subscription_payments').select('subscription_id,amount,created_at,payment_method').eq('school_id', schoolId).in('subscription_id', subIds);
       for (const p of (pd ?? []) as PaymentRow[]) {
         const l = payMap.get(p.subscription_id) ?? []; l.push(p); payMap.set(p.subscription_id, l);
       }
@@ -198,13 +206,13 @@ export function useSubscriptionsPage() {
   // ── Handlers ───────────────────────────────────────────────────────────────
   const openPaymentModal = (row: StudentViewRow) => { setPaymentInput(''); setPaymentModal({ row }); };
 
-  const submitPayment = async () => {
+  const submitPayment = async (method: 'cash' | 'card') => {
     if (!schoolId || !paymentModal?.row.sub) return;
     const amount = parseMoney(paymentInput);
     if (amount <= 0) { setError('Δώσε ποσό μεγαλύτερο από 0.'); return; }
     setPayingLoading(true); setError(null);
     const { error } = await supabase.from('student_subscription_payments')
-      .insert({ school_id: schoolId, subscription_id: paymentModal.row.sub.id, amount: Number(amount.toFixed(2)) });
+      .insert({ school_id: schoolId, subscription_id: paymentModal.row.sub.id, amount: Number(amount.toFixed(2)), payment_method: method });
     if (error) { setError(error.message); setPayingLoading(false); return; }
     setPaymentInput(''); setInfo('Καταχωρήθηκε πληρωμή.');
     await load();
@@ -221,7 +229,7 @@ export function useSubscriptionsPage() {
   };
 
   const resetModal = () => {
-    setSelPackage(null); setCustomPrice(''); setDiscountPct(''); setDiscountMode('pct'); setPackageQ('');
+    setSelPackage(null); setCustomPrice(''); setDiscountPct(''); setDiscountMode('pct'); setDiscountReason(''); setPackageQ('');
     setAssignStartsOn(isoToDisplayDate(todayLocalISODate())); setAssignEndsOn('');
     setAssignPeriodMode('month'); setAssignMonthNum(pad2(new Date().getMonth() + 1)); setAssignYear(String(new Date().getFullYear()));
     setAssignError(null); setRenewFromSubId(null);
@@ -235,7 +243,7 @@ export function useSubscriptionsPage() {
     setSelStudent({ id: row.student_id, school_id: schoolId ?? '', full_name: row.student_name });
     setStudentQ('');
     const pkg = row.sub?.package_id ? packageById.get(row.sub.package_id) ?? null : null;
-    setSelPackage(pkg); setCustomPrice(''); setDiscountPct(''); setPackageQ('');
+    setSelPackage(pkg); setCustomPrice(''); setDiscountPct(''); setDiscountReason(''); setPackageQ('');
     setAssignStartsOn(isoToDisplayDate(todayLocalISODate())); setAssignEndsOn('');
     setAssignPeriodMode('month'); setAssignMonthNum(pad2(new Date().getMonth() + 1)); setAssignYear(String(new Date().getFullYear()));
     setAssignError(null); setAssignOpen(true);
@@ -309,6 +317,7 @@ export function useSubscriptionsPage() {
       school_id: schoolId, student_id: selStudent.id, package_id: pkg.id,
       package_name: pkg.name, price: assignFinalPrice, currency: pkg.currency ?? 'EUR',
       status: 'active', starts_on: startsISO, ends_on: endsISO,
+      discount_reason: discountReason.trim() || null,
     });
     if (error) { setAssignError(error.message); setSaving(false); return; }
     if (isRenew && renewFromSubId) {
@@ -349,7 +358,7 @@ export function useSubscriptionsPage() {
     deleteTarget, setDeleteTarget, deleting, confirmDelete,
     assignOpen, setAssignOpen, isRenew, saving, assignError, setAssignError,
     selStudent, setSelStudent, selPackage, setSelPackage,
-    customPrice, setCustomPrice, discountPct, setDiscountPct, discountMode, setDiscountMode,
+    customPrice, setCustomPrice, discountPct, setDiscountPct, discountMode, setDiscountMode, discountReason, setDiscountReason,
     studentQ, setStudentQ, packageQ, setPackageQ,
     studentDrop, setStudentDrop, packageDrop, setPackageDrop,
     assignStartsOn, setAssignStartsOn, assignEndsOn, setAssignEndsOn,

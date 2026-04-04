@@ -1,4 +1,4 @@
-import { AlertCircle, CalendarDays, CheckCircle2, HandCoins, RefreshCw, Trash2, XCircle } from 'lucide-react';
+import { AlertCircle, CalendarDays, CheckCircle2, HandCoins, RefreshCw, Tag, Trash2, XCircle } from 'lucide-react';
 import { CURRENCY_SYMBOL, typeColors } from './constants';
 import { TypeIcon } from './TypeIcon';
 import { isHourlyPackageName, money, packageTypeFromName, periodSummary } from './utils';
@@ -81,8 +81,16 @@ export function SubscriptionTableRow({ row, isDark, packageById, onPayment, onRe
         </span>
       </td>
 
-      <td className={`px-4 py-3 align-middle text-right text-[12px] tabular-nums ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
-        {money(dispPrice)} {CURRENCY_SYMBOL}{isHourly ? ' / ώρα' : ''}
+      <td className="px-4 py-3 align-middle text-right">
+        <span className={`text-[12px] tabular-nums ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+          {money(dispPrice)} {CURRENCY_SYMBOL}{isHourly ? ' / ώρα' : ''}
+        </span>
+        {sub.discount_reason && (
+          <div className={`mt-0.5 flex items-center justify-end gap-1 text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+            <Tag className="h-2.5 w-2.5 shrink-0" />
+            <span className="truncate max-w-[120px]">{sub.discount_reason}</span>
+          </div>
+        )}
       </td>
       <td className={`px-4 py-3 align-middle text-right text-[12px] tabular-nums font-medium ${paidCls}`}>
         {money(paid)} {CURRENCY_SYMBOL}

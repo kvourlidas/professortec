@@ -35,6 +35,7 @@ export type SubscriptionRow = {
   balance?: number | null;
   paid_amount?: number | null;
   charge_amount?: number | null;
+  discount_reason?: string | null;
 };
 
 export type ClassEnrollment = {
