@@ -22,7 +22,7 @@ const NOTE_COLORS = [
 ];
 
 const DEFAULT_NOTE_COLOR = '#3b82f6';
-const NOTES_PER_PAGE = 5;
+const NOTES_PER_PAGE = 3;
 
 type DashboardNotesSectionProps = { schoolId: string | null };
 
@@ -169,30 +169,32 @@ export default function DashboardNotesSection({ schoolId }: DashboardNotesSectio
   );
 
   return (
-    <section className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
-            style={{ background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 60%, transparent))'}}>
-            <StickyNote className="h-4 w-4" style={{ color: 'var(--color-input-bg)' }} />
-          </div>
-          <h2 className={`text-sm font-semibold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Σημειώσεις</h2>
-        </div>
-        <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] ${
-          isDark ? 'border-slate-700/60 bg-slate-800/50 text-slate-400' : 'border-slate-200 bg-slate-100 text-slate-500'
-        }`}>
-          {notes.length} συνολικά
-        </span>
-      </div>
-
+    <section className="flex flex-col flex-1">
       {/* Card */}
-      <div className={`overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-md ring-1 ring-inset ${
+      <div className={`flex flex-col flex-1 overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-md ring-1 ring-inset ${
         isDark
           ? 'border-slate-700/50 bg-slate-950/40 ring-white/[0.04]'
           : 'border-slate-200 bg-white/80 ring-black/[0.02]'
       }`}>
         <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 30%, transparent))' }} />
+
+        {/* Header — inside card */}
+        <div className="flex items-center justify-between px-5 pt-4 pb-0">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border"
+              style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', borderColor: 'color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>
+              <StickyNote className="h-3.5 w-3.5" style={{ color: 'var(--color-accent)' }} />
+            </div>
+            <div>
+              <p className={`text-sm font-semibold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Σημειώσεις</p>
+            </div>
+          </div>
+          <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] ${
+            isDark ? 'border-slate-700/60 bg-slate-800/50 text-slate-400' : 'border-slate-200 bg-slate-100 text-slate-500'
+          }`}>
+            {notes.length} συνολικά
+          </span>
+        </div>
 
         {/* Add note form */}
         <div className="p-4">

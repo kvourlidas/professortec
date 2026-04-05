@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { Search, School, Pencil, Trash2, UserPlus, GraduationCap, BookOpen } from 'lucide-react';
+import { Search, School, Pencil, Trash2, GraduationCap, BookOpen } from 'lucide-react';
 import type { ClassRow, SubjectRow } from './types';
 
 export type StudentRow = { id: string; full_name: string | null };
@@ -22,27 +22,11 @@ function initials(name: string | null): string {
   return name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('');
 }
 
-const AVATAR_COLORS = [
-  { bg: 'bg-blue-100', text: 'text-blue-700' },
-  { bg: 'bg-violet-100', text: 'text-violet-700' },
-  { bg: 'bg-emerald-100', text: 'text-emerald-700' },
-  { bg: 'bg-amber-100', text: 'text-amber-700' },
-  { bg: 'bg-rose-100', text: 'text-rose-700' },
-];
+const AVATAR_COLOR_LIGHT = { bg: 'bg-blue-100', text: 'text-blue-700' };
+const AVATAR_COLOR_DARK = { bg: 'bg-amber-900/50', text: 'text-amber-300' };
 
-const AVATAR_COLORS_DARK = [
-  { bg: 'bg-blue-900/50', text: 'text-blue-300' },
-  { bg: 'bg-violet-900/50', text: 'text-violet-300' },
-  { bg: 'bg-emerald-900/50', text: 'text-emerald-300' },
-  { bg: 'bg-amber-900/50', text: 'text-amber-300' },
-  { bg: 'bg-rose-900/50', text: 'text-rose-300' },
-];
-
-function avatarColor(id: string, dark: boolean) {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
-  const idx = Math.abs(hash) % AVATAR_COLORS.length;
-  return dark ? AVATAR_COLORS_DARK[idx] : AVATAR_COLORS[idx];
+function avatarColor(dark: boolean) {
+  return dark ? AVATAR_COLOR_DARK : AVATAR_COLOR_LIGHT;
 }
 
 export default function ClassesGrid({
@@ -146,17 +130,7 @@ export default function ClassesGrid({
             >
               {/* ── Card header ── */}
               <div className={`flex items-start justify-between gap-2 px-4 py-3.5 ${isDark ? 'border-b border-slate-700/50' : 'border-b border-slate-100'}`}>
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-xs font-semibold"
-                    style={{
-                      background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)',
-                      color: 'var(--color-accent)',
-                      border: '1px solid color-mix(in srgb, var(--color-accent) 25%, transparent)',
-                    }}
-                  >
-                    {cls.title.slice(0, 2).toUpperCase()}
-                  </div>
+                <div className="flex items-center min-w-0">
                   <p className={`text-sm font-semibold truncate ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>
                     {cls.title}
                   </p>
@@ -195,11 +169,7 @@ export default function ClassesGrid({
                 {levelName ? (
                   <div className="flex items-center gap-1.5">
                     <GraduationCap className={`h-3 w-3 shrink-0 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium ${
-                      isDark
-                        ? 'bg-blue-900/40 text-blue-300 border border-blue-800/50'
-                        : 'bg-blue-50 text-blue-700 border border-blue-100'
-                    }`}>
+                    <span className={`text-xs ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
                       {levelName}
                     </span>
                   </div>
@@ -210,20 +180,9 @@ export default function ClassesGrid({
                 {subjectNames.length > 0 && (
                   <div className="flex items-start gap-1.5">
                     <BookOpen className={`h-3 w-3 mt-0.5 shrink-0 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-                    <div className="flex flex-wrap gap-1">
-                      {subjectNames.map((name) => (
-                        <span
-                          key={name}
-                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] border ${
-                            isDark
-                              ? 'border-slate-700/50 bg-slate-800/60 text-slate-300'
-                              : 'border-slate-200 bg-slate-50 text-slate-600'
-                          }`}
-                        >
-                          {name}
-                        </span>
-                      ))}
-                    </div>
+                    <span className={`text-xs ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                      {subjectNames.join(', ')}
+                    </span>
                   </div>
                 )}
               </div>
@@ -237,14 +196,13 @@ export default function ClassesGrid({
                   <button
                     type="button"
                     onClick={() => onViewStudents({ id: cls.id, title: cls.title })}
-                    className={`flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium transition active:scale-95 ${
+                    className={`text-[11px] font-semibold rounded-md border px-2 py-0.5 transition-opacity hover:opacity-60 ${
                       isDark
-                        ? 'bg-emerald-900/30 text-emerald-400 hover:bg-emerald-900/50 border border-emerald-800/40'
-                        : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
+                        ? 'text-amber-400 border-amber-400/40'
+                        : 'text-blue-500 border-blue-300'
                     }`}
                   >
-                    <UserPlus className="h-3 w-3" />
-                    Διαχείριση
+                    Διαχείριση →
                   </button>
                 </div>
 
@@ -255,7 +213,7 @@ export default function ClassesGrid({
                 ) : (
                   <ul className="flex flex-col gap-1.5">
                     {students.map((st) => {
-                      const color = avatarColor(st.id, isDark);
+                      const color = avatarColor(isDark);
                       return (
                         <li key={st.id} className="flex items-center gap-2">
                           <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold ${color.bg} ${color.text}`}>

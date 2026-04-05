@@ -4,6 +4,7 @@ import DashboardMetricsSection from '../components/dashboard/DashboardMetricsSec
 import DashboardMonthlyTestsAvgGradesSection from '../components/dashboard/DashboardMonthlyTestsAvgGradesSection.tsx';
 import DashboardNotesSection from '../components/dashboard/DashboardNotesSection.tsx';
 import DashboardCalendarSection from '../components/dashboard/DashboardCalendarSection.tsx';
+import DashboardUpcomingSessionsSection from '../components/dashboard/DashboardUpcomingSessionsSection.tsx';
 
 export default function DashboardPage() {
   const { profile } = useAuth();
@@ -11,13 +12,19 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Top row: 2 widgets */}
+      {/* Row 1: Notes (compact) + Upcoming Sessions */}
+      <div className="grid gap-4 lg:grid-cols-2 lg:items-stretch [&>*]:flex [&>*]:flex-col">
+        <DashboardNotesSection schoolId={schoolId} />
+        <DashboardUpcomingSessionsSection schoolId={schoolId} />
+      </div>
+
+      {/* Row 2: Metrics + Tests */}
       <div className="grid gap-4 lg:grid-cols-2">
         <DashboardMetricsSection schoolId={schoolId} />
         <DashboardMonthlyTestsAvgGradesSection schoolId={schoolId} />
       </div>
 
-      <DashboardNotesSection schoolId={schoolId} />
+      {/* Row 3: Calendar */}
       <DashboardCalendarSection schoolId={schoolId} />
     </div>
   );
