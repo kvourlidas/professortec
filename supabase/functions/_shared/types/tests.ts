@@ -16,6 +16,7 @@ export type UpdateTestInput = {
   start_time: string;
   end_time: string;
   title: string | null;
+  active_during_holiday: boolean | null;
 };
 
 export type DeleteTestInput = {

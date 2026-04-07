@@ -66,6 +66,20 @@ type TestModalState = {
   title: string; activeDuringHoliday: boolean;
 };
 
+/* ------------ Edge function helper ------------ */
+
+async function callEdgeFunction(name: string, body: Record<string, unknown>) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (!token) throw new Error('Not authenticated');
+  const res = await supabase.functions.invoke(name, {
+    body,
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (res.error) throw new Error(res.error.message ?? 'Edge function error');
+  return res.data;
+}
+
 /* ------------ Helpers (unchanged) ------------ */
 
 const pad2 = (n: number) => n.toString().padStart(2, '0');
@@ -416,9 +430,10 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
       const eventId = event.extendedProps['eventId'] as string | undefined;
       if (!eventId) { revert(); return; }
       try {
-        const { data, error } = await supabase.from('school_events').update({ date: newDateStr, start_time: newStartTimeDb, end_time: newEndTimeDb }).eq('id', eventId).select('*').maybeSingle();
-        if (error || !data) { console.error(error); revert(); return; }
-        setSchoolEvents((prev) => prev.map((ev) => (ev.id === eventId ? (data as SchoolEventRow) : ev)));
+        const ev = schoolEvents.find((e) => e.id === eventId);
+        if (!ev) { revert(); return; }
+        const result = await callEdgeFunction('events-update', { event_id: eventId, name: ev.name, description: ev.description ?? null, date: newDateStr, start_time: newStartTimeDb, end_time: newEndTimeDb });
+        setSchoolEvents((prev) => prev.map((e) => (e.id === eventId ? (result.item as SchoolEventRow) : e)));
       } catch (err) { console.error(err); revert(); }
       return;
     }
@@ -428,9 +443,10 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
       if (!testId) { revert(); return; }
       try {
         const movedToHoliday = holidayDateSet.has(newDateStr);
-        const { data, error } = await supabase.from('tests').update({ test_date: newDateStr, start_time: newStartTimeDb, end_time: newEndTimeDb, active_during_holiday: movedToHoliday ? true : false }).eq('id', testId).select('*').maybeSingle();
-        if (error || !data) { console.error(error); revert(); return; }
-        setTests((prev) => prev.map((t) => (t.id === testId ? (data as TestRow) : t)));
+        const test = tests.find((t) => t.id === testId);
+        if (!test) { revert(); return; }
+        const result = await callEdgeFunction('tests-update', { test_id: testId, class_id: test.class_id, subject_id: test.subject_id ?? null, test_date: newDateStr, start_time: newStartTimeDb, end_time: newEndTimeDb, title: test.title ?? null, active_during_holiday: movedToHoliday });
+        setTests((prev) => prev.map((t) => (t.id === testId ? (result.item as TestRow) : t)));
       } catch (err) { console.error(err); revert(); }
       return;
     }
@@ -439,40 +455,21 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     if (!programItemId || !oldEvent || !oldEvent.start) { revert(); return; }
     const oldDateStr = formatLocalYMD(oldEvent.start);
 
+    const applyOverride = (prev: ProgramItemOverrideRow[], date: string, upserted: ProgramItemOverrideRow) => {
+      const existing = prev.find((o) => o.program_item_id === programItemId && o.override_date === date);
+      if (existing) return prev.map((o) => (o.id === existing.id ? upserted : o));
+      return [...prev, upserted];
+    };
     try {
       const movedToHoliday = holidayDateSet.has(newDateStr);
       if (oldDateStr === newDateStr) {
-        const existing = overrides.find((o) => o.program_item_id === programItemId && o.override_date === newDateStr);
-        if (existing) {
-          const { data, error } = await supabase.from('program_item_overrides').update({ start_time: newStartTimeDb, end_time: newEndTimeDb, is_deleted: false, is_inactive: false, holiday_active_override: movedToHoliday ? true : false }).eq('id', existing.id).select().single();
-          if (error || !data) throw error ?? new Error('No data');
-          setOverrides((prev) => prev.map((o) => (o.id === existing.id ? (data as ProgramItemOverrideRow) : o)));
-        } else {
-          const { data, error } = await supabase.from('program_item_overrides').insert({ program_item_id: programItemId, override_date: newDateStr, start_time: newStartTimeDb, end_time: newEndTimeDb, is_deleted: false, is_inactive: false, holiday_active_override: movedToHoliday ? true : false }).select().single();
-          if (error || !data) throw error ?? new Error('No data');
-          setOverrides((prev) => [...prev, data as ProgramItemOverrideRow]);
-        }
+        const result = await callEdgeFunction('program-item-override-upsert', { program_item_id: programItemId, override_date: newDateStr, start_time: newStartTimeDb, end_time: newEndTimeDb, is_deleted: false, is_inactive: false, holiday_active_override: movedToHoliday });
+        setOverrides((prev) => applyOverride(prev, newDateStr, result.item as ProgramItemOverrideRow));
       } else {
-        const existingOld = overrides.find((o) => o.program_item_id === programItemId && o.override_date === oldDateStr);
-        if (existingOld) {
-          const { data, error } = await supabase.from('program_item_overrides').update({ is_deleted: true, start_time: null, end_time: null, is_inactive: false, holiday_active_override: false }).eq('id', existingOld.id).select().single();
-          if (error || !data) throw error ?? new Error('No data');
-          setOverrides((prev) => prev.map((o) => (o.id === existingOld.id ? (data as ProgramItemOverrideRow) : o)));
-        } else {
-          const { data, error } = await supabase.from('program_item_overrides').insert({ program_item_id: programItemId, override_date: oldDateStr, is_deleted: true, start_time: null, end_time: null, is_inactive: false, holiday_active_override: false }).select().single();
-          if (error || !data) throw error ?? new Error('No data');
-          setOverrides((prev) => [...prev, data as ProgramItemOverrideRow]);
-        }
-        const existingNew = overrides.find((o) => o.program_item_id === programItemId && o.override_date === newDateStr);
-        if (existingNew) {
-          const { data, error } = await supabase.from('program_item_overrides').update({ start_time: newStartTimeDb, end_time: newEndTimeDb, is_deleted: false, is_inactive: false, holiday_active_override: movedToHoliday ? true : false }).eq('id', existingNew.id).select().single();
-          if (error || !data) throw error ?? new Error('No data');
-          setOverrides((prev) => prev.map((o) => (o.id === existingNew.id ? (data as ProgramItemOverrideRow) : o)));
-        } else {
-          const { data, error } = await supabase.from('program_item_overrides').insert({ program_item_id: programItemId, override_date: newDateStr, start_time: newStartTimeDb, end_time: newEndTimeDb, is_deleted: false, is_inactive: false, holiday_active_override: movedToHoliday ? true : false }).select().single();
-          if (error || !data) throw error ?? new Error('No data');
-          setOverrides((prev) => [...prev, data as ProgramItemOverrideRow]);
-        }
+        const oldResult = await callEdgeFunction('program-item-override-upsert', { program_item_id: programItemId, override_date: oldDateStr, start_time: null, end_time: null, is_deleted: true, is_inactive: false, holiday_active_override: false });
+        setOverrides((prev) => applyOverride(prev, oldDateStr, oldResult.item as ProgramItemOverrideRow));
+        const newResult = await callEdgeFunction('program-item-override-upsert', { program_item_id: programItemId, override_date: newDateStr, start_time: newStartTimeDb, end_time: newEndTimeDb, is_deleted: false, is_inactive: false, holiday_active_override: movedToHoliday });
+        setOverrides((prev) => applyOverride(prev, newDateStr, newResult.item as ProgramItemOverrideRow));
       }
     } catch (err) { console.error(err); revert(); }
   };
@@ -556,31 +553,44 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     if (!form.name.trim()) { setSchoolEventError('Το όνομα του event είναι υποχρεωτικό.'); return; }
     if (!form.date) { setSchoolEventError('Η ημερομηνία είναι υποχρεωτική.'); return; }
     if (!form.startTime || !form.endTime) { setSchoolEventError('Η ώρα έναρξης και λήξης είναι υποχρεωτικές.'); return; }
-    const payload = { school_id: schoolId, name: form.name.trim(), description: form.description?.trim() || null, date: form.date, start_time: `${form.startTime}:00`, end_time: `${form.endTime}:00` };
+    const name = form.name.trim();
+    const description = form.description?.trim() || null;
+    const date = form.date;
+    const start_time = `${form.startTime}:00`;
+    const end_time = `${form.endTime}:00`;
     setSchoolEventSaving(true);
-    if (schoolEventModalMode === 'create') {
-      const { data, error } = await supabase.from('school_events').insert(payload).select('*').maybeSingle();
+    try {
+      if (schoolEventModalMode === 'create') {
+        const result = await callEdgeFunction('events-create', { name, description, date, start_time, end_time });
+        setSchoolEvents((prev) => [result.item as SchoolEventRow, ...prev]);
+        closeSchoolEventModal();
+      } else {
+        if (!schoolEventEditing) return;
+        const result = await callEdgeFunction('events-update', { event_id: schoolEventEditing.id, name, description, date, start_time, end_time });
+        setSchoolEvents((prev) => prev.map((ev) => (ev.id === schoolEventEditing!.id ? (result.item as SchoolEventRow) : ev)));
+        closeSchoolEventModal();
+      }
+    } catch (err) {
+      console.error(err);
+      setSchoolEventError(schoolEventModalMode === 'create' ? 'Αποτυχία δημιουργίας event.' : 'Αποτυχία ενημέρωσης event.');
+    } finally {
       setSchoolEventSaving(false);
-      if (error || !data) { console.error(error); setSchoolEventError('Αποτυχία δημιουργίας event.'); return; }
-      setSchoolEvents((prev) => [data as SchoolEventRow, ...prev]);
-      closeSchoolEventModal(); return;
     }
-    if (!schoolEventEditing) { setSchoolEventSaving(false); return; }
-    const { data, error } = await supabase.from('school_events').update({ name: payload.name, description: payload.description, date: payload.date, start_time: payload.start_time, end_time: payload.end_time }).eq('id', schoolEventEditing.id).select('*').maybeSingle();
-    setSchoolEventSaving(false);
-    if (error || !data) { console.error(error); setSchoolEventError('Αποτυχία ενημέρωσης event.'); return; }
-    setSchoolEvents((prev) => prev.map((ev) => (ev.id === schoolEventEditing.id ? (data as SchoolEventRow) : ev)));
-    closeSchoolEventModal();
   };
 
   const handleConfirmDeleteSchoolEvent = async () => {
     if (!schoolEventDeleteTarget || !schoolId) return;
     setSchoolEventError(null); setSchoolEventDeleting(true);
-    const { error } = await supabase.from('school_events').delete().eq('id', schoolEventDeleteTarget.id).eq('school_id', schoolId);
-    setSchoolEventDeleting(false);
-    if (error) { console.error(error); setSchoolEventError('Αποτυχία διαγραφής εκδήλωσης.'); return; }
-    setSchoolEvents((prev) => prev.filter((ev) => ev.id !== schoolEventDeleteTarget.id));
-    setSchoolEventDeleteTarget(null); closeSchoolEventModal();
+    try {
+      await callEdgeFunction('events-delete', { event_id: schoolEventDeleteTarget.id });
+      setSchoolEvents((prev) => prev.filter((ev) => ev.id !== schoolEventDeleteTarget.id));
+      setSchoolEventDeleteTarget(null); closeSchoolEventModal();
+    } catch (err) {
+      console.error(err);
+      setSchoolEventError('Αποτυχία διαγραφής εκδήλωσης.');
+    } finally {
+      setSchoolEventDeleting(false);
+    }
   };
 
   /* -------- Click handling (unchanged) -------- */
@@ -647,44 +657,34 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     const startTimeDb = `${startTime}:00`; const endTimeDb = `${endTime}:00`;
     const isHoliday = holidayDateSet.has(newDateStr);
     const finalHolidayActiveOverride = isHoliday ? !!activeDuringHoliday : false;
+    const applyOverride = (prev: ProgramItemOverrideRow[], date: string, upserted: ProgramItemOverrideRow) => {
+      const ex = prev.find((o) => o.program_item_id === programItemId && o.override_date === date);
+      if (ex) return prev.map((o) => (o.id === ex.id ? upserted : o));
+      return [...prev, upserted];
+    };
     try {
       setEventError(null);
       const item = programItems.find((pi) => pi.id === programItemId);
+      let currentItem = item ?? null;
       if (item && classId !== item.class_id) {
-        const { data: updatedItem, error: itemErr } = await supabase.from('program_items').update({ class_id: classId }).eq('id', programItemId).select('*').single();
-        if (itemErr || !updatedItem) throw itemErr ?? new Error('No data');
-        setProgramItems((prev) => prev.map((pi) => (pi.id === programItemId ? (updatedItem as ProgramItemRow) : pi)));
+        const result = await callEdgeFunction('program-update', { program_item_id: item.id, class_id: classId, subject_id: item.subject_id ?? null, tutor_id: item.tutor_id ?? null, day_of_week: item.day_of_week, start_time: item.start_time, end_time: item.end_time, start_date: item.start_date, end_date: item.end_date });
+        currentItem = result.item as ProgramItemRow;
+        setProgramItems((prev) => prev.map((pi) => (pi.id === programItemId ? currentItem! : pi)));
       }
-      const currentItem = programItems.find((pi) => pi.id === programItemId) ?? null;
       const finalSubjectId = subjectId ?? null;
       if (currentItem && finalSubjectId !== (currentItem.subject_id ?? null)) {
-        const { data: updatedItem2, error: itemErr2 } = await supabase.from('program_items').update({ subject_id: finalSubjectId }).eq('id', programItemId).select('*').single();
-        if (itemErr2 || !updatedItem2) throw itemErr2 ?? new Error('No data');
-        setProgramItems((prev) => prev.map((pi) => (pi.id === programItemId ? (updatedItem2 as ProgramItemRow) : pi)));
+        const result = await callEdgeFunction('program-update', { program_item_id: currentItem.id, class_id: currentItem.class_id, subject_id: finalSubjectId, tutor_id: currentItem.tutor_id ?? null, day_of_week: currentItem.day_of_week, start_time: currentItem.start_time, end_time: currentItem.end_time, start_date: currentItem.start_date, end_date: currentItem.end_date });
+        currentItem = result.item as ProgramItemRow;
+        setProgramItems((prev) => prev.map((pi) => (pi.id === programItemId ? currentItem! : pi)));
       }
       const upsertOverrideForDate = async (targetDate: string) => {
-        const existing = overrides.find((o) => o.program_item_id === programItemId && o.override_date === targetDate);
-        if (existing) {
-          const { data, error } = await supabase.from('program_item_overrides').update({ start_time: startTimeDb, end_time: endTimeDb, is_deleted: false, is_inactive: false, holiday_active_override: holidayDateSet.has(targetDate) ? finalHolidayActiveOverride : false }).eq('id', existing.id).select().single();
-          if (error || !data) throw error ?? new Error('No data');
-          setOverrides((prev) => prev.map((o) => (o.id === existing.id ? (data as ProgramItemOverrideRow) : o))); return;
-        }
-        const { data, error } = await supabase.from('program_item_overrides').insert({ program_item_id: programItemId, override_date: targetDate, start_time: startTimeDb, end_time: endTimeDb, is_deleted: false, is_inactive: false, holiday_active_override: holidayDateSet.has(targetDate) ? finalHolidayActiveOverride : false }).select().single();
-        if (error || !data) throw error ?? new Error('No data');
-        setOverrides((prev) => [...prev, data as ProgramItemOverrideRow]);
+        const result = await callEdgeFunction('program-item-override-upsert', { program_item_id: programItemId, override_date: targetDate, start_time: startTimeDb, end_time: endTimeDb, is_deleted: false, is_inactive: false, holiday_active_override: holidayDateSet.has(targetDate) ? finalHolidayActiveOverride : false });
+        setOverrides((prev) => applyOverride(prev, targetDate, result.item as ProgramItemOverrideRow));
       };
       if (newDateStr === originalDateStr) { await upsertOverrideForDate(newDateStr); }
       else {
-        const existingOld = overrides.find((o) => o.program_item_id === programItemId && o.override_date === originalDateStr);
-        if (existingOld) {
-          const { data, error } = await supabase.from('program_item_overrides').update({ is_deleted: true, start_time: null, end_time: null, is_inactive: false, holiday_active_override: false }).eq('id', existingOld.id).select().single();
-          if (error || !data) throw error ?? new Error('No data');
-          setOverrides((prev) => prev.map((o) => (o.id === existingOld.id ? (data as ProgramItemOverrideRow) : o)));
-        } else {
-          const { data, error } = await supabase.from('program_item_overrides').insert({ program_item_id: programItemId, override_date: originalDateStr, is_deleted: true, start_time: null, end_time: null, is_inactive: false, holiday_active_override: false }).select().single();
-          if (error || !data) throw error ?? new Error('No data');
-          setOverrides((prev) => [...prev, data as ProgramItemOverrideRow]);
-        }
+        const oldResult = await callEdgeFunction('program-item-override-upsert', { program_item_id: programItemId, override_date: originalDateStr, start_time: null, end_time: null, is_deleted: true, is_inactive: false, holiday_active_override: false });
+        setOverrides((prev) => applyOverride(prev, originalDateStr, oldResult.item as ProgramItemOverrideRow));
         await upsertOverrideForDate(newDateStr);
       }
       setEventModal(null); setShowDeleteConfirm(false);
@@ -696,16 +696,13 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     const { programItemId, originalDateStr } = eventModal;
     try {
       setEventError(null);
-      const existing = overrides.find((o) => o.program_item_id === programItemId && o.override_date === originalDateStr);
-      if (existing) {
-        const { data, error } = await supabase.from('program_item_overrides').update({ is_deleted: true, start_time: null, end_time: null, is_inactive: false, holiday_active_override: false }).eq('id', existing.id).select().single();
-        if (error || !data) throw error ?? new Error('No data');
-        setOverrides((prev) => prev.map((o) => (o.id === existing.id ? (data as ProgramItemOverrideRow) : o)));
-      } else {
-        const { data, error } = await supabase.from('program_item_overrides').insert({ program_item_id: programItemId, override_date: originalDateStr, is_deleted: true, start_time: null, end_time: null, is_inactive: false, holiday_active_override: false }).select().single();
-        if (error || !data) throw error ?? new Error('No data');
-        setOverrides((prev) => [...prev, data as ProgramItemOverrideRow]);
-      }
+      const result = await callEdgeFunction('program-item-override-upsert', { program_item_id: programItemId, override_date: originalDateStr, start_time: null, end_time: null, is_deleted: true, is_inactive: false, holiday_active_override: false });
+      const upserted = result.item as ProgramItemOverrideRow;
+      setOverrides((prev) => {
+        const existing = prev.find((o) => o.program_item_id === programItemId && o.override_date === originalDateStr);
+        if (existing) return prev.map((o) => (o.id === existing.id ? upserted : o));
+        return [...prev, upserted];
+      });
       setEventModal(null); setShowDeleteConfirm(false);
     } catch (err) { console.error(err); setEventError('Αποτυχία διαγραφής. Προσπαθήστε ξανά.'); }
   };
@@ -737,12 +734,12 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     const isHoliday = holidayDateSet.has(testDateISO);
     const finalActiveDuringHoliday = isHoliday ? !!activeDuringHoliday : false;
     setSavingTest(true); setTestError(null);
-    const payload = { class_id: classId, subject_id: subjectId ?? subjectOptions[0]?.id, test_date: testDateISO, start_time: `${startTime}:00`, end_time: `${endTime}:00`, title: title || null, active_during_holiday: finalActiveDuringHoliday };
-    const { data, error } = await supabase.from('tests').update(payload).eq('id', testId).select('*').maybeSingle();
-    setSavingTest(false);
-    if (error || !data) { console.error(error); setTestError('Αποτυχία ενημέρωσης διαγωνίσματος.'); return; }
-    setTests((prev) => prev.map((t) => (t.id === testId ? (data as TestRow) : t)));
-    setTestModal(null);
+    try {
+      const result = await callEdgeFunction('tests-update', { test_id: testId, class_id: classId, subject_id: subjectId ?? subjectOptions[0]?.id ?? null, test_date: testDateISO, start_time: `${startTime}:00`, end_time: `${endTime}:00`, title: title || null, active_during_holiday: finalActiveDuringHoliday });
+      setTests((prev) => prev.map((t) => (t.id === testId ? (result.item as TestRow) : t)));
+      setTestModal(null);
+    } catch (err) { console.error(err); setTestError('Αποτυχία ενημέρωσης διαγωνίσματος.'); }
+    finally { setSavingTest(false); }
   };
 
   const handleTestModalClose = () => { if (savingTest) return; setTestModal(null); setTestError(null); setShowDeleteConfirm(false); };
@@ -751,8 +748,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     if (!testModal) return;
     try {
       setTestError(null);
-      const { error } = await supabase.from('tests').delete().eq('id', testModal.testId);
-      if (error) throw error;
+      await callEdgeFunction('tests-delete', { test_id: testModal.testId });
       setTests((prev) => prev.filter((t) => t.id !== testModal.testId));
       setTestModal(null); setShowDeleteConfirm(false);
     } catch (err) { console.error(err); setTestError('Αποτυχία διαγραφής διαγωνίσματος. Προσπαθήστε ξανά.'); setShowDeleteConfirm(false); }
@@ -764,14 +760,13 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
 
   const handleTestCancelForDay = async () => {
     if (!testModal) return;
-    const testDateISO = parseDateDisplayToISO(testModal.date);
-    if (!testDateISO) { setTestError('Μη έγκυρη ημερομηνία.'); return; }
     try {
       setSavingTest(true); setTestError(null);
-      const { data, error } = await supabase.from('tests').update({ active_during_holiday: false }).eq('id', testModal.testId).select('*').maybeSingle();
+      const test = tests.find((t) => t.id === testModal.testId);
+      if (!test) return;
+      const result = await callEdgeFunction('tests-update', { test_id: test.id, class_id: test.class_id, subject_id: test.subject_id ?? null, test_date: test.test_date, start_time: test.start_time, end_time: test.end_time, title: test.title ?? null, active_during_holiday: false });
       setSavingTest(false);
-      if (error || !data) { console.error(error); setTestError('Αποτυχία ακύρωσης για τη μέρα.'); return; }
-      setTests((prev) => prev.map((t) => (t.id === testModal.testId ? (data as TestRow) : t)));
+      setTests((prev) => prev.map((t) => (t.id === test.id ? (result.item as TestRow) : t)));
       setTestModal(null); setShowDeleteConfirm(false);
     } catch (e) { console.error(e); setSavingTest(false); setTestError('Αποτυχία ακύρωσης για τη μέρα.'); }
   };

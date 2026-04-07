@@ -1,5 +1,5 @@
 import { CalendarDays, ChevronDown, Loader2, Package, Plus, RefreshCw, Search, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import AppDatePicker from '../../ui/AppDatePicker';
 import { typeColors } from './constants';
 import { CURRENCY_SYMBOL } from './constants';
@@ -30,6 +30,8 @@ interface Props {
   setCustomPrice: (v: string) => void;
   discountPct: string;
   setDiscountPct: (v: string) => void;
+  discountMode: 'pct' | 'amount';
+  setDiscountMode: (v: 'pct' | 'amount') => void;
   discountReason: string;
   setDiscountReason: (v: string) => void;
   assignFinalPrice: number;
@@ -54,13 +56,13 @@ export function AssignRenewModal({
   open, isRenew, saving, assignError, isDark,
   selStudent, allStudents, studentQ, setStudentQ, studentDrop, setStudentDrop, onStudentSelect,
   selPackage, packages, packageQ, setPackageQ, packageDrop, setPackageDrop, onPackageSelect,
-  customPrice, setCustomPrice, discountPct, setDiscountPct, discountReason, setDiscountReason,
+  customPrice, setCustomPrice, discountPct, setDiscountPct, discountMode, setDiscountMode,
+  discountReason, setDiscountReason,
   assignPeriodMode, setAssignPeriodMode, assignMonthNum, setAssignMonthNum, assignYear, setAssignYear,
   assignStartsOn, setAssignStartsOn, assignEndsOn, setAssignEndsOn,
   monthOptions, yearOptions, assignPeriodDisplay,
   onClose, onSubmit,
 }: Props) {
-  const [discountMode, setDiscountMode] = useState<'pct' | 'amount'>('pct');
 
   const localFinalPrice = useMemo(() => {
     const base = customPrice.trim()
@@ -82,7 +84,6 @@ export function AssignRenewModal({
   const accentVar = 'var(--color-accent)';
   const basePrice = selPackage ? Number(selPackage.price ?? 0) : 0;
 
-  // Resolve package type using package_type field first, then name fallback
   const selPkgType = selPackage ? resolvePackageType(selPackage) : null;
   const isYearly  = selPkgType === 'yearly';
   const isMonthly = selPkgType === 'monthly';

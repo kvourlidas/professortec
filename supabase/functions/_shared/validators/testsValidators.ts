@@ -26,6 +26,7 @@ export function validateUpdateTestBody(body: any): UpdateTestInput {
   const start_time = body?.start_time?.trim?.();
   const end_time = body?.end_time?.trim?.();
   const title = body?.title?.trim?.() || null;
+  const active_during_holiday = typeof body?.active_during_holiday === "boolean" ? body.active_during_holiday : null;
 
   if (!test_id) throw new ValidationError("Missing test_id");
   if (!class_id) throw new ValidationError("Missing class_id");
@@ -33,7 +34,7 @@ export function validateUpdateTestBody(body: any): UpdateTestInput {
   if (!start_time) throw new ValidationError("Missing start_time");
   if (!end_time) throw new ValidationError("Missing end_time");
 
-  return { test_id, class_id, subject_id, test_date, start_time, end_time, title };
+  return { test_id, class_id, subject_id, test_date, start_time, end_time, title, active_during_holiday };
 }
 
 export function validateDeleteTestBody(body: any): DeleteTestInput {

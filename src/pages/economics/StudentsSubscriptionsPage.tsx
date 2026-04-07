@@ -27,7 +27,7 @@ export default function StudentsSubscriptionsPage() {
             </div>
             <div>
               <h1 className={`text-base font-semibold tracking-tight ${p.isDark ? 'text-slate-50' : 'text-slate-800'}`}>Συνδρομές Μαθητών</h1>
-              <p className={`mt-0.5 text-xs ${p.isDark ? 'text-slate-400' : 'text-slate-500'}`}>Ενεργές συνδρομές — ανάθεση, πληρωμές, ιστορικό.</p>
+              <p className={`mt-0.5 text-xs ${p.isDark ? 'text-slate-400' : 'text-slate-500'}`}>Ενεργές & ληγμένες συνδρομές — ανάθεση, πληρωμές, ιστορικό.</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -52,8 +52,9 @@ export default function StudentsSubscriptionsPage() {
           </div>
         )}
 
-        {/* Table */}
+        {/* Active subscriptions table */}
         <SubscriptionsTable
+          variant="active"
           rows={p.rows}
           loading={p.loading}
           totalCount={p.totalCount}
@@ -64,6 +65,25 @@ export default function StudentsSubscriptionsPage() {
           isDark={p.isDark}
           packageById={p.packageById}
           onPageChange={p.setPage}
+          onOpenAssign={p.openAssign}
+          onPayment={p.openPaymentModal}
+          onRenew={p.openRenew}
+          onDelete={p.setDeleteTarget}
+        />
+
+        {/* Expired / renewed subscriptions table */}
+        <SubscriptionsTable
+          variant="expired"
+          rows={p.expiredRows}
+          loading={p.expiredLoading}
+          totalCount={p.expiredTotalCount}
+          page={p.expiredPage}
+          pageCount={p.expiredPageCount}
+          showingFrom={p.expiredShowingFrom}
+          showingTo={p.expiredShowingTo}
+          isDark={p.isDark}
+          packageById={p.packageById}
+          onPageChange={p.setExpiredPage}
           onOpenAssign={p.openAssign}
           onPayment={p.openPaymentModal}
           onRenew={p.openRenew}
@@ -95,6 +115,8 @@ export default function StudentsSubscriptionsPage() {
           setCustomPrice={p.setCustomPrice}
           discountPct={p.discountPct}
           setDiscountPct={p.setDiscountPct}
+          discountMode={p.discountMode}
+          setDiscountMode={p.setDiscountMode}
           discountReason={p.discountReason}
           setDiscountReason={p.setDiscountReason}
           assignFinalPrice={p.assignFinalPrice}

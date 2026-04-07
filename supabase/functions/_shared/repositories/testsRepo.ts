@@ -55,18 +55,23 @@ export async function updateTestById(
   supabase: any,
   input: UpdateTestInput
 ) {
+  const updatePayload: Record<string, unknown> = {
+    class_id: input.class_id,
+    subject_id: input.subject_id,
+    test_date: input.test_date,
+    start_time: input.start_time,
+    end_time: input.end_time,
+    title: input.title,
+  };
+  if (input.active_during_holiday !== null) {
+    updatePayload.active_during_holiday = input.active_during_holiday;
+  }
+
   const { data, error } = await supabase
     .from("tests")
-    .update({
-      class_id: input.class_id,
-      subject_id: input.subject_id,
-      test_date: input.test_date,
-      start_time: input.start_time,
-      end_time: input.end_time,
-      title: input.title,
-    })
+    .update(updatePayload)
     .eq("id", input.test_id)
-    .select("id, school_id, class_id, subject_id, test_date, start_time, end_time, title, description")
+    .select("id, school_id, class_id, subject_id, test_date, start_time, end_time, title, description, active_during_holiday")
     .maybeSingle();
 
   if (error || !data) {
