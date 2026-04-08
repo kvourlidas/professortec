@@ -40,6 +40,7 @@ function getNextDateForDow(from: Date, dow: number): Date {
 const GREEK_MONTHS: string[] = ['Ιαν', 'Φεβ', 'Μαρ', 'Απρ', 'Μαΐ', 'Ιουν', 'Ιουλ', 'Αυγ', 'Σεπ', 'Οκτ', 'Νοε', 'Δεκ'];
 const GREEK_DAYS_SHORT: Record<number, string> = { 0: 'Κυρ', 1: 'Δευ', 2: 'Τρι', 3: 'Τετ', 4: 'Πεμ', 5: 'Παρ', 6: 'Σαβ' };
 function formatTime(d: Date) { return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; }
+function formatDMY(d: Date) { return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`; }
 function dayLabel(d: Date): string {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
@@ -188,18 +189,24 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
           : isDark ? 'border-slate-700/50 bg-slate-800/30' : 'border-slate-200 bg-slate-50/60'
       }`}>
         {/* Time row */}
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-start justify-between mb-2 gap-2">
           <span className={`text-xs font-bold font-mono tabular-nums ${isGreen ? 'text-emerald-400' : ''}`}
             style={isGreen ? {} : { color: 'var(--color-accent)' }}>
             {formatTime(s.startTime)} – {formatTime(s.endTime)}
           </span>
           {isGreen ? (
-            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-400">
-              <span className="h-1 w-1 rounded-full bg-emerald-400 animate-pulse" />
-              Τώρα
-            </span>
+            <div className="flex flex-col items-end gap-0.5">
+              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-400">
+                <span className="h-1 w-1 rounded-full bg-emerald-400 animate-pulse" />
+                Τώρα
+              </span>
+              <span className={`text-[10px] tabular-nums ${muted}`}>{formatDMY(s.date)}</span>
+            </div>
           ) : (
-            <span className={`text-[10px] font-medium ${muted}`}>{dayLabel(s.date)}</span>
+            <div className="flex flex-col items-end gap-0.5">
+              <span className={`text-[10px] font-medium ${muted}`}>{dayLabel(s.date)}</span>
+              <span className={`text-[10px] tabular-nums ${muted}`}>{formatDMY(s.date)}</span>
+            </div>
           )}
         </div>
 
@@ -260,7 +267,7 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
             <div className="flex flex-col flex-1 p-5">
               <PanelLabel>Τρέχουσα</PanelLabel>
               {currentSessions.length > 0 ? (
-                <div className="flex flex-col gap-2 flex-1">
+                <div className="flex flex-col gap-2 overflow-y-auto">
                   {currentSessions.map((s) => <SessionCard key={s.id} s={s} variant="current" />)}
                 </div>
               ) : (
@@ -272,7 +279,7 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
             <div className="flex flex-col flex-1 p-5">
               <PanelLabel>Επόμενη</PanelLabel>
               {upcomingSessions.length > 0 ? (
-                <div className="flex flex-col gap-2 flex-1">
+                <div className="flex flex-col gap-2 overflow-y-auto">
                   {upcomingSessions.map((s) => <SessionCard key={s.id} s={s} variant="upcoming" />)}
                 </div>
               ) : (

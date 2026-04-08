@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabaseClient';
-import { Palette, StickyNote, ChevronLeft, ChevronRight, Loader2, AlertTriangle, Undo2 } from 'lucide-react';
+import { Palette, StickyNote, ChevronLeft, ChevronRight, ChevronDown, Loader2, Pin, PinOff } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 
 type DashboardNote = {
@@ -24,6 +24,42 @@ const NOTE_COLORS = [
 const DEFAULT_NOTE_COLOR = '#3b82f6';
 const NOTES_PER_PAGE = 3;
 
+const COLLAPSED_HEIGHT = 64; // px — ~3 lines at text-xs/leading-relaxed
+
+function NoteContent({ content, isDark }: { content: string; isDark: boolean }) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [overflows, setOverflows] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    // scrollHeight gives the true full height even when max-height is clamping it
+    setOverflows(el.scrollHeight > COLLAPSED_HEIGHT + 2);
+  }, [content]);
+
+  return (
+    <div className="min-w-0 flex-1">
+      <div
+        ref={wrapRef}
+        className="overflow-hidden transition-all duration-300"
+        style={{ maxHeight: expanded ? wrapRef.current?.scrollHeight : COLLAPSED_HEIGHT }}
+      >
+        <p className={`whitespace-pre-wrap break-words text-xs leading-relaxed ${isDark ? 'text-slate-100' : 'text-slate-700'}`}>
+          {content}
+        </p>
+      </div>
+      {(overflows || expanded) && (
+        <button type="button" onClick={() => setExpanded((v) => !v)}
+          className={`mt-1 inline-flex items-center gap-0.5 text-[10px] transition ${isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}>
+          <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
+          {expanded ? 'Λιγότερα' : 'Περισσότερα'}
+        </button>
+      )}
+    </div>
+  );
+}
+
 type DashboardNotesSectionProps = { schoolId: string | null };
 
 export default function DashboardNotesSection({ schoolId }: DashboardNotesSectionProps) {
@@ -33,7 +69,7 @@ export default function DashboardNotesSection({ schoolId }: DashboardNotesSectio
   const [notes, setNotes] = useState<DashboardNote[]>([]);
   const [noteText, setNoteText] = useState('');
   const [noteColor, setNoteColor] = useState<string>(DEFAULT_NOTE_COLOR);
-  const [noteUrgent, setNoteUrgent] = useState(false);
+  const [notePinned, setNotePinned] = useState(false);
   const [notesLoading, setNotesLoading] = useState(false);
   const [notesSaving, setNotesSaving] = useState(false);
   const [notesPage, setNotesPage] = useState(1);
@@ -103,8 +139,8 @@ export default function DashboardNotesSection({ schoolId }: DashboardNotesSectio
     const trimmed = noteText.trim();
     if (!trimmed) return;
     setNotesSaving(true);
-    const { data, error } = await supabase.from('dashboard_notes').insert({ school_id: schoolId, content: trimmed, color: noteColor || DEFAULT_NOTE_COLOR, is_urgent: noteUrgent }).select().single();
-    if (error) { console.error(error); } else if (data) { setNotes((prev) => [data as DashboardNote, ...prev]); setNoteText(''); setNoteUrgent(false); setNotesPage(1); }
+    const { data, error } = await supabase.from('dashboard_notes').insert({ school_id: schoolId, content: trimmed, color: noteColor || DEFAULT_NOTE_COLOR, is_urgent: notePinned }).select().single();
+    if (error) { console.error(error); } else if (data) { setNotes((prev) => [data as DashboardNote, ...prev]); setNoteText(''); setNotePinned(false); setNotesPage(1); }
     setNotesSaving(false);
   };
 
@@ -238,18 +274,18 @@ export default function DashboardNotesSection({ schoolId }: DashboardNotesSectio
               document.body
             )}
 
-            {/* Urgent toggle */}
-            <button type="button" onClick={() => setNoteUrgent((v) => !v)}
-              className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] transition ${
-                noteUrgent
-                  ? 'border-red-500/50 bg-red-500/10 text-red-200'
+            {/* Pin toggle */}
+            <button type="button" onClick={() => setNotePinned((v) => !v)}
+              title={notePinned ? 'Ξεκαρφίτσωμα' : 'Καρφίτσωμα'}
+              className={`inline-flex items-center justify-center rounded-lg border p-1.5 transition ${
+                notePinned
+                  ? isDark ? 'border-indigo-500/50 bg-indigo-500/15 text-indigo-300' : 'border-indigo-400/50 bg-indigo-50 text-indigo-500'
                   : isDark
                   ? 'border-slate-700/60 bg-slate-800/50 text-slate-400 hover:border-slate-600'
                   : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
               }`}
-              aria-pressed={noteUrgent}>
-              <AlertTriangle className="h-3 w-3" />
-              Επείγον
+              aria-pressed={notePinned}>
+              {notePinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
             </button>
 
             {/* Add button */}
@@ -280,26 +316,38 @@ export default function DashboardNotesSection({ schoolId }: DashboardNotesSectio
                 {pageNotes.map((note) => {
                   const paletteOpenForThis = notePaletteOpenId === note.id;
                   return (
-                    <li key={note.id} className={`group relative flex gap-3 px-4 py-3.5 transition ${
+                    <li key={note.id} className={`group relative flex gap-3 py-3.5 transition ${
                       note.is_urgent
-                        ? isDark ? 'bg-red-950/20 hover:bg-red-950/30' : 'bg-red-50/60 hover:bg-red-50'
-                        : isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-slate-50/60'
+                        ? isDark ? 'bg-indigo-950/30 pl-[18px] pr-4 hover:bg-indigo-950/40' : 'bg-indigo-50 pl-[18px] pr-4 hover:bg-indigo-100/60'
+                        : 'px-4 ' + (isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-slate-50/60')
                     }`}>
+                      {note.is_urgent && (
+                        <span className={`absolute left-0 top-0 bottom-0 w-[3px] rounded-r-full ${isDark ? 'bg-indigo-500' : 'bg-indigo-400'}`} />
+                      )}
                       <div className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full border border-white/10" style={{ backgroundColor: note.color }} />
                       <div className="min-w-0 flex-1">
-                        <p className={`whitespace-pre-wrap text-xs leading-relaxed ${isDark ? 'text-slate-100' : 'text-slate-700'}`}>{note.content}</p>
+                        {note.is_urgent && (
+                          <div className="mb-1.5 flex justify-end">
+                            <span className={`shrink-0 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+                              isDark ? 'border-indigo-500/40 bg-indigo-500/15 text-indigo-300' : 'border-indigo-300/60 bg-indigo-100 text-indigo-600'
+                            }`}>
+                              <Pin className="h-2.5 w-2.5" />
+                              Καρφιτσωμένο
+                            </span>
+                          </div>
+                        )}
+                        <NoteContent content={note.content} isDark={isDark} />
                         <div className="mt-2 flex flex-wrap items-center gap-1.5">
                           <button type="button" onClick={() => handleToggleUrgent(note.id, note.is_urgent)}
-                            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] transition ${
+                            title={note.is_urgent ? 'Ξεκαρφίτσωμα' : 'Καρφίτσωμα'}
+                            className={`inline-flex items-center justify-center rounded-lg border p-1 transition ${
                               note.is_urgent
-                                ? 'border-red-500/40 text-red-300 hover:bg-red-500/10'
+                                ? isDark ? 'border-indigo-500/40 text-indigo-300 hover:bg-indigo-500/10' : 'border-indigo-400/40 text-indigo-500 hover:bg-indigo-100'
                                 : isDark
-                                ? 'border-slate-700/60 text-slate-500 hover:border-red-500/30 hover:text-red-300'
-                                : 'border-slate-200 text-slate-400 hover:border-red-300 hover:text-red-500'
+                                ? 'border-slate-700/60 text-slate-500 hover:border-indigo-500/30 hover:text-indigo-300'
+                                : 'border-slate-200 text-slate-400 hover:border-indigo-300 hover:text-indigo-500'
                             }`}>
-                            {note.is_urgent
-                              ? <><Undo2 className="h-2.5 w-2.5" />Αναίρεση επείγον</>
-                              : <><AlertTriangle className="h-2.5 w-2.5" />Επείγον</>}
+                            {note.is_urgent ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
                           </button>
                           <div ref={paletteOpenForThis ? notePaletteWrapRef : null} className="relative">
                             <button type="button"
