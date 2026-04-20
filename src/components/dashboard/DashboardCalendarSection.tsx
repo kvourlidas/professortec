@@ -874,7 +874,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
                 headerToolbar={{ left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' }}
                 height="auto"
                 slotMinTime="08:00:00"
-                slotMaxTime="22:00:00"
+                slotMaxTime="24:00:00"
                 allDaySlot={false}
                 slotDuration="00:15:00"
                 slotLabelInterval={{ hours: 1 }}
