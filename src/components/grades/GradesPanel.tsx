@@ -41,10 +41,6 @@ export default function GradesPanel({
     ? (activeTab === 'overall' ? 'Μέσος όρος επίδοσης (όλα τα μαθήματα)' : 'Μέσος όρος επίδοσης στο επιλεγμένο μάθημα')
     : (activeTab === 'overall' ? 'Μέσος όρος βαθμών (όλα τα μαθήματα)' : 'Μέσος όρος στο επιλεγμένο μάθημα');
 
-  const panelCardCls = isDark
-    ? 'overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]'
-    : 'overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md';
-
   const panelHeaderCls = isDark
     ? 'flex items-center gap-3 border-b border-slate-800/70 bg-slate-900/30 px-5 py-3.5'
     : 'flex items-center gap-3 border-b border-slate-200 bg-slate-50 px-5 py-3.5';

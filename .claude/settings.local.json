@@ -10,7 +10,8 @@
       "Bash(sed -i 's/mb-1\\\\.5 block text-\\\\[10px\\\\] font-semibold uppercase tracking-widest/mb-1.5 block text-xs font-semibold uppercase tracking-widest/g' src/components/economics/subscriptions/AssignRenewModal.tsx)",
       "Bash(xargs grep:*)",
       "Bash(ls -d /c/Users/KOSTAS/Desktop/Projects/ProfessorTec/web-app/supabase/functions/*/)",
-      "Bash(wc -l \"/c/Users/KOSTAS/Desktop/Projects/ProfessorTec/web-app/src/pages/economics\"/*.tsx)"
+      "Bash(wc -l \"/c/Users/KOSTAS/Desktop/Projects/ProfessorTec/web-app/src/pages/economics\"/*.tsx)",
+      "Bash(npm run *)"
     ]
   }
 }

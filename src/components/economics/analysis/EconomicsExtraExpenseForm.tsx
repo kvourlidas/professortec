@@ -53,7 +53,7 @@ export function EconomicsExtraExpenseForm({
           </div>
           <div className="col-span-7">
             <div className={labelCls}>Ημερομηνία</div>
-            <AppDatePicker value={expDate as never} onChange={(v: never) => onExpDateChange(v)}/>
+            <AppDatePicker value={expDate} onChange={onExpDateChange}/>
           </div>
         </div>
         <div>

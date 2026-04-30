@@ -56,7 +56,7 @@ export function AssignRenewModal({
   open, isRenew, saving, assignError, isDark,
   selStudent, allStudents, studentQ, setStudentQ, studentDrop, setStudentDrop, onStudentSelect,
   selPackage, packages, packageQ, setPackageQ, packageDrop, setPackageDrop, onPackageSelect,
-  customPrice, setCustomPrice, discountPct, setDiscountPct, discountMode, setDiscountMode,
+  customPrice, setCustomPrice: _setCustomPrice, discountPct, setDiscountPct, discountMode, setDiscountMode,
   discountReason, setDiscountReason,
   assignPeriodMode, setAssignPeriodMode, assignMonthNum, setAssignMonthNum, assignYear, setAssignYear,
   assignStartsOn, setAssignStartsOn, assignEndsOn, setAssignEndsOn,

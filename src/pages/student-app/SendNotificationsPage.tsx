@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Bell } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../auth';
@@ -130,7 +130,7 @@ export default function SendNotificationsPage() {
         p_class_ids:   recipientMode === 'classes'  ? selectedClassIds   : [],
       };
 
-      const { data, error } = await supabase.rpc('send_school_notification', rpcParams);
+      const { error } = await supabase.rpc('send_school_notification', rpcParams);
 
       if (error) {
         console.error(error);

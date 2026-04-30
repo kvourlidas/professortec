@@ -136,9 +136,9 @@ export function EconomicsFilterBar({
       {mode === 'range' && (
         <div className={`flex flex-wrap items-center gap-2 rounded-xl border px-3 py-2 ${isDark ? 'border-slate-700/50 bg-slate-900/60' : 'border-slate-200 bg-white shadow-sm'}`}>
           <span className={`text-[11px] font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Από</span>
-          <div className="min-w-[160px]"><AppDatePicker value={rangeStart as never} onChange={(v: never) => onRangeStartChange(v)} /></div>
+          <div className="min-w-[160px]"><AppDatePicker value={rangeStart} onChange={onRangeStartChange} /></div>
           <span className={`text-[11px] font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Έως</span>
-          <div className="min-w-[160px]"><AppDatePicker value={rangeEnd as never} onChange={(v: never) => onRangeEndChange(v)} /></div>
+          <div className="min-w-[160px]"><AppDatePicker value={rangeEnd} onChange={onRangeEndChange} /></div>
         </div>
       )}
     </div>

@@ -11,7 +11,6 @@ import type {
   AddTestForm, ClassRow, ClassSubjectRow, DeleteTarget,
   EditTestForm, SubjectRow, TestResultsModalState, TestRow,
 } from '../components/tests/types';
-import { emptyForm } from '../components/tests/types';
 import {
   formatDateDisplay, formatTimeDisplay, parseDateDisplayToISO,
 } from '../components/tests/utils';

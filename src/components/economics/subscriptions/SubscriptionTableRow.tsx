@@ -61,7 +61,7 @@ export function SubscriptionTableRow({ row, isDark, packageById, onPayment, onRe
         {isCustom ? (
           <span
             className="inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold"
-            style={{ background: `${pkg!.avatar_color}22`, borderColor: `${pkg!.avatar_color}55`, color: pkg!.avatar_color }}
+            style={{ background: `${pkg!.avatar_color}22`, borderColor: `${pkg!.avatar_color}55`, color: pkg!.avatar_color ?? undefined }}
           >
             {pkgName || '?'}
           </span>
