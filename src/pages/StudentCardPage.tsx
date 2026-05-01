@@ -408,7 +408,7 @@ export default function StudentCardPage() {
   const activeSub = useMemo(() => subscriptions.find(s => s.status === 'active') ?? null, [subscriptions]);
   const totalCharged = useMemo(() => subscriptions.reduce((a, s) => a + Number(s.charge_amount ?? s.price ?? 0), 0), [subscriptions]);
   const totalPaid = useMemo(() => payments.reduce((a, p) => a + Number(p.amount ?? 0), 0), [payments]);
-  const totalBalance = useMemo(() => subscriptions.filter(s => s.status === 'active').reduce((a, s) => a + Number(s.balance ?? 0), 0), [subscriptions]);
+  const totalBalance = useMemo(() => subscriptions.reduce((a, s) => a + Math.max(0, Number(s.balance ?? 0)), 0), [subscriptions]);
   const hasBalanceData = activeSub && activeSub.balance != null;
   const owes = hasBalanceData && totalBalance > 0;
 
@@ -426,6 +426,7 @@ export default function StudentCardPage() {
     if (!id || !schoolId) return;
     const load = async () => {
       setLoading(true);
+      await supabase.rpc('run_subscription_expiry', { p_school_id: schoolId });
       const [stuRes, lvlRes, subRes, csRes, progRes] = await Promise.all([
         supabase.from('students').select(STUDENT_SELECT).eq('id', id).eq('school_id', schoolId).maybeSingle(),
         supabase.from('levels').select('id, school_id, name, created_at').eq('school_id', schoolId).order('name'),
@@ -699,10 +700,12 @@ export default function StudentCardPage() {
   };
 
   function statusBadge(status: SubscriptionRow['status']) {
-    const map = {
-      active: { label: 'Ενεργή', cls: isDark ? 'border-emerald-500/40 bg-emerald-950/30 text-emerald-300' : 'border-emerald-300 bg-emerald-50 text-emerald-700' },
-      completed: { label: 'Ολοκλ.', cls: isDark ? 'border-slate-600/50 bg-slate-800/40 text-slate-400' : 'border-slate-200 bg-slate-100 text-slate-500' },
-      canceled: { label: 'Ακυρώθηκε', cls: isDark ? 'border-red-500/40 bg-red-950/30 text-red-400' : 'border-red-200 bg-red-50 text-red-600' },
+    const map: Record<string, { label: string; cls: string }> = {
+      active:    { label: 'Ενεργή',     cls: isDark ? 'border-emerald-500/40 bg-emerald-950/30 text-emerald-300' : 'border-emerald-300 bg-emerald-50 text-emerald-700' },
+      completed: { label: 'Ληγμένη',    cls: isDark ? 'border-slate-600/50 bg-slate-800/40 text-slate-400' : 'border-slate-200 bg-slate-100 text-slate-500' },
+      expired:   { label: 'Ληγμένη',    cls: isDark ? 'border-slate-600/50 bg-slate-800/40 text-slate-400' : 'border-slate-200 bg-slate-100 text-slate-500' },
+      renewed:   { label: 'Ανανεώθηκε', cls: isDark ? 'border-sky-500/40 bg-sky-950/30 text-sky-400' : 'border-sky-200 bg-sky-50 text-sky-600' },
+      canceled:  { label: 'Ακυρώθηκε', cls: isDark ? 'border-red-500/40 bg-red-950/30 text-red-400' : 'border-red-200 bg-red-50 text-red-600' },
     };
     const { label, cls } = map[status] ?? map.completed;
     return <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${cls}`}>{label}</span>;
@@ -898,7 +901,7 @@ export default function StudentCardPage() {
                               {sub.starts_on ? formatDateToGreek(sub.starts_on) : '—'} → {sub.ends_on ? formatDateToGreek(sub.ends_on) : '—'}
                             </span>
                           )}
-                          {sub.status === 'active' && (
+                          {Number(sub.balance ?? 0) > 0 && (
                             <button
                               type="button"
                               onClick={() => openPaymentModal(sub)}

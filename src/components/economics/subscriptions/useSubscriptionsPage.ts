@@ -241,6 +241,7 @@ export function useSubscriptionsPage() {
 
   const loadActive = async () => {
     if (!schoolId) { setLoading(false); return; }
+    await supabase.rpc('run_subscription_expiry', { p_school_id: schoolId });
     setLoading(true);
     const from = (page - 1) * PAGE_SIZE, to = from + PAGE_SIZE - 1;
     const ids = await resolveStudentIds();
@@ -274,7 +275,7 @@ export function useSubscriptionsPage() {
       .from('student_subscriptions_with_totals')
       .select('id,school_id,student_id,package_id,package_name,price,currency,status,starts_on,ends_on,created_at,used_hours,charge_amount,paid_amount,balance', { count: 'exact' })
       .eq('school_id', schoolId)
-      .eq('status', 'expired')           // ← only expired, not renewed
+      .in('status', ['completed', 'expired']) // ← completed = expired by date/hours
       .order('created_at', { ascending: false });
     if (ids !== null) q = q.in('student_id', ids);
     const { data, error, count } = await q.range(from, to);
@@ -285,7 +286,10 @@ export function useSubscriptionsPage() {
     setExpiredLoading(false);
   };
 
-  const load = () => Promise.all([loadActive(), loadExpired()]);
+  const load = async () => {
+    if (schoolId) await supabase.rpc('run_subscription_expiry', { p_school_id: schoolId });
+    await Promise.all([loadActive(), loadExpired()]);
+  };
 
   useEffect(() => { loadPackages(); loadAllStudents(); }, [schoolId]);
   useEffect(() => { loadActive(); },  [schoolId, page, search]);

@@ -10,7 +10,14 @@
       "Bash(sed -i 's/mb-1\\\\.5 block text-\\\\[10px\\\\] font-semibold uppercase tracking-widest/mb-1.5 block text-xs font-semibold uppercase tracking-widest/g' src/components/economics/subscriptions/AssignRenewModal.tsx)",
       "Bash(xargs grep:*)",
       "Bash(ls -d /c/Users/KOSTAS/Desktop/Projects/ProfessorTec/web-app/supabase/functions/*/)",
-      "Bash(wc -l \"/c/Users/KOSTAS/Desktop/Projects/ProfessorTec/web-app/src/pages/economics\"/*.tsx)"
+      "Bash(wc -l \"/c/Users/KOSTAS/Desktop/Projects/ProfessorTec/web-app/src/pages/economics\"/*.tsx)",
+      "mcp__claude_ai_Supabase__list_projects",
+      "mcp__claude_ai_Supabase__list_organizations",
+      "mcp__claude_ai_Supabase__list_tables",
+      "mcp__claude_ai_Supabase__execute_sql",
+      "mcp__claude_ai_Supabase__apply_migration",
+      "Bash(npx update-browserslist-db@latest)",
+      "Bash(npm i *)"
     ]
   }
 }
