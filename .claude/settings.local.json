@@ -17,7 +17,10 @@
       "mcp__claude_ai_Supabase__execute_sql",
       "mcp__claude_ai_Supabase__apply_migration",
       "Bash(npx update-browserslist-db@latest)",
-      "Bash(npm i *)"
+      "Bash(npm i *)",
+      "Bash(npm run *)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
     ]
   }
 }

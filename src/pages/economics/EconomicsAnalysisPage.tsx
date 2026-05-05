@@ -180,11 +180,6 @@ export default function EconomicsAnalysisPage() {
     finally { setBusy(false); }
   }
 
-  function openEditExpense(r: ExtraExpenseRow) {
-    setEditing(r); setEditName(r.name); setEditAmount(Number(r.amount) || 0);
-    setEditDate((r.occurred_on ?? r.created_at?.slice(0, 10) ?? isoToday()).slice(0, 10));
-    setEditNotes(r.notes ?? ''); setEditOpen(true);
-  }
   function closeEditExpense() { if (busy) return; setEditOpen(false); setEditing(null); }
 
   // ── Save edit via edge function ───────────────────────────────────────────
@@ -207,7 +202,6 @@ export default function EconomicsAnalysisPage() {
     finally { setBusy(false); }
   }
 
-  function askDeleteExpense(r: ExtraExpenseRow) { setDeleting(r); setDeleteOpen(true); }
   function closeDeleteExpense() { if (busy) return; setDeleteOpen(false); setDeleting(null); }
 
   // ── Delete via edge function ──────────────────────────────────────────────

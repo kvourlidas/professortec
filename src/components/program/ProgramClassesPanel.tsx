@@ -20,7 +20,7 @@ interface ProgramClassesPanelProps {
 export default function ProgramClassesPanel({
   classes, filteredClasses, classSearch, onSearchChange,
   subjectById, levelNameById, tutorNameById,
-  isDark, dragClassId, onDragStart, onDragEnd, onAddSlot,
+  isDark, dragClassId: _dragClassId, onDragStart, onDragEnd, onAddSlot,
 }: ProgramClassesPanelProps) {
   const panelCls = isDark
     ? 'overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-2xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]'

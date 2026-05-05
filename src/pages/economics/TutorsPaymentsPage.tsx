@@ -12,7 +12,6 @@ import ConfirmActionModal from '../../components/ui/ConfirmActionModal';
 
 type TutorRow = { id: string; school_id: string; full_name: string | null };
 type TutorPaymentProfileRow = { id: string; school_id: string; tutor_id: string; base_gross: number; base_net: number; currency: string; updated_at: string; updated_by: string | null };
-type TutorBonusRow = { id: string; school_id: string; tutor_id: string; period_year: number; period_month: number; kind: 'percent'|'amount'; value: number; description: string|null; is_active: boolean; created_at: string; created_by: string|null };
 type TutorPaymentRow = { id: string; school_id: string; tutor_id: string; period_year: number; period_month: number; base_gross: number; base_net: number; bonus_total: number; gross_total: number; net_total: number; status: 'draft'|'paid'|'canceled'; paid_on: string|null; notes: string|null; created_at: string; created_by: string|null };
 
 function normalizeText(value: string|null|undefined): string { if (!value) return ''; return value.toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(); }

@@ -57,7 +57,7 @@ export default function GradesListCard<
 
       {/* Tab row */}
       <div className={`grid grid-cols-2 border-b ${isDark ? 'border-slate-800/70' : 'border-slate-200'}`}>
-        {tabs.map(({ key, label, icon, count }) => {
+        {tabs.map(({ key, label, icon }) => {
           const active = tab === key;
           return (
             <button

@@ -26,8 +26,6 @@ function RecipientsModal({
   const mode = n.recipient_mode ?? 'all';
   const names = n.recipient_names ?? [];
   const modeLabel = mode === 'students' ? 'Μαθητές' : mode === 'classes' ? 'Τμήματα' : 'Όλοι οι μαθητές';
-  const Icon = mode === 'students' ? Users : mode === 'classes' ? GraduationCap : Globe;
-
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"

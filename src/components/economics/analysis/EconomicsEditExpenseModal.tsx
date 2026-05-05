@@ -75,7 +75,7 @@ export function EconomicsEditExpenseModal({
           </div>
           <div>
             <div className={labelCls}>Ημερομηνία</div>
-            <AppDatePicker value={editDate as never} onChange={(v: never) => onEditDateChange(v)}/>
+            <AppDatePicker value={editDate} onChange={onEditDateChange}/>
           </div>
           <div className="md:col-span-2">
             <div className={labelCls}>Σημειώσεις</div>

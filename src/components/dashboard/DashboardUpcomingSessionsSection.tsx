@@ -1,5 +1,5 @@
 // src/components/dashboard/DashboardUpcomingSessionsSection.tsx
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../context/ThemeContext';
 import { CalendarClock, Loader2, Clock } from 'lucide-react';

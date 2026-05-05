@@ -4,8 +4,7 @@ import { useAuth } from '../../../auth';
 import { useTheme } from '../../../context/ThemeContext';
 import type { PeriodMode, PackageRow, PaymentRow, StudentRow, StudentViewRow, SubscriptionRow } from './types';
 import {
-  isoToDisplayDate, isHourlyPackageName, isMonthlyPackageName,
-  isYearlyPackageName, monthKeyToRange, pad2, parseMoney, parsePct, resolvePackageType, round2, todayLocalISODate,
+  isoToDisplayDate, isHourlyPackageName, monthKeyToRange, pad2, parseMoney, resolvePackageType, round2, todayLocalISODate,
 } from './utils';
 
 const PAGE_SIZE = 15;

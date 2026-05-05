@@ -172,8 +172,6 @@ export default function ClassesPage() {
   }, [classes, search, subjects, levelNameById]);
 
   const inputCls = `h-9 w-full rounded-lg border pl-9 pr-3 text-xs outline-none ring-0 backdrop-blur transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 focus:border-[color:var(--color-accent)] ${isDark ? 'border-slate-700/70 bg-slate-900/60 text-slate-100 placeholder-slate-500' : 'border-slate-200 bg-white text-slate-800 placeholder-slate-400'}`;
-  const cardCls = `overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-md ring-1 ring-inset ${isDark ? 'border-slate-700/50 bg-slate-950/40 ring-white/[0.04]' : 'border-slate-200 bg-white/80 ring-black/[0.02]'}`;
-
   return (
     <div className="space-y-6 px-1">
 
