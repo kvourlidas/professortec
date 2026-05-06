@@ -1,15 +1,18 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
 import { useTheme } from '../context/ThemeContext';
-import { BarChart3, GraduationCap, Search, Users } from 'lucide-react';
+import { BarChart3, Check, ChevronDown, GraduationCap, Search, User, Users, X } from 'lucide-react';
 import type { StudentRow, TutorRow, StudentGradeRow, TutorGradeRow, GradeRow, GradesTab, SelectionType } from '../components/grades/types';
-import { getScrollbarStyle } from '../components/grades/utils';
 import GradesPanel from '../components/grades/GradesPanel';
 
-function getInitials(name: string) {
-  return name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
-}
+const STYLE = `
+  @keyframes gradesFadeSlide {
+    from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .grades-drop-animate { animation: gradesFadeSlide 0.18s cubic-bezier(0.16,1,0.3,1) forwards; }
+`;
 
 const GradesPage = () => {
   const { profile } = useAuth();
@@ -18,13 +21,16 @@ const GradesPage = () => {
 
   // ── Data ──────────────────────────────────────────────────────────────────
   const [students, setStudents] = useState<StudentRow[]>([]);
-  const [loadingStudents, setLoadingStudents] = useState(false);
   const [tutors, setTutors] = useState<TutorRow[]>([]);
-  const [loadingTutors, setLoadingTutors] = useState(false);
+
+  // ── Selector state ────────────────────────────────────────────────────────
+  const [listType, setListType] = useState<'students' | 'tutors'>('students');
+  const [dropOpen, setDropOpen] = useState(false);
+  const [dropSearch, setDropSearch] = useState('');
+  const dropRef = useRef<HTMLDivElement>(null);
+  const dropSearchRef = useRef<HTMLInputElement>(null);
 
   // ── Selection ─────────────────────────────────────────────────────────────
-  const [listType, setListType] = useState<'students' | 'tutors'>('students');
-  const [search, setSearch] = useState('');
   const [selectionType, setSelectionType] = useState<SelectionType>(null);
   const [selectedStudent, setSelectedStudent] = useState<StudentRow | null>(null);
   const [selectedTutor, setSelectedTutor] = useState<TutorRow | null>(null);
@@ -40,23 +46,41 @@ const GradesPage = () => {
   // ── Load lists ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!profile?.school_id) return;
-    setLoadingStudents(true);
     supabase.from('students').select('id, school_id, full_name, email').eq('school_id', profile.school_id).order('full_name', { ascending: true })
-      .then(({ data, error }) => { if (!error) setStudents(data ?? []); setLoadingStudents(false); });
-    setLoadingTutors(true);
+      .then(({ data, error }) => { if (!error) setStudents(data ?? []); });
     supabase.from('tutors').select('id, school_id, full_name, email').eq('school_id', profile.school_id).order('full_name', { ascending: true })
-      .then(({ data, error }) => { if (!error) setTutors(data ?? []); setLoadingTutors(false); });
+      .then(({ data, error }) => { if (!error) setTutors(data ?? []); });
   }, [profile?.school_id]);
 
-  // ── Filtered list ─────────────────────────────────────────────────────────
+  // ── Close dropdown on outside click ──────────────────────────────────────
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dropRef.current && !dropRef.current.contains(e.target as Node)) setDropOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  // ── Focus search when dropdown opens ─────────────────────────────────────
+  useEffect(() => {
+    if (dropOpen) setTimeout(() => dropSearchRef.current?.focus(), 30);
+    else setDropSearch('');
+  }, [dropOpen]);
+
+  // ── Filtered dropdown list ────────────────────────────────────────────────
   const filteredItems = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = dropSearch.trim().toLowerCase();
     const list = listType === 'students' ? students : tutors;
     return q ? list.filter((i) => i.full_name.toLowerCase().includes(q)) : list;
-  }, [listType, students, tutors, search]);
+  }, [listType, students, tutors, dropSearch]);
+
+  // ── Selected display ──────────────────────────────────────────────────────
+  const selectedItem = listType === 'students' ? selectedStudent : selectedTutor;
+  const totalCount = listType === 'students' ? students.length : tutors.length;
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleSelectStudent = async (student: StudentRow) => {
+    setDropOpen(false);
     if (!profile?.school_id) return;
     setSelectionType('student'); setSelectedStudent(student); setSelectedTutor(null);
     setActiveTab('overall'); setSelectedSubjectId(null);
@@ -69,6 +93,7 @@ const GradesPage = () => {
   };
 
   const handleSelectTutor = async (tutor: TutorRow) => {
+    setDropOpen(false);
     if (!profile?.school_id) return;
     setSelectionType('tutor'); setSelectedTutor(tutor); setSelectedStudent(null);
     setActiveTab('overall'); setSelectedSubjectId(null);
@@ -83,7 +108,8 @@ const GradesPage = () => {
   const handleSwitchType = (type: 'students' | 'tutors') => {
     if (type === listType) return;
     setListType(type);
-    setSearch('');
+    setDropOpen(false);
+    setDropSearch('');
     setSelectionType(null);
     setSelectedStudent(null);
     setSelectedTutor(null);
@@ -131,153 +157,193 @@ const GradesPage = () => {
     return { avgGrade: sum / valid.length, gradedCount: valid.length };
   }, [visibleGrades]);
 
-  // ── Derived display ───────────────────────────────────────────────────────
-  const loadingList = listType === 'students' ? loadingStudents : loadingTutors;
-  const totalCount = listType === 'students' ? students.length : tutors.length;
-
   return (
     <div className="space-y-5 px-1">
-      <style>{getScrollbarStyle(isDark)}</style>
+      <style>{STYLE}</style>
 
-      {/* ── Top card ── */}
-      <div className={`overflow-hidden rounded-2xl border shadow-sm backdrop-blur-md ${
-        isDark ? 'border-slate-700/50 bg-slate-950/40' : 'border-slate-200 bg-white/80'
-      }`}>
-        <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 30%, transparent))' }} />
+      {/* ── Top section ── */}
+      <div className="space-y-3">
 
-        {/* Row 1: title left, toggle right */}
-        <div className="flex items-center justify-between px-5 pt-4 pb-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
-              style={{ background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 60%, transparent))' }}>
-              <BarChart3 className="h-4 w-4" style={{ color: 'var(--color-input-bg)' }} />
-            </div>
-            <div>
-              <h1 className={`text-base font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Βαθμοί</h1>
-              <p className={`mt-0.5 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                Δες την πορεία βαθμών για μαθητές και καθηγητές.
-              </p>
-            </div>
+        {/* Page header */}
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+            style={{ background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 60%, transparent))' }}>
+            <BarChart3 className="h-4 w-4" style={{ color: 'var(--color-input-bg)' }} />
           </div>
-
-          {/* Students / Tutors toggle */}
-          <div className={`flex overflow-hidden rounded-xl border ${isDark ? 'border-slate-700/60' : 'border-slate-200'}`}>
-            {([
-              { key: 'students' as const, label: 'Μαθητές', icon: <Users className="h-3.5 w-3.5" />, count: students.length },
-              { key: 'tutors' as const, label: 'Καθηγητές', icon: <GraduationCap className="h-3.5 w-3.5" />, count: tutors.length },
-            ] as const).map(({ key, label, icon, count }) => {
-              const active = listType === key;
-              return (
-                <button key={key} type="button" onClick={() => handleSwitchType(key)}
-                  className={`relative flex items-center gap-2 px-4 py-2.5 text-[12px] font-semibold transition-colors ${
-                    active
-                      ? isDark ? 'bg-slate-900/60 text-white' : 'bg-white text-slate-900'
-                      : isDark ? 'text-slate-500 hover:text-slate-300 hover:bg-white/[0.02]' : 'text-slate-400 bg-slate-50 hover:text-slate-600'
-                  }`}
-                >
-                  <span style={active ? { color: 'var(--color-accent)' } : undefined}>{icon}</span>
-                  {label}
-                  {count > 0 && (
-                    <span className="rounded-full px-1.5 py-px text-[10px] tabular-nums"
-                      style={active
-                        ? { background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', color: 'var(--color-accent)' }
-                        : { background: isDark ? 'rgb(30 41 59)' : 'rgb(241 245 249)', color: isDark ? 'rgb(100 116 139)' : 'rgb(100 116 139)' }
-                      }>
-                      {count}
-                    </span>
-                  )}
-                  <span className="absolute bottom-0 left-0 right-0 h-[2px]"
-                    style={{ background: active ? 'var(--color-accent)' : 'transparent' }} />
-                </button>
-              );
-            })}
+          <div>
+            <h1 className={`text-base font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Βαθμοί</h1>
+            <p className={`mt-0.5 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              Δες την πορεία βαθμών για μαθητές και καθηγητές.
+            </p>
           </div>
         </div>
 
-        {/* Row 2: full-width search */}
-        <div className={`border-t px-5 py-3 ${isDark ? 'border-slate-800/70' : 'border-slate-100'}`}>
-          <div className="relative">
-            <Search className={`pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={listType === 'students' ? 'Αναζήτηση μαθητή…' : 'Αναζήτηση καθηγητή…'}
-              className={`h-9 w-full rounded-xl border pl-9 pr-3 text-sm outline-none transition ${
-                isDark
-                  ? 'border-slate-700/70 bg-slate-900/60 text-slate-100 placeholder-slate-500 focus:border-[color:var(--color-accent)]/60 focus:ring-1 focus:ring-[color:var(--color-accent)]/20'
-                  : 'border-slate-200 bg-slate-50 text-slate-800 placeholder-slate-400 focus:border-[color:var(--color-accent)]/60 focus:ring-1 focus:ring-[color:var(--color-accent)]/20'
-              }`}
-            />
-          </div>
+        {/* Students / Tutors toggle */}
+        <div className={`inline-flex overflow-hidden rounded-xl border ${isDark ? 'border-slate-700/60' : 'border-slate-200'}`}>
+          {([
+            { key: 'students' as const, label: 'Μαθητές', icon: <Users className="h-3.5 w-3.5" />, count: students.length },
+            { key: 'tutors' as const, label: 'Καθηγητές', icon: <GraduationCap className="h-3.5 w-3.5" />, count: tutors.length },
+          ] as const).map(({ key, label, icon, count }) => {
+            const active = listType === key;
+            return (
+              <button key={key} type="button" onClick={() => handleSwitchType(key)}
+                className={`relative flex items-center gap-2 px-4 py-2 text-[12px] font-semibold transition-colors ${
+                  active
+                    ? isDark ? 'bg-slate-900/60 text-white' : 'bg-white text-slate-900'
+                    : isDark ? 'text-slate-500 hover:text-slate-300 hover:bg-white/[0.02]' : 'text-slate-400 bg-slate-50 hover:text-slate-600'
+                }`}
+              >
+                <span style={active ? { color: 'var(--color-accent)' } : undefined}>{icon}</span>
+                {label}
+                {count > 0 && (
+                  <span className="rounded-full px-1.5 py-px text-[10px] tabular-nums"
+                    style={active
+                      ? { background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', color: 'var(--color-accent)' }
+                      : { background: isDark ? 'rgb(30 41 59)' : 'rgb(241 245 249)', color: isDark ? 'rgb(100 116 139)' : 'rgb(100 116 139)' }
+                    }>
+                    {count}
+                  </span>
+                )}
+                <span className="absolute bottom-0 left-0 right-0 h-[2px]"
+                  style={{ background: active ? 'var(--color-accent)' : 'transparent' }} />
+              </button>
+            );
+          })}
         </div>
 
-        {/* Row 3: always-visible list */}
-        <div className={`border-t ${isDark ? 'border-slate-800/70' : 'border-slate-100'}`}>
-          {loadingList ? (
-            <div className={`divide-y ${isDark ? 'divide-slate-800/50' : 'divide-slate-100'}`}>
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="flex items-center gap-3 px-5 py-3 animate-pulse">
-                  <div className={`h-7 w-7 shrink-0 rounded-full ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`} />
-                  <div className={`h-3 rounded-full ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`}
-                    style={{ width: `${40 + (i * 17) % 35}%` }} />
+        {/* Dropdown selector */}
+        <div ref={dropRef} className="relative z-30">
+
+          {/* Trigger */}
+          <button
+            type="button"
+            onClick={() => { setDropOpen((v) => !v); setDropSearch(''); }}
+            className={`group flex w-full items-center gap-4 rounded-2xl px-5 py-3.5 text-left shadow-lg transition-all ${
+              isDark
+                ? 'border border-slate-700/60 bg-slate-900/70 backdrop-blur-md hover:border-slate-600/70'
+                : 'border border-slate-200 bg-white hover:border-slate-300'
+            } ${dropOpen
+                ? isDark
+                  ? 'border-[color:var(--color-accent)]/50 ring-2 ring-[color:var(--color-accent)]/20'
+                  : 'border-[color:var(--color-accent)]/40 ring-2 ring-[color:var(--color-accent)]/12'
+                : ''
+            }`}
+          >
+            {/* Avatar */}
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl font-bold text-sm transition-all"
+              style={{
+                background: selectedItem
+                  ? 'color-mix(in srgb, var(--color-accent) 18%, transparent)'
+                  : isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                border: selectedItem
+                  ? '1px solid color-mix(in srgb, var(--color-accent) 35%, transparent)'
+                  : isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.08)',
+                color: selectedItem ? 'var(--color-accent)' : isDark ? '#64748b' : '#94a3b8',
+              }}>
+              {selectedItem
+                ? (selectedItem.full_name ?? '?').charAt(0).toUpperCase()
+                : <User className="h-4 w-4" />}
+            </div>
+
+            {/* Name / placeholder */}
+            <div className="min-w-0 flex-1">
+              {selectedItem ? (
+                <div className={`text-sm font-semibold leading-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>
+                  {selectedItem.full_name ?? '—'}
                 </div>
-              ))}
+              ) : (
+                <span className={`text-sm ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                  {listType === 'students' ? 'Επίλεξε μαθητή…' : 'Επίλεξε καθηγητή…'}
+                </span>
+              )}
             </div>
-          ) : filteredItems.length === 0 ? (
-            <div className={`px-5 py-6 text-center text-sm ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-              Δεν βρέθηκαν αποτελέσματα.
+
+            {/* Count badge + chevron */}
+            <div className="flex shrink-0 items-center gap-2.5">
+              <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-bold tabular-nums ${
+                isDark ? 'border-slate-700/60 bg-slate-800/60 text-slate-400' : 'border-slate-200 bg-slate-100 text-slate-500'
+              }`}>
+                {totalCount}
+              </span>
+              <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${dropOpen ? 'rotate-180' : ''} ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
             </div>
-          ) : (
-            <div className={`max-h-[220px] overflow-y-auto grades-scroll divide-y ${isDark ? 'divide-slate-800/40' : 'divide-slate-100'}`}>
-              {filteredItems.map((item) => {
-                const isSelected = listType === 'students'
-                  ? item.id === selectedStudent?.id
-                  : item.id === selectedTutor?.id;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => listType === 'students'
-                      ? handleSelectStudent(item as StudentRow)
-                      : handleSelectTutor(item as TutorRow)
-                    }
-                    className={`group relative flex w-full items-center gap-3 px-5 py-2.5 text-left transition-colors ${
-                      isSelected
-                        ? isDark ? 'bg-white/[0.06]' : 'bg-slate-100'
-                        : isDark ? 'hover:bg-white/[0.03]' : 'hover:bg-slate-50'
+          </button>
+
+          {/* Dropdown panel */}
+          {dropOpen && (
+            <div className={`grades-drop-animate absolute left-0 right-0 top-[calc(100%+8px)] overflow-hidden rounded-2xl shadow-2xl ${
+              isDark
+                ? 'border border-slate-700/60 bg-slate-900/95 backdrop-blur-xl ring-1 ring-white/[0.05]'
+                : 'border border-slate-200 bg-white ring-1 ring-slate-900/5'
+            }`}>
+
+              {/* Search */}
+              <div className={`px-3 pt-3 pb-2.5 ${isDark ? 'border-b border-slate-800/60' : 'border-b border-slate-100'}`}>
+                <div className="relative">
+                  <Search className={`pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+                  <input
+                    ref={dropSearchRef}
+                    value={dropSearch}
+                    onChange={(e) => setDropSearch(e.target.value)}
+                    placeholder={listType === 'students' ? 'Αναζήτηση μαθητή…' : 'Αναζήτηση καθηγητή…'}
+                    className={`h-9 w-full rounded-xl pl-9 pr-8 text-xs outline-none transition-all ${
+                      isDark
+                        ? 'border border-slate-700/50 bg-slate-800/70 text-slate-100 placeholder-slate-500 focus:border-[color:var(--color-accent)]/60 focus:ring-1 focus:ring-[color:var(--color-accent)]/20'
+                        : 'border border-slate-200 bg-slate-50 text-slate-800 placeholder-slate-400 focus:border-[color:var(--color-accent)]/50 focus:bg-white'
                     }`}
-                  >
-                    {isSelected && (
-                      <span className="absolute left-0 top-1/2 -translate-y-1/2 h-8 w-[3px] rounded-r-full"
-                        style={{ background: 'var(--color-accent)' }} />
-                    )}
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
-                      style={isSelected
-                        ? { background: 'color-mix(in srgb, var(--color-accent) 20%, transparent)', color: 'var(--color-accent)' }
-                        : { background: isDark ? 'rgb(30 41 59)' : 'rgb(241 245 249)', color: isDark ? 'rgb(100 116 139)' : 'rgb(100 116 139)' }
-                      }>
-                      {getInitials(item.full_name)}
-                    </span>
-                    <span className={`flex-1 truncate text-[13px] font-medium ${
-                      isSelected
-                        ? isDark ? 'text-white' : 'text-slate-900'
-                        : isDark ? 'text-slate-300 group-hover:text-slate-100' : 'text-slate-600 group-hover:text-slate-800'
-                    }`}>
-                      {item.full_name}
-                    </span>
-                  </button>
-                );
-              })}
+                  />
+                  {dropSearch && (
+                    <button type="button" onClick={() => setDropSearch('')}
+                      className={`absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-0.5 transition ${isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}>
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* List */}
+              <div className="grades-drop-list max-h-64 overflow-y-auto py-1.5">
+                {filteredItems.length === 0 ? (
+                  <div className={`px-4 py-6 text-center text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                    Δεν βρέθηκαν αποτελέσματα.
+                  </div>
+                ) : filteredItems.map((item) => {
+                  const active = item.id === selectedItem?.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => listType === 'students'
+                        ? handleSelectStudent(item as StudentRow)
+                        : handleSelectTutor(item as TutorRow)
+                      }
+                      className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors ${
+                        active
+                          ? isDark ? 'bg-white/[0.07]' : 'bg-slate-50'
+                          : isDark ? 'hover:bg-white/[0.04]' : 'hover:bg-slate-50/80'
+                      }`}
+                    >
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold transition-all"
+                        style={active
+                          ? { background: 'var(--color-accent)', color: 'var(--color-input-bg)' }
+                          : { background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)', color: isDark ? '#64748b' : '#94a3b8' }
+                        }>
+                        {(item.full_name ?? '?').charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className={`text-xs font-semibold leading-tight ${
+                          active ? (isDark ? 'text-slate-50' : 'text-slate-900') : (isDark ? 'text-slate-200' : 'text-slate-700')
+                        }`}>
+                          {item.full_name ?? '—'}
+                        </div>
+                      </div>
+                      {active && <Check className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--color-accent)' }} />}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
-
-          {/* Footer count */}
-          <div className={`border-t px-5 py-1.5 ${isDark ? 'border-slate-800/70' : 'border-slate-100'}`}>
-            <span className={`text-[11px] tabular-nums ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
-              {search.trim() ? `${filteredItems.length} / ${totalCount}` : totalCount}{' '}
-              {listType === 'students' ? 'μαθητές' : 'καθηγητές'} σύνολο
-            </span>
-          </div>
         </div>
       </div>
 

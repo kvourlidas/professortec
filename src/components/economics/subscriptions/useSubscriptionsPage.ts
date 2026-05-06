@@ -111,9 +111,10 @@ export function useSubscriptionsPage() {
   const [expiredPage,       setExpiredPage]       = useState(1);
 
   // ── Shared ─────────────────────────────────────────────────────────────────
-  const [error,       setError]       = useState<string | null>(null);
-  const [info,        setInfo]        = useState<string | null>(null);
-  const [search,      setSearch]      = useState('');
+  const [error,        setError]        = useState<string | null>(null);
+  const [info,         setInfo]         = useState<string | null>(null);
+  const [search,       setSearch]       = useState('');
+  const [payFilter, setPayFilter] = useState<'all' | 'settled' | 'owes' | 'unpaid'>('all');
   const [packages,    setPackages]    = useState<PackageRow[]>([]);
   const [allStudents, setAllStudents] = useState<StudentRow[]>([]);
 
@@ -135,6 +136,10 @@ export function useSubscriptionsPage() {
   // ── Delete ─────────────────────────────────────────────────────────────────
   const [deleteTarget, setDeleteTarget] = useState<StudentViewRow | null>(null);
   const [deleting,     setDeleting]     = useState(false);
+
+  // ── End (manual close of hourly subscription) ─────────────────────────────
+  const [endTarget,    setEndTarget]    = useState<StudentViewRow | null>(null);
+  const [endingLoading,setEndingLoading]= useState(false);
 
   // ── Assign / Renew modal ───────────────────────────────────────────────────
   const [assignOpen,       setAssignOpen]       = useState(false);
@@ -159,7 +164,7 @@ export function useSubscriptionsPage() {
   const [assignYear,       setAssignYear]       = useState(String(new Date().getFullYear()));
 
   // ── Derived ────────────────────────────────────────────────────────────────
-  useEffect(() => { setPage(1); setExpiredPage(1); }, [search]);
+  useEffect(() => { setPage(1); setExpiredPage(1); }, [search, payFilter]);
 
   const pageCount        = useMemo(() => Math.max(1, Math.ceil(totalCount / PAGE_SIZE)),        [totalCount]);
   const expiredPageCount = useMemo(() => Math.max(1, Math.ceil(expiredTotalCount / PAGE_SIZE)), [expiredTotalCount]);
@@ -254,6 +259,9 @@ export function useSubscriptionsPage() {
       .eq('status', 'active')
       .order('created_at', { ascending: false });
     if (ids !== null) q = q.in('student_id', ids);
+    if (payFilter === 'settled') q = (q as any).lte('balance', 0);
+    if (payFilter === 'owes')    q = (q as any).gt('balance', 0);
+    if (payFilter === 'unpaid')  q = (q as any).eq('paid_amount', 0).gt('balance', 0);
     const { data, error, count } = await q.range(from, to);
     if (error) { setError(error.message); setRows([]); setTotalCount(0); setLoading(false); return; }
     const subs = (data ?? []) as SubscriptionRow[];
@@ -274,9 +282,12 @@ export function useSubscriptionsPage() {
       .from('student_subscriptions_with_totals')
       .select('id,school_id,student_id,package_id,package_name,price,currency,status,starts_on,ends_on,created_at,used_hours,charge_amount,paid_amount,balance', { count: 'exact' })
       .eq('school_id', schoolId)
-      .in('status', ['completed', 'expired']) // ← completed = expired by date/hours
+      .in('status', ['completed', 'expired', 'renewed']) // completed = expired by date/hours; renewed = manually renewed
       .order('created_at', { ascending: false });
     if (ids !== null) q = q.in('student_id', ids);
+    if (payFilter === 'settled') q = (q as any).lte('balance', 0);
+    if (payFilter === 'owes')    q = (q as any).gt('balance', 0);
+    if (payFilter === 'unpaid')  q = (q as any).eq('paid_amount', 0).gt('balance', 0);
     const { data, error, count } = await q.range(from, to);
     if (error) { setError(error.message); setExpiredRows([]); setExpiredTotalCount(0); setExpiredLoading(false); return; }
     const subs = (data ?? []) as SubscriptionRow[];
@@ -291,8 +302,8 @@ export function useSubscriptionsPage() {
   };
 
   useEffect(() => { loadPackages(); loadAllStudents(); }, [schoolId]);
-  useEffect(() => { loadActive(); },  [schoolId, page, search]);
-  useEffect(() => { loadExpired(); }, [schoolId, expiredPage, search]);
+  useEffect(() => { loadActive(); },  [schoolId, page, search, payFilter]);
+  useEffect(() => { loadExpired(); }, [schoolId, expiredPage, search, payFilter]);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
   const openPaymentModal = (row: StudentViewRow) => { setPaymentInput(''); setPaymentModal({ row }); };
@@ -323,6 +334,20 @@ export function useSubscriptionsPage() {
       setDeleteTarget(null); setInfo('Διαγράφηκε η συνδρομή.'); await load();
     } catch (err: any) { setError(err.message ?? 'Αποτυχία διαγραφής συνδρομής.'); }
     setDeleting(false);
+  };
+
+  const confirmEnd = async () => {
+    if (!endTarget?.sub || !schoolId) return;
+    setEndingLoading(true); setError(null); setInfo(null);
+    try {
+      const { error: rpcErr } = await supabase.rpc('end_subscription', {
+        p_subscription_id: endTarget.sub.id,
+        p_school_id: schoolId,
+      });
+      if (rpcErr) throw new Error(rpcErr.message);
+      setEndTarget(null); setInfo('Η συνδρομή ορίστηκε ως ολοκληρωμένη.'); await load();
+    } catch (err: any) { setError(err.message ?? 'Αποτυχία λήξης συνδρομής.'); }
+    setEndingLoading(false);
   };
 
   const resetModal = () => {
@@ -432,6 +457,7 @@ export function useSubscriptionsPage() {
     isDark, schoolId,
     error, setError, info, setInfo,
     search, setSearch,
+    payFilter, setPayFilter,
     packages, allStudents, packageById,
 
     // active table
@@ -449,6 +475,8 @@ export function useSubscriptionsPage() {
 
     // delete
     deleteTarget, setDeleteTarget, deleting, confirmDelete,
+    // end (hourly subscription manual close)
+    endTarget, setEndTarget, endingLoading, confirmEnd,
 
     // assign / renew
     assignOpen, setAssignOpen, isRenew, saving, assignError, setAssignError,

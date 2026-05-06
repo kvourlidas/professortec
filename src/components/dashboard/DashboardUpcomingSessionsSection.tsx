@@ -172,7 +172,7 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
 
   /* ── sub-components ── */
   const PanelLabel = ({ children }: { children: string }) => (
-    <p className={`mb-4 text-sm font-semibold ${primary}`}>{children}</p>
+    <p className={`mb-4 shrink-0 text-sm font-semibold ${primary}`}>{children}</p>
   );
 
   const SessionCard = ({ s, variant }: { s: UpcomingSession; variant: 'current' | 'upcoming' }) => {
@@ -244,7 +244,7 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
         <div className="h-0.5 w-full shrink-0" style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 30%, transparent))' }} />
 
         {/* Header — inside card */}
-        <div className="flex items-center justify-between px-5 pt-4 pb-0">
+        <div className="flex shrink-0 items-center justify-between px-5 pt-4 pb-0">
           <div className="flex items-center gap-2.5">
             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border"
               style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', borderColor: 'color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>
@@ -261,7 +261,7 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
           </div>
         ) : (
           /* Two-panel split */
-          <div className="flex flex-1">
+          <div className="flex flex-1 min-h-0">
 
             {/* LEFT — Current */}
             <div className="flex flex-col flex-1 min-h-0 p-5">

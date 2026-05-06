@@ -33,20 +33,6 @@ async function callEdgeFunction(name: string, body: Record<string, unknown>) {
 
 // ── Scrollbar + animation styles injected once ────────────────────────────────
 const INJECTED_STYLE = `
-  .tutor-dropdown-list::-webkit-scrollbar { width: 4px; }
-  .tutor-dropdown-list::-webkit-scrollbar-track { background: transparent; }
-  .tutor-dropdown-list::-webkit-scrollbar-thumb {
-    background: color-mix(in srgb, var(--color-accent) 40%, transparent);
-    border-radius: 99px;
-  }
-  .tutor-dropdown-list::-webkit-scrollbar-thumb:hover {
-    background: color-mix(in srgb, var(--color-accent) 70%, transparent);
-  }
-  .tutor-dropdown-list {
-    scrollbar-width: thin;
-    scrollbar-color: color-mix(in srgb, var(--color-accent) 40%, transparent) transparent;
-  }
-
   @keyframes fadeSlideDown {
     from { opacity: 0; transform: translateY(-8px) scale(0.98); }
     to   { opacity: 1; transform: translateY(0) scale(1); }

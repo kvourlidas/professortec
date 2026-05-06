@@ -17,9 +17,5 @@ export function typeColors(type: PackageType, isDark: boolean) {
   return isDark ? TYPE_COLORS_DARK[type] : TYPE_COLORS_LIGHT[type];
 }
 
-export const SCROLLBAR_STYLE = `
-  .ss-thin::-webkit-scrollbar{width:4px;height:4px}
-  .ss-thin::-webkit-scrollbar-track{background:transparent}
-  .ss-thin::-webkit-scrollbar-thumb{background:rgba(100,116,139,.28);border-radius:9999px}
-  .ss-thin::-webkit-scrollbar-thumb:hover{background:rgba(100,116,139,.5)}
-`;
+// Global scrollbar CSS in index.css now handles .ss-thin — kept as empty string for back-compat.
+export const SCROLLBAR_STYLE = '';

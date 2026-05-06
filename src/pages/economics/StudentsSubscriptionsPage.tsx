@@ -1,10 +1,19 @@
-import { Briefcase, Plus, Search, X } from 'lucide-react';
-import { SCROLLBAR_STYLE } from '../../components/economics/subscriptions/constants';
+import { AlertCircle, Briefcase, CheckCircle2, Plus, Search, X, XCircle } from 'lucide-react';
 import { useSubscriptionsPage } from '../../components/economics/subscriptions/useSubscriptionsPage';
 import { SubscriptionsTable } from '../../components/economics/subscriptions/SubscriptionsTable';
 import { AssignRenewModal } from '../../components/economics/subscriptions/AssignRenewModal';
 import { DeleteSubscriptionModal } from '../../components/economics/subscriptions/DeleteSubscriptionModal';
+import { EndSubscriptionModal } from '../../components/economics/subscriptions/EndSubscriptionModal';
 import { PaymentModal } from '../../components/economics/subscriptions/PaymentModal';
+
+type PayFilter = 'all' | 'settled' | 'owes' | 'unpaid';
+
+const FILTER_OPTIONS: { key: PayFilter; label: string; icon: React.ReactNode }[] = [
+  { key: 'all',     label: 'Όλες',         icon: <Briefcase className="h-3 w-3" /> },
+  { key: 'settled', label: 'Εξοφλημένο',   icon: <CheckCircle2 className="h-3 w-3" /> },
+  { key: 'owes',    label: 'Οφείλει',      icon: <AlertCircle className="h-3 w-3" /> },
+  { key: 'unpaid',  label: 'Ανεξόφλητο',   icon: <XCircle className="h-3 w-3" /> },
+];
 
 export default function StudentsSubscriptionsPage() {
   const p = useSubscriptionsPage();
@@ -15,7 +24,6 @@ export default function StudentsSubscriptionsPage() {
 
   return (
     <>
-      <style>{SCROLLBAR_STYLE}</style>
       <div className="space-y-6 px-1">
 
         {/* Header */}
@@ -30,8 +38,30 @@ export default function StudentsSubscriptionsPage() {
               <p className={`mt-0.5 text-xs ${p.isDark ? 'text-slate-400' : 'text-slate-500'}`}>Ενεργές & ληγμένες συνδρομές — ανάθεση, πληρωμές, ιστορικό.</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="relative w-full sm:w-56">
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Payment filter */}
+            <div className={`flex items-center gap-0.5 rounded-xl border p-1 ${p.isDark ? 'border-slate-700/50 bg-slate-900/30' : 'border-slate-200 bg-slate-50'}`}>
+              {FILTER_OPTIONS.map(({ key, label, icon }) => {
+                const active = p.payFilter === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => p.setPayFilter(key)}
+                    className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                      active
+                        ? p.isDark ? 'bg-slate-800 shadow-sm' : 'bg-white shadow-sm'
+                        : p.isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'
+                    }`}
+                    style={active ? { color: 'var(--color-accent)' } : undefined}
+                  >
+                    <span style={active ? { color: 'var(--color-accent)' } : undefined}>{icon}</span>
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="relative w-full sm:w-48">
               <Search className={`absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 pointer-events-none ${p.isDark ? 'text-slate-500' : 'text-slate-400'}`} />
               <input className={searchInputCls} placeholder="Αναζήτηση μαθητή..." value={p.search} onChange={e => p.setSearch(e.target.value)} />
             </div>
@@ -69,6 +99,7 @@ export default function StudentsSubscriptionsPage() {
           onPayment={p.openPaymentModal}
           onRenew={p.openRenew}
           onDelete={p.setDeleteTarget}
+          onEnd={p.setEndTarget}
         />
 
         {/* Expired / renewed subscriptions table */}
@@ -144,6 +175,15 @@ export default function StudentsSubscriptionsPage() {
           isDark={p.isDark}
           onCancel={() => p.setDeleteTarget(null)}
           onConfirm={p.confirmDelete}
+        />
+
+        {/* End hourly subscription modal */}
+        <EndSubscriptionModal
+          target={p.endTarget}
+          ending={p.endingLoading}
+          isDark={p.isDark}
+          onCancel={() => p.setEndTarget(null)}
+          onConfirm={p.confirmEnd}
         />
 
         {/* Payment modal */}

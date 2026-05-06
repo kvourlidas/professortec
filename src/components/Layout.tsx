@@ -383,33 +383,33 @@ export default function Layout({ children }: LayoutProps) {
           </NavLink>
         </div>
 
-        {/* User card — bottom of sidebar */}
+        {/* User profile — bottom of sidebar */}
         {!sidebarCollapsed && (
           <div
-            className="border-t px-3 py-1"
+            className="border-t px-3 py-3"
             style={{ borderColor: 'var(--color-border-soft)' }}
           >
-            <div className={`flex items-center gap-2.5 rounded-xl border px-2.5 py-0.5 ${
-              isDark ? 'border-slate-700/60 bg-slate-800/40' : 'border-slate-200 bg-slate-50'
-            }`}>
+            <div className="flex items-center gap-2.5">
               <div
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-black"
-                style={{ backgroundColor: 'var(--color-accent)' }}
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
+                style={{ background: 'color-mix(in srgb, var(--color-accent) 18%, transparent)', color: 'var(--color-accent)' }}
               >
                 {(profile?.full_name || user?.email || '?')[0].toUpperCase()}
               </div>
-              <div className="min-w-0 flex-1 flex flex-col gap-0.5">
-                <p className={`truncate text-[12px] font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+              <div className="min-w-0 flex-1 flex flex-col">
+                <p className={`truncate text-[12px] font-semibold leading-tight ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
                   {profile?.full_name || user?.email}
                 </p>
-                <p className={`truncate text-[10px] capitalize ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                <p className={`truncate text-[10px] capitalize leading-tight ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                   {profile?.role || 'no role'}
                 </p>
               </div>
               <button
                 onClick={signOut}
                 aria-label="Αποσύνδεση"
-                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-slate-500 transition hover:bg-red-500/10 hover:text-red-400"
+                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg transition ${
+                  isDark ? 'text-slate-600 hover:bg-red-500/10 hover:text-red-400' : 'text-slate-400 hover:bg-red-50 hover:text-red-500'
+                }`}
               >
                 <LogOut className="h-3.5 w-3.5" />
               </button>

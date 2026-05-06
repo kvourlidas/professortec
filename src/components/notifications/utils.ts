@@ -4,12 +4,6 @@ export function formatDt(iso: string) {
   } catch { return iso; }
 }
 
-export function getScrollbarStyle(isDark: boolean) {
-  return `
-    .notif-scroll::-webkit-scrollbar { width: 5px; }
-    .notif-scroll::-webkit-scrollbar-track { background: ${isDark ? 'rgba(15,23,42,0.4)' : 'rgba(241,245,249,0.8)'}; border-radius: 99px; }
-    .notif-scroll::-webkit-scrollbar-thumb { background: ${isDark ? 'rgba(100,116,139,0.45)' : 'rgba(148,163,184,0.55)'}; border-radius: 99px; }
-    .notif-scroll::-webkit-scrollbar-thumb:hover { background: rgba(100,116,139,0.75); }
-    .notif-scroll { scrollbar-width: thin; scrollbar-color: ${isDark ? 'rgba(100,116,139,0.45) rgba(15,23,42,0.4)' : 'rgba(148,163,184,0.55) rgba(241,245,249,0.8)'}; }
-  `;
-}
+// Kept for call-site compatibility — global scrollbar CSS in index.css now handles styling.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function getScrollbarStyle(_isDark: boolean) { return ''; }
