@@ -1,21 +1,21 @@
 // src/pages/TestsPage.tsx
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
 import { useTheme } from '../context/ThemeContext';
 import EditDeleteButtons from '../components/ui/EditDeleteButtons';
 import TestFormModal from '../components/tests/TestFormModal';
 import TestDeleteModal from '../components/tests/TestDeleteModal';
-import TestResultsModal from '../components/tests/TestResultsModal';
 import type {
   AddTestForm, ClassRow, ClassSubjectRow, DeleteTarget,
-  EditTestForm, SubjectRow, TestResultsModalState, TestRow,
+  EditTestForm, SubjectRow, TestRow,
 } from '../components/tests/types';
 import {
   formatDateDisplay, formatTimeDisplay, parseDateDisplayToISO,
 } from '../components/tests/utils';
 import {
-  Search, ClipboardList, Users, Percent, Clock, Calendar, BookOpen, Tag,
+  Search, ClipboardList, Users, Clock, Calendar, BookOpen, Tag,
   ChevronLeft, ChevronRight,
 } from 'lucide-react';
 
@@ -41,6 +41,7 @@ export default function TestsPage() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const schoolId = profile?.school_id ?? null;
+  const navigate = useNavigate();
 
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [subjects, setSubjects] = useState<SubjectRow[]>([]);
@@ -62,8 +63,6 @@ export default function TestsPage() {
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // Results modal
-  const [resultsModal, setResultsModal] = useState<TestResultsModalState | null>(null);
 
   // Search & pagination
   const [searchTerm, setSearchTerm] = useState('');
@@ -211,11 +210,6 @@ export default function TestsPage() {
     }
   };
 
-  // Results modal
-  const openResultsModal = (testId: string) => {
-    const tDisplay = testsWithDisplay.find((tt) => tt.id === testId); if (!tDisplay) return;
-    setResultsModal({ testId, testTitle: tDisplay.title ?? null, dateDisplay: tDisplay.dateDisplay, timeRange: tDisplay.timeRange, classTitle: tDisplay.classTitle, subjectName: tDisplay.subjectName });
-  };
 
   // ── Style classes ──
   const tableCardCls = isDark
@@ -352,10 +346,10 @@ export default function TestsPage() {
                     <td className={`px-5 py-3.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t.title ?? <span className={isDark ? 'text-slate-600' : 'text-slate-300'}>—</span>}</td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center justify-end gap-1.5">
-                        <button type="button" onClick={() => openResultsModal(t.id)}
-                          className="inline-flex h-7 items-center gap-1 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-2 text-[11px] text-emerald-400 transition hover:border-emerald-400/60 hover:bg-emerald-500/20 hover:text-emerald-300"
-                          title="Μαθητές & βαθμοί">
-                          <Users className="h-3.5 w-3.5" /><Percent className="h-3 w-3" />
+                        <button type="button" onClick={() => navigate(`/program/tests/${t.id}/results`)}
+                          className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-2.5 text-[11px] font-medium text-emerald-400 transition hover:border-emerald-400/60 hover:bg-emerald-500/20 hover:text-emerald-300"
+                          title="Βαθμοί μαθητών">
+                          <Users className="h-3.5 w-3.5" />Βαθμοί
                         </button>
                         <EditDeleteButtons onEdit={() => openEditModal(t.id)} onDelete={() => openDeleteModal(t.id)} />
                       </div>
@@ -421,11 +415,6 @@ export default function TestsPage() {
         onConfirm={handleConfirmDelete}
       />
 
-      <TestResultsModal
-        resultsModal={resultsModal}
-        schoolId={schoolId}
-        onClose={() => setResultsModal(null)}
-      />
     </div>
   );
 }

@@ -264,10 +264,10 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
           <div className="flex flex-1">
 
             {/* LEFT — Current */}
-            <div className="flex flex-col flex-1 p-5">
-              <PanelLabel>Τρέχουσα</PanelLabel>
+            <div className="flex flex-col flex-1 min-h-0 p-5">
+              <PanelLabel>Τρέχουσα{currentSessions.length > 1 ? ` (${currentSessions.length})` : ''}</PanelLabel>
               {currentSessions.length > 0 ? (
-                <div className="flex flex-col gap-2 overflow-y-auto">
+                <div className="flex flex-col flex-1 min-h-0 gap-2 overflow-y-auto">
                   {currentSessions.map((s) => <SessionCard key={s.id} s={s} variant="current" />)}
                 </div>
               ) : (
@@ -276,10 +276,10 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
             </div>
 
             {/* RIGHT — Upcoming */}
-            <div className="flex flex-col flex-1 p-5">
+            <div className="flex flex-col flex-1 min-h-0 p-5">
               <PanelLabel>Επόμενη</PanelLabel>
               {upcomingSessions.length > 0 ? (
-                <div className="flex flex-col gap-2 overflow-y-auto">
+                <div className="flex flex-col flex-1 min-h-0 gap-2 overflow-y-auto">
                   {upcomingSessions.map((s) => <SessionCard key={s.id} s={s} variant="upcoming" />)}
                 </div>
               ) : (

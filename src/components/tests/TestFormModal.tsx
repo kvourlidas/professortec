@@ -8,6 +8,19 @@ import type { AddTestForm, ClassRow, ClassSubjectRow, EditTestForm, SubjectRow }
 import { emptyForm } from './types';
 import { parseDateDisplayToISO } from './utils';
 
+function FormField({ label, icon, hint, children }: { label: string; icon?: React.ReactNode; hint?: string; children: React.ReactNode }) {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const labelCls = `flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`;
+  return (
+    <div className="space-y-1.5">
+      <label className={labelCls}>{icon && <span className="opacity-70">{icon}</span>}{label}</label>
+      {children}
+      {hint && <p className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{hint}</p>}
+    </div>
+  );
+}
+
 type TestFormModalProps = {
   open: boolean;
   mode: 'add' | 'edit';
@@ -92,16 +105,6 @@ export default function TestFormModal({
     ? 'flex justify-end gap-2.5 border-t border-slate-800/70 bg-slate-900/20 px-6 py-4 mt-3'
     : 'flex justify-end gap-2.5 border-t border-slate-200 bg-slate-50 px-6 py-4 mt-3';
   const cancelBtnCls = 'btn border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-slate-200 hover:bg-slate-700/60 disabled:opacity-50';
-
-  // ── Sub-components ──
-  const FormField = ({ label, icon, hint, children }: { label: string; icon?: React.ReactNode; hint?: string; children: React.ReactNode }) => (
-    <div className="space-y-1.5">
-      <label className={labelCls}>{icon && <span className="opacity-70">{icon}</span>}{label}</label>
-      {children}
-      {hint && <p className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{hint}</p>}
-    </div>
-  );
-
 
   const subOpts = getSubjectsForClass(form.classId);
 

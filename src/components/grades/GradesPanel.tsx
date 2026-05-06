@@ -1,4 +1,5 @@
-import { BarChart3 } from 'lucide-react';
+import { useMemo } from 'react';
+import { BarChart3, ClipboardCheck, TrendingUp, Trophy } from 'lucide-react';
 import StudentGradesChart from './StudentGradesChart';
 import GradesTable from './GradesTable';
 import type { GradeRow, GradesTab, SelectionType, StudentRow, TutorRow } from './types';
@@ -37,25 +38,23 @@ export default function GradesPanel({
       ? selectedTutor.full_name
       : 'Επίλεξε μαθητή ή καθηγητή από αριστερά.';
 
-  const avgBoxTitle = selectionType === 'tutor'
-    ? (activeTab === 'overall' ? 'Μέσος όρος επίδοσης (όλα τα μαθήματα)' : 'Μέσος όρος επίδοσης στο επιλεγμένο μάθημα')
-    : (activeTab === 'overall' ? 'Μέσος όρος βαθμών (όλα τα μαθήματα)' : 'Μέσος όρος στο επιλεγμένο μάθημα');
-
-  const panelHeaderCls = isDark
-    ? 'flex items-center gap-3 border-b border-slate-800/70 bg-slate-900/30 px-5 py-3.5'
-    : 'flex items-center gap-3 border-b border-slate-200 bg-slate-50 px-5 py-3.5';
-
-  const emptyBoxCls = isDark
-    ? 'flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-700/50 bg-slate-800/50'
-    : 'flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200 bg-slate-100';
-
-  const avgBoxCls = isDark
-    ? 'flex items-center justify-between rounded-xl border border-slate-700/60 bg-slate-900/40 px-4 py-3'
-    : 'flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3';
+  const highestGrade = useMemo(() => {
+    const valid = grades.filter((g) => typeof g.grade === 'number');
+    if (!valid.length) return null;
+    return Math.max(...valid.map((g) => g.grade as number));
+  }, [grades]);
 
   const subjectSelectCls = isDark
     ? 'h-8 rounded-lg border border-slate-700/70 bg-slate-900/60 px-2 text-xs text-slate-100 outline-none focus:border-[color:var(--color-accent)]'
     : 'h-8 rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-700 outline-none focus:border-[color:var(--color-accent)]';
+
+  const statCardCls = `rounded-xl border p-3 ${
+    isDark ? 'border-slate-700/60 bg-slate-900/40' : 'border-slate-200 bg-slate-50'
+  }`;
+
+  const statLabelCls = `text-[10px] font-medium uppercase tracking-wider ${
+    isDark ? 'text-slate-500' : 'text-slate-400'
+  }`;
 
   return (
     <div className={`overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-md ring-1 ring-inset ${
@@ -63,11 +62,10 @@ export default function GradesPanel({
         ? 'border-slate-700/50 bg-slate-950/40 ring-white/[0.04]'
         : 'border-slate-200 bg-white/80 ring-black/[0.02]'
     }`}>
-      {/* Top accent line */}
       <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 30%, transparent))' }} />
 
       {/* Panel header */}
-      <div className={panelHeaderCls}>
+      <div className={`flex items-center gap-3 border-b px-5 py-3.5 ${isDark ? 'border-slate-800/70 bg-slate-900/30' : 'border-slate-200 bg-slate-50'}`}>
         <div className="flex h-7 w-7 items-center justify-center rounded-lg"
           style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>
           <BarChart3 className="h-3.5 w-3.5" style={{ color: 'var(--color-accent)' }} />
@@ -82,7 +80,7 @@ export default function GradesPanel({
 
       {!hasSelection ? (
         <div className="flex flex-col items-center justify-center gap-3 px-6 py-20 text-center">
-          <div className={emptyBoxCls}>
+          <div className={`flex h-14 w-14 items-center justify-center rounded-2xl border ${isDark ? 'border-slate-700/50 bg-slate-800/50' : 'border-slate-200 bg-slate-100'}`}>
             <BarChart3 className={`h-6 w-6 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
           </div>
           <div>
@@ -120,21 +118,39 @@ export default function GradesPanel({
             )}
           </div>
 
-          {/* Chart */}
-          <StudentGradesChart grades={gradesForChart} loading={loading} />
-
-          {/* Average box */}
-          {!loading && grades.length > 0 && (
-            <div className={avgBoxCls}>
-              <div>
-                <p className={`text-[11px] font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{avgBoxTitle}</p>
-                <p className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Βασισμένος σε {gradedCount} διαγωνίσματα</p>
+          {/* Stat cards */}
+          {!loading && gradedCount > 0 && (
+            <div className="grid grid-cols-3 gap-3">
+              <div className={statCardCls}>
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <ClipboardCheck className={`h-3 w-3 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+                  <p className={statLabelCls}>Διαγωνίσματα</p>
+                </div>
+                <p className={`text-xl font-bold tabular-nums ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{gradedCount}</p>
               </div>
-              <div className="text-2xl font-bold" style={{ color: 'var(--color-accent)' }}>
-                {avgGrade !== null ? avgGrade.toFixed(1) : '—'}
+              <div className={statCardCls}>
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <TrendingUp className={`h-3 w-3 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+                  <p className={statLabelCls}>Μ.Ο. Βαθμών</p>
+                </div>
+                <p className="text-xl font-bold tabular-nums" style={{ color: 'var(--color-accent)' }}>
+                  {avgGrade !== null ? avgGrade.toFixed(1) : '—'}
+                </p>
+              </div>
+              <div className={statCardCls}>
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <Trophy className={`h-3 w-3 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+                  <p className={statLabelCls}>Υψηλότερος</p>
+                </div>
+                <p className={`text-xl font-bold tabular-nums ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+                  {highestGrade !== null ? highestGrade : '—'}
+                </p>
               </div>
             </div>
           )}
+
+          {/* Chart */}
+          <StudentGradesChart grades={gradesForChart} loading={loading} />
 
           {/* Table */}
           <GradesTable loading={loading} grades={grades} isDark={isDark} />

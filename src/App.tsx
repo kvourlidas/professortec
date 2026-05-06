@@ -13,6 +13,7 @@ import ProgramPage from './pages/ProgramPage';
 import HolidaysPage from './pages/HolidaysPage';
 import EventsPage from './pages/EventsPage';
 import TestsPage from './pages/TestsPage';
+import TestResultsPage from './pages/TestResultsPage';
 import GradesPage from './pages/GradesPage';
 import SchoolInfoPage from './pages/SchoolInfoPage';
 
@@ -78,6 +79,7 @@ export default function App() {
 
         <Route path={p('/program')} element={<ProtectedRoute><ProgramPage /></ProtectedRoute>} />
         <Route path={p('/program/tests')} element={<ProtectedRoute><TestsPage /></ProtectedRoute>} />
+        <Route path={p('/program/tests/:id/results')} element={<ProtectedRoute><TestResultsPage /></ProtectedRoute>} />
         <Route path={p('/program/events')} element={<ProtectedRoute><EventsPage /></ProtectedRoute>} />
         <Route path={p('/program/holidays')} element={<ProtectedRoute><HolidaysPage /></ProtectedRoute>} />
 

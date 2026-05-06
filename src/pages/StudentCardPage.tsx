@@ -84,7 +84,7 @@ const jsToGrid = (js: number) => (js === 0 ? 6 : js - 1);
 
 // ── Calendar ───────────────────────────────────────────────────────────────
 
-function MonthCalendar({ slots, tests, isDark }: { slots: ProgramSlot[]; tests: CalendarTest[]; isDark: boolean }) {
+function MonthCalendar({ slots, tests, holidayDates, isDark }: { slots: ProgramSlot[]; tests: CalendarTest[]; holidayDates: Set<string>; isDark: boolean }) {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -129,7 +129,6 @@ function MonthCalendar({ slots, tests, isDark }: { slots: ProgramSlot[]; tests: 
   const lastOfMonth = new Date(year, month + 1, 0);
   const startPad = jsToGrid(firstOfMonth.getDay());
 
-  // 42-cell grid (6 rows × 7 cols), filling prev/next month overflow
   const cells: { date: Date; current: boolean }[] = [];
   for (let i = startPad - 1; i >= 0; i--)
     cells.push({ date: new Date(year, month, -i), current: false });
@@ -143,42 +142,52 @@ function MonthCalendar({ slots, tests, isDark }: { slots: ProgramSlot[]; tests: 
     if (s.start_date && selected < s.start_date) return false;
     if (s.end_date && selected > s.end_date) return false;
     return true;
+  }).sort((a, b) => {
+    if (!a.start_time) return 1;
+    if (!b.start_time) return -1;
+    return a.start_time.localeCompare(b.start_time);
   });
   const selTests = testsByDate.get(selected) ?? [];
 
   function prev() { if (month === 0) { setMonth(11); setYear(y => y - 1); } else setMonth(m => m - 1); }
   function next() { if (month === 11) { setMonth(0); setYear(y => y + 1); } else setMonth(m => m + 1); }
+  function goToday() { setYear(today.getFullYear()); setMonth(today.getMonth()); setSelected(toISODate(today)); }
 
-  const headerBg = isDark ? 'bg-slate-900/60' : 'bg-slate-50';
   const border = isDark ? 'border-slate-700/50' : 'border-slate-200';
+  const cellBorder = isDark ? 'border-slate-800/50' : 'border-slate-100';
+  const headerBg = isDark ? 'bg-slate-900/60' : 'bg-slate-50';
+  const navBtnCls = `flex h-7 w-7 items-center justify-center rounded-lg border transition ${isDark ? 'border-slate-700 bg-slate-800 text-slate-300 hover:border-slate-600 hover:text-white' : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-800'}`;
+  const abbrev = (t: string) => t.length > 13 ? t.slice(0, 12) + '…' : t;
 
   return (
     <div className={`rounded-xl border overflow-hidden ${border} ${isDark ? 'bg-slate-900/30' : 'bg-white'}`}>
 
       {/* ── Navigation ── */}
-      <div className={`flex items-center justify-between px-4 py-3 border-b ${border} ${headerBg}`}>
-        <button type="button" onClick={prev}
-          className={`flex h-7 w-7 items-center justify-center rounded-lg border transition ${isDark ? 'border-slate-700 bg-slate-800 text-slate-300 hover:border-slate-600 hover:text-white' : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-800'}`}>
+      <div className={`flex items-center gap-2 px-3 py-2.5 border-b ${border} ${headerBg}`}>
+        <button type="button" onClick={prev} className={navBtnCls}>
           <ChevronLeft className="h-3.5 w-3.5" />
         </button>
-        <span className={`text-sm font-semibold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+        <span className={`flex-1 text-center text-sm font-semibold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
           {MONTH_NAMES[month]} {year}
         </span>
-        <button type="button" onClick={next}
-          className={`flex h-7 w-7 items-center justify-center rounded-lg border transition ${isDark ? 'border-slate-700 bg-slate-800 text-slate-300 hover:border-slate-600 hover:text-white' : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-800'}`}>
+        <button type="button" onClick={goToday}
+          className={`rounded-lg border px-2 py-1 text-[10px] font-semibold transition ${isDark ? 'border-slate-700 bg-slate-800 text-slate-300 hover:border-slate-600 hover:text-white' : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-700'}`}>
+          Σήμερα
+        </button>
+        <button type="button" onClick={next} className={navBtnCls}>
           <ChevronRight className="h-3.5 w-3.5" />
         </button>
       </div>
 
       {/* ── Day headers ── */}
-      <div className={`grid grid-cols-7 border-b ${border} ${headerBg}`}>
-        {['Δ', 'Τ', 'Τ', 'Π', 'Π', 'Σ', 'Κ'].map((h, i) => (
-          <div key={i} className={`py-2 text-center text-[11px] font-semibold ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{h}</div>
+      <div className={`grid grid-cols-7 border-b ${border} ${isDark ? 'bg-slate-900/40' : 'bg-slate-50/80'}`}>
+        {['Δευ', 'Τρι', 'Τετ', 'Πεμ', 'Παρ', 'Σαβ', 'Κυρ'].map((h, i) => (
+          <div key={i} className={`py-1.5 text-center text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{h}</div>
         ))}
       </div>
 
       {/* ── Grid ── */}
-      <div className="grid grid-cols-7 p-2 gap-y-0.5">
+      <div className="grid grid-cols-7">
         {cells.map((cell, i) => {
           const dStr = toISODate(cell.date);
           const jsDay = cell.date.getDay();
@@ -192,85 +201,170 @@ function MonthCalendar({ slots, tests, isDark }: { slots: ProgramSlot[]; tests: 
           const dayTests = cell.current ? (testsByDate.get(dStr) ?? []) : [];
           const isToday = dStr === todayStr;
           const isSel = dStr === selected;
+          const isHoliday = cell.current && holidayDates.has(dStr);
+          const col = i % 7;
+          const row = Math.floor(i / 7);
 
           return (
             <button key={i} type="button" onClick={() => setSelected(dStr)}
-              className="flex flex-col items-center py-1 rounded-lg transition group">
-              <span
-                className={[
-                  'flex h-8 w-8 items-center justify-center rounded-full text-[13px] transition',
-                  isSel
-                    ? 'font-bold text-white'
-                    : isToday
-                      ? 'font-bold'
-                      : cell.current
-                        ? isDark ? 'text-slate-200 group-hover:bg-slate-800' : 'text-slate-700 group-hover:bg-slate-100'
-                        : isDark ? 'text-slate-700' : 'text-slate-300',
-                ].join(' ')}
-                style={
-                  isSel ? { background: 'var(--color-accent)' }
-                    : isToday ? { color: 'var(--color-accent)', outline: '2px solid var(--color-accent)', outlineOffset: '-2px' }
+              className={[
+                'relative flex flex-col items-stretch p-1 text-left transition-colors',
+                col < 6 ? `border-r ${cellBorder}` : '',
+                row < 5 ? `border-b ${cellBorder}` : '',
+                isSel
+                  ? isDark ? 'bg-[color:var(--color-accent)]/[0.08]' : 'bg-blue-50/60'
+                  : isHoliday
+                    ? isDark ? 'bg-red-950/20 hover:bg-red-950/30' : 'bg-red-50/60 hover:bg-red-50'
+                    : isDark ? 'hover:bg-slate-800/40' : 'hover:bg-slate-50/80',
+              ].filter(Boolean).join(' ')}
+              style={{ minHeight: '62px' }}>
+
+              {/* Holiday stripe */}
+              {isHoliday && (
+                <span className="absolute left-0 top-0 bottom-0 w-[2px] rounded-r-full bg-red-400/50" />
+              )}
+
+              {/* Date number */}
+              <div className="flex justify-center mb-0.5">
+                <span
+                  className={[
+                    'flex h-6 w-6 items-center justify-center rounded-full text-[12px] transition',
+                    isSel ? 'font-bold text-white'
+                      : isToday ? 'font-bold'
+                      : isHoliday ? isDark ? 'text-red-400' : 'text-red-500'
+                      : cell.current ? isDark ? 'text-slate-200' : 'text-slate-700'
+                      : isDark ? 'text-slate-700' : 'text-slate-300',
+                  ].join(' ')}
+                  style={
+                    isSel ? { background: 'var(--color-accent)' }
+                      : isToday ? { color: 'var(--color-accent)', outline: '2px solid var(--color-accent)', outlineOffset: '-2px' }
                       : undefined
-                }>
-                {cell.date.getDate()}
-              </span>
-              {/* dots: class slots + test indicator */}
-              <span className="flex h-2 items-center gap-0.5 mt-0.5">
-                {daySlots.slice(0, 3).map(s => (
-                  <span key={s.id} className="h-1 w-1 rounded-full"
-                    style={{ background: isSel ? 'rgba(255,255,255,0.65)' : (colorOf.get(s.class_id) ?? 'var(--color-accent)') }} />
+                  }>
+                  {cell.date.getDate()}
+                </span>
+              </div>
+
+              {/* Class pills */}
+              <div className="flex flex-col gap-px">
+                {daySlots.slice(0, 2).map(s => (
+                  <div key={s.id}
+                    className="rounded-[3px] px-1 leading-[14px] text-[8.5px] font-semibold truncate"
+                    style={isHoliday
+                      ? { background: 'rgba(239,68,68,0.12)', color: isDark ? '#fca5a5' : '#b91c1c', border: '1px solid rgba(239,68,68,0.25)', opacity: 0.85 }
+                      : { background: colorOf.get(s.class_id) ?? 'var(--color-accent)', color: '#fff' }}>
+                    {abbrev(s.class_title)}
+                  </div>
                 ))}
                 {dayTests.length > 0 && (
-                  <span className="h-1 w-1 rounded-full"
-                    style={{ background: isSel ? 'rgba(255,255,255,0.65)' : '#f59e0b' }} />
+                  <div className="rounded-[3px] px-1 leading-[14px] text-[8.5px] font-bold truncate"
+                    style={{ background: 'rgba(245,158,11,0.15)', color: isDark ? '#fbbf24' : '#b45309', border: '1px solid rgba(245,158,11,0.3)' }}>
+                    Διαγ.
+                  </div>
                 )}
-              </span>
+                {daySlots.length > 2 && (
+                  <span className={`text-[8px] text-center leading-[14px] ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
+                    +{daySlots.length - 2}
+                  </span>
+                )}
+              </div>
             </button>
           );
         })}
       </div>
 
-      {/* ── Selected day info ── */}
-      <div className={`border-t ${border} ${headerBg}`}>
-        <div className={`flex items-center gap-2 px-4 py-2.5`}>
-          <Calendar className={`h-3 w-3 shrink-0 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-          <span className={`text-[11px] font-semibold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-            {selected ? fmtDateLong(selected) : '—'}
-          </span>
-          <span className={`ml-auto text-[10px] ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
-            {selSlots.length === 0 && selTests.length === 0 ? 'Χωρίς δραστηριότητα' : [selSlots.length > 0 && `${selSlots.length} μάθημα`, selTests.length > 0 && `${selTests.length} διαγ.`].filter(Boolean).join(' · ')}
-          </span>
+      {/* ── Legend ── */}
+      {uniqueClasses.length > 0 && (
+        <div className={`flex flex-wrap gap-x-3 gap-y-1 px-3 py-2 border-t ${border} ${isDark ? 'bg-slate-900/40' : 'bg-slate-50/80'}`}>
+          {uniqueClasses.map(c => (
+            <div key={c.id} className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full shrink-0" style={{ background: colorOf.get(c.id) }} />
+              <span className={`text-[10px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{c.title}</span>
+            </div>
+          ))}
+          <div className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full shrink-0 bg-amber-400" />
+            <span className={`text-[10px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Διαγώνισμα</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full shrink-0 bg-red-400/60" />
+            <span className={`text-[10px] font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Αργία</span>
+          </div>
         </div>
-        {(selSlots.length > 0 || selTests.length > 0) && (
-          <div className={`divide-y ${isDark ? 'divide-slate-800/60' : 'divide-slate-100'} border-t ${border}`}>
-            {selSlots.map(slot => (
-              <div key={slot.id} className="flex items-center gap-2.5 px-4 py-2.5">
-                <span className="h-2 w-2 rounded-full shrink-0" style={{ background: colorOf.get(slot.class_id) ?? 'var(--color-accent)' }} />
+      )}
+
+      {/* ── Selected day panel ── */}
+      <div className={`border-t ${border}`}>
+        <div className={`flex items-center justify-between px-3.5 py-2.5 ${headerBg}`}>
+          <div className="flex items-center gap-2 min-w-0">
+            <Calendar className={`h-3 w-3 shrink-0 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+            <span className={`text-[11px] font-semibold truncate ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+              {selected ? fmtDateLong(selected) : '—'}
+            </span>
+            {selected && holidayDates.has(selected) && (
+              <span className="shrink-0 rounded-full border border-red-400/40 bg-red-400/10 px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-red-400">
+                Αργία
+              </span>
+            )}
+          </div>
+          {(selSlots.length > 0 || selTests.length > 0) && (
+            <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${isDark ? 'bg-slate-800 text-slate-400' : 'bg-slate-200 text-slate-500'}`}>
+              {selSlots.length + selTests.length}
+            </span>
+          )}
+        </div>
+
+        {selSlots.length > 0 || selTests.length > 0 ? (
+          <div className={`divide-y ${isDark ? 'divide-slate-800/60' : 'divide-slate-100'}`}>
+            {selSlots.map(slot => {
+              const selIsHoliday = selected ? holidayDates.has(selected) : false;
+              return (
+              <div key={slot.id} className={`flex items-center gap-3 px-3.5 py-2.5 transition-colors ${isDark ? 'hover:bg-slate-800/20' : 'hover:bg-slate-50/80'}`}
+                style={selIsHoliday ? { opacity: 0.7 } : undefined}>
+                <div className="w-0.5 self-stretch rounded-full shrink-0"
+                  style={{ background: selIsHoliday ? 'rgba(239,68,68,0.5)' : (colorOf.get(slot.class_id) ?? 'var(--color-accent)'), minHeight: '32px' }} />
                 <div className="flex-1 min-w-0">
-                  <p className={`text-xs font-semibold truncate ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{slot.class_title}</p>
-                  {slot.class_subject && <p className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{slot.class_subject}</p>}
+                  <div className="flex items-center gap-1.5">
+                    <p className={`text-xs font-semibold leading-snug ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{slot.class_title}</p>
+                    {selIsHoliday && (
+                      <span className={`text-[8px] font-bold ${isDark ? 'text-red-400' : 'text-red-500'}`}>ΑΡΓΙΑ</span>
+                    )}
+                  </div>
+                  {slot.class_subject && (
+                    <p className={`text-[10px] leading-tight mt-px ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{slot.class_subject}</p>
+                  )}
                 </div>
                 {slot.start_time && (
-                  <span className={`text-[11px] tabular-nums font-medium shrink-0 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                    {fmt12(slot.start_time)}{slot.end_time ? ` – ${fmt12(slot.end_time)}` : ''}
-                  </span>
+                  <div className="shrink-0 text-right">
+                    <p className={`text-[11px] tabular-nums font-semibold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{fmt12(slot.start_time)}</p>
+                    {slot.end_time && <p className={`text-[10px] tabular-nums ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{fmt12(slot.end_time)}</p>}
+                  </div>
                 )}
               </div>
-            ))}
+              );
+            })}
             {selTests.map(test => (
-              <div key={test.id} className="flex items-center gap-2.5 px-4 py-2.5">
-                <span className="h-2 w-2 rounded-full shrink-0 bg-amber-400" />
+              <div key={test.id} className={`flex items-center gap-3 px-3.5 py-2.5 transition-colors ${isDark ? 'hover:bg-slate-800/20' : 'hover:bg-slate-50/80'}`}>
+                <div className="w-0.5 self-stretch rounded-full bg-amber-400 shrink-0" style={{ minHeight: '32px' }} />
                 <div className="flex-1 min-w-0">
-                  <p className={`text-xs font-semibold truncate ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>{test.title ?? 'Διαγώνισμα'}</p>
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <span className={`inline-flex rounded px-1 py-px text-[8px] font-bold tracking-wide shrink-0 ${isDark ? 'bg-amber-400/20 text-amber-300 border border-amber-400/30' : 'bg-amber-50 text-amber-600 border border-amber-200'}`}>ΔΙΑΓ</span>
+                    <p className={`text-xs font-semibold truncate ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>{test.title ?? 'Διαγώνισμα'}</p>
+                  </div>
                   <p className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{test.class_title}</p>
                 </div>
                 {test.start_time && (
-                  <span className={`text-[11px] tabular-nums font-medium shrink-0 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                    {fmt12(test.start_time)}{test.end_time ? ` – ${fmt12(test.end_time)}` : ''}
-                  </span>
+                  <div className="shrink-0 text-right">
+                    <p className={`text-[11px] tabular-nums font-semibold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{fmt12(test.start_time)}</p>
+                    {test.end_time && <p className={`text-[10px] tabular-nums ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{fmt12(test.end_time)}</p>}
+                  </div>
                 )}
               </div>
             ))}
+          </div>
+        ) : (
+          <div className={`flex items-center gap-2.5 px-3.5 py-3 ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
+            <Calendar className="h-3.5 w-3.5 shrink-0" />
+            <p className="text-[11px]">Χωρίς δραστηριότητα για αυτή τη μέρα</p>
           </div>
         )}
       </div>
@@ -362,6 +456,7 @@ export default function StudentCardPage() {
   const [classes, setClasses] = useState<ClassEnrollment[]>([]);
   const [scheduleSlots, setScheduleSlots] = useState<ProgramSlot[]>([]);
   const [calendarTests, setCalendarTests] = useState<CalendarTest[]>([]);
+  const [holidayDates, setHolidayDates] = useState<Set<string>>(new Set());
   const [grades, setGrades] = useState<StudentGradeRow[]>([]);
   const [gradesLoading, setGradesLoading] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -433,7 +528,7 @@ export default function StudentCardPage() {
         supabase.from('student_subscriptions_with_totals')
           .select('id, school_id, student_id, package_id, package_name, price, currency, status, starts_on, ends_on, created_at, balance, paid_amount, charge_amount')
           .eq('student_id', id).eq('school_id', schoolId).order('created_at', { ascending: false }),
-        supabase.from('class_students').select('class_id, classes(id, title, subject)').eq('student_id', id).eq('school_id', schoolId),
+        supabase.from('class_students').select('class_id').eq('student_id', id).eq('school_id', schoolId),
         supabase.from('programs').select('id').eq('school_id', schoolId).order('created_at', { ascending: true }).limit(1).maybeSingle(),
       ]);
       if (stuRes.error || !stuRes.data) { setNotFound(true); setLoading(false); return; }
@@ -455,23 +550,31 @@ export default function StudentCardPage() {
         for (const sub of subs) { (sub as any).discount_reason = drMap.get(sub.id) ?? null; }
       }
       if (!subRes.error) setSubscriptions([...subs]);
-      const csData = (csRes.data ?? []) as unknown as ClassEnrollment[];
-      setClasses(csData);
-      const classIds = csData.map(c => c.class_id).filter(Boolean);
+      const classIds = (csRes.data ?? []).map((r: any) => r.class_id as string).filter(Boolean);
       const programId = (progRes.data as any)?.id;
 
+      // Fetch class details separately to avoid unreliable embedded-join resolution
       const classInfoMap = new Map<string, { title: string; subject: string | null }>();
-      csData.forEach(c => { if (c.classes) classInfoMap.set(c.class_id, { title: c.classes.title, subject: c.classes.subject }); });
+      const classEnrollments: ClassEnrollment[] = [];
+      if (classIds.length > 0) {
+        const { data: classData } = await supabase.from('classes')
+          .select('id, title, subject').eq('school_id', schoolId).in('id', classIds);
+        (classData ?? []).forEach((c: any) => {
+          classInfoMap.set(c.id, { title: c.title, subject: c.subject ?? null });
+          classEnrollments.push({ class_id: c.id, classes: { id: c.id, title: c.title, subject: c.subject ?? null } });
+        });
+      }
+      setClasses(classEnrollments);
 
       if (classIds.length > 0 && programId) {
         const { data: itemData, error: itemErr } = await supabase
-          .from('program_items').select('id, class_id, day_of_week, start_time, end_time, subject, start_date, end_date')
+          .from('program_items').select('id, class_id, day_of_week, start_time, end_time, start_date, end_date')
           .eq('program_id', programId).in('class_id', classIds);
         if (!itemErr) {
           setScheduleSlots((itemData ?? []).map((item: any) => ({
             id: item.id, class_id: item.class_id,
             class_title: classInfoMap.get(item.class_id)?.title ?? '—',
-            class_subject: item.subject ?? classInfoMap.get(item.class_id)?.subject ?? null,
+            class_subject: classInfoMap.get(item.class_id)?.subject ?? null,
             day_of_week: item.day_of_week, start_time: item.start_time, end_time: item.end_time,
             start_date: item.start_date ?? null, end_date: item.end_date ?? null,
           })));
@@ -490,6 +593,10 @@ export default function StudentCardPage() {
           })));
         }
       }
+
+      const { data: holidaysData } = await supabase
+        .from('school_holidays').select('date').eq('school_id', schoolId);
+      if (holidaysData) setHolidayDates(new Set((holidaysData as { date: string }[]).map(h => h.date)));
 
       setGradesLoading(true);
       const { data: gradesData } = await supabase
@@ -1003,7 +1110,7 @@ export default function StudentCardPage() {
                 })}
               </div>
             )}
-            <MonthCalendar slots={scheduleSlots} tests={calendarTests} isDark={isDark} />
+            <MonthCalendar slots={scheduleSlots} tests={calendarTests} holidayDates={holidayDates} isDark={isDark} />
             {classes.length === 0 && scheduleSlots.length === 0 && (
               <p className={`mt-2 text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Ο μαθητής δεν έχει ενταχθεί σε τμήμα.</p>
             )}

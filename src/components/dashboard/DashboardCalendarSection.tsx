@@ -297,9 +297,6 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     const testsByKey = new Map<string, TestRow[]>();
     tests.forEach((t) => { const key = `${t.class_id}-${t.test_date}`; const arr = testsByKey.get(key) ?? []; arr.push(t); testsByKey.set(key, arr); });
     const hideStandaloneTestKeys = new Set<string>();
-    const inactiveColors = isDark
-      ? { backgroundColor: 'rgba(148, 163, 184, 0.18)', borderColor: 'rgba(148, 163, 184, 0.45)', textColor: '#e2e8f0' }
-      : { backgroundColor: 'rgba(100, 116, 139, 0.12)', borderColor: 'rgba(100, 116, 139, 0.35)', textColor: '#475569' };
 
     programItems.forEach((item) => {
       const cls = classMap.get(item.class_id);
@@ -341,7 +338,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
           const titleBase = cls.title;
           const title = combinedTest ? `${titleBase} · Διαγώνισμα` : titleBase;
           if (combinedTest) hideStandaloneTestKeys.add(key);
-          out.push({ id: `${item.id}-${dateStr}`, title, start, end, editable: !isInactive, startEditable: !isInactive, durationEditable: !isInactive, ...(isInactive ? inactiveColors : {}), extendedProps: { kind: 'program', programItemId: item.id, classId: cls.id, subjectId: item.subject_id ?? null, subject: (item.subject_id ? subjectById.get(item.subject_id)?.name : null) ?? cls.subject ?? null, tutorName, overrideDate: dateStr, overrideId, isHoliday, holidayName, isInactive, activeDuringHoliday, testId: combinedTest?.id ?? null, testSubjectId: combinedTest?.subject_id ?? null } });
+          out.push({ id: `${item.id}-${dateStr}`, title, start, end, editable: !isInactive, startEditable: !isInactive, durationEditable: !isInactive, classNames: [isInactive ? 'fc-event-inactive' : combinedTest ? 'fc-event-test' : 'fc-event-program'], extendedProps: { kind: 'program', programItemId: item.id, classId: cls.id, subjectId: item.subject_id ?? null, subject: (item.subject_id ? subjectById.get(item.subject_id)?.name : null) ?? cls.subject ?? null, tutorName, overrideDate: dateStr, overrideId, isHoliday, holidayName, isInactive, activeDuringHoliday, testId: combinedTest?.id ?? null, testSubjectId: combinedTest?.subject_id ?? null } });
         }
         currentDate = next;
       }
@@ -378,7 +375,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
       const titleBase = cls.title;
       const title = combinedTest ? `${titleBase} · Διαγώνισμα` : titleBase;
       if (combinedTest) hideStandaloneTestKeys.add(key);
-      out.push({ id: `${item.id}-${dateStr}-override`, title, start, end, editable: !isInactive, startEditable: !isInactive, durationEditable: !isInactive, ...(isInactive ? inactiveColors : {}), extendedProps: { kind: 'program', programItemId: item.id, classId: cls.id, subjectId: item.subject_id ?? null, subject: (item.subject_id ? subjectById.get(item.subject_id)?.name : null) ?? cls.subject ?? null, tutorName, overrideDate: dateStr, overrideId: ov.id, isHoliday, holidayName, isInactive, activeDuringHoliday, testId: combinedTest?.id ?? null, testSubjectId: combinedTest?.subject_id ?? null } });
+      out.push({ id: `${item.id}-${dateStr}-override`, title, start, end, editable: !isInactive, startEditable: !isInactive, durationEditable: !isInactive, classNames: [isInactive ? 'fc-event-inactive' : combinedTest ? 'fc-event-test' : 'fc-event-program'], extendedProps: { kind: 'program', programItemId: item.id, classId: cls.id, subjectId: item.subject_id ?? null, subject: (item.subject_id ? subjectById.get(item.subject_id)?.name : null) ?? cls.subject ?? null, tutorName, overrideDate: dateStr, overrideId: ov.id, isHoliday, holidayName, isInactive, activeDuringHoliday, testId: combinedTest?.id ?? null, testSubjectId: combinedTest?.subject_id ?? null } });
     });
 
     tests.forEach((t) => {
@@ -401,7 +398,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
       if (subj?.name) titleParts.push(subj.name);
       if (t.title) titleParts.push(t.title);
       const label = titleParts.length > 0 ? `Διαγώνισμα · ${titleParts.join(' · ')}` : 'Διαγώνισμα';
-      out.push({ id: `test-${t.id}`, title: label, start, end, editable: !isInactive, startEditable: !isInactive, durationEditable: !isInactive, ...(isInactive ? inactiveColors : {}), extendedProps: { kind: 'test', testId: t.id, classId: t.class_id, subjectId: t.subject_id, isHoliday, holidayName, isInactive, activeDuringHoliday } });
+      out.push({ id: `test-${t.id}`, title: label, start, end, editable: !isInactive, startEditable: !isInactive, durationEditable: !isInactive, classNames: [isInactive ? 'fc-event-test-inactive' : 'fc-event-test'], extendedProps: { kind: 'test', testId: t.id, classId: t.class_id, subjectId: t.subject_id, isHoliday, holidayName, isInactive, activeDuringHoliday } });
     });
 
     schoolEvents.forEach((ev) => {
@@ -409,11 +406,11 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
       const end = new Date(ev.date + 'T' + ev.end_time);
       if (start < viewStart || start > viewEnd) return;
       if (holidayDateSet.has(ev.date)) return;
-      out.push({ id: `event-${ev.id}`, title: ev.name, start, end, editable: true, startEditable: true, durationEditable: true, extendedProps: { kind: 'schoolEvent', eventId: ev.id, description: ev.description } });
+      out.push({ id: `event-${ev.id}`, title: ev.name, start, end, editable: true, startEditable: true, durationEditable: true, classNames: ['fc-event-school'], extendedProps: { kind: 'schoolEvent', eventId: ev.id, description: ev.description } });
     });
 
     return out;
-  }, [viewRange, programItems, classes, tutors, subjectTutorLinks, overrides, holidays, holidayDateSet, holidayNameByDate, schoolEvents, tests, subjects, subjectById, isDark]);
+  }, [viewRange, programItems, classes, tutors, subjectTutorLinks, overrides, holidays, holidayDateSet, holidayNameByDate, schoolEvents, tests, subjects, subjectById]);
 
   /* -------- Drag & drop (unchanged) -------- */
   const handleEventDrop = async (arg: EventDropArg) => {
@@ -476,18 +473,20 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
 
   /* -------- Render event content -------- */
   const renderEventContent = (arg: EventContentArg) => {
-    const { event } = arg;
+    const { event, view } = arg;
+    const isMonth = view.type === 'dayGridMonth';
     const kind = event.extendedProps['kind'] as string | undefined;
     const subject = event.extendedProps['subject'] as string | null;
     const tutorName = event.extendedProps['tutorName'] as string | null;
     const isInactive = !!event.extendedProps['isInactive'];
     const isHoliday = !!event.extendedProps['isHoliday'];
     const holidayName = (event.extendedProps['holidayName'] as string | null) ?? null;
-    const start = event.start; const end = event.end;
-    const formatter = new Intl.DateTimeFormat('el-GR', { hour: '2-digit', minute: '2-digit' });
+    const start = event.start;
+    const end = event.end;
+    const fmt = new Intl.DateTimeFormat('el-GR', { hour: '2-digit', minute: '2-digit' });
     let timeRange = '';
-    if (start && end) timeRange = `${formatter.format(start)} – ${formatter.format(end)}`;
-    else if (start) timeRange = formatter.format(start);
+    if (start && end) timeRange = `${fmt.format(start)}–${fmt.format(end)}`;
+    else if (start) timeRange = fmt.format(start);
     const hasTest = kind === 'test' || !!event.extendedProps['testId'];
     const rawTitle = event.title ?? '';
     let mainTitle = rawTitle;
@@ -496,39 +495,53 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
       else if (/\s*·\s*Διαγώνισμα\s*$/u.test(rawTitle)) mainTitle = rawTitle.replace(/\s*·\s*Διαγώνισμα\s*$/u, '').trim();
     }
 
-    const timeColor = isDark ? '#ffc947' : '#b45309';
+    /* Month view — compact single-line pill */
+    if (isMonth) {
+      return (
+        <div className="flex items-center gap-1 overflow-hidden px-0.5">
+          {hasTest && <span className="shrink-0 h-1.5 w-1.5 rounded-full bg-red-400" />}
+          {kind === 'schoolEvent' && <span className="shrink-0 h-1.5 w-1.5 rounded-full bg-violet-400" />}
+          {timeRange && <span className="shrink-0 text-[9px] font-bold opacity-60">{timeRange.split('–')[0]}</span>}
+          <span className="text-[10px] font-semibold truncate leading-tight">{mainTitle}</span>
+        </div>
+      );
+    }
 
+    /* Time-grid — full detail card */
     return (
-      <div className="flex flex-col gap-0.5 text-[11px] leading-tight">
+      <div className="flex flex-col h-full overflow-hidden leading-tight" style={{ gap: '2px' }}>
         {timeRange && (
-          <div className="font-semibold text-[12px]" style={{ color: timeColor }}>{timeRange}</div>
+          <div className="text-[10px] font-bold" style={{ color: 'var(--color-accent)' }}>{timeRange}</div>
         )}
-        {isHoliday && (
-          <span className={`inline-flex w-fit items-center rounded-full border px-1.5 py-[1px] text-[9px] font-semibold ${
-            isInactive
-              ? isDark ? 'border-slate-400/50 bg-slate-500/10 text-slate-300' : 'border-slate-300/50 bg-slate-200/40 text-slate-500'
-              : 'border-emerald-400/50 bg-emerald-500/10 text-emerald-600'
-          }`}>
-            {holidayName || 'Αργία'}
-          </span>
+        {(isInactive || (isHoliday && !isInactive)) && (
+          <div>
+            {isInactive ? (
+              <span className={`inline-flex items-center rounded px-1 py-px text-[8px] font-bold ${
+                isDark ? 'bg-slate-600/30 text-slate-300 border border-slate-500/25' : 'bg-slate-100 text-slate-500 border border-slate-300/50'
+              }`}>
+                {isHoliday ? (holidayName || 'Αργία') : 'Ανενεργό'}
+              </span>
+            ) : (
+              <span className="inline-flex items-center rounded px-1 py-px text-[8px] font-bold bg-emerald-500/20 text-emerald-500 border border-emerald-500/30">
+                {holidayName || 'Αργία'}
+              </span>
+            )}
+          </div>
         )}
-        {!isHoliday && isInactive && (
-          <span className={`inline-flex w-fit items-center rounded-full border px-1.5 py-[1px] text-[9px] font-semibold ${
-            isDark ? 'border-slate-400/50 bg-slate-500/10 text-slate-300' : 'border-slate-300/60 bg-slate-100 text-slate-500'
-          }`}>
-            Ανενεργό
-          </span>
-        )}
-        <div className="flex flex-wrap items-center gap-1">
+        <div className="flex items-center gap-1 flex-wrap min-w-0">
           {hasTest && (
-            <span className="inline-flex items-center rounded-full border border-red-500/60 bg-gradient-to-r from-red-500/30 via-red-600/30 to-red-700/30 px-1.5 py-[1px] text-[9px] font-semibold text-red-100 shadow-sm">
+            <span className="inline-flex shrink-0 items-center rounded px-1 py-px text-[8px] font-bold bg-red-500/25 text-red-400 border border-red-500/25">
               Διαγώνισμα
             </span>
           )}
-          {mainTitle && <span className="font-semibold">{mainTitle}</span>}
+          {mainTitle && <span className="text-[11px] font-semibold truncate">{mainTitle}</span>}
         </div>
-        {kind === 'program' && subject && <div className="text-[10px] opacity-80">{subject}</div>}
-        {kind === 'program' && tutorName && <div className="text-[10px] opacity-70">{tutorName}</div>}
+        {kind === 'program' && subject && (
+          <div className="text-[9px] truncate" style={{ opacity: 0.75 }}>{subject}</div>
+        )}
+        {kind === 'program' && tutorName && (
+          <div className="text-[9px] truncate" style={{ opacity: 0.6 }}>{tutorName}</div>
+        )}
       </div>
     );
   };
@@ -866,7 +879,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
               ? 'border-slate-700/50 bg-slate-950/40 ring-white/[0.04]'
               : 'border-slate-200 bg-white/80 ring-black/[0.02]'
           }`}>
-            <div className="p-3">
+            <div className="p-0">
               <FullCalendar
                 plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
                 initialView="timeGridWeek"
@@ -880,6 +893,9 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
                 slotLabelInterval={{ hours: 1 }}
                 slotLabelFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
                 nowIndicator={true}
+                eventMinHeight={28}
+                dayMaxEventRows={5}
+                moreLinkClick="popover"
                 events={events}
                 editable={true}
                 eventStartEditable={true}
@@ -1073,19 +1089,10 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
                   className="rounded-lg bg-red-600/80 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-red-600 active:scale-[0.97] disabled:opacity-50">
                   Ακύρωση για αυτή τη μέρα
                 </button>
-                <div className="flex gap-2.5">
-                  <button type="button" onClick={handleTestModalClose} disabled={savingTest} className={`${cancelBtnCls} disabled:opacity-50`}>
-                    Ακύρωση
-                  </button>
-                  <button type="button" onClick={handleTestModalSave} disabled={savingTest}
-                    className="btn-primary gap-1.5 px-3 py-1.5 font-semibold shadow-sm hover:brightness-110 active:scale-[0.97] disabled:opacity-60">
-                    {savingTest ? <><Loader2 className="h-3 w-3 animate-spin" />Αποθήκευση…</> : 'Ενημέρωση'}
-                  </button>
-                  <button type="button" onClick={handleTestDelete} disabled={savingTest}
-                    className="rounded-lg bg-red-900/70 px-3 py-1.5 text-xs font-semibold text-red-200 transition hover:bg-red-800 active:scale-[0.97] disabled:opacity-50">
-                    Διαγραφή
-                  </button>
-                </div>
+                <button type="button" onClick={handleTestModalSave} disabled={savingTest}
+                  className="btn-primary gap-1.5 px-3 py-1.5 font-semibold shadow-sm hover:brightness-110 active:scale-[0.97] disabled:opacity-60">
+                  {savingTest ? <><Loader2 className="h-3 w-3 animate-spin" />Αποθήκευση…</> : 'Ενημέρωση'}
+                </button>
               </div>
             </ModalShell>
           )}

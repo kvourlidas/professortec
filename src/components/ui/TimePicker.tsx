@@ -22,12 +22,17 @@ export default function TimePicker({ value, onChange, required }: Props) {
   const isDark = theme === 'dark';
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const [dropPos, setDropPos] = useState({ top: 0, left: 0, width: 0 });
 
   // Close on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      if (
+        containerRef.current && !containerRef.current.contains(e.target as Node) &&
+        listRef.current && !listRef.current.contains(e.target as Node)
+      ) {
         setOpen(false);
       }
     };
@@ -42,6 +47,14 @@ export default function TimePicker({ value, onChange, required }: Props) {
     selected?.scrollIntoView({ block: 'center' });
   }, [open, value]);
 
+  const handleOpen = () => {
+    if (!open && buttonRef.current) {
+      const r = buttonRef.current.getBoundingClientRect();
+      setDropPos({ top: r.bottom + 4, left: r.left, width: r.width });
+    }
+    setOpen((v) => !v);
+  };
+
   const triggerCls = isDark
     ? `h-9 w-full rounded-lg border px-3 text-sm font-medium outline-none transition flex items-center justify-between cursor-pointer
        border-slate-700/70 bg-slate-900/60 text-slate-100
@@ -53,14 +66,15 @@ export default function TimePicker({ value, onChange, required }: Props) {
        ${open ? 'border-[color:var(--color-accent)]/60 ring-1 ring-[color:var(--color-accent)]/20' : ''}`;
 
   const dropdownCls = isDark
-    ? 'absolute z-50 mt-1 w-full rounded-xl border border-slate-700/70 bg-slate-900 shadow-2xl overflow-y-auto max-h-52 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
-    : 'absolute z-50 mt-1 w-full rounded-xl border border-slate-200 bg-white shadow-xl overflow-y-auto max-h-52 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden';
+    ? 'fixed z-[200] rounded-xl border border-slate-700/70 bg-slate-900 shadow-2xl overflow-y-auto max-h-52 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+    : 'fixed z-[200] rounded-xl border border-slate-200 bg-white shadow-xl overflow-y-auto max-h-52 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden';
 
   return (
     <div ref={containerRef} className="relative w-full">
       <button
+        ref={buttonRef}
         type="button"
-        onClick={() => setOpen(v => !v)}
+        onClick={handleOpen}
         className={triggerCls}
       >
         <span className={value ? '' : (isDark ? 'text-slate-500' : 'text-slate-400')}>
@@ -82,8 +96,12 @@ export default function TimePicker({ value, onChange, required }: Props) {
       )}
 
       {open && (
-        <div ref={listRef} className={dropdownCls}>
-          {TIME_OPTIONS.map(t => {
+        <div
+          ref={listRef}
+          className={dropdownCls}
+          style={{ top: dropPos.top, left: dropPos.left, width: dropPos.width }}
+        >
+          {TIME_OPTIONS.map((t) => {
             const isSelected = t === value;
             return (
               <div
