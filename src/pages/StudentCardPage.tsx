@@ -6,7 +6,7 @@ import {
   FileText, Layers, Pencil, Loader2, CheckCircle2, Lock,
   Users, BookOpen, UserCheck, AlertCircle, ChevronLeft, ChevronRight,
   GraduationCap, TrendingUp, Wallet, Receipt, BarChart3, HandCoins,
-  Banknote, CreditCard, Tag,
+  Banknote, CreditCard, Landmark, Tag, Ban,
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient.ts';
 import { useAuth } from '../auth.tsx';
@@ -39,7 +39,7 @@ const MONTH_NAMES = [
 const CLASS_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316'];
 const PAYMENTS_PER_PAGE = 5;
 
-type PaymentRow = { subscription_id: string; amount: number; created_at: string | null };
+type PaymentRow = { id: string; subscription_id: string; amount: number; created_at: string | null; payment_method?: string | null; cancelled_at?: string | null };
 
 type CalendarTest = {
   id: string;
@@ -469,6 +469,7 @@ export default function StudentCardPage() {
   const [paymentModal, setPaymentModal] = useState<{ row: StudentViewRow } | null>(null);
   const [paymentInput, setPaymentInput] = useState('');
   const [payingLoading, setPayingLoading] = useState(false);
+  const [cancellingPaymentId, setCancellingPaymentId] = useState<string | null>(null);
 
   const [editingStudent, setEditingStudent] = useState(false);
   const [savingStudent, setSavingStudent] = useState(false);
@@ -502,7 +503,8 @@ export default function StudentCardPage() {
 
   const activeSub = useMemo(() => subscriptions.find(s => s.status === 'active') ?? null, [subscriptions]);
   const totalCharged = useMemo(() => subscriptions.reduce((a, s) => a + Number(s.charge_amount ?? s.price ?? 0), 0), [subscriptions]);
-  const totalPaid = useMemo(() => payments.reduce((a, p) => a + Number(p.amount ?? 0), 0), [payments]);
+  // Use view-computed paid_amount so totalPaid stays consistent with totalBalance (both from the same DB view)
+  const totalPaid = useMemo(() => subscriptions.reduce((a, s) => a + Number((s as any).paid_amount ?? 0), 0), [subscriptions]);
   const totalBalance = useMemo(() => subscriptions.reduce((a, s) => a + Math.max(0, Number(s.balance ?? 0)), 0), [subscriptions]);
   const hasBalanceData = activeSub && activeSub.balance != null;
   const owes = hasBalanceData && totalBalance > 0;
@@ -515,7 +517,7 @@ export default function StudentCardPage() {
     return isHourlyPackageName(sub.package_name) ? Math.abs(raw) : raw;
   }, [paymentModal]);
   const pmBalance      = useMemo(() => pmBilled - pmPaid, [pmBilled, pmPaid]);
-  const pmHistoryTotal = useMemo(() => paymentModal?.row.payments.reduce((s, p) => s + Number(p.amount ?? 0), 0) ?? 0, [paymentModal]);
+  const pmHistoryTotal = useMemo(() => paymentModal?.row.payments.filter(p => !(p as any).cancelled_at).reduce((s, p) => s + Number(p.amount ?? 0), 0) ?? 0, [paymentModal]);
 
   useEffect(() => {
     if (!id || !schoolId) return;
@@ -540,7 +542,7 @@ export default function StudentCardPage() {
       if (subIds.length > 0) {
         const [{ data: payData }, { data: drData }] = await Promise.all([
           supabase.from('student_subscription_payments')
-            .select('subscription_id, amount, created_at, payment_method')
+            .select('id, subscription_id, amount, created_at, payment_method, cancelled_at')
             .eq('school_id', schoolId).in('subscription_id', subIds)
             .order('created_at', { ascending: false }),
           supabase.from('student_subscriptions').select('id, discount_reason').in('id', subIds),
@@ -624,7 +626,7 @@ export default function StudentCardPage() {
     if (subIds.length > 0) {
       const [{ data: payData }, { data: drData }] = await Promise.all([
         supabase.from('student_subscription_payments')
-          .select('subscription_id, amount, created_at, payment_method')
+          .select('id, subscription_id, amount, created_at, payment_method, cancelled_at')
           .eq('school_id', schoolId).in('subscription_id', subIds)
           .order('created_at', { ascending: false }),
         supabase.from('student_subscriptions').select('id, discount_reason').in('id', subIds),
@@ -641,7 +643,8 @@ export default function StudentCardPage() {
   const openPaymentModal = (sub: SubscriptionRow) => {
     if (!student) return;
     const subPayments = payments.filter(p => p.subscription_id === sub.id);
-    const paid = subPayments.reduce((a, p) => a + Number(p.amount ?? 0), 0);
+    // Use view-computed paid_amount so the modal stats match the card display
+    const paid = Number((sub as any).paid_amount ?? 0);
     const row: StudentViewRow = {
       student_id: student.id,
       student_name: student.full_name ?? '',
@@ -654,7 +657,7 @@ export default function StudentCardPage() {
     setPaymentModal({ row });
   };
 
-  const submitPayment = async (method: 'cash' | 'card') => {
+  const submitPayment = async (method: 'cash' | 'card' | 'bank_transfer') => {
     if (!schoolId || !paymentModal?.row.sub || !student) return;
     const amount = parseMoney(paymentInput);
     if (amount <= 0) return;
@@ -680,6 +683,43 @@ export default function StudentCardPage() {
           payments: freshPays as any,
         },
       });
+    }
+  };
+
+  const cancelPayment = async (paymentId: string) => {
+    setCancellingPaymentId(paymentId);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error('Not authenticated');
+      const res = await supabase.functions.invoke('student-subscription-payment-cancel', {
+        body: { payment_id: paymentId },
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.error) throw new Error(res.error.message ?? 'Error');
+      // Reload from DB — refreshes subscriptions (view-computed balance/paid) and payments
+      const { subs, pays } = await reloadSubsAndPayments();
+      // Sync open modal with the freshly loaded view data so all stats match
+      setPaymentModal(prev => {
+        if (!prev) return null;
+        const subId = prev.row.sub.id;
+        const freshSub = subs.find(s => s.id === subId);
+        const freshPays = pays.filter(p => p.subscription_id === subId);
+        return {
+          ...prev,
+          row: {
+            ...prev.row,
+            sub: freshSub ?? prev.row.sub,
+            payments: freshPays as any,
+            paid: Number((freshSub as any)?.paid_amount ?? 0),
+            balance: Number(freshSub?.balance ?? prev.row.balance),
+          },
+        };
+      });
+    } catch (err: any) {
+      console.error('Cancel payment error:', err?.message);
+    } finally {
+      setCancellingPaymentId(null);
     }
   };
 
@@ -981,7 +1021,7 @@ export default function StudentCardPage() {
               <div className="space-y-3">
                 {subscriptions.map(sub => {
                   const subPayments = payments.filter(p => p.subscription_id === sub.id);
-                  const subPaid = subPayments.reduce((a, p) => a + Number(p.amount ?? 0), 0);
+                  const subPaid = Number((sub as any).paid_amount ?? 0);
                   const page = getPayPage(sub.id);
                   const pageCount = Math.max(1, Math.ceil(subPayments.length / PAYMENTS_PER_PAGE));
                   const pagePays = subPayments.slice(page * PAYMENTS_PER_PAGE, (page + 1) * PAYMENTS_PER_PAGE);
@@ -1041,27 +1081,57 @@ export default function StudentCardPage() {
                               <Receipt className={`h-2.5 w-2.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
                               <span className={`text-[9px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Πληρωμές ({subPayments.length})</span>
                             </div>
-                            {pagePays.map((p, i) => (
-                              <div key={i} className={`flex items-center justify-between px-3 py-2 ${isDark ? 'bg-slate-950/20' : 'bg-white'}`}>
-                                <div className="flex items-center gap-2">
-                                  <span className={`h-1.5 w-1.5 rounded-full ${isDark ? 'bg-emerald-400' : 'bg-emerald-500'}`} />
-                                  <span className={`text-[11px] tabular-nums ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{fmtDateTime(p.created_at)}</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  {(p as any).payment_method === 'card' && (
-                                    <span className={`flex items-center gap-1 text-[11px] font-medium ${isDark ? 'text-sky-400' : 'text-sky-600'}`}>
-                                      <CreditCard className="h-3 w-3" />Κάρτα
-                                    </span>
+                            {pagePays.map((p, i) => {
+                              const isCancelled = !!p.cancelled_at;
+                              const isCancelling = cancellingPaymentId === p.id;
+                              const muted = isDark ? 'text-slate-500' : 'text-slate-400';
+                              return (
+                                <div key={p.id ?? i}
+                                  className={`relative flex items-center justify-between px-3 py-2 transition-colors ${
+                                    isCancelled
+                                      ? (isDark ? 'bg-red-950/10' : 'bg-red-50/40')
+                                      : (isDark ? 'bg-slate-950/20' : 'bg-white')
+                                  }`}>
+                                  {/* Red strike-through line */}
+                                  {isCancelled && (
+                                    <div className="pointer-events-none absolute inset-x-0 top-1/2 h-[1.5px] -translate-y-1/2"
+                                      style={{ background: 'rgba(239,68,68,0.5)' }} />
                                   )}
-                                  {(p as any).payment_method === 'cash' && (
-                                    <span className={`flex items-center gap-1 text-[11px] font-medium ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                                      <Banknote className="h-3 w-3" />Μετρητά
+                                  <div className="flex items-center gap-2">
+                                    <span className={`h-1.5 w-1.5 rounded-full ${isCancelled ? (isDark ? 'bg-red-500/40' : 'bg-red-400/50') : (isDark ? 'bg-emerald-400' : 'bg-emerald-500')}`} />
+                                    <span className={`text-[11px] tabular-nums ${isCancelled ? muted : (isDark ? 'text-slate-400' : 'text-slate-500')}`}>{fmtDateTime(p.created_at)}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    {!isCancelled && p.payment_method === 'card' && (
+                                      <span className={`flex items-center gap-1 text-[11px] font-medium ${isDark ? 'text-sky-400' : 'text-sky-600'}`}>
+                                        <CreditCard className="h-3 w-3" />Κάρτα
+                                      </span>
+                                    )}
+                                    {!isCancelled && p.payment_method === 'cash' && (
+                                      <span className={`flex items-center gap-1 text-[11px] font-medium ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                                        <Banknote className="h-3 w-3" />Μετρητά
+                                      </span>
+                                    )}
+                                    {!isCancelled && p.payment_method === 'bank_transfer' && (
+                                      <span className={`flex items-center gap-1 text-[11px] font-medium ${isDark ? 'text-violet-400' : 'text-violet-600'}`}>
+                                        <Landmark className="h-3 w-3" />Τράπεζα
+                                      </span>
+                                    )}
+                                    <span className={`text-xs font-semibold tabular-nums ${isCancelled ? muted : (isDark ? 'text-emerald-300' : 'text-emerald-700')}`}>
+                                      +{Number(p.amount).toFixed(2)}€
                                     </span>
-                                  )}
-                                  <span className={`text-xs font-semibold tabular-nums ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>+{Number(p.amount).toFixed(2)}€</span>
+                                    {!isCancelled && (
+                                      <button type="button" title="Ακύρωση πληρωμής"
+                                        disabled={isCancelling || !!cancellingPaymentId}
+                                        onClick={() => cancelPayment(p.id)}
+                                        className={`flex h-5 w-5 items-center justify-center rounded border transition-all hover:scale-105 active:scale-95 disabled:opacity-40 ${isDark ? 'border-amber-800/50 bg-amber-950/40 text-amber-400 hover:bg-amber-950/70' : 'border-amber-200 bg-amber-50 text-amber-600 hover:bg-amber-100'}`}>
+                                        {isCancelling ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Ban className="h-2.5 w-2.5" />}
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                           {/* pagination */}
                           {pageCount > 1 && (
@@ -1200,8 +1270,10 @@ export default function StudentCardPage() {
         pmBalance={pmBalance}
         pmHistoryTotal={pmHistoryTotal}
         isDark={isDark}
+        cancellingPaymentId={cancellingPaymentId}
         onInputChange={setPaymentInput}
         onSubmit={submitPayment}
+        onCancelPayment={cancelPayment}
         onClose={() => setPaymentModal(null)}
       />
     </div>

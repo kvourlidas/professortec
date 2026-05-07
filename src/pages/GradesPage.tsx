@@ -179,33 +179,26 @@ const GradesPage = () => {
         </div>
 
         {/* Students / Tutors toggle */}
-        <div className={`inline-flex overflow-hidden rounded-xl border ${isDark ? 'border-slate-700/60' : 'border-slate-200'}`}>
+        <div className={`inline-flex items-center gap-0.5 rounded-lg p-0.5 ${isDark ? 'bg-slate-900/50' : 'bg-slate-100/80'}`}>
           {([
-            { key: 'students' as const, label: 'Μαθητές', icon: <Users className="h-3.5 w-3.5" />, count: students.length },
-            { key: 'tutors' as const, label: 'Καθηγητές', icon: <GraduationCap className="h-3.5 w-3.5" />, count: tutors.length },
-          ] as const).map(({ key, label, icon, count }) => {
+            { key: 'students' as const, label: 'Μαθητές',    icon: <Users className="h-3.5 w-3.5" /> },
+            { key: 'tutors'   as const, label: 'Καθηγητές',  icon: <GraduationCap className="h-3.5 w-3.5" /> },
+          ] as const).map(({ key, label, icon }) => {
             const active = listType === key;
             return (
               <button key={key} type="button" onClick={() => handleSwitchType(key)}
-                className={`relative flex items-center gap-2 px-4 py-2 text-[12px] font-semibold transition-colors ${
+                className={`flex items-center gap-1.5 rounded-md px-3.5 py-1.5 text-xs font-medium transition-all ${
                   active
-                    ? isDark ? 'bg-slate-900/60 text-white' : 'bg-white text-slate-900'
-                    : isDark ? 'text-slate-500 hover:text-slate-300 hover:bg-white/[0.02]' : 'text-slate-400 bg-slate-50 hover:text-slate-600'
+                    ? isDark
+                      ? 'bg-slate-800 text-white shadow-sm'
+                      : 'bg-white text-slate-800 shadow-sm'
+                    : isDark
+                      ? 'text-slate-500 hover:text-slate-300'
+                      : 'text-slate-400 hover:text-slate-600'
                 }`}
               >
                 <span style={active ? { color: 'var(--color-accent)' } : undefined}>{icon}</span>
-                {label}
-                {count > 0 && (
-                  <span className="rounded-full px-1.5 py-px text-[10px] tabular-nums"
-                    style={active
-                      ? { background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', color: 'var(--color-accent)' }
-                      : { background: isDark ? 'rgb(30 41 59)' : 'rgb(241 245 249)', color: isDark ? 'rgb(100 116 139)' : 'rgb(100 116 139)' }
-                    }>
-                    {count}
-                  </span>
-                )}
-                <span className="absolute bottom-0 left-0 right-0 h-[2px]"
-                  style={{ background: active ? 'var(--color-accent)' : 'transparent' }} />
+                <span style={active ? { color: 'var(--color-accent)' } : undefined}>{label}</span>
               </button>
             );
           })}

@@ -196,8 +196,10 @@ export default function StudentsSubscriptionsPage() {
           pmBalance={p.pmBalance}
           pmHistoryTotal={p.pmHistoryTotal}
           isDark={p.isDark}
+          cancellingPaymentId={p.cancellingPaymentId}
           onInputChange={p.setPaymentInput}
           onSubmit={p.submitPayment}
+          onCancelPayment={p.cancelSubscriptionPayment}
           onClose={() => p.setPaymentModal(null)}
         />
 

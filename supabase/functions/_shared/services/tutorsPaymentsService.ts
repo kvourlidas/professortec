@@ -4,7 +4,7 @@ import {
   insertTutorPayment,
   getTutorPaymentByIdAndSchoolId,
   updateTutorPaymentById,
-  deleteTutorPaymentById,
+  cancelTutorPaymentById,
 } from "../repositories/tutorsPaymentsRepo.ts";
 import type {
   CreateTutorPaymentInput,
@@ -48,6 +48,6 @@ export async function deleteTutorPaymentService(
   input: DeleteTutorPaymentInput
 ) {
   await getTutorPaymentByIdAndSchoolId(supabase, input.payment_id, schoolId);
-  await deleteTutorPaymentById(supabase, input.payment_id);
+  await cancelTutorPaymentById(supabase, input.payment_id);
   return { success: true };
 }

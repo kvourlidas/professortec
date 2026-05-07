@@ -4,6 +4,36 @@ import type {
   CreateStudentSubscriptionPaymentInput,
 } from "../types/studentSubscription.ts";
 
+export async function getSubscriptionPaymentByIdAndSchoolId(
+  supabase: any,
+  paymentId: string,
+  schoolId: string
+) {
+  const { data, error } = await supabase
+    .from("student_subscription_payments")
+    .select("id, school_id, cancelled_at")
+    .eq("id", paymentId)
+    .eq("school_id", schoolId)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!data) throw new NotFoundError("Payment not found or not accessible");
+  return data;
+}
+
+export async function cancelSubscriptionPaymentById(
+  supabase: any,
+  paymentId: string
+) {
+  const { error } = await supabase
+    .from("student_subscription_payments")
+    .update({ cancelled_at: new Date().toISOString() })
+    .eq("id", paymentId);
+
+  if (error) throw new Error(error.message ?? "Failed to cancel payment");
+  return true;
+}
+
 export async function getSubscriptionByIdAndSchoolId(
   supabase: any,
   subscriptionId: string,

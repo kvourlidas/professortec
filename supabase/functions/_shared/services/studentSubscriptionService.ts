@@ -4,11 +4,14 @@ import {
   getSubscriptionByIdAndSchoolId,
   deleteSubscriptionById,
   insertStudentSubscriptionPayment,
+  getSubscriptionPaymentByIdAndSchoolId,
+  cancelSubscriptionPaymentById,
 } from "../repositories/studentSubscriptionRepo.ts";
 import type {
   CreateStudentSubscriptionInput,
   DeleteStudentSubscriptionInput,
   CreateStudentSubscriptionPaymentInput,
+  CancelStudentSubscriptionPaymentInput,
 } from "../types/studentSubscription.ts";
 
 export async function createStudentSubscriptionService(
@@ -40,4 +43,14 @@ export async function createStudentSubscriptionPaymentService(
 ) {
   await getSubscriptionByIdAndSchoolId(supabase, input.subscription_id, schoolId);
   return await insertStudentSubscriptionPayment(supabase, schoolId, input);
+}
+
+export async function cancelStudentSubscriptionPaymentService(
+  supabase: any,
+  schoolId: string,
+  input: CancelStudentSubscriptionPaymentInput
+) {
+  await getSubscriptionPaymentByIdAndSchoolId(supabase, input.payment_id, schoolId);
+  await cancelSubscriptionPaymentById(supabase, input.payment_id);
+  return { success: true };
 }

@@ -113,15 +113,15 @@ export async function updateTutorPaymentById(
   if (error) throw new Error(error.message ?? "Failed to update payment");
 }
 
-export async function deleteTutorPaymentById(
+export async function cancelTutorPaymentById(
   supabase: any,
   paymentId: string
 ) {
   const { error } = await supabase
     .from("tutor_payments")
-    .delete()
+    .update({ status: "canceled" })
     .eq("id", paymentId);
 
-  if (error) throw new Error(error.message ?? "Failed to delete payment");
+  if (error) throw new Error(error.message ?? "Failed to cancel payment");
   return true;
 }

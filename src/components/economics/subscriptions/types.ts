@@ -16,12 +16,14 @@ export type PackageRow = {
   is_custom?: boolean | null;
   avatar_color?: string | null;
 };
-export type PaymentMethod = 'cash' | 'card';
+export type PaymentMethod = 'cash' | 'card' | 'bank_transfer';
 export type PaymentRow = {
+  id: string;
   subscription_id: string;
   amount: number | null;
   created_at?: string | null;
   payment_method?: PaymentMethod | null;
+  cancelled_at?: string | null;
 };
 export type StudentRow = {
   id: string;

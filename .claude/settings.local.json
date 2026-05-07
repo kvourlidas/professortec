@@ -26,7 +26,9 @@
       "mcp__claude_ai_Supabase__list_edge_functions",
       "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\KOSTAS\\\\Desktop\\\\Projects\\\\ProfessorTec\\\\web-app\" -Recurse -Filter \"*.tsx\")",
       "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\KOSTAS\\\\Desktop\\\\Projects\\\\ProfessorTec\\\\web-app\\\\src\\\\components\\\\economics\\\\subscriptions\" -Recurse)",
-      "Bash(Select-Object FullName)"
+      "Bash(Select-Object FullName)",
+      "mcp__claude_ai_Supabase__deploy_edge_function",
+      "Bash(npx supabase *)"
     ]
   }
 }

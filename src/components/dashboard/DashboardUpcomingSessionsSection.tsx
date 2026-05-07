@@ -1,5 +1,5 @@
 // src/components/dashboard/DashboardUpcomingSessionsSection.tsx
-import { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../context/ThemeContext';
 import { CalendarClock, Loader2, Clock } from 'lucide-react';
@@ -21,9 +21,15 @@ type ProgramItemOverrideRow = {
 type HolidayRow = { date: string };
 type SubjectRow = { id: string; name: string };
 type SubjectTutorLinkRow = { subject_id: string; tutor_id: string };
+type TestRow = {
+  id: string; class_id: string; subject_id: string | null;
+  test_date: string; start_time: string | null; end_time: string | null;
+  title: string | null; active_during_holiday: boolean | null;
+};
 type UpcomingSession = {
   id: string; classTitle: string; subjectName: string | null; tutorName: string | null;
   date: Date; startTime: Date; endTime: Date; dateStr: string; isCurrent: boolean;
+  sessionType: 'class' | 'test'; testTitle: string | null;
 };
 
 /* ------------ Helpers ------------ */
@@ -65,6 +71,7 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
   const [holidays, setHolidays] = useState<HolidayRow[]>([]);
   const [subjects, setSubjects] = useState<SubjectRow[]>([]);
   const [subjectTutorLinks, setSubjectTutorLinks] = useState<SubjectTutorLinkRow[]>([]);
+  const [tests, setTests] = useState<TestRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [now, setNow] = useState(() => new Date());
 
@@ -100,6 +107,8 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
           const { data: ovd } = await supabase.from('program_item_overrides').select('*').in('program_item_id', items.map((r) => r.id));
           setOverrides((ovd ?? []) as ProgramItemOverrideRow[]);
         }
+        const { data: testData } = await supabase.from('tests').select('id, class_id, subject_id, test_date, start_time, end_time, title, active_during_holiday').eq('school_id', schoolId);
+        setTests((testData ?? []) as TestRow[]);
       } catch (e) { console.error(e); }
       setLoading(false);
     };
@@ -107,7 +116,7 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
   }, [schoolId]);
 
   const { currentSessions, upcomingSessions } = useMemo(() => {
-    if (!programItems.length) return { currentSessions: [], upcomingSessions: [] };
+    if (!programItems.length && !tests.length) return { currentSessions: [], upcomingSessions: [] };
     const wStart = new Date(now); wStart.setHours(0, 0, 0, 0);
     const wEnd = new Date(wStart); wEnd.setDate(wStart.getDate() + LOOKAHEAD_DAYS);
     const hSet = new Set(holidays.map((h) => h.date));
@@ -118,7 +127,27 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
     subjectTutorLinks.forEach((l) => { if (!tBySubj.has(l.subject_id)) { const n = tMap.get(l.tutor_id); if (n) tBySubj.set(l.subject_id, n); } });
     const ovMap = new Map<string, ProgramItemOverrideRow>();
     overrides.forEach((ov) => { if (ov.override_date) ovMap.set(`${ov.program_item_id}-${ov.override_date}`, ov); });
+    const piMap = new Map(programItems.map((pi) => [pi.id, pi]));
+    const usedOverrideIds = new Set<string>();
     const out: UpcomingSession[] = [];
+
+    const pushClassSession = (id: string, cls: ClassRow, item: ProgramItemRow, dateObj: Date, ds: string, st: string, et: string) => {
+      const [sH, sM] = st.split(':').map(Number);
+      const [eH, eM] = et.split(':').map(Number);
+      const startTime = new Date(dateObj); startTime.setHours(sH, sM, 0, 0);
+      const endTime = new Date(dateObj); endTime.setHours(eH, eM, 0, 0);
+      if (endTime <= now) return;
+      const sid = item.subject_id ?? cls.subject_id ?? null;
+      out.push({
+        id, classTitle: cls.title,
+        subjectName: sid ? (sMap.get(sid) ?? cls.subject) : cls.subject ?? null,
+        tutorName: (item.tutor_id ? tMap.get(item.tutor_id) : null) ?? (sid ? tBySubj.get(sid) : null) ?? (cls.tutor_id ? tMap.get(cls.tutor_id) : null) ?? null,
+        date: new Date(dateObj), startTime, endTime, dateStr: ds,
+        isCurrent: now >= startTime && now < endTime,
+        sessionType: 'class', testTitle: null,
+      });
+    };
+
     programItems.forEach((item) => {
       const cls = cMap.get(item.class_id);
       if (!cls || !item.day_of_week || !item.start_time || !item.end_time) return;
@@ -133,26 +162,53 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
       while (cur <= ee) {
         const ds = formatLocalYMD(cur);
         const ov = ovMap.get(`${item.id}-${ds}`);
+        if (ov?.id) usedOverrideIds.add(ov.id);
         const isHol = hSet.has(ds);
         if (!ov?.is_deleted && !(!!ov?.is_inactive || (isHol && !ov?.holiday_active_override))) {
-          const st = ov?.start_time ?? item.start_time!;
-          const et = ov?.end_time ?? item.end_time!;
-          const [sH, sM] = st.split(':').map(Number);
-          const [eH, eM] = et.split(':').map(Number);
-          const startTime = new Date(cur); startTime.setHours(sH, sM, 0, 0);
-          const endTime = new Date(cur); endTime.setHours(eH, eM, 0, 0);
-          if (endTime > now) {
-            const sid = item.subject_id ?? cls.subject_id ?? null;
-            out.push({
-              id: `${item.id}-${ds}`, classTitle: cls.title,
-              subjectName: sid ? (sMap.get(sid) ?? cls.subject) : cls.subject ?? null,
-              tutorName: (item.tutor_id ? tMap.get(item.tutor_id) : null) ?? (sid ? tBySubj.get(sid) : null) ?? (cls.tutor_id ? tMap.get(cls.tutor_id) : null) ?? null,
-              date: new Date(cur), startTime, endTime, dateStr: ds, isCurrent: now >= startTime && now < endTime,
-            });
-          }
+          pushClassSession(`${item.id}-${ds}`, cls, item, cur, ds, ov?.start_time ?? item.start_time!, ov?.end_time ?? item.end_time!);
         }
         const next = new Date(cur); next.setDate(next.getDate() + 7); cur = next;
       }
+    });
+
+    // Rescheduled sessions: overrides that move a class to a date outside its normal pattern
+    overrides.forEach((ov) => {
+      if (!ov.override_date || ov.is_deleted || usedOverrideIds.has(ov.id)) return;
+      const item = piMap.get(ov.program_item_id);
+      if (!item) return;
+      const cls = cMap.get(item.class_id);
+      if (!cls) return;
+      const ds = ov.override_date;
+      const dateObj = new Date(ds + 'T00:00:00');
+      if (dateObj < wStart || dateObj > wEnd) return;
+      const isHol = hSet.has(ds);
+      if (ov.is_inactive || (isHol && !ov.holiday_active_override)) return;
+      const st = ov.start_time ?? item.start_time;
+      const et = ov.end_time ?? item.end_time;
+      if (!st || !et) return;
+      pushClassSession(`override-${ov.id}`, cls, item, dateObj, ds, st, et);
+    });
+    tests.forEach((test) => {
+      if (!test.start_time || !test.end_time) return;
+      const isHol = hSet.has(test.test_date);
+      if (isHol && !test.active_during_holiday) return;
+      const testDate = new Date(test.test_date + 'T00:00:00');
+      if (testDate < wStart || testDate > wEnd) return;
+      const [sH, sM] = test.start_time.split(':').map(Number);
+      const [eH, eM] = test.end_time.split(':').map(Number);
+      const startTime = new Date(testDate); startTime.setHours(sH, sM, 0, 0);
+      const endTime = new Date(testDate); endTime.setHours(eH, eM, 0, 0);
+      if (endTime <= now) return;
+      const cls = cMap.get(test.class_id);
+      const sid = test.subject_id ?? null;
+      out.push({
+        id: `test-${test.id}`, classTitle: cls?.title ?? '',
+        subjectName: sid ? (sMap.get(sid) ?? null) : null,
+        tutorName: (sid ? tBySubj.get(sid) : null) ?? null,
+        date: testDate, startTime, endTime, dateStr: test.test_date,
+        isCurrent: now >= startTime && now < endTime,
+        sessionType: 'test', testTitle: test.title ?? null,
+      });
     });
     out.sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
     const current = out.filter((s) => s.isCurrent);
@@ -163,7 +219,7 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
       upcoming.push(...future.filter((s) => s.startTime.getTime() === firstStart));
     }
     return { currentSessions: current, upcomingSessions: upcoming };
-  }, [programItems, overrides, holidays, classes, tutors, subjects, subjectTutorLinks, now]);
+  }, [programItems, overrides, holidays, classes, tutors, subjects, subjectTutorLinks, tests, now]);
 
   /* ── theme tokens ── */
   const muted = isDark ? 'text-slate-500' : 'text-slate-400';
@@ -171,24 +227,63 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
   const primary = isDark ? 'text-slate-50' : 'text-slate-800';
 
   /* ── sub-components ── */
-  const PanelLabel = ({ children }: { children: string }) => (
-    <p className={`mb-4 shrink-0 text-sm font-semibold ${primary}`}>{children}</p>
+  const PanelLabel = ({ children }: { children: React.ReactNode }) => (
+    <p className={`mb-3 shrink-0 text-sm font-semibold ${primary}`}>{children}</p>
   );
 
-  const SessionCard = ({ s, variant }: { s: UpcomingSession; variant: 'current' | 'upcoming' }) => {
+  const TestBadge = () => (
+    <span className="inline-flex items-center rounded-full border border-purple-500/30 bg-purple-500/10 px-1.5 py-px text-[8px] font-bold uppercase tracking-wider text-purple-400">
+      Διαγώνισμα
+    </span>
+  );
+
+  const NowBadge = () => (
+    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-px text-[8px] font-bold uppercase tracking-wider text-emerald-400">
+      <span className="h-1 w-1 rounded-full bg-emerald-400 animate-pulse" />
+      Τώρα
+    </span>
+  );
+
+  const SessionCard = ({ s, variant, compact }: { s: UpcomingSession; variant: 'current' | 'upcoming'; compact: boolean }) => {
     const elapsed = now.getTime() - s.startTime.getTime();
     const total = s.endTime.getTime() - s.startTime.getTime();
     const progress = Math.min(100, Math.max(0, (elapsed / total) * 100));
     const details = [s.subjectName, s.tutorName].filter(Boolean).join(' · ');
     const isGreen = variant === 'current';
+    const borderCls = isGreen
+      ? isDark ? 'border-emerald-500/20 bg-emerald-500/[0.07]' : 'border-emerald-200 bg-emerald-50/60'
+      : isDark ? 'border-slate-700/50 bg-slate-800/30' : 'border-slate-200 bg-slate-50/60';
+
+    if (compact) {
+      return (
+        <div className={`rounded-lg border px-3 py-2 ${borderCls}`}>
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <p className={`text-xs font-bold leading-snug ${primary}`}>{s.classTitle}</p>
+                {s.sessionType === 'test' && <TestBadge />}
+              </div>
+              {details && <p className={`text-[10px] leading-snug mt-0.5 truncate ${sub}`}>{details}</p>}
+            </div>
+            <div className="flex flex-col items-end gap-0.5 shrink-0">
+              <span className={`text-[10px] font-bold font-mono tabular-nums ${isGreen ? 'text-emerald-400' : ''}`}
+                style={isGreen ? {} : { color: 'var(--color-accent)' }}>
+                {formatTime(s.startTime)}–{formatTime(s.endTime)}
+              </span>
+              {isGreen ? <NowBadge /> : <span className={`text-[9px] ${muted}`}>{dayLabel(s.date)}</span>}
+            </div>
+          </div>
+          {isGreen && (
+            <div className={`mt-1.5 h-0.5 w-full rounded-full overflow-hidden ${isDark ? 'bg-slate-800' : 'bg-emerald-100'}`}>
+              <div className="h-full rounded-full bg-emerald-500 transition-all duration-1000" style={{ width: `${progress}%` }} />
+            </div>
+          )}
+        </div>
+      );
+    }
 
     return (
-      <div className={`rounded-xl border p-4 ${
-        isGreen
-          ? isDark ? 'border-emerald-500/20 bg-emerald-500/[0.07]' : 'border-emerald-200 bg-emerald-50/60'
-          : isDark ? 'border-slate-700/50 bg-slate-800/30' : 'border-slate-200 bg-slate-50/60'
-      }`}>
-        {/* Time row */}
+      <div className={`rounded-xl border p-4 ${borderCls}`}>
         <div className="flex items-start justify-between mb-2 gap-2">
           <span className={`text-xs font-bold font-mono tabular-nums ${isGreen ? 'text-emerald-400' : ''}`}
             style={isGreen ? {} : { color: 'var(--color-accent)' }}>
@@ -196,10 +291,7 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
           </span>
           {isGreen ? (
             <div className="flex flex-col items-end gap-0.5">
-              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-400">
-                <span className="h-1 w-1 rounded-full bg-emerald-400 animate-pulse" />
-                Τώρα
-              </span>
+              <NowBadge />
               <span className={`text-[10px] tabular-nums ${muted}`}>{formatDMY(s.date)}</span>
             </div>
           ) : (
@@ -209,14 +301,11 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
             </div>
           )}
         </div>
-
-        {/* Class name */}
-        <p className={`text-sm font-bold leading-snug mb-1 ${primary}`}>{s.classTitle}</p>
-
-        {/* Details */}
+        <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+          <p className={`text-sm font-bold leading-snug ${primary}`}>{s.classTitle}</p>
+          {s.sessionType === 'test' && <TestBadge />}
+        </div>
         {details && <p className={`text-[11px] leading-snug ${sub}`}>{details}</p>}
-
-        {/* Progress bar */}
         {isGreen && (
           <div className={`mt-3 h-1 w-full rounded-full overflow-hidden ${isDark ? 'bg-slate-800' : 'bg-emerald-100'}`}>
             <div className="h-full rounded-full bg-emerald-500 transition-all duration-1000" style={{ width: `${progress}%` }} />
@@ -234,6 +323,11 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
       <p className={`text-[11px] ${muted}`}>{label}</p>
     </div>
   );
+
+  const currentLabel = currentSessions.length > 1 ? `Τρέχουσες (${currentSessions.length})` : 'Τρέχουσα';
+  const upcomingLabel = upcomingSessions.length > 1 ? `Επόμενες (${upcomingSessions.length})` : 'Επόμενη';
+  const currentCompact = currentSessions.length > 1;
+  const upcomingCompact = upcomingSessions.length > 1;
 
   return (
     <section className="flex flex-col flex-1">
@@ -265,10 +359,10 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
 
             {/* LEFT — Current */}
             <div className="flex flex-col flex-1 min-h-0 p-5">
-              <PanelLabel>Τρέχουσα{currentSessions.length > 1 ? ` (${currentSessions.length})` : ''}</PanelLabel>
+              <PanelLabel>{currentLabel}</PanelLabel>
               {currentSessions.length > 0 ? (
-                <div className="flex flex-col flex-1 min-h-0 gap-2 overflow-y-auto">
-                  {currentSessions.map((s) => <SessionCard key={s.id} s={s} variant="current" />)}
+                <div className={`flex flex-col flex-1 min-h-0 overflow-y-auto ${currentCompact ? 'gap-1.5' : 'gap-2'}`}>
+                  {currentSessions.map((s) => <SessionCard key={s.id} s={s} variant="current" compact={currentCompact} />)}
                 </div>
               ) : (
                 <NoSession label="Δεν υπάρχει τρέχουσα συνεδρία" />
@@ -277,10 +371,10 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
 
             {/* RIGHT — Upcoming */}
             <div className="flex flex-col flex-1 min-h-0 p-5">
-              <PanelLabel>Επόμενη</PanelLabel>
+              <PanelLabel>{upcomingLabel}</PanelLabel>
               {upcomingSessions.length > 0 ? (
-                <div className="flex flex-col flex-1 min-h-0 gap-2 overflow-y-auto">
-                  {upcomingSessions.map((s) => <SessionCard key={s.id} s={s} variant="upcoming" />)}
+                <div className={`flex flex-col flex-1 min-h-0 overflow-y-auto ${upcomingCompact ? 'gap-1.5' : 'gap-2'}`}>
+                  {upcomingSessions.map((s) => <SessionCard key={s.id} s={s} variant="upcoming" compact={upcomingCompact} />)}
                 </div>
               ) : (
                 <NoSession label="Δεν υπάρχουν επόμενα μαθήματα" />

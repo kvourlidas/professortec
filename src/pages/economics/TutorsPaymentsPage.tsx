@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../auth';
 import { useTheme } from '../../context/ThemeContext';
 import {
-  Loader2, Save, HandCoins, Plus, Trash2, History,
+  Loader2, Save, HandCoins, Plus, Ban, History,
   Pencil, ChevronRight, ChevronLeft, Search, X, Euro,
   ChevronDown, User, Check,
 } from 'lucide-react';
@@ -276,18 +276,26 @@ export default function TutorsPaymentsPage() {
 
   async function confirmDeletePayment() {
     if (!selectedTutorId || !deletingPayment) return;
+    const paymentId = deletingPayment.id;
     setBusy(true); setError(null);
+    // Optimistically mark as cancelled so the row stays visible immediately
+    setPayments(prev => prev.map(p => p.id === paymentId ? { ...p, status: 'canceled' as const } : p));
+    closeDeletePayment();
     try {
-      await callEdgeFunction('tutorspayments-delete', { payment_id: deletingPayment.id });
-      closeDeletePayment(); await loadTutorDetails(selectedTutorId);
-    } catch (e: any) { setError(e?.message ?? 'Αποτυχία διαγραφής.'); }
+      await callEdgeFunction('tutorspayments-delete', { payment_id: paymentId });
+      loadTutorDetails(selectedTutorId).catch(() => {});
+    } catch (e: any) {
+      // Revert optimistic update on failure
+      setPayments(prev => prev.map(p => p.id === paymentId ? { ...p, status: 'paid' as const } : p));
+      setError(e?.message ?? 'Αποτυχία ακύρωσης.');
+    }
     finally { setBusy(false); }
   }
 
-  // ── Totals ───────────────────────────────────────────────────────────────
-  const totalNet   = useMemo(() => payments.reduce((s, p) => s + (Number(p.net_total)   || 0), 0), [payments]);
-  const totalGross = useMemo(() => payments.reduce((s, p) => s + (Number(p.gross_total) || 0), 0), [payments]);
-  const totalBonus = useMemo(() => payments.reduce((s, p) => s + (Number(p.bonus_total) || 0), 0), [payments]);
+  // ── Totals (cancelled payments excluded) ────────────────────────────────
+  const totalNet   = useMemo(() => payments.filter(p => p.status !== 'canceled').reduce((s, p) => s + (Number(p.net_total)   || 0), 0), [payments]);
+  const totalGross = useMemo(() => payments.filter(p => p.status !== 'canceled').reduce((s, p) => s + (Number(p.gross_total) || 0), 0), [payments]);
+  const totalBonus = useMemo(() => payments.filter(p => p.status !== 'canceled').reduce((s, p) => s + (Number(p.bonus_total) || 0), 0), [payments]);
 
   // ── Loading screen ───────────────────────────────────────────────────────
   if (loading) {
@@ -659,39 +667,67 @@ export default function TutorsPaymentsPage() {
 
                 {/* Rows */}
                 <div>
-                  {pagePayments.map((p, i) => (
-                    <div key={p.id}
-                      className={`history-row grid grid-cols-12 items-center px-5 py-3 text-xs transition-colors ${
-                        i > 0 ? (isDark ? 'border-t border-slate-800/40' : 'border-t border-slate-100') : ''
-                      } ${isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-slate-50/60'}`}
-                      style={{ animationDelay: `${i * 25}ms` }}>
-                      <div className={`col-span-2 tabular-nums text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{isoDateFromTs(p.paid_on ?? p.created_at)}</div>
-                      <div className={`col-span-2 font-semibold tabular-nums ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{money(p.net_total)} {CURRENCY_SYMBOL}</div>
-                      <div className={`col-span-2 tabular-nums ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{money(p.gross_total)} {CURRENCY_SYMBOL}</div>
-                      <div className="col-span-2 tabular-nums">
-                        {Number(p.bonus_total) > 0
-                          ? <span className="font-semibold" style={{ color: 'var(--color-accent)' }}>+{money(p.bonus_total)} {CURRENCY_SYMBOL}</span>
-                          : <span className={isDark ? 'text-slate-700' : 'text-slate-300'}>—</span>
-                        }
+                  {pagePayments.map((p, i) => {
+                    const isCancelled = p.status === 'canceled';
+                    const mutedText = isDark ? 'text-slate-500' : 'text-slate-400';
+                    return (
+                      <div key={p.id}
+                        className={`history-row relative grid grid-cols-12 items-center px-5 py-3 text-xs transition-colors ${
+                          i > 0 ? (isDark ? 'border-t border-slate-800/40' : 'border-t border-slate-100') : ''
+                        } ${isCancelled
+                            ? (isDark ? 'bg-red-950/10' : 'bg-red-50/40')
+                            : (isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-slate-50/60')
+                        }`}
+                        style={{ animationDelay: `${i * 25}ms` }}>
+
+                        {/* Strike-through line for cancelled rows */}
+                        {isCancelled && (
+                          <div className="pointer-events-none absolute inset-x-0 top-1/2 h-[1.5px] -translate-y-1/2"
+                            style={{ background: 'rgba(239,68,68,0.5)' }} />
+                        )}
+
+                        <div className={`col-span-2 tabular-nums text-[11px] ${isCancelled ? mutedText : (isDark ? 'text-slate-400' : 'text-slate-500')}`}>
+                          {isoDateFromTs(p.paid_on ?? p.created_at)}
+                        </div>
+                        <div className={`col-span-2 font-semibold tabular-nums ${isCancelled ? mutedText : (isDark ? 'text-slate-100' : 'text-slate-800')}`}>
+                          {money(p.net_total)} {CURRENCY_SYMBOL}
+                        </div>
+                        <div className={`col-span-2 tabular-nums ${isCancelled ? mutedText : (isDark ? 'text-slate-300' : 'text-slate-600')}`}>
+                          {money(p.gross_total)} {CURRENCY_SYMBOL}
+                        </div>
+                        <div className={`col-span-2 tabular-nums`}>
+                          {Number(p.bonus_total) > 0
+                            ? <span className={`font-semibold ${isCancelled ? mutedText : ''}`} style={isCancelled ? {} : { color: 'var(--color-accent)' }}>+{money(p.bonus_total)} {CURRENCY_SYMBOL}</span>
+                            : <span className={isDark ? 'text-slate-700' : 'text-slate-300'}>—</span>
+                          }
+                        </div>
+                        <div className="col-span-2">
+                          {isCancelled ? (
+                            <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${isDark ? 'border-red-900/50 bg-red-950/30 text-red-400/70' : 'border-red-200 bg-red-50 text-red-400'}`}>
+                              <Ban className="h-2.5 w-2.5" />
+                              Ακυρώθηκε
+                            </span>
+                          ) : (
+                            <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${isDark ? 'border-emerald-700/40 bg-emerald-950/40 text-emerald-400' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}`}>
+                              <span className={`h-1.5 w-1.5 rounded-full ${isDark ? 'bg-emerald-400' : 'bg-emerald-500'}`} />
+                              Πληρώθηκε
+                            </span>
+                          )}
+                        </div>
+                        <div className="col-span-2 flex justify-end gap-1.5">
+                          <button type="button" onClick={() => openEditPayment(p)} disabled={busy || isCancelled}
+                            className={`flex h-7 w-7 items-center justify-center rounded-lg border transition-all hover:scale-105 active:scale-95 disabled:opacity-30 ${isDark ? 'border-blue-800/50 bg-blue-950/40 text-blue-400 hover:bg-blue-950/70' : 'border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100'}`}>
+                            <Pencil className="h-3 w-3" />
+                          </button>
+                          <button type="button" onClick={() => askDeletePayment(p)} disabled={busy || isCancelled}
+                            title="Ακύρωση πληρωμής"
+                            className={`flex h-7 w-7 items-center justify-center rounded-lg border transition-all hover:scale-105 active:scale-95 disabled:opacity-30 ${isDark ? 'border-amber-800/50 bg-amber-950/40 text-amber-400 hover:bg-amber-950/70' : 'border-amber-200 bg-amber-50 text-amber-600 hover:bg-amber-100'}`}>
+                            <Ban className="h-3 w-3" />
+                          </button>
+                        </div>
                       </div>
-                      <div className="col-span-2">
-                        <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${isDark ? 'border-emerald-700/40 bg-emerald-950/40 text-emerald-400' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}`}>
-                          <span className={`h-1.5 w-1.5 rounded-full ${isDark ? 'bg-emerald-400' : 'bg-emerald-500'}`} />
-                          Πληρώθηκε
-                        </span>
-                      </div>
-                      <div className="col-span-2 flex justify-end gap-1.5">
-                        <button type="button" onClick={() => openEditPayment(p)} disabled={busy}
-                          className={`flex h-7 w-7 items-center justify-center rounded-lg border transition-all hover:scale-105 active:scale-95 disabled:opacity-40 ${isDark ? 'border-blue-800/50 bg-blue-950/40 text-blue-400 hover:bg-blue-950/70' : 'border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100'}`}>
-                          <Pencil className="h-3 w-3" />
-                        </button>
-                        <button type="button" onClick={() => askDeletePayment(p)} disabled={busy}
-                          className={`flex h-7 w-7 items-center justify-center rounded-lg border transition-all hover:scale-105 active:scale-95 disabled:opacity-40 ${isDark ? 'border-rose-800/50 bg-rose-950/40 text-rose-400 hover:bg-rose-950/70' : 'border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100'}`}>
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {/* Bottom pagination */}
@@ -720,16 +756,16 @@ export default function TutorsPaymentsPage() {
       ══════════════════════════════════════════════════════════════════ */}
       <ConfirmActionModal
         open={deleteOpen}
-        title="Διαγραφή πληρωμής"
+        title="Ακύρωση πληρωμής"
         message={
           <div className={isDark ? 'text-slate-200' : 'text-slate-700'}>
-            Σίγουρα θέλετε να διαγράψετε αυτή την εγγραφή{' '}
+            Σίγουρα θέλετε να ακυρώσετε αυτή την πληρωμή{' '}
             <span className={`font-semibold ${isDark ? 'text-slate-50' : 'text-slate-900'}`}>
               ({deletingPayment ? isoDateFromTs(deletingPayment.paid_on ?? deletingPayment.created_at) : '—'})
-            </span>; Η ενέργεια δεν μπορεί να ανακληθεί.
+            </span>; Η εγγραφή θα παραμείνει στο ιστορικό ως ακυρωμένη και δεν θα προσμετρείται στα σύνολα.
           </div>
         }
-        confirmLabel="Διαγραφή" cancelLabel="Ακύρωση" confirmColor="red" busy={busy}
+        confirmLabel="Ακύρωση πληρωμής" cancelLabel="Πίσω" confirmColor="red" busy={busy}
         onClose={closeDeletePayment} onConfirm={confirmDeletePayment}
       />
 

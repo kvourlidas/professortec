@@ -19,3 +19,7 @@ export type CreateStudentSubscriptionPaymentInput = {
   amount: number;
   payment_method: string;
 };
+
+export type CancelStudentSubscriptionPaymentInput = {
+  payment_id: string;
+};

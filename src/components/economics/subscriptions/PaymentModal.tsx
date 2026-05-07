@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Banknote, CreditCard, HandCoins, Loader2, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Ban, Banknote, CreditCard, HandCoins, Landmark, Loader2, X } from 'lucide-react';
 import { CURRENCY_SYMBOL, typeColors } from './constants';
 import { TypeIcon } from './TypeIcon';
 import { formatDateTime, isHourlyPackageName, money, packageTypeFromName, typeLabel } from './utils';
@@ -14,14 +14,16 @@ interface Props {
   pmBalance: number;
   pmHistoryTotal: number;
   isDark: boolean;
+  cancellingPaymentId?: string | null;
   onInputChange: (v: string) => void;
   onSubmit: (method: PaymentMethod) => void;
+  onCancelPayment?: (paymentId: string) => void;
   onClose: () => void;
 }
 
 export function PaymentModal({
   row, paymentInput, payingLoading, pmPaid, pmBilled, pmBalance, pmHistoryTotal,
-  isDark, onInputChange, onSubmit, onClose,
+  isDark, cancellingPaymentId, onInputChange, onSubmit, onCancelPayment, onClose,
 }: Props) {
   const [method, setMethod] = useState<PaymentMethod>('cash');
   useEffect(() => { setMethod('cash'); }, [row?.sub.id]);
@@ -109,17 +111,19 @@ export function PaymentModal({
               {/* Method toggle */}
               <p className={`mb-1.5 text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Τρόπος πληρωμής</p>
               <div className="mb-3 flex gap-2">
-                {(['cash', 'card'] as PaymentMethod[]).map(m => {
+                {([
+                  { m: 'cash',          Icon: Banknote,  label: 'Μετρητά'   },
+                  { m: 'card',          Icon: CreditCard, label: 'Κάρτα'    },
+                  { m: 'bank_transfer', Icon: Landmark,   label: 'Τράπεζα'  },
+                ] as { m: PaymentMethod; Icon: React.ElementType; label: string }[]).map(({ m, Icon, label }) => {
                   const active = method === m;
-                  const Icon = m === 'cash' ? Banknote : CreditCard;
-                  const label = m === 'cash' ? 'Μετρητά' : 'Κάρτα';
                   return (
                     <button
                       key={m}
                       type="button"
                       onClick={() => setMethod(m)}
                       disabled={payingLoading}
-                      className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition disabled:opacity-50 ${
+                      className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-xs font-medium transition disabled:opacity-50 ${
                         active
                           ? 'border-[color:var(--color-accent)] bg-[color:var(--color-accent)]/10 text-[color:var(--color-accent)]'
                           : isDark
@@ -167,39 +171,68 @@ export function PaymentModal({
             ) : (
               <>
                 <div className={`flex-1 overflow-hidden rounded-xl border ${isDark ? 'border-slate-700/50' : 'border-slate-200'}`}>
+                  {/* Header */}
+                  <div className={`grid grid-cols-12 px-3 py-2 text-[10px] font-semibold uppercase tracking-widest ${isDark ? 'border-b border-slate-700/60 bg-slate-900/60' : 'border-b border-slate-200 bg-slate-50'}`}
+                    style={{ color: 'color-mix(in srgb,var(--color-accent) 70%,white)' }}>
+                    <div className="col-span-5">Ημερομηνία</div>
+                    <div className="col-span-2 text-center">Τρόπος</div>
+                    <div className="col-span-3 text-right">Ποσό</div>
+                    <div className="col-span-2" />
+                  </div>
+                  {/* Rows */}
                   <div className="max-h-52 overflow-y-auto ss-thin">
-                    <table className="min-w-full border-collapse text-xs">
-                      <thead className="sticky top-0">
-                        <tr
-                          className={`${isDark ? 'border-b border-slate-700/60 bg-slate-900/60' : 'border-b border-slate-200 bg-slate-50'} text-[10px] font-semibold uppercase tracking-widest`}
-                          style={{ color: 'color-mix(in srgb,var(--color-accent) 70%,white)' }}
-                        >
-                          <th className="px-3 py-2.5 text-left">Ημερομηνία</th>
-                          <th className="px-3 py-2.5 text-center">Τρόπος</th>
-                          <th className="px-3 py-2.5 text-right">Ποσό</th>
-                        </tr>
-                      </thead>
-                      <tbody className={isDark ? 'divide-y divide-slate-800/40' : 'divide-y divide-slate-100'}>
-                        {row.payments.map((p, i) => (
-                          <tr key={`${p.created_at ?? 'na'}-${i}`} className={isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-slate-50'}>
-                            {/* Fix: created_at is string | null | undefined — coerce to string | null */}
-                            <td className={`px-3 py-2.5 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                              {formatDateTime(p.created_at ?? null)}
-                            </td>
-                            <td className="px-3 py-2.5 text-center">
-                              {p.payment_method === 'card'
-                                ? <CreditCard className={`inline h-3.5 w-3.5 ${isDark ? 'text-sky-400' : 'text-sky-500'}`} />
+                    {row.payments.map((p, i) => {
+                      const isCancelled = !!p.cancelled_at;
+                      const isCancelling = cancellingPaymentId === p.id;
+                      const muted = isDark ? 'text-slate-500' : 'text-slate-400';
+                      return (
+                        <div key={`${p.id ?? p.created_at ?? 'na'}-${i}`}
+                          className={`relative grid grid-cols-12 items-center px-3 py-2.5 text-xs transition-colors ${
+                            i > 0 ? (isDark ? 'border-t border-slate-800/40' : 'border-t border-slate-100') : ''
+                          } ${isCancelled
+                            ? (isDark ? 'bg-red-950/10' : 'bg-red-50/40')
+                            : (isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-slate-50')
+                          }`}>
+
+                          {/* Red strike-through line for cancelled rows */}
+                          {isCancelled && (
+                            <div className="pointer-events-none absolute inset-x-0 top-1/2 h-[1.5px] -translate-y-1/2"
+                              style={{ background: 'rgba(239,68,68,0.5)' }} />
+                          )}
+
+                          <div className={`col-span-5 ${isCancelled ? muted : (isDark ? 'text-slate-300' : 'text-slate-600')}`}>
+                            {formatDateTime(p.created_at ?? null)}
+                          </div>
+                          <div className="col-span-2 flex justify-center">
+                            {isCancelled
+                              ? <Ban className={`h-3.5 w-3.5 ${isDark ? 'text-red-500/50' : 'text-red-400/60'}`} />
+                              : p.payment_method === 'card'
+                                ? <CreditCard className={`h-3.5 w-3.5 ${isDark ? 'text-sky-400' : 'text-sky-500'}`} />
                                 : p.payment_method === 'cash'
-                                  ? <Banknote className={`inline h-3.5 w-3.5 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`} />
-                                  : <span className={`text-[10px] ${isDark ? 'text-slate-600' : 'text-slate-300'}`}>—</span>}
-                            </td>
-                            <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-emerald-400">
-                              {money(p.amount)} {CURRENCY_SYMBOL}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                                  ? <Banknote className={`h-3.5 w-3.5 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                                  : p.payment_method === 'bank_transfer'
+                                    ? <Landmark className={`h-3.5 w-3.5 ${isDark ? 'text-violet-400' : 'text-violet-500'}`} />
+                                    : <span className={`text-[10px] ${isDark ? 'text-slate-600' : 'text-slate-300'}`}>—</span>}
+                          </div>
+                          <div className={`col-span-3 text-right font-semibold tabular-nums ${isCancelled ? muted : 'text-emerald-400'}`}>
+                            {money(p.amount)} {CURRENCY_SYMBOL}
+                          </div>
+                          <div className="col-span-2 flex justify-end">
+                            {!isCancelled && onCancelPayment && (
+                              <button
+                                type="button"
+                                title="Ακύρωση πληρωμής"
+                                disabled={isCancelling || !!cancellingPaymentId}
+                                onClick={() => onCancelPayment(p.id)}
+                                className={`flex h-6 w-6 items-center justify-center rounded border transition-all hover:scale-105 active:scale-95 disabled:opacity-40 ${isDark ? 'border-amber-800/50 bg-amber-950/40 text-amber-400 hover:bg-amber-950/70' : 'border-amber-200 bg-amber-50 text-amber-600 hover:bg-amber-100'}`}
+                              >
+                                {isCancelling ? <Loader2 className="h-3 w-3 animate-spin" /> : <Ban className="h-3 w-3" />}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
                 <div className={`mt-2.5 flex items-center justify-between rounded-lg border px-3 py-2 text-xs ${isDark ? 'border-slate-700/50 bg-slate-900/30' : 'border-slate-200 bg-slate-50'}`}>

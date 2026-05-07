@@ -3,6 +3,7 @@ import type {
   CreateStudentSubscriptionInput,
   DeleteStudentSubscriptionInput,
   CreateStudentSubscriptionPaymentInput,
+  CancelStudentSubscriptionPaymentInput,
 } from "../types/studentSubscription.ts";
 
 export function validateCreateStudentSubscriptionBody(body: any): CreateStudentSubscriptionInput {
@@ -37,9 +38,15 @@ export function validateCreateStudentSubscriptionPaymentBody(body: any): CreateS
 
   if (!subscription_id) throw new ValidationError("Missing subscription_id");
   if (isNaN(amount) || amount <= 0) throw new ValidationError("Invalid amount");
-  if (!payment_method || !["cash", "card"].includes(payment_method)) {
+  if (!payment_method || !["cash", "card", "bank_transfer"].includes(payment_method)) {
     throw new ValidationError("Invalid payment_method");
   }
 
   return { subscription_id, amount, payment_method };
+}
+
+export function validateCancelStudentSubscriptionPaymentBody(body: any): CancelStudentSubscriptionPaymentInput {
+  const payment_id = body?.payment_id?.trim?.();
+  if (!payment_id) throw new ValidationError("Missing payment_id");
+  return { payment_id };
 }
