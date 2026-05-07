@@ -7,10 +7,12 @@ export type TxRow = {
   kind: TxKind;
   source: TxSource;
   date: string;
+  ts: string;
   amount: number;
   label: string;
   notes?: string | null;
   category?: string | null;
+  cancelled?: boolean;
 };
 
 export type ExtraExpenseRow = {

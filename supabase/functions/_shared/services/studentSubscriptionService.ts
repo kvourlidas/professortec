@@ -19,6 +19,19 @@ export async function createStudentSubscriptionService(
   schoolId: string,
   input: CreateStudentSubscriptionInput
 ) {
+  if (!input.renew_from_sub_id) {
+    const { data: existing } = await supabase
+      .from("student_subscriptions")
+      .select("id")
+      .eq("school_id", schoolId)
+      .eq("student_id", input.student_id)
+      .eq("status", "active")
+      .limit(1);
+    if (existing && existing.length > 0) {
+      throw new Error("Ο μαθητής έχει ήδη ενεργή συνδρομή. Δεν επιτρέπεται προσθήκη δεύτερης ενεργής συνδρομής.");
+    }
+  }
+
   const newSub = await insertStudentSubscription(supabase, schoolId, input);
   if (input.renew_from_sub_id) {
     await markSubscriptionAsRenewed(supabase, input.renew_from_sub_id, schoolId);

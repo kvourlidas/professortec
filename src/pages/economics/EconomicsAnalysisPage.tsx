@@ -74,6 +74,7 @@ export default function EconomicsAnalysisPage() {
   const [editNotes, setEditNotes] = useState('');
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState<ExtraExpenseRow | null>(null);
+  const [cancelConfirmRow, setCancelConfirmRow] = useState<TxRow | null>(null);
 
   function getBounds() {
     if (mode === 'month') return { start: startOfMonthISO(year, month), end: endOfMonthISO(year, month) };
@@ -93,7 +94,7 @@ export default function EconomicsAnalysisPage() {
   async function safeStudentIncomes(start: string, end: string) {
     let res: any = await supabase
       .from(STUDENT_INCOME_TABLE)
-      .select('id, school_id, amount, paid_on, notes, created_at, subscription_id, student_subscriptions(student_id, students(full_name))')
+      .select('id, school_id, amount, paid_on, notes, created_at, cancelled_at, subscription_id, student_subscriptions(student_id, students(full_name))')
       .eq('school_id', schoolId!)
       .gte('paid_on', start)
       .lte('paid_on', end)
@@ -102,7 +103,7 @@ export default function EconomicsAnalysisPage() {
     if (res.error && hasAny(res.error, 'relationship', 'foreign key', 'schema cache')) {
       res = await supabase
         .from(STUDENT_INCOME_TABLE)
-        .select('id, school_id, amount, paid_on, notes, created_at, subscription_id')
+        .select('id, school_id, amount, paid_on, notes, created_at, cancelled_at, subscription_id')
         .eq('school_id', schoolId!)
         .gte('paid_on', start)
         .lte('paid_on', end)
@@ -124,10 +125,13 @@ export default function EconomicsAnalysisPage() {
     if (tutorRes.error) throw tutorRes.error;
     if (studentRes.error) throw studentRes.error;
     const expRows = (expRes.data ?? []) as ExtraExpenseRow[];
-    const mappedExtra: TxRow[] = expRows.map(r => ({ id: r.id, kind: 'expense', source: 'extra_expense', date: (r.occurred_on ?? r.created_at?.slice(0, 10) ?? isoToday()).slice(0, 10), amount: Number(r.amount) || 0, label: r.name, category: r.name, notes: r.notes ?? null }));
-    const mappedTutor: TxRow[] = (tutorRes.data ?? []).map((p: any) => ({ id: p.id, kind: 'expense', source: 'tutor_payment', date: (p.paid_on ?? p.created_at ?? isoToday()).slice(0, 10), amount: Number(p.net_total) || 0, label: `Πληρωμή Καθηγητή: ${p?.tutors?.full_name ?? 'Καθηγητής'}`, category: 'Καθηγητές', notes: p.notes ?? null }));
-    const mappedStudent: TxRow[] = ((studentRes.data as any[] | null) ?? []).map((p: any) => ({ id: p.id, kind: 'income', source: 'student_subscription', date: (p.paid_on ?? p.created_at ?? isoToday()).slice(0, 10), amount: Number(p.amount) || 0, label: `Συνδρομή: ${p?.student_subscriptions?.students?.full_name ?? 'Μαθητής'}`, notes: p.notes ?? null }));
-    return [...mappedStudent, ...mappedTutor, ...mappedExtra].sort((a, b) => a.date < b.date ? 1 : -1);
+    const mappedExtra: TxRow[] = expRows.map(r => ({ id: r.id, kind: 'expense', source: 'extra_expense', date: (r.occurred_on ?? r.created_at?.slice(0, 10) ?? isoToday()).slice(0, 10), ts: r.created_at ?? '', amount: Number(r.amount) || 0, label: r.name, category: r.name, notes: r.notes ?? null }));
+    const mappedTutor: TxRow[] = (tutorRes.data ?? []).map((p: any) => ({ id: p.id, kind: 'expense', source: 'tutor_payment', date: (p.paid_on ?? p.created_at ?? isoToday()).slice(0, 10), ts: p.paid_on ?? p.created_at ?? '', amount: Number(p.net_total) || 0, label: `Πληρωμή Καθηγητή: ${p?.tutors?.full_name ?? 'Καθηγητής'}`, category: 'Καθηγητές', notes: p.notes ?? null }));
+    const mappedStudent: TxRow[] = ((studentRes.data as any[] | null) ?? []).map((p: any) => ({ id: p.id, kind: 'income', source: 'student_subscription', date: (p.paid_on ?? p.created_at ?? isoToday()).slice(0, 10), ts: p.paid_on ?? p.created_at ?? '', amount: Number(p.amount) || 0, label: `Συνδρομή: ${p?.student_subscriptions?.students?.full_name ?? 'Μαθητής'}`, notes: p.notes ?? null, cancelled: !!p.cancelled_at }));
+    return [...mappedStudent, ...mappedTutor, ...mappedExtra].sort((a, b) => {
+      if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+      return a.ts < b.ts ? 1 : -1;
+    });
   }
 
   async function loadAll() {
@@ -140,15 +144,15 @@ export default function EconomicsAnalysisPage() {
 
   useEffect(() => { loadAll(); }, [schoolId, mode, month, year, rangeStart, rangeEnd]);
 
-  const incomeTotal = useMemo(() => txRows.filter(r => r.kind === 'income').reduce((s, r) => s + (Number(r.amount) || 0), 0), [txRows]);
-  const expenseTotal = useMemo(() => txRows.filter(r => r.kind === 'expense').reduce((s, r) => s + (Number(r.amount) || 0), 0), [txRows]);
+  const incomeTotal = useMemo(() => txRows.filter(r => r.kind === 'income' && !r.cancelled).reduce((s, r) => s + (Number(r.amount) || 0), 0), [txRows]);
+  const expenseTotal = useMemo(() => txRows.filter(r => r.kind === 'expense' && !r.cancelled).reduce((s, r) => s + (Number(r.amount) || 0), 0), [txRows]);
   const netTotal = useMemo(() => incomeTotal - expenseTotal, [incomeTotal, expenseTotal]);
   const incomeSeries = useMemo(() => buildSeriesForPeriod({ kind: 'income', rows: txRows, mode, year, month, start: bounds.start, end: bounds.end }), [txRows, mode, year, month, bounds.start, bounds.end]);
   const expenseSeries = useMemo(() => buildSeriesForPeriod({ kind: 'expense', rows: txRows, mode, year, month, start: bounds.start, end: bounds.end }), [txRows, mode, year, month, bounds.start, bounds.end]);
 
   const expenseByCategory = useMemo(() => {
     const map = new Map<string, number>();
-    txRows.filter(r => r.kind === 'expense').forEach(r => { const k = r.category ?? (r.source === 'extra_expense' ? r.label?.trim() || 'Άλλο' : 'Καθηγητές'); map.set(k, (map.get(k) ?? 0) + (Number(r.amount) || 0)); });
+    txRows.filter(r => r.kind === 'expense' && !r.cancelled).forEach(r => { const k = r.category ?? (r.source === 'extra_expense' ? r.label?.trim() || 'Άλλο' : 'Καθηγητές'); map.set(k, (map.get(k) ?? 0) + (Number(r.amount) || 0)); });
     return Array.from(map.entries()).map(([category, amount]) => ({ category, amount })).sort((a, b) => b.amount - a.amount);
   }, [txRows]);
 
@@ -203,6 +207,27 @@ export default function EconomicsAnalysisPage() {
   }
 
   function closeDeleteExpense() { if (busy) return; setDeleteOpen(false); setDeleting(null); }
+
+  // ── Cancel tx row ─────────────────────────────────────────────────────────
+  async function confirmCancelTxRow() {
+    const row = cancelConfirmRow;
+    if (!row) return;
+    setCancelConfirmRow(null);
+    setBusy(true); setError(null);
+    setTxRows(prev => prev.map(r => r.id === row.id && r.source === row.source ? { ...r, cancelled: true } : r));
+    try {
+      if (row.source === 'student_subscription') {
+        await callEdgeFunction('student-subscription-payment-cancel', { payment_id: row.id });
+      } else if (row.source === 'tutor_payment') {
+        await callEdgeFunction('tutorspayments-delete', { payment_id: row.id });
+      } else if (row.source === 'extra_expense') {
+        await callEdgeFunction('economicsanalysis-delete', { expense_id: row.id });
+      }
+    } catch (e: any) {
+      setError(e?.message ?? 'Αποτυχία ακύρωσης.');
+      setTxRows(prev => prev.map(r => r.id === row.id && r.source === row.source ? { ...r, cancelled: false } : r));
+    } finally { setBusy(false); }
+  }
 
   // ── Delete via edge function ──────────────────────────────────────────────
   async function confirmDeleteExpense() {
@@ -329,9 +354,20 @@ export default function EconomicsAnalysisPage() {
           txTotalPages={txTotalPages}
           onPrev={() => setTxPage(p => Math.max(1, p - 1))}
           onNext={() => setTxPage(p => Math.min(txTotalPages, p + 1))}
+          onCancel={setCancelConfirmRow}
+          busy={busy}
           isDark={isDark}
         />
       </div>
+
+      {/* Cancel tx row confirm */}
+      <ConfirmActionModal
+        open={!!cancelConfirmRow}
+        title="Ακύρωση κίνησης"
+        message={<div className={isDark ? 'text-slate-200' : 'text-slate-700'}>Σίγουρα θέλετε να ακυρώσετε την κίνηση <span className={`font-semibold ${isDark ? 'text-slate-50' : 'text-slate-900'}`}>{cancelConfirmRow ? `${cancelConfirmRow.label} (${cancelConfirmRow.date})` : '—'}</span>; Η ενέργεια αυτή δεν μπορεί να ανακληθεί.</div>}
+        confirmLabel="Ακύρωση κίνησης" cancelLabel="Πίσω" confirmColor="red" busy={busy}
+        onClose={() => setCancelConfirmRow(null)} onConfirm={confirmCancelTxRow}
+      />
 
       {/* Delete confirm */}
       <ConfirmActionModal

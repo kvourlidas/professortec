@@ -101,8 +101,8 @@ export default function GradesPanel({
                     onClick={() => { onTabChange(tab); if (tab === 'overall') onSubjectChange(null); }}
                     className="rounded-lg border px-3 py-1.5 text-xs font-medium transition"
                     style={active
-                      ? { backgroundColor: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', borderColor: 'color-mix(in srgb, var(--color-accent) 40%, transparent)', color: 'var(--color-accent)' }
-                      : { backgroundColor: isDark ? 'transparent' : '#f8fafc', borderColor: isDark ? 'rgb(71 85 105 / 0.5)' : 'rgb(203 213 225)', color: isDark ? 'rgb(148 163 184)' : 'rgb(100 116 139)' }
+                      ? { backgroundColor: 'var(--color-accent)', borderColor: 'var(--color-accent)', color: 'var(--color-input-bg)' }
+                      : { backgroundColor: isDark ? '#1e293b' : '#f8fafc', borderColor: isDark ? '#334155' : 'rgb(203 213 225)', color: isDark ? 'rgb(148 163 184)' : 'rgb(100 116 139)' }
                     }>
                     {label}
                   </button>

@@ -179,7 +179,7 @@ const GradesPage = () => {
         </div>
 
         {/* Students / Tutors toggle */}
-        <div className={`inline-flex items-center gap-0.5 rounded-lg p-0.5 ${isDark ? 'bg-slate-900/50' : 'bg-slate-100/80'}`}>
+        <div className={`inline-flex items-center gap-0.5 rounded-lg p-0.5 ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
           {([
             { key: 'students' as const, label: 'Μαθητές',    icon: <Users className="h-3.5 w-3.5" /> },
             { key: 'tutors'   as const, label: 'Καθηγητές',  icon: <GraduationCap className="h-3.5 w-3.5" /> },
@@ -211,14 +211,14 @@ const GradesPage = () => {
           <button
             type="button"
             onClick={() => { setDropOpen((v) => !v); setDropSearch(''); }}
-            className={`group flex w-full items-center gap-4 rounded-2xl px-5 py-3.5 text-left shadow-lg transition-all ${
+            className={`group flex w-full items-center gap-4 rounded-2xl px-5 py-3.5 text-left shadow-md transition-all ${
               isDark
-                ? 'border border-slate-700/60 bg-slate-900/70 backdrop-blur-md hover:border-slate-600/70'
+                ? 'border border-slate-700 bg-slate-900 hover:border-slate-600'
                 : 'border border-slate-200 bg-white hover:border-slate-300'
             } ${dropOpen
                 ? isDark
-                  ? 'border-[color:var(--color-accent)]/50 ring-2 ring-[color:var(--color-accent)]/20'
-                  : 'border-[color:var(--color-accent)]/40 ring-2 ring-[color:var(--color-accent)]/12'
+                  ? 'border-[color:var(--color-accent)] ring-2 ring-[color:var(--color-accent)]/25'
+                  : 'border-[color:var(--color-accent)] ring-2 ring-[color:var(--color-accent)]/15'
                 : ''
             }`}
           >
@@ -226,12 +226,12 @@ const GradesPage = () => {
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl font-bold text-sm transition-all"
               style={{
                 background: selectedItem
-                  ? 'color-mix(in srgb, var(--color-accent) 18%, transparent)'
-                  : isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                  ? 'var(--color-accent)'
+                  : isDark ? '#1e293b' : '#f1f5f9',
                 border: selectedItem
-                  ? '1px solid color-mix(in srgb, var(--color-accent) 35%, transparent)'
-                  : isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.08)',
-                color: selectedItem ? 'var(--color-accent)' : isDark ? '#64748b' : '#94a3b8',
+                  ? '1px solid var(--color-accent)'
+                  : isDark ? '1px solid #334155' : '1px solid #cbd5e1',
+                color: selectedItem ? 'var(--color-input-bg)' : isDark ? '#64748b' : '#94a3b8',
               }}>
               {selectedItem
                 ? (selectedItem.full_name ?? '?').charAt(0).toUpperCase()
@@ -254,7 +254,7 @@ const GradesPage = () => {
             {/* Count badge + chevron */}
             <div className="flex shrink-0 items-center gap-2.5">
               <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-bold tabular-nums ${
-                isDark ? 'border-slate-700/60 bg-slate-800/60 text-slate-400' : 'border-slate-200 bg-slate-100 text-slate-500'
+                isDark ? 'border-slate-700 bg-slate-800 text-slate-400' : 'border-slate-200 bg-slate-100 text-slate-500'
               }`}>
                 {totalCount}
               </span>
@@ -266,8 +266,8 @@ const GradesPage = () => {
           {dropOpen && (
             <div className={`grades-drop-animate absolute left-0 right-0 top-[calc(100%+8px)] overflow-hidden rounded-2xl shadow-2xl ${
               isDark
-                ? 'border border-slate-700/60 bg-slate-900/95 backdrop-blur-xl ring-1 ring-white/[0.05]'
-                : 'border border-slate-200 bg-white ring-1 ring-slate-900/5'
+                ? 'border border-slate-700 bg-slate-900'
+                : 'border border-slate-200 bg-white'
             }`}>
 
               {/* Search */}

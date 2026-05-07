@@ -22,7 +22,7 @@ export function getCurrentPeriod(): { year: number; month: number } { const d = 
 
 export function buildSeriesForPeriod(args: { kind: TxKind; rows: TxRow[]; mode: Mode; year: number; month: number; start: string; end: string }): Point[] {
   const { kind, rows, mode, year, month, start, end } = args;
-  const only = rows.filter(r => r.kind === kind);
+  const only = rows.filter(r => r.kind === kind && !r.cancelled);
   const byDay = new Map<string, number>();
   const byMonth = new Map<string, number>();
   for (const r of only) {

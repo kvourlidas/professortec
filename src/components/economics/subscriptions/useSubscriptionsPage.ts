@@ -444,6 +444,20 @@ export function useSubscriptionsPage() {
         endsISO = e;
       } else { endsISO = null; }
     }
+    if (!isRenew) {
+      const { data: existingActive } = await supabase
+        .from('student_subscriptions')
+        .select('id')
+        .eq('school_id', schoolId)
+        .eq('student_id', selStudent.id)
+        .eq('status', 'active')
+        .limit(1);
+      if (existingActive && existingActive.length > 0) {
+        setAssignError('Ο μαθητής έχει ήδη ενεργή συνδρομή. Δεν επιτρέπεται προσθήκη δεύτερης ενεργής συνδρομής.');
+        return;
+      }
+    }
+
     setSaving(true); setAssignError(null);
     try {
       await callEdgeFunction('student-subscription-create', {

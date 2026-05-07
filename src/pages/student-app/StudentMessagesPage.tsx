@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Send, Search, RefreshCw, MessageSquareText, Loader2 } from 'lucide-react';
+import { Send, Search, RefreshCw, MessageSquareText, Loader2, Smile } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../auth';
@@ -91,6 +91,46 @@ export default function StudentMessagesPage() {
   const canSend = useMemo(() => draft.trim().length > 0 && !sending && !!activeThread, [draft, sending, activeThread]);
 
   const [refreshing, setRefreshing] = useState(false);
+
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const emojiPickerRef = useRef<HTMLDivElement | null>(null);
+  const EMOJIS = [
+    // Smileys & people
+    '😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇',
+    '🥰','😍','🤩','😘','😗','😚','😙','😋','😛','😜','🤪','😝','🤑',
+    '🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬',
+    '🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤧','🥵','🥶',
+    '🥴','😵','🤯','🤠','🥳','😎','🤓','🧐','😕','😟','🙁','☹️','😮',
+    '😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖',
+    '😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀',
+    // Hands & gestures
+    '👍','👎','👌','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','👇','☝️',
+    '👋','🤚','🖐️','✋','🖖','👏','🙌','🤲','🤝','🙏','💪','✍️',
+    // Hearts & symbols
+    '❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❣️','💕','💞',
+    '💓','💗','💖','💘','💝','✨','💫','⭐','🌟','🔥','💥','❄️','🌈',
+    // Activities & objects
+    '🎉','🎊','🎈','🎁','🏆','🥇','🎯','📌','🔔','💡','🔑','🔒','✅',
+    '❌','⚠️','💬','📞','📅','🕐','📚','📖','✏️','📝','🎵','🎶','🎸',
+    // Food & drink
+    '🍕','🍔','🍟','🍰','🎂','☕','🍺','🥂','🍷','🥤','🍎','🍓','🍩',
+  ];
+
+  useEffect(() => {
+    if (!showEmojiPicker) return;
+    const handler = (e: MouseEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target as Node)) {
+        setShowEmojiPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showEmojiPicker]);
+
+  const insertEmoji = (emoji: string) => {
+    setDraft((prev) => prev + emoji);
+    setShowEmojiPicker(false);
+  };
 
   const manualRefresh = async () => {
     if (!activeThread || refreshing) return;
@@ -475,6 +515,38 @@ export default function StudentMessagesPage() {
                   }
                 }}
               />
+              <div className="relative shrink-0" ref={emojiPickerRef}>
+                {showEmojiPicker && (
+                  <div
+                    className={[
+                      'absolute bottom-full right-0 mb-2 z-50 rounded-xl p-2 shadow-xl overflow-y-auto',
+                      isDark ? 'bg-[#1e293b] border border-slate-700/50' : 'bg-white border border-slate-200',
+                    ].join(' ')}
+                    style={{ width: 292, maxHeight: 260, overflowX: 'hidden', display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 2 }}
+                  >
+                    {EMOJIS.map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => insertEmoji(emoji)}
+                        className={`flex h-8 w-8 items-center justify-center rounded-lg text-lg transition hover:scale-110 ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setShowEmojiPicker((v) => !v)}
+                  disabled={!activeThread}
+                  className={`flex h-10 w-10 items-center justify-center rounded-xl transition disabled:cursor-not-allowed disabled:opacity-30 ${
+                    isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'
+                  } ${showEmojiPicker ? (isDark ? 'bg-slate-700' : 'bg-slate-100') : ''}`}
+                >
+                  <Smile className="h-4 w-4" />
+                </button>
+              </div>
               <button
                 onClick={sendMessage}
                 disabled={!canSend}

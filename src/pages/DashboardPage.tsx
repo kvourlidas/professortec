@@ -18,11 +18,11 @@ export default function DashboardPage() {
         <DashboardUpcomingSessionsSection schoolId={schoolId} />
       </div>
 
-      {/* Row 2: Metrics + Tests */}
-      <div className="grid gap-4 lg:grid-cols-2">
+      {/* Row 2: Metrics + Tests (temporarily hidden) */}
+      {/* <div className="grid gap-4 lg:grid-cols-2">
         <DashboardMetricsSection schoolId={schoolId} />
         <DashboardMonthlyTestsAvgGradesSection schoolId={schoolId} />
-      </div>
+      </div> */}
 
       {/* Row 3: Calendar */}
       <DashboardCalendarSection schoolId={schoolId} />

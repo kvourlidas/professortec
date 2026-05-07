@@ -1,4 +1,4 @@
-import { TrendingUp } from 'lucide-react';
+import { Ban, TrendingUp } from 'lucide-react';
 import { EconomicsPaginationBar } from './EconomicsPaginationBar';
 import { money } from '../utils';
 import { PAGE_SIZE } from '../constants';
@@ -11,11 +11,13 @@ interface EconomicsTransactionsCardProps {
   txTotalPages: number;
   onPrev: () => void;
   onNext: () => void;
+  onCancel?: (row: TxRow) => void;
+  busy?: boolean;
   isDark: boolean;
 }
 
 export function EconomicsTransactionsCard({
-  txRows, txPageRows, txPage, txTotalPages, onPrev, onNext, isDark,
+  txRows, txPageRows, txPage, txTotalPages, onPrev, onNext, onCancel, busy, isDark,
 }: EconomicsTransactionsCardProps) {
   const cardCls = isDark
     ? 'overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]'
@@ -31,9 +33,9 @@ export function EconomicsTransactionsCard({
 
   const txDivideCls = isDark ? 'divide-y divide-slate-800/40' : 'divide-y divide-slate-100';
 
-  const txRowHoverCls = isDark
-    ? 'grid grid-cols-12 items-center px-4 py-2.5 text-xs transition-colors hover:bg-white/[0.02]'
-    : 'grid grid-cols-12 items-center px-4 py-2.5 text-xs transition-colors hover:bg-slate-50';
+  const cancelledChipCls = isDark
+    ? 'border-red-900/50 bg-red-950/30 text-red-400/70'
+    : 'border-red-200 bg-red-50 text-red-400';
 
   const incomeChipCls = isDark
     ? 'border-emerald-700/50 bg-emerald-950/40 text-emerald-300'
@@ -67,26 +69,59 @@ export function EconomicsTransactionsCard({
           <div className={txHeaderCls} style={{ color: 'color-mix(in srgb, var(--color-accent) 70%, white)' }}>
             <div className="col-span-2">Ημερομηνία</div>
             <div className="col-span-2">Τύπος</div>
-            <div className="col-span-6">Περιγραφή</div>
+            <div className="col-span-5">Περιγραφή</div>
             <div className="col-span-2 text-right">Ποσό</div>
+            <div className="col-span-1" />
           </div>
           <div className={txDivideCls}>
-            {txPageRows.map(r => (
-              <div key={`${r.source}-${r.id}`} className={txRowHoverCls}>
-                <div className={`col-span-2 tabular-nums ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{r.date}</div>
-                <div className="col-span-2">
-                  <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${r.kind === 'income' ? incomeChipCls : expenseChipCls}`}>
-                    {r.kind === 'income' ? 'Έσοδο' : 'Έξοδο'}
-                  </span>
+            {txPageRows.map(r => {
+              const isCancelled = !!r.cancelled;
+              const mutedText = isDark ? 'text-slate-500' : 'text-slate-400';
+              return (
+                <div key={`${r.source}-${r.id}`} className={`relative grid grid-cols-12 items-center px-4 py-2.5 text-xs transition-colors ${
+                  isCancelled
+                    ? (isDark ? 'bg-red-950/10' : 'bg-red-50/40')
+                    : (isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-slate-50')
+                }`}>
+                  {isCancelled && (
+                    <div className="pointer-events-none absolute inset-x-0 top-1/2 h-[1.5px] -translate-y-1/2"
+                      style={{ background: 'rgba(239,68,68,0.5)' }} />
+                  )}
+                  <div className={`col-span-2 tabular-nums ${isCancelled ? mutedText : (isDark ? 'text-slate-500' : 'text-slate-400')}`}>{r.date}</div>
+                  <div className="col-span-2">
+                    {isCancelled ? (
+                      <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${cancelledChipCls}`}>
+                        <Ban className="h-2.5 w-2.5" />
+                        Ακυρώθηκε
+                      </span>
+                    ) : (
+                      <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${r.kind === 'income' ? incomeChipCls : expenseChipCls}`}>
+                        {r.kind === 'income' ? 'Έσοδο' : 'Έξοδο'}
+                      </span>
+                    )}
+                  </div>
+                  <div className={`col-span-5 truncate ${isCancelled ? mutedText : (isDark ? 'text-slate-300' : 'text-slate-600')}`}>
+                    {r.label}{r.notes && <span className={isDark ? 'text-slate-600' : 'text-slate-400'}> — {r.notes}</span>}
+                  </div>
+                  <div className={`col-span-2 text-right font-semibold tabular-nums ${isCancelled ? mutedText : (r.kind === 'income' ? txAmountIncomeCls : txAmountExpenseCls)}`}>
+                    {r.kind === 'income' ? '+' : '−'} {money(r.amount)}
+                  </div>
+                  <div className="col-span-1 flex justify-end">
+                    {!isCancelled && onCancel && (
+                      <button
+                        type="button"
+                        title="Ακύρωση"
+                        disabled={busy}
+                        onClick={() => onCancel(r)}
+                        className={`flex h-6 w-6 items-center justify-center rounded-md border transition-all hover:scale-105 active:scale-95 disabled:opacity-40 ${isDark ? 'border-amber-800/50 bg-amber-950/40 text-amber-400 hover:bg-amber-950/70' : 'border-amber-200 bg-amber-50 text-amber-600 hover:bg-amber-100'}`}
+                      >
+                        <Ban className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div className={`col-span-6 truncate ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                  {r.label}{r.notes && <span className={isDark ? 'text-slate-600' : 'text-slate-400'}> — {r.notes}</span>}
-                </div>
-                <div className={`col-span-2 text-right font-semibold tabular-nums ${r.kind === 'income' ? txAmountIncomeCls : txAmountExpenseCls}`}>
-                  {r.kind === 'income' ? '+' : '−'} {money(r.amount)}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
           {txRows.length > PAGE_SIZE && (
             <div className={`border-t px-4 py-2.5 ${isDark ? 'border-slate-800/60' : 'border-slate-200'}`}>
