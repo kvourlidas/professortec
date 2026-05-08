@@ -16,7 +16,7 @@ import type { StudentRow, LevelRow, SubscriptionRow, ClassEnrollment, ProgramSlo
 import { STUDENT_SELECT, formatDateToGreek, isoToDisplay, displayToIso } from '../components/students/types.ts';
 import type { StudentGradeRow } from '../components/grades/types.ts';
 import { PaymentModal } from '../components/economics/subscriptions/PaymentModal';
-import type { StudentViewRow } from '../components/economics/subscriptions/types';
+import type { PaymentRow, StudentViewRow } from '../components/economics/subscriptions/types';
 import { isHourlyPackageName, parseMoney } from '../components/economics/subscriptions/utils';
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -466,7 +466,7 @@ export default function StudentCardPage() {
   const [payPages, setPayPages] = useState<Record<string, number>>({});
 
   // payment modal
-  const [paymentModal, setPaymentModal] = useState<{ row: StudentViewRow } | null>(null);
+  const [paymentModal, setPaymentModal] = useState<{ row: StudentViewRow; allStudentPayments: PaymentRow[] } | null>(null);
   const [paymentInput, setPaymentInput] = useState('');
   const [payingLoading, setPayingLoading] = useState(false);
   const [cancellingPaymentId, setCancellingPaymentId] = useState<string | null>(null);
@@ -517,7 +517,7 @@ export default function StudentCardPage() {
     return isHourlyPackageName(sub.package_name) ? Math.abs(raw) : raw;
   }, [paymentModal]);
   const pmBalance      = useMemo(() => pmBilled - pmPaid, [pmBilled, pmPaid]);
-  const pmHistoryTotal = useMemo(() => paymentModal?.row.payments.filter(p => !(p as any).cancelled_at).reduce((s, p) => s + Number(p.amount ?? 0), 0) ?? 0, [paymentModal]);
+  const pmHistoryTotal = useMemo(() => paymentModal?.allStudentPayments.filter(p => !p.cancelled_at).reduce((s, p) => s + Number(p.amount ?? 0), 0) ?? 0, [paymentModal]);
 
   useEffect(() => {
     if (!id || !schoolId) return;
@@ -643,7 +643,7 @@ export default function StudentCardPage() {
   const openPaymentModal = (sub: SubscriptionRow) => {
     if (!student) return;
     const subPayments = payments.filter(p => p.subscription_id === sub.id);
-    // Use view-computed paid_amount so the modal stats match the card display
+    const allStudentPayments = [...payments].sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''));
     const paid = Number((sub as any).paid_amount ?? 0);
     const row: StudentViewRow = {
       student_id: student.id,
@@ -654,7 +654,7 @@ export default function StudentCardPage() {
       payments: subPayments as any,
     };
     setPaymentInput('');
-    setPaymentModal({ row });
+    setPaymentModal({ row, allStudentPayments });
   };
 
   const submitPayment = async (method: 'cash' | 'card' | 'bank_transfer') => {
@@ -673,6 +673,7 @@ export default function StudentCardPage() {
     if (freshSub) {
       const freshPays = pays.filter(p => p.subscription_id === subId);
       const freshPaid = freshPays.reduce((a, p) => a + Number(p.amount ?? 0), 0);
+      const allStudentPayments = [...pays].sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''));
       setPaymentModal({
         row: {
           student_id: student.id,
@@ -682,6 +683,7 @@ export default function StudentCardPage() {
           balance: Number(freshSub.balance ?? 0),
           payments: freshPays as any,
         },
+        allStudentPayments,
       });
     }
   };
@@ -705,6 +707,7 @@ export default function StudentCardPage() {
         const subId = prev.row.sub.id;
         const freshSub = subs.find(s => s.id === subId);
         const freshPays = pays.filter(p => p.subscription_id === subId);
+        const allStudentPayments = [...pays].sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''));
         return {
           ...prev,
           row: {
@@ -714,6 +717,7 @@ export default function StudentCardPage() {
             paid: Number((freshSub as any)?.paid_amount ?? 0),
             balance: Number(freshSub?.balance ?? prev.row.balance),
           },
+          allStudentPayments,
         };
       });
     } catch (err: any) {
@@ -1273,6 +1277,7 @@ export default function StudentCardPage() {
         cancellingPaymentId={cancellingPaymentId}
         onInputChange={setPaymentInput}
         onSubmit={submitPayment}
+        allStudentPayments={paymentModal?.allStudentPayments}
         onCancelPayment={cancelPayment}
         onClose={() => setPaymentModal(null)}
       />

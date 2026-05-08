@@ -119,7 +119,7 @@ export function useSubscriptionsPage() {
   const [allStudents, setAllStudents] = useState<StudentRow[]>([]);
 
   // ── Payment modal ──────────────────────────────────────────────────────────
-  const [paymentModal,  setPaymentModal]  = useState<{ row: StudentViewRow } | null>(null);
+  const [paymentModal,  setPaymentModal]  = useState<{ row: StudentViewRow; allStudentPayments: PaymentRow[] } | null>(null);
   const [paymentInput,  setPaymentInput]  = useState('');
   const [payingLoading, setPayingLoading] = useState(false);
   const [cancellingPaymentId, setCancellingPaymentId] = useState<string | null>(null);
@@ -132,7 +132,7 @@ export function useSubscriptionsPage() {
     return isHourlyPackageName(sub.package_name) ? Math.abs(raw) : raw;
   }, [paymentModal]);
   const pmBalance      = useMemo(() => pmBilled - pmPaid, [pmBilled, pmPaid]);
-  const pmHistoryTotal = useMemo(() => paymentModal?.row.payments.reduce((s, p) => p.cancelled_at ? s : s + Number(p.amount ?? 0), 0) ?? 0, [paymentModal]);
+  const pmHistoryTotal = useMemo(() => paymentModal?.allStudentPayments.reduce((s, p) => p.cancelled_at ? s : s + Number(p.amount ?? 0), 0) ?? 0, [paymentModal]);
 
   // ── Delete ─────────────────────────────────────────────────────────────────
   const [deleteTarget, setDeleteTarget] = useState<StudentViewRow | null>(null);
@@ -307,7 +307,29 @@ export function useSubscriptionsPage() {
   useEffect(() => { loadExpired(); }, [schoolId, expiredPage, search, payFilter]);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
-  const openPaymentModal = (row: StudentViewRow) => { setPaymentInput(''); setPaymentModal({ row }); };
+  const fetchAllStudentPayments = async (studentId: string): Promise<PaymentRow[]> => {
+    if (!schoolId) return [];
+    const { data: subData } = await supabase
+      .from('student_subscriptions')
+      .select('id')
+      .eq('school_id', schoolId)
+      .eq('student_id', studentId);
+    const allSubIds = (subData ?? []).map((s: any) => s.id as string);
+    if (allSubIds.length === 0) return [];
+    const { data: payData } = await supabase
+      .from('student_subscription_payments')
+      .select('id,subscription_id,amount,created_at,payment_method,cancelled_at')
+      .eq('school_id', schoolId)
+      .in('subscription_id', allSubIds)
+      .order('created_at', { ascending: false });
+    return (payData ?? []) as PaymentRow[];
+  };
+
+  const openPaymentModal = async (row: StudentViewRow) => {
+    setPaymentInput('');
+    const allStudentPayments = await fetchAllStudentPayments(row.student_id);
+    setPaymentModal({ row, allStudentPayments });
+  };
 
   const submitPayment = async (method: 'cash' | 'card' | 'bank_transfer') => {
     if (!schoolId || !paymentModal?.row.sub) return;
@@ -334,9 +356,16 @@ export function useSubscriptionsPage() {
       // Optimistically update the modal so the row stays visible with cancelled state
       setPaymentModal(prev => {
         if (!prev) return null;
-        const cancelledAmount = Number(prev.row.payments.find(p => p.id === paymentId)?.amount ?? 0);
+        const now = new Date().toISOString();
+        const isCurrentSub = prev.row.payments.some(p => p.id === paymentId);
+        const cancelledAmount = isCurrentSub
+          ? Number(prev.row.payments.find(p => p.id === paymentId)?.amount ?? 0)
+          : 0;
         const payments = prev.row.payments.map(p =>
-          p.id === paymentId ? { ...p, cancelled_at: new Date().toISOString() } : p
+          p.id === paymentId ? { ...p, cancelled_at: now } : p
+        );
+        const allStudentPayments = prev.allStudentPayments.map(p =>
+          p.id === paymentId ? { ...p, cancelled_at: now } : p
         );
         return {
           ...prev,
@@ -346,6 +375,7 @@ export function useSubscriptionsPage() {
             paid: Math.max(0, prev.row.paid - cancelledAmount),
             balance: prev.row.balance + cancelledAmount,
           },
+          allStudentPayments,
         };
       });
       // Refresh the main subscription tables in the background

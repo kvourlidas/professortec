@@ -266,7 +266,7 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
               {details && <p className={`text-[10px] leading-snug mt-0.5 truncate ${sub}`}>{details}</p>}
             </div>
             <div className="flex flex-col items-end gap-0.5 shrink-0">
-              <span className={`text-[10px] font-bold font-mono tabular-nums ${isGreen ? 'text-emerald-400' : ''}`}
+              <span className={`text-[11px] font-semibold font-sans tabular-nums tracking-tight ${isGreen ? 'text-emerald-400' : ''}`}
                 style={isGreen ? {} : { color: 'var(--color-accent)' }}>
                 {formatTime(s.startTime)}–{formatTime(s.endTime)}
               </span>
@@ -285,7 +285,7 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
     return (
       <div className={`rounded-xl border p-4 ${borderCls}`}>
         <div className="flex items-start justify-between mb-2 gap-2">
-          <span className={`text-xs font-bold font-mono tabular-nums ${isGreen ? 'text-emerald-400' : ''}`}
+          <span className={`text-sm font-semibold font-sans tabular-nums tracking-tight ${isGreen ? 'text-emerald-400' : ''}`}
             style={isGreen ? {} : { color: 'var(--color-accent)' }}>
             {formatTime(s.startTime)} – {formatTime(s.endTime)}
           </span>

@@ -197,6 +197,7 @@ export default function StudentsSubscriptionsPage() {
           pmHistoryTotal={p.pmHistoryTotal}
           isDark={p.isDark}
           cancellingPaymentId={p.cancellingPaymentId}
+          allStudentPayments={p.paymentModal?.allStudentPayments}
           onInputChange={p.setPaymentInput}
           onSubmit={p.submitPayment}
           onCancelPayment={p.cancelSubscriptionPayment}

@@ -3,7 +3,7 @@ import { Ban, Banknote, CreditCard, HandCoins, Landmark, Loader2, X } from 'luci
 import { CURRENCY_SYMBOL, typeColors } from './constants';
 import { TypeIcon } from './TypeIcon';
 import { formatDateTime, isHourlyPackageName, money, packageTypeFromName, typeLabel } from './utils';
-import type { PaymentMethod, StudentViewRow } from './types';
+import type { PaymentMethod, PaymentRow, StudentViewRow } from './types';
 
 interface Props {
   row: StudentViewRow | null;
@@ -15,6 +15,7 @@ interface Props {
   pmHistoryTotal: number;
   isDark: boolean;
   cancellingPaymentId?: string | null;
+  allStudentPayments?: PaymentRow[];
   onInputChange: (v: string) => void;
   onSubmit: (method: PaymentMethod) => void;
   onCancelPayment?: (paymentId: string) => void;
@@ -23,13 +24,14 @@ interface Props {
 
 export function PaymentModal({
   row, paymentInput, payingLoading, pmPaid, pmBilled, pmBalance, pmHistoryTotal,
-  isDark, cancellingPaymentId, onInputChange, onSubmit, onCancelPayment, onClose,
+  isDark, cancellingPaymentId, allStudentPayments, onInputChange, onSubmit, onCancelPayment, onClose,
 }: Props) {
   const [method, setMethod] = useState<PaymentMethod>('cash');
   useEffect(() => { setMethod('cash'); }, [row?.sub.id]);
 
   if (!row) return null;
 
+  const historyPayments = allStudentPayments ?? row.payments;
   const sub       = row.sub!;
   const pkgType   = packageTypeFromName(sub.package_name);
   const colors    = typeColors(pkgType, isDark);
@@ -125,10 +127,10 @@ export function PaymentModal({
                       disabled={payingLoading}
                       className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-xs font-medium transition disabled:opacity-50 ${
                         active
-                          ? 'border-[color:var(--color-accent)] bg-[color:var(--color-accent)]/10 text-[color:var(--color-accent)]'
+                          ? 'border-[color:var(--color-accent)] bg-[color:var(--color-accent)]/20 text-[color:var(--color-accent)] font-semibold'
                           : isDark
-                            ? 'border-slate-700/60 bg-slate-800/50 text-slate-400 hover:border-slate-600 hover:text-slate-200'
-                            : 'border-slate-300 bg-white text-slate-500 hover:border-slate-400 hover:text-slate-700'
+                            ? 'border-slate-600 bg-slate-700 text-slate-200 hover:bg-slate-600 hover:text-white'
+                            : 'border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-slate-900'
                       }`}
                     >
                       <Icon className="h-3.5 w-3.5" />
@@ -164,7 +166,7 @@ export function PaymentModal({
           {/* RIGHT: payment history */}
           <div className="flex flex-col p-6">
             <p className={`mb-3 text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Ιστορικό πληρωμών</p>
-            {row.payments.length === 0 ? (
+            {historyPayments.length === 0 ? (
               <div className={`flex flex-1 items-center justify-center rounded-xl border px-4 py-8 text-center text-xs ${isDark ? 'border-slate-700/50 bg-slate-900/30 text-slate-500' : 'border-slate-200 bg-slate-50 text-slate-400'}`}>
                 Δεν υπάρχουν πληρωμές ακόμα.
               </div>
@@ -172,8 +174,7 @@ export function PaymentModal({
               <>
                 <div className={`flex-1 overflow-hidden rounded-xl border ${isDark ? 'border-slate-700/50' : 'border-slate-200'}`}>
                   {/* Header */}
-                  <div className={`grid grid-cols-12 px-3 py-2 text-[10px] font-semibold uppercase tracking-widest ${isDark ? 'border-b border-slate-700/60 bg-slate-900/60' : 'border-b border-slate-200 bg-slate-50'}`}
-                    style={{ color: 'color-mix(in srgb,var(--color-accent) 70%,white)' }}>
+                  <div className={`grid grid-cols-12 px-3 py-2 text-[10px] font-semibold uppercase tracking-widest ${isDark ? 'border-b border-slate-700/60 bg-slate-900/60 text-white' : 'border-b border-slate-200 bg-slate-50 text-slate-900'}`}>
                     <div className="col-span-5">Ημερομηνία</div>
                     <div className="col-span-2 text-center">Τρόπος</div>
                     <div className="col-span-3 text-right">Ποσό</div>
@@ -181,7 +182,7 @@ export function PaymentModal({
                   </div>
                   {/* Rows */}
                   <div className="max-h-52 overflow-y-auto ss-thin">
-                    {row.payments.map((p, i) => {
+                    {historyPayments.map((p, i) => {
                       const isCancelled = !!p.cancelled_at;
                       const isCancelling = cancellingPaymentId === p.id;
                       const muted = isDark ? 'text-slate-500' : 'text-slate-400';
