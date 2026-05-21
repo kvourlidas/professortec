@@ -28,7 +28,10 @@
       "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\KOSTAS\\\\Desktop\\\\Projects\\\\ProfessorTec\\\\web-app\\\\src\\\\components\\\\economics\\\\subscriptions\" -Recurse)",
       "Bash(Select-Object FullName)",
       "mcp__claude_ai_Supabase__deploy_edge_function",
-      "Bash(npx supabase *)"
+      "Bash(npx supabase *)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\KOSTAS\\\\Desktop\\\\Projects\\\\ProfessorTec\\\\web-app\" -Recurse -Filter \"*migration*\" -File)",
+      "Bash(find \"c:\\\\Users\\\\KOSTAS\\\\Desktop\\\\Projects\\\\ProfessorTec\" -type f -name \"seed.sql\" 2>/dev/null)",
+      "Read(//c/Users/KOSTAS/Desktop/Projects/ProfessorTec/**)"
     ]
   }
 }

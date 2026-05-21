@@ -16,3 +16,10 @@ export function createUserClient(authHeader: string) {
     }
   );
 }
+
+export function createServiceClient() {
+  return createClient(
+    getEnv("SUPABASE_URL"),
+    getEnv("SUPABASE_SERVICE_ROLE_KEY"),
+  );
+}

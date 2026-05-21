@@ -112,25 +112,24 @@ export default function SendNotificationsPage() {
 
     setLoadingSend(true);
     try {
-      const rpcParams: Record<string, any> = {
-        p_title: title.trim(),
-        p_body: body.trim(),
-        p_kind: 'general',
-        p_data: {
-          screen: 'home',
-          recipient_mode: recipientMode,
-          recipient_names: recipientMode === 'students'
-            ? students.filter(s => selectedStudentIds.includes(s.id)).map(s => s.full_name)
-            : recipientMode === 'classes'
-            ? classes.filter(c => selectedClassIds.includes(c.id)).map(c => c.title)
-            : [],
+      const { data: result, error } = await supabase.functions.invoke('send-push-notifications', {
+        body: {
+          title: title.trim(),
+          body: body.trim(),
+          kind: 'general',
+          data: {
+            screen: 'home',
+            recipient_mode: recipientMode,
+            recipient_names: recipientMode === 'students'
+              ? students.filter(s => selectedStudentIds.includes(s.id)).map(s => s.full_name)
+              : recipientMode === 'classes'
+              ? classes.filter(c => selectedClassIds.includes(c.id)).map(c => c.title)
+              : [],
+          },
+          student_ids: recipientMode === 'students' ? selectedStudentIds : [],
+          class_ids:   recipientMode === 'classes'  ? selectedClassIds   : [],
         },
-        // Always include both ID arrays so PostgREST resolves the correct overload
-        p_student_ids: recipientMode === 'students' ? selectedStudentIds : [],
-        p_class_ids:   recipientMode === 'classes'  ? selectedClassIds   : [],
-      };
-
-      const { error } = await supabase.rpc('send_school_notification', rpcParams);
+      });
 
       if (error) {
         console.error(error);
@@ -138,7 +137,10 @@ export default function SendNotificationsPage() {
         return;
       }
 
-      setResultMsg('Η ειδοποίηση στάλθηκε επιτυχώς!');
+      const pushed: number = result?.pushed ?? 0;
+      setResultMsg(pushed > 0
+        ? `Η ειδοποίηση στάλθηκε σε ${pushed} μαθητή/ές!`
+        : 'Η ειδοποίηση αποθηκεύτηκε (κανένας μαθητής δεν είχε ενεργοποιημένες ειδοποιήσεις).');
       setTitle('');
       setBody('');
       setRecipientMode('all');
