@@ -299,7 +299,7 @@ export default function TutorsPage() {
   // ── Style helpers ────────────────────────────────────────────────────────
   const cardCls = `overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-md ring-1 ring-inset ${isDark ? 'border-slate-700/50 bg-slate-950/40 ring-white/[0.04]' : 'border-slate-200 bg-white/80 ring-black/[0.02]'}`;
   const searchInputCls = `h-9 w-full rounded-lg border pl-9 pr-3 text-xs outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 focus:border-[color:var(--color-accent)] sm:w-52 ${isDark ? 'border-slate-700/70 bg-slate-900/60 text-slate-100 placeholder-slate-500' : 'border-slate-200 bg-white text-slate-800 placeholder-slate-400'}`;
-  const theadRowCls = `border-b ${isDark ? 'border-slate-700/60 bg-slate-900/40' : 'border-slate-200 bg-slate-50'}`;
+  const theadRowCls = 'border-b';
   const tbodyDivideCls = `divide-y ${isDark ? 'divide-slate-800/50' : 'divide-slate-100'}`;
   const trHoverCls = `group transition-colors ${isDark ? 'hover:bg-white/[0.025]' : 'hover:bg-slate-50'}`;
   const paginationBtnCls = `inline-flex h-7 w-7 items-center justify-center rounded-lg border transition disabled:cursor-not-allowed disabled:opacity-30 ${isDark ? 'border-slate-700/60 bg-slate-900/30 text-slate-400 hover:border-slate-600 hover:bg-slate-800/50 hover:text-slate-200' : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-700'}`;
@@ -312,8 +312,8 @@ export default function TutorsPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3">
           <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
-            style={{ background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 60%, transparent))' }}>
-            <Users className="h-4.5 w-4.5" style={{ color: 'var(--color-input-bg)' }} />
+            style={{ background: 'var(--color-accent)' }}>
+            <Users className="h-4.5 w-4.5" style={{ color: 'var(--ch-icon)' }} />
           </div>
           <div>
             <h1 className={`text-base font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Καθηγητές</h1>
@@ -406,10 +406,10 @@ export default function TutorsPage() {
           <div className="overflow-x-auto">
             <table className="min-w-full border-collapse text-xs">
               <thead>
-                <tr className={theadRowCls}>
+                <tr className={theadRowCls} style={{ background: 'var(--ch-bg)', borderColor: 'var(--ch-divider)' }}>
                   {visibleColumnDefs.map((col: TutorColumnDef) => (
                     <th key={col.key} className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest"
-                      style={{ color: 'color-mix(in srgb, var(--color-accent) 80%, white)' }}>
+                      style={{ color: 'var(--ch-text)' }}>
                       <span className="inline-flex items-center gap-1.5">
                         <span className="opacity-60">{colIcon(col.key)}</span>
                         {stripGreekAccents(col.label)}
@@ -417,7 +417,7 @@ export default function TutorsPage() {
                     </th>
                   ))}
                   <th className="px-5 py-3 text-right text-[10px] font-semibold uppercase tracking-widest"
-                    style={{ color: 'color-mix(in srgb, var(--color-accent) 80%, white)' }}>ΕΝΕΡΓΕΙΕΣ</th>
+                    style={{ color: 'var(--ch-text)' }}>ΕΝΕΡΓΕΙΕΣ</th>
                 </tr>
               </thead>
               <tbody className={tbodyDivideCls}>

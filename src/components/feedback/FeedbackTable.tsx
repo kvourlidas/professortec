@@ -25,7 +25,7 @@ export function FeedbackTable({
     ? 'overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-2xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]'
     : 'overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md';
 
-  const theadRowCls = isDark ? 'border-b border-slate-700/60 bg-slate-900/40' : 'border-b border-slate-200 bg-slate-50';
+  const theadRowCls = 'border-b';
   const tbodyDivideCls = isDark ? 'divide-y divide-slate-800/50' : 'divide-y divide-slate-100';
   const trHoverCls = isDark ? 'group transition-colors hover:bg-white/[0.025]' : 'group transition-colors hover:bg-slate-50';
 
@@ -71,10 +71,10 @@ export function FeedbackTable({
         <div className="overflow-x-auto">
           <table className="min-w-full border-collapse text-xs">
             <thead>
-              <tr className={theadRowCls}>
+              <tr className={theadRowCls} style={{ background: 'var(--ch-bg)', borderColor: 'var(--ch-divider)' }}>
                 {['ΟΝΟΜΑΤΕΠΩΝΥΜΟ', 'ΑΞΙΟΛΟΓΗΣΗ', 'FEEDBACK'].map((label) => (
                   <th key={label} className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest"
-                    style={{ color: 'color-mix(in srgb, var(--color-accent) 80%, white)' }}>
+                    style={{ color: 'var(--ch-text)' }}>
                     {label}
                   </th>
                 ))}

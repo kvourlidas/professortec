@@ -87,20 +87,18 @@ export default function DashboardMetricsSection({ schoolId }: Props) {
         ? 'border-slate-700/50 bg-slate-950/40 ring-white/[0.04]'
         : 'border-slate-200 bg-white/80 ring-black/[0.02]'
     }`}>
-      <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 30%, transparent))' }} />
+      <div className="flex shrink-0 items-center gap-3 px-5 py-3" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
+        <div className="flex h-7 w-7 items-center justify-center rounded-lg"
+          style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
+          <Users className="h-3.5 w-3.5" style={{ color: 'var(--ch-icon)' }} />
+        </div>
+        <div>
+          <p className="text-sm font-semibold" style={{ color: 'var(--ch-text)' }}>Συνδρομές μαθητών</p>
+          <p className="mt-0.5 text-[11px]" style={{ color: 'var(--ch-text-muted)' }}>Ενεργοί με συνδρομή vs μη ενεργοί</p>
+        </div>
+      </div>
 
       <div className="px-5 py-4">
-        <div className="mb-4 flex items-center gap-3">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg border"
-            style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', borderColor: 'color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>
-            <Users className="h-3.5 w-3.5" style={{ color: 'var(--color-accent)' }} />
-          </div>
-          <div>
-            <p className={`text-sm font-semibold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Συνδρομές μαθητών</p>
-            <p className={`mt-0.5 text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Ενεργοί με συνδρομή vs μη ενεργοί</p>
-          </div>
-        </div>
-
         {subs.loading ? (
           <div className="flex items-center justify-center gap-2 py-12">
             <Loader2 className="h-5 w-5 animate-spin text-slate-500" />

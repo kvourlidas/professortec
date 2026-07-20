@@ -41,23 +41,21 @@ function RecipientsModal({
         ].join(' ')}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Accent line */}
-        <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 25%, transparent))' }} />
-
         {/* Header */}
-        <div className={`flex items-center justify-between px-5 py-4 border-b ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
+        <div className="flex items-center justify-between px-5 py-4" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
           <div>
-            <p className={`text-xs font-semibold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+            <p className="text-xs font-semibold" style={{ color: 'var(--ch-text)' }}>
               Παραλήπτες
             </p>
-            <p className={`text-[10px] mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+            <p className="text-[10px] mt-0.5" style={{ color: 'var(--ch-text-muted)' }}>
               {modeLabel}{mode !== 'all' && names.length > 0 ? ` · ${names.length}` : ''}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className={`flex h-7 w-7 items-center justify-center rounded-lg transition ${isDark ? 'text-slate-500 hover:text-slate-300 hover:bg-slate-800' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
+            className="flex h-7 w-7 items-center justify-center rounded-lg transition"
+            style={{ background: 'var(--ch-btn-bg)', border: '1px solid var(--ch-btn-border)', color: 'var(--ch-btn-text)' }}
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -160,14 +158,6 @@ export function NotificationHistory({
     ? 'flex flex-col overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-2xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]'
     : 'flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md';
 
-  const headerCls = isDark
-    ? 'flex items-center justify-between gap-3 border-b border-slate-700/60 bg-slate-900/30 px-5 py-3.5'
-    : 'flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-5 py-3.5';
-
-  const iconBoxCls = isDark
-    ? 'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-800/50'
-    : 'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-100';
-
   const refreshBtnCls = isDark
     ? 'inline-flex items-center gap-1.5 rounded-lg border border-slate-700/60 bg-slate-800/50 px-2.5 py-1.5 text-[11px] font-medium text-slate-300 transition hover:border-slate-600 hover:bg-slate-700/60'
     : 'inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50';
@@ -196,16 +186,17 @@ export function NotificationHistory({
     <>
       <div className={cardCls}>
         {/* Header */}
-        <div className={headerCls}>
+        <div className="flex shrink-0 items-center justify-between gap-3 px-5 py-3" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
           <div className="flex items-center gap-2.5">
-            <div className={iconBoxCls}>
-              <History className={`h-3.5 w-3.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
+              style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
+              <History className="h-3.5 w-3.5" style={{ color: 'var(--ch-icon)' }} />
             </div>
             <div>
-              <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'color-mix(in srgb, var(--color-accent) 80%, white)' }}>
+              <span className="text-xs font-semibold" style={{ color: 'var(--ch-text)' }}>
                 Ιστορικό αποστολών
               </span>
-              <p className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+              <p className="text-[10px]" style={{ color: 'var(--ch-text-muted)' }}>
                 {sorted.length > 0 ? `${sorted.length} ειδοποιήσεις` : 'Τελευταίες αποστολές'}
               </p>
             </div>

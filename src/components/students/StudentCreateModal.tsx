@@ -65,8 +65,6 @@ export default function StudentCreateModal({ schoolId, levels, onCreated, onClos
   const inputCls = `h-9 w-full rounded-lg border px-3 text-sm outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 focus:border-[color:var(--color-accent)] ${isDark ? 'border-slate-700/70 bg-slate-900/60 text-slate-100 placeholder-slate-500' : 'border-slate-200 bg-slate-50 text-slate-800 placeholder-slate-400'}`;
   const modalBg = isDark ? 'border-slate-700/60 bg-[#1f2d3d]' : 'border-slate-200 bg-white';
   const parentBoxCls = `rounded-xl border p-4 ${isDark ? 'border-slate-700/50 bg-slate-900/30' : 'border-slate-200 bg-slate-50'}`;
-  const closeBtnCls = `flex h-7 w-7 items-center justify-center rounded-lg border transition ${isDark ? 'border-slate-700/60 bg-slate-800/50 text-slate-400 hover:border-slate-600 hover:text-slate-200' : 'border-slate-200 bg-slate-100 text-slate-500 hover:border-slate-300 hover:text-slate-700'}`;
-
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
@@ -141,18 +139,18 @@ export default function StudentCreateModal({ schoolId, levels, onCreated, onClos
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className={`relative w-full max-w-lg overflow-hidden rounded-2xl border shadow-2xl ${modalBg}`}>
-        <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 30%, transparent))' }} />
-
         {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-5 pb-4">
+        <div className="flex items-center justify-between px-6 py-4" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl"
-              style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>
-              <GraduationCap className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
+              style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
+              <GraduationCap className="h-4 w-4" style={{ color: 'var(--ch-icon)' }} />
             </div>
-            <h2 className={`text-sm font-semibold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Νέος μαθητής</h2>
+            <h2 className="text-sm font-semibold" style={{ color: 'var(--ch-text)' }}>Νέος μαθητής</h2>
           </div>
-          <button type="button" onClick={onClose} className={closeBtnCls}>
+          <button type="button" onClick={onClose}
+            className="flex h-7 w-7 items-center justify-center rounded-lg transition"
+            style={{ background: 'var(--ch-btn-bg)', border: '1px solid var(--ch-btn-border)', color: 'var(--ch-btn-text)' }}>
             <X className="h-3.5 w-3.5" />
           </button>
         </div>

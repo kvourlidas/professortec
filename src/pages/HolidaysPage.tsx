@@ -57,9 +57,7 @@ export default function HolidaysPage() {
     ? 'border-b border-slate-800/70 bg-slate-900/30 px-5 py-3'
     : 'border-b border-slate-200 bg-slate-50 px-5 py-3';
 
-  const theadRowCls = isDark
-    ? 'border-b border-slate-700/60 bg-slate-900/40'
-    : 'border-b border-slate-200 bg-slate-50';
+  const theadRowCls = 'border-b';
 
   const tbodyDivideCls = isDark ? 'divide-y divide-slate-800/50' : 'divide-y divide-slate-100';
   const trHoverCls = isDark ? 'group transition-colors hover:bg-white/[0.025]' : 'group transition-colors hover:bg-slate-50';
@@ -170,9 +168,9 @@ export default function HolidaysPage() {
       <div className="flex items-start gap-3">
         <div
           className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
-          style={{ background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 60%, transparent))' }}
+          style={{ background: 'var(--color-accent)' }}
         >
-          <CalendarOff className="h-4 w-4" style={{ color: 'var(--color-input-bg)' }} />
+          <CalendarOff className="h-4 w-4" style={{ color: 'var(--ch-icon)' }} />
         </div>
         <div>
           <h1 className={`text-base font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>
@@ -302,20 +300,20 @@ export default function HolidaysPage() {
           <div className="overflow-x-auto">
             <table className="min-w-full border-collapse text-xs">
               <thead>
-                <tr className={theadRowCls}>
+                <tr className={theadRowCls} style={{ background: 'var(--ch-bg)', borderColor: 'var(--ch-divider)' }}>
                   {[
                     { icon: <CalendarDays className="h-3 w-3" />, label: 'ΗΜΕΡΟΜΗΝΙΑ / ΠΕΡΙΟΔΟΣ' },
                     { icon: <CalendarOff className="h-3 w-3" />, label: 'ΠΕΡΙΓΡΑΦΗ' },
                   ].map(({ icon, label }) => (
                     <th key={label} className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest"
-                      style={{ color: 'color-mix(in srgb, var(--color-accent) 80%, white)' }}>
+                      style={{ color: 'var(--ch-text)' }}>
                       <span className="inline-flex items-center gap-1.5">
                         <span className="opacity-60">{icon}</span>{label}
                       </span>
                     </th>
                   ))}
                   <th className="px-5 py-3 text-right text-[10px] font-semibold uppercase tracking-widest"
-                    style={{ color: 'color-mix(in srgb, var(--color-accent) 80%, white)' }}>
+                    style={{ color: 'var(--ch-text)' }}>
                     ΕΝΕΡΓΕΙΕΣ
                   </th>
                 </tr>

@@ -87,7 +87,6 @@ export function AssignRenewModal({
   const selPkgType = selPackage ? resolvePackageType(selPackage) : null;
   const isYearly  = selPkgType === 'yearly';
   const isMonthly = selPkgType === 'monthly';
-  const isHourly  = selPkgType === 'hourly';
   const isCustom  = !!(selPackage?.is_custom);
 
   // ── Styles ────────────────────────────────────────────────────────────────
@@ -156,29 +155,20 @@ export function AssignRenewModal({
         ].join(' ')}
         style={isDark ? { background: 'var(--color-sidebar)' } : {}}
       >
-        {/* Accent bar */}
-        <div className="h-[3px] w-full" style={{
-          background: isRenew
-            ? 'linear-gradient(90deg,#38bdf8,color-mix(in srgb,#38bdf8 15%,transparent))'
-            : `linear-gradient(90deg,${accentVar},color-mix(in srgb,${accentVar} 15%,transparent))`,
-        }} />
-
         <div style={{ overflow: 'visible' }}>
 
           {/* Header */}
-          <div className="flex items-center justify-between px-6 pt-5 pb-4">
+          <div className="flex items-center justify-between px-6 py-4" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
             <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl" style={{
-                background: isRenew ? 'color-mix(in srgb,#38bdf8 12%,transparent)' : 'color-mix(in srgb,var(--color-accent) 12%,transparent)',
-                border: isRenew ? '1px solid color-mix(in srgb,#38bdf8 25%,transparent)' : '1px solid color-mix(in srgb,var(--color-accent) 25%,transparent)',
-              }}>
-                {isRenew ? <RefreshCw className="h-3.5 w-3.5 text-sky-400" /> : <Package className="h-3.5 w-3.5" style={{ color: accentVar }} />}
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
+                style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
+                {isRenew ? <RefreshCw className="h-3.5 w-3.5" style={{ color: 'var(--ch-icon)' }} /> : <Package className="h-3.5 w-3.5" style={{ color: 'var(--ch-icon)' }} />}
               </div>
               <div>
-                <h3 className={`text-sm font-semibold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>
+                <h3 className="text-sm font-semibold" style={{ color: 'var(--ch-text)' }}>
                   {isRenew ? 'Ανανέωση συνδρομής' : 'Ανάθεση πακέτου'}
                 </h3>
-                <p className={`mt-0.5 text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                <p className="mt-0.5 text-[11px]" style={{ color: 'var(--ch-text-muted)' }}>
                   {isRenew
                     ? `Ανανέωση για ${selStudent?.full_name ?? ''} — πακέτο, τιμή και νέα περίοδος.`
                     : 'Επίλεξε μαθητή, πακέτο, τιμή και περίοδο.'}
@@ -186,9 +176,8 @@ export function AssignRenewModal({
               </div>
             </div>
             <button type="button" onClick={onClose}
-              className={isDark
-                ? 'flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 text-slate-500 transition hover:border-slate-600 hover:text-slate-200'
-                : 'flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-400 transition hover:border-slate-300 hover:text-slate-700'}>
+              className="flex h-7 w-7 items-center justify-center rounded-lg transition"
+              style={{ background: 'var(--ch-btn-bg)', border: '1px solid var(--ch-btn-border)', color: 'var(--ch-btn-text)' }}>
               <X className="h-3.5 w-3.5" />
             </button>
           </div>
@@ -305,7 +294,6 @@ export function AssignRenewModal({
                                 )}
                                 <div className="min-w-0 flex-1">
                                   {!customColor && <p className={`truncate font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{pkg.name}</p>}
-                                  {pkg.hours && <p className={`text-[10px] ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>{pkg.hours} ώρες</p>}
                                 </div>
                                 <span className={`shrink-0 tabular-nums text-[11px] font-semibold ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                                   {money(pkg.price)} {CURRENCY_SYMBOL}
@@ -375,17 +363,6 @@ export function AssignRenewModal({
                 {selPackage ? (
                   <>
                     <label className={labelCls}>Περίοδος</label>
-
-                    {/* Hourly (non-custom) */}
-                    {isHourly && !isCustom && (
-                      <div>
-                        <AppDatePicker value={assignStartsOn} onChange={setAssignStartsOn} />
-                        <p className={`mt-1.5 text-[10px] ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
-                          Ωριαίο — χωρίς ημ. λήξης.
-                          {selPackage.hours ? ` ${selPackage.hours} ώρες συνολικά.` : ''}
-                        </p>
-                      </div>
-                    )}
 
                     {/* Custom package — always uses date range */}
                     {isCustom && (

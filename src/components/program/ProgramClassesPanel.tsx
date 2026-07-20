@@ -100,19 +100,18 @@ export default function ProgramClassesPanel({
         : 'border-slate-200 bg-white'
     }`}>
       <style>{PICKER_STYLE}</style>
-      <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 30%, transparent))' }} />
 
       {/* Header */}
-      <div className={`flex items-center gap-2.5 border-b px-4 py-3.5 ${isDark ? 'border-slate-800/70 bg-slate-900/30' : 'border-slate-100 bg-slate-50/80'}`}>
+      <div className="flex shrink-0 items-center gap-2.5 px-4 py-3" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
         <div className="flex h-6 w-6 items-center justify-center rounded-lg"
-          style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>
-          <GripVertical className="h-3 w-3" style={{ color: 'var(--color-accent)' }} />
+          style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
+          <GripVertical className="h-3 w-3" style={{ color: 'var(--ch-icon)' }} />
         </div>
         <div>
-          <h2 className={`text-xs font-semibold tracking-wide ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+          <h2 className="text-xs font-semibold tracking-wide" style={{ color: 'var(--ch-text)' }}>
             Διαθέσιμα τμήματα
           </h2>
-          <p className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+          <p className="text-[10px]" style={{ color: 'var(--ch-text-muted)' }}>
             Σύρετε ή επιλέξτε μέρα για προσθήκη
           </p>
         </div>

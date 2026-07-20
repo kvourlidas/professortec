@@ -70,10 +70,6 @@ export default function TutorsPaymentsPage() {
 
   const cardCls = `overflow-hidden rounded-2xl shadow-xl ${surface}`;
 
-  const cardHeaderCls = isDark
-    ? 'flex items-center justify-between border-b border-slate-800/60 bg-gradient-to-r from-slate-900/60 to-slate-900/20 px-5 py-3.5'
-    : 'flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white px-5 py-3.5';
-
   const inputCls = isDark
     ? 'h-10 w-full rounded-xl border border-slate-700/60 bg-slate-900/70 px-3.5 text-sm text-slate-100 placeholder-slate-500 outline-none transition-all focus:border-[color:var(--color-accent)] focus:ring-2 focus:ring-[color:var(--color-accent)]/20'
     : 'h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-sm text-slate-800 placeholder-slate-400 outline-none transition-all focus:border-[color:var(--color-accent)] focus:bg-white focus:ring-2 focus:ring-[color:var(--color-accent)]/15';
@@ -314,8 +310,8 @@ export default function TutorsPaymentsPage() {
       {/* ── Page header ── */}
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-lg"
-          style={{ background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 55%, #000))' }}>
-          <HandCoins className="h-5 w-5" style={{ color: 'var(--color-input-bg)' }} />
+          style={{ background: 'var(--color-accent)' }}>
+          <HandCoins className="h-5 w-5" style={{ color: 'var(--ch-icon)' }} />
         </div>
         <div>
           <h1 className={`text-[15px] font-bold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Πληρωμές Καθηγητών</h1>
@@ -484,18 +480,15 @@ export default function TutorsPaymentsPage() {
               CARD 1 — BASE PAY + BONUS
           ════════════════════════════════════════════════════════ */}
           <div className={cardCls}>
-            {/* Accent top strip */}
-            <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 15%, transparent))' }} />
-
             {/* Header */}
-            <div className={cardHeaderCls}>
+            <div className="flex shrink-0 items-center justify-between px-5 py-3" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
               <div className="flex items-center gap-2.5">
                 <div className="flex h-7 w-7 items-center justify-center rounded-lg"
-                  style={{ background: 'color-mix(in srgb, var(--color-accent) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--color-accent) 25%, transparent)' }}>
-                  <HandCoins className="h-3.5 w-3.5" style={{ color: 'var(--color-accent)' }} />
+                  style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
+                  <HandCoins className="h-3.5 w-3.5" style={{ color: 'var(--ch-icon)' }} />
                 </div>
-                <span className={`text-sm font-bold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>{selectedTutor.full_name ?? '—'}</span>
-                <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>· Αμοιβή & Μπόνους</span>
+                <span className="text-sm font-bold" style={{ color: 'var(--ch-text)' }}>{selectedTutor.full_name ?? '—'}</span>
+                <span className="text-xs" style={{ color: 'var(--ch-text-muted)' }}>· Αμοιβή & Μπόνους</span>
               </div>
               <button type="button" onClick={saveBasePay} disabled={busy}
                 className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all disabled:opacity-50 ${
@@ -606,12 +599,13 @@ export default function TutorsPaymentsPage() {
               CARD 2 — HISTORY
           ════════════════════════════════════════════════════════ */}
           <div ref={historyRef} className={cardCls}>
-            <div className={cardHeaderCls}>
+            <div className="flex shrink-0 items-center justify-between px-5 py-3" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
               <div className="flex items-center gap-2.5">
-                <div className={`flex h-7 w-7 items-center justify-center rounded-lg ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
-                  <History className={`h-3.5 w-3.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg"
+                  style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
+                  <History className="h-3.5 w-3.5" style={{ color: 'var(--ch-icon)' }} />
                 </div>
-                <span className={`text-sm font-bold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Ιστορικό Πληρωμών</span>
+                <span className="text-sm font-bold" style={{ color: 'var(--ch-text)' }}>Ιστορικό Πληρωμών</span>
                 {payments.length > 0 && (
                   <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${isDark ? 'border-slate-700/60 bg-slate-800/60 text-slate-400' : 'border-slate-200 bg-slate-100 text-slate-500'}`}>
                     {payments.length}
@@ -775,21 +769,20 @@ export default function TutorsPaymentsPage() {
       {editOpen && editingPayment && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
           <div className={`relative w-full max-w-lg overflow-hidden rounded-2xl shadow-2xl ${isDark ? 'border border-slate-700/60 bg-slate-900' : 'border border-slate-200 bg-white'}`}>
-            <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 15%, transparent))' }} />
-
-            <div className={`flex items-center justify-between px-6 py-4 ${isDark ? 'border-b border-slate-800/60' : 'border-b border-slate-100'}`}>
+            <div className="flex items-center justify-between px-6 py-4" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl"
-                  style={{ background: 'color-mix(in srgb, var(--color-accent) 13%, transparent)', border: '1px solid color-mix(in srgb, var(--color-accent) 28%, transparent)' }}>
-                  <Pencil className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl"
+                  style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
+                  <Pencil className="h-4 w-4" style={{ color: 'var(--ch-icon)' }} />
                 </div>
                 <div>
-                  <h3 className={`text-sm font-bold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Επεξεργασία Πληρωμής</h3>
-                  <p className={`mt-0.5 text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{isoDateFromTs(editingPayment.paid_on ?? editingPayment.created_at)}</p>
+                  <h3 className="text-sm font-bold" style={{ color: 'var(--ch-text)' }}>Επεξεργασία Πληρωμής</h3>
+                  <p className="mt-0.5 text-[11px]" style={{ color: 'var(--ch-text-muted)' }}>{isoDateFromTs(editingPayment.paid_on ?? editingPayment.created_at)}</p>
                 </div>
               </div>
               <button type="button" onClick={closeEditPayment} disabled={busy}
-                className={`flex h-8 w-8 items-center justify-center rounded-lg border transition ${isDark ? 'border-slate-700/60 bg-slate-800/60 text-slate-400 hover:text-slate-200' : 'border-slate-200 bg-slate-50 text-slate-500 hover:text-slate-700'} disabled:opacity-50`}>
+                className="flex h-7 w-7 items-center justify-center rounded-lg transition disabled:opacity-50"
+                style={{ background: 'var(--ch-btn-bg)', border: '1px solid var(--ch-btn-border)', color: 'var(--ch-btn-text)' }}>
                 <X className="h-3.5 w-3.5" />
               </button>
             </div>

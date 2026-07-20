@@ -28,16 +28,13 @@ export default function ProgramScheduleGrid({
         ? 'border-slate-700/50 bg-slate-950/40 ring-1 ring-inset ring-white/[0.04]'
         : 'border-slate-200 bg-white'
     }`}>
-      {/* Accent top bar */}
-      <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 30%, transparent))' }} />
-
       {/* Header */}
-      <div className={`flex items-center gap-2.5 border-b px-4 py-3.5 ${isDark ? 'border-slate-800/70 bg-slate-900/30' : 'border-slate-100 bg-slate-50/80'}`}>
+      <div className="flex shrink-0 items-center gap-2.5 px-4 py-3" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
         <div className="flex h-6 w-6 items-center justify-center rounded-lg"
-          style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>
-          <CalendarDays className="h-3 w-3" style={{ color: 'var(--color-accent)' }} />
+          style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
+          <CalendarDays className="h-3 w-3" style={{ color: 'var(--ch-icon)' }} />
         </div>
-        <h2 className={`text-xs font-semibold tracking-wide ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+        <h2 className="text-xs font-semibold tracking-wide" style={{ color: 'var(--ch-text)' }}>
           Εβδομαδιαίο πλάνο
         </h2>
       </div>

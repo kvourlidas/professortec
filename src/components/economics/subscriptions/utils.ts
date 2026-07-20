@@ -78,10 +78,6 @@ export function isMonthlyPackageName(name: string | null | undefined): boolean {
   const n = normalizeText(name);
   return n.includes('μην') || n.includes('monthly') || n.includes('month');
 }
-export function isHourlyPackageName(name: string | null | undefined): boolean {
-  const n = normalizeText(name);
-  return n.includes('ωρια') || n.includes('hour') || n.includes('hourly');
-}
 
 // ── Primary type resolver — uses package_type field first, falls back to name ──
 export function resolvePackageType(pkg: PackageRow): PackageType {
@@ -91,24 +87,17 @@ export function resolvePackageType(pkg: PackageRow): PackageType {
 
 export function packageTypeFromName(name: string | null | undefined): PackageType {
   if (isYearlyPackageName(name)) return 'yearly';
-  if (isMonthlyPackageName(name)) return 'monthly';
-  return 'hourly';
+  return 'monthly';
 }
 export function typeLabel(t: PackageType): string {
-  if (t === 'hourly') return 'Ωριαίο';
   if (t === 'monthly') return 'Μηνιαίο';
   return 'Ετήσιο';
 }
 export function periodSummary(sub: SubscriptionRow | null): string {
   if (!sub) return '—';
-  // If ends_on is set, always show the date range (covers custom packages)
   if (sub.ends_on) {
     const s = isoToDisplayDate(sub.starts_on), e = isoToDisplayDate(sub.ends_on);
     return s && e ? `${s} – ${e}` : s || '—';
   }
-  if (!isHourlyPackageName(sub.package_name)) {
-    return isoToDisplayDate(sub.starts_on) || '—';
-  }
-  const s = isoToDisplayDate(sub.starts_on);
-  return s ? `Από ${s} · ${money(Math.abs(Number((sub as any).used_hours ?? 0)))} ώρες` : '—';
+  return isoToDisplayDate(sub.starts_on) || '—';
 }

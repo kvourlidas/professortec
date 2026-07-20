@@ -16,9 +16,7 @@ export default function GradesTable({ loading, grades, isDark }: GradesTableProp
     ? 'overflow-hidden rounded-xl border border-slate-700/50'
     : 'overflow-hidden rounded-xl border border-slate-200';
 
-  const theadRowCls = isDark
-    ? 'border-b border-slate-700/60 bg-slate-900/80 backdrop-blur'
-    : 'border-b border-slate-200 bg-slate-50';
+  const theadRowCls = 'border-b';
 
   const tbodyDivideCls = isDark ? 'divide-y divide-slate-800/50' : 'divide-y divide-slate-100';
   const trHoverCls = isDark ? 'group transition-colors hover:bg-white/[0.025]' : 'group transition-colors hover:bg-slate-50';
@@ -51,10 +49,10 @@ export default function GradesTable({ loading, grades, isDark }: GradesTableProp
       <div className="max-h-[400px] overflow-y-auto grades-scroll">
         <table className="min-w-full border-collapse text-xs">
           <thead className="sticky top-0 z-10">
-            <tr className={theadRowCls}>
+            <tr className={theadRowCls} style={{ background: 'var(--ch-bg)', borderColor: 'var(--ch-divider)' }}>
               {['Ημερομηνία', 'Ώρα', 'Διαγώνισμα', 'Μάθημα', 'Τμήμα', 'Βαθμός'].map((h) => (
                 <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-widest"
-                  style={{ color: 'color-mix(in srgb, var(--color-accent) 80%, white)' }}>
+                  style={{ color: 'var(--ch-text)' }}>
                   {h}
                 </th>
               ))}

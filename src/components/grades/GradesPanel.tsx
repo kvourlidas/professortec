@@ -62,19 +62,17 @@ export default function GradesPanel({
         ? 'border-slate-700/50 bg-slate-950/40 ring-white/[0.04]'
         : 'border-slate-200 bg-white/80 ring-black/[0.02]'
     }`}>
-      <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 30%, transparent))' }} />
-
       {/* Panel header */}
-      <div className={`flex items-center gap-3 border-b px-5 py-3.5 ${isDark ? 'border-slate-800/70 bg-slate-900/30' : 'border-slate-200 bg-slate-50'}`}>
+      <div className="flex shrink-0 items-center gap-3 px-5 py-3" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
         <div className="flex h-7 w-7 items-center justify-center rounded-lg"
-          style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>
-          <BarChart3 className="h-3.5 w-3.5" style={{ color: 'var(--color-accent)' }} />
+          style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
+          <BarChart3 className="h-3.5 w-3.5" style={{ color: 'var(--ch-icon)' }} />
         </div>
         <div>
-          <h2 className={`text-xs font-semibold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+          <h2 className="text-xs font-semibold" style={{ color: 'var(--ch-text)' }}>
             {selectionType === 'student' ? 'Βαθμοί μαθητή' : selectionType === 'tutor' ? 'Βαθμοί καθηγητή' : 'Βαθμοί'}
           </h2>
-          <p className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{headerSubtitle}</p>
+          <p className="text-[11px]" style={{ color: 'var(--ch-text-muted)' }}>{headerSubtitle}</p>
         </div>
       </div>
 

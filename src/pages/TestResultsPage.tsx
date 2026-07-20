@@ -236,8 +236,8 @@ export default function TestResultsPage() {
         </button>
         <div className="flex items-start gap-3">
           <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
-            style={{ background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 60%, transparent))' }}>
-            <Users className="h-4 w-4" style={{ color: 'var(--color-input-bg)' }} />
+            style={{ background: 'var(--color-accent)' }}>
+            <Users className="h-4 w-4" style={{ color: 'var(--ch-icon)' }} />
           </div>
           <div>
             <h1 className={`text-base font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>
@@ -252,17 +252,16 @@ export default function TestResultsPage() {
 
       {/* Test info card */}
       <div className={cardCls}>
-        <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 30%, transparent))' }} />
-        <div className="p-5">
-          <div className="mb-4 flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg"
-              style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>
-              <ClipboardList className="h-3.5 w-3.5" style={{ color: 'var(--color-accent)' }} />
-            </div>
-            <h2 className={`text-sm font-semibold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
-              {test.title || `${test.subjectName} — ${test.classTitle}`}
-            </h2>
+        <div className="flex shrink-0 items-center gap-2 px-5 py-3" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg"
+            style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
+            <ClipboardList className="h-3.5 w-3.5" style={{ color: 'var(--ch-icon)' }} />
           </div>
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--ch-text)' }}>
+            {test.title || `${test.subjectName} — ${test.classTitle}`}
+          </h2>
+        </div>
+        <div className="p-5">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
               { icon: <Calendar className="h-3.5 w-3.5" />, label: 'Ημερομηνία', value: test.dateDisplay },
@@ -284,15 +283,14 @@ export default function TestResultsPage() {
 
       {/* Grade entry section */}
       <div className={cardCls}>
-        <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 30%, transparent))' }} />
-        <div className={`flex items-center gap-3 border-b px-5 py-3.5 ${isDark ? 'border-slate-800/70 bg-slate-900/30' : 'border-slate-200 bg-slate-50'}`}>
+        <div className="flex shrink-0 items-center gap-3 px-5 py-3" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
           <div className="flex h-7 w-7 items-center justify-center rounded-lg"
-            style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>
-            <Users className="h-3.5 w-3.5" style={{ color: 'var(--color-accent)' }} />
+            style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
+            <Users className="h-3.5 w-3.5" style={{ color: 'var(--ch-icon)' }} />
           </div>
           <div>
-            <h2 className={`text-xs font-semibold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>Καταχώρηση βαθμών</h2>
-            <p className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+            <h2 className="text-xs font-semibold" style={{ color: 'var(--ch-text)' }}>Καταχώρηση βαθμών</h2>
+            <p className="text-[11px]" style={{ color: 'var(--ch-text-muted)' }}>
               Μετακίνησε μαθητές στα δεξιά και συμπλήρωσε τους βαθμούς τους.
             </p>
           </div>

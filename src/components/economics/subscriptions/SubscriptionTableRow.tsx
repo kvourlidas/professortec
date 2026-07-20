@@ -1,7 +1,7 @@
-import { AlertCircle, CalendarDays, CheckCircle2, HandCoins, RefreshCw, StopCircle, Tag, Trash2, XCircle } from 'lucide-react';
+import { AlertCircle, CalendarDays, CheckCircle2, HandCoins, RefreshCw, Tag, Trash2, XCircle } from 'lucide-react';
 import { CURRENCY_SYMBOL, typeColors } from './constants';
 import { TypeIcon } from './TypeIcon';
-import { isHourlyPackageName, money, packageTypeFromName, periodSummary } from './utils';
+import { money, packageTypeFromName, periodSummary } from './utils';
 import type { PackageRow, StudentViewRow } from './types';
 
 interface Props {
@@ -11,26 +11,21 @@ interface Props {
   onPayment: (row: StudentViewRow) => void;
   onRenew: (row: StudentViewRow) => void;
   onDelete: (row: StudentViewRow) => void;
-  onEnd?: (row: StudentViewRow) => void;
 }
 
-export function SubscriptionTableRow({ row, isDark, packageById, onPayment, onRenew, onDelete, onEnd }: Props) {
+export function SubscriptionTableRow({ row, isDark, packageById, onPayment, onRenew, onDelete }: Props) {
   const sub        = row.sub!;
   const pkgName    = sub.package_name ?? '';
   const pkg        = sub.package_id ? packageById.get(sub.package_id) : undefined;
   const isCustom   = !!(pkg?.is_custom && pkg?.avatar_color);
-  const isHourly   = isHourlyPackageName(pkgName);
   const pkgType    = packageTypeFromName(pkgName);
   const colors     = typeColors(pkgType, isDark);
   const paid       = row.paid;
-  const billedRaw  = Number((sub as any).charge_amount ?? sub.price ?? 0);
-  const billed     = isHourly ? Math.abs(billedRaw) : billedRaw;
-  const balance    = isHourly ? Math.max(0, billed - paid) : Number(row.balance ?? 0);
-  const dispPrice  = isHourly ? Number(sub.price ?? 0) : Number(sub.price ?? billed);
+  const billed     = Number((sub as any).charge_amount ?? sub.price ?? 0);
+  const balance    = Number(row.balance ?? 0);
+  const dispPrice  = Number(sub.price ?? billed);
   const effectiveEndsOn = sub.ends_on ?? (isCustom ? (pkg?.ends_on ?? null) : null);
-  const dateExpired  = effectiveEndsOn ? new Date(effectiveEndsOn) < new Date() : false;
-  const hoursExpired = isCustom && pkg?.hours != null && Number(sub.used_hours ?? 0) >= pkg.hours;
-  const isExpired    = dateExpired || hoursExpired;
+  const isExpired  = effectiveEndsOn ? new Date(effectiveEndsOn) < new Date() : false;
 
   const paidCls    = paid > 0 ? (isDark ? 'text-emerald-400' : 'text-emerald-600') : (isDark ? 'text-slate-400' : 'text-slate-400');
   const balanceCls = balance > 0 ? (isDark ? 'text-amber-400' : 'text-amber-600') : (isDark ? 'text-emerald-400' : 'text-emerald-600');
@@ -69,7 +64,7 @@ export function SubscriptionTableRow({ row, isDark, packageById, onPayment, onRe
         ) : (
           <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${colors.badge}`}>
             <TypeIcon type={pkgType} className={`h-3 w-3 ${colors.icon}`} />
-            {pkgType === 'hourly' ? 'Ωριαίο' : pkgType === 'monthly' ? 'Μηνιαίο' : 'Ετήσιο'}
+            {pkgType === 'monthly' ? 'Μηνιαίο' : 'Ετήσιο'}
           </span>
         )}
       </td>
@@ -84,7 +79,7 @@ export function SubscriptionTableRow({ row, isDark, packageById, onPayment, onRe
 
       <td className="px-4 py-3 align-middle text-right">
         <span className={`text-[12px] tabular-nums ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
-          {money(dispPrice)} {CURRENCY_SYMBOL}{isHourly ? ' / ώρα' : ''}
+          {money(dispPrice)} {CURRENCY_SYMBOL}
         </span>
         {sub.discount_reason && (
           <div className={`mt-0.5 flex items-center justify-end gap-1 text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
@@ -115,14 +110,6 @@ export function SubscriptionTableRow({ row, isDark, packageById, onPayment, onRe
               className={`flex h-8 w-8 items-center justify-center rounded-lg border transition active:scale-95 hover:shadow-[0_0_10px_rgba(56,189,248,0.45)] ${isDark ? 'border-sky-500/40 bg-sky-500/10 text-sky-400 hover:bg-sky-500/20' : 'border-sky-300 bg-sky-50 text-sky-600 hover:bg-sky-100'}`}
               title="Ανανέωση συνδρομής">
               <RefreshCw className="h-3.5 w-3.5" />
-            </button>
-          )}
-          {/* End button — only for active regular (non-custom) hourly subscriptions */}
-          {sub.status === 'active' && isHourly && !isCustom && onEnd && (
-            <button type="button" onClick={() => onEnd(row)}
-              className={`flex h-8 w-8 items-center justify-center rounded-lg border transition active:scale-95 ${isDark ? 'border-amber-500/40 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20' : 'border-amber-300 bg-amber-50 text-amber-600 hover:bg-amber-100'}`}
-              title="Λήξη ωριαίας συνδρομής">
-              <StopCircle className="h-3.5 w-3.5" />
             </button>
           )}
           <button type="button" onClick={() => onPayment(row)}

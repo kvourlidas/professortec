@@ -18,12 +18,11 @@ interface Props {
   onPayment: (row: StudentViewRow) => void;
   onRenew: (row: StudentViewRow) => void;
   onDelete: (row: StudentViewRow) => void;
-  onEnd?: (row: StudentViewRow) => void;
 }
 
 export function SubscriptionsTable({
   rows, loading, totalCount, page, pageCount, showingFrom, showingTo, isDark, packageById,
-  variant, onPageChange, onOpenAssign, onPayment, onRenew, onDelete, onEnd,
+  variant, onPageChange, onOpenAssign, onPayment, onRenew, onDelete,
 }: Props) {
   const isExpiredVariant = variant === 'expired';
 
@@ -31,9 +30,7 @@ export function SubscriptionsTable({
     ? 'overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]'
     : 'overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md';
 
-  const theadCls = isDark
-    ? 'border-b border-slate-800/60 bg-slate-900/40 text-[10px] font-semibold uppercase tracking-widest'
-    : 'border-b border-slate-200 bg-slate-50 text-[10px] font-semibold uppercase tracking-widest';
+  const theadCls = 'border-b text-[10px] font-semibold uppercase tracking-widest';
 
   const paginationBarCls = isDark
     ? 'flex items-center justify-between gap-3 border-t border-slate-800/60 bg-slate-900/20 px-4 py-3'
@@ -88,7 +85,7 @@ export function SubscriptionsTable({
         ) : (
           <table className="min-w-full border-collapse text-xs">
             <thead>
-              <tr className={theadCls} style={{ color: 'color-mix(in srgb, var(--color-accent) 70%, white)' }}>
+              <tr className={theadCls} style={{ background: 'var(--ch-bg)', borderColor: 'var(--ch-divider)', color: 'var(--ch-text)' }}>
                 <th className="px-4 py-3 text-left">Μαθητης</th>
                 <th className="px-4 py-3 text-left">Πακετο</th>
                 <th className="px-4 py-3 text-left">Διαστημα</th>
@@ -109,7 +106,6 @@ export function SubscriptionsTable({
                   onPayment={onPayment}
                   onRenew={onRenew}
                   onDelete={onDelete}
-                  onEnd={onEnd}
                 />
               ))}
             </tbody>

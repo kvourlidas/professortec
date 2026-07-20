@@ -147,9 +147,7 @@ export default function LevelsPage() {
     ? 'overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-2xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]'
     : 'overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md';
 
-  const theadRowCls = isDark
-    ? 'border-b border-slate-700/60 bg-slate-900/40'
-    : 'border-b border-slate-200 bg-slate-50';
+  const theadRowCls = 'border-b';
 
   const tbodyDivideCls = isDark ? 'divide-y divide-slate-800/50' : 'divide-y divide-slate-100';
   const trHoverCls = isDark ? 'group transition-colors hover:bg-white/[0.025]' : 'group transition-colors hover:bg-slate-50';
@@ -188,9 +186,9 @@ export default function LevelsPage() {
         <div className="flex items-start gap-3">
           <div
             className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
-            style={{ background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 60%, transparent))' }}
+            style={{ background: 'var(--color-accent)' }}
           >
-            <Layers className="h-4 w-4" style={{ color: 'var(--color-input-bg)' }} />
+            <Layers className="h-4 w-4" style={{ color: 'var(--ch-icon)' }} />
           </div>
           <div>
             <h1 className={`text-base font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>
@@ -292,10 +290,10 @@ export default function LevelsPage() {
           <div className="overflow-x-auto">
             <table className="min-w-full border-collapse text-xs">
               <thead>
-                <tr className={theadRowCls}>
+                <tr className={theadRowCls} style={{ background: 'var(--ch-bg)', borderColor: 'var(--ch-divider)' }}>
                   <th
                     className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest"
-                    style={{ color: 'color-mix(in srgb, var(--color-accent) 80%, white)' }}
+                    style={{ color: 'var(--ch-text)' }}
                   >
                     <span className="inline-flex items-center gap-1.5">
                       <span className="opacity-60"><Layers className="h-3 w-3" /></span>
@@ -304,7 +302,7 @@ export default function LevelsPage() {
                   </th>
                   <th
                     className="px-5 py-3 text-right text-[10px] font-semibold uppercase tracking-widest"
-                    style={{ color: 'color-mix(in srgb, var(--color-accent) 80%, white)' }}
+                    style={{ color: 'var(--ch-text)' }}
                   >
                     ΕΝΕΡΓΕΙΕΣ
                   </th>

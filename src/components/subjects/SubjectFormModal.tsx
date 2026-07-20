@@ -69,12 +69,6 @@ export default function SubjectFormModal({
     ? 'relative w-full max-w-md overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl'
     : 'relative w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 shadow-2xl';
 
-  const modalTitleCls = isDark ? 'text-sm font-semibold text-slate-50' : 'text-sm font-semibold text-slate-800';
-
-  const modalCloseBtnCls = isDark
-    ? 'flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-800/50 text-slate-400 transition hover:border-slate-600 hover:text-slate-200'
-    : 'flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-slate-500 transition hover:border-slate-300 hover:text-slate-700';
-
   const modalFooterCls = isDark
     ? 'flex justify-end gap-2.5 border-t border-slate-800/70 bg-slate-900/20 px-6 py-4 mt-4'
     : 'flex justify-end gap-2.5 border-t border-slate-200 bg-slate-50 px-6 py-4 mt-4';
@@ -86,36 +80,27 @@ export default function SubjectFormModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className={modalCardCls} style={{ background: 'var(--color-sidebar)' }}>
-        {/* Accent top stripe */}
-        <div
-          className="h-0.5 w-full"
-          style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 30%, transparent))' }}
-        />
-
         {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-5 pb-4">
+        <div className="flex items-center justify-between px-6 py-4" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
           <div className="flex items-center gap-3">
-            <div
-              className="flex h-8 w-8 items-center justify-center rounded-xl"
-              style={{
-                background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)',
-                border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)',
-              }}
-            >
-              <BookOpen className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl"
+              style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
+              <BookOpen className="h-4 w-4" style={{ color: 'var(--ch-icon)' }} />
             </div>
             <div>
-              <h2 className={modalTitleCls}>
+              <h2 className="text-sm font-semibold" style={{ color: 'var(--ch-text)' }}>
                 {mode === 'create' ? 'Νέο μάθημα' : 'Επεξεργασία μαθήματος'}
               </h2>
               {mode === 'edit' && editingSubject && (
-                <p className={`text-[11px] mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                <p className="text-[11px] mt-0.5" style={{ color: 'var(--ch-text-muted)' }}>
                   {editingSubject.name}
                 </p>
               )}
             </div>
           </div>
-          <button type="button" onClick={onClose} className={modalCloseBtnCls}>
+          <button type="button" onClick={onClose}
+            className="flex h-7 w-7 items-center justify-center rounded-lg transition"
+            style={{ background: 'var(--ch-btn-bg)', border: '1px solid var(--ch-btn-border)', color: 'var(--ch-btn-text)' }}>
             <X className="h-3.5 w-3.5" />
           </button>
         </div>

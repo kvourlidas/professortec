@@ -12,6 +12,7 @@ interface SubjectsGridProps {
   tutorsBySubject: Map<string, TutorRow[]>;
   allTutors: TutorRow[];
   isDark: boolean;
+  hideTutors?: boolean;
   onEditSubject: (s: SubjectRow) => void;
   onDeleteSubject: (s: SubjectRow) => void;
   onTutorsChanged: () => void;
@@ -24,6 +25,7 @@ export default function SubjectsGrid({
   filteredSubjects,
   tutorsBySubject,
   isDark,
+  hideTutors = false,
   onEditSubject,
   onDeleteSubject,
   onTutorsChanged,
@@ -115,19 +117,21 @@ export default function SubjectsGrid({
             {subj.name}
           </span>
           <div className="flex items-center gap-1 shrink-0">
-            {/* Tutors → opens modal */}
-            <button
-              type="button"
-              title="Καθηγητές"
-              onClick={() => setTutorsModal({ id: subj.id, name: subj.name })}
-              className={`flex h-6 w-6 items-center justify-center rounded-md border transition hover:scale-105 active:scale-95 ${
-                isDark
-                  ? 'border-slate-700/60 text-slate-400 hover:bg-slate-800/50'
-                  : 'border-slate-200 text-slate-500 hover:bg-slate-100'
-              }`}
-            >
-              <Users className="h-3 w-3" />
-            </button>
+            {/* Tutors → opens modal (not shown for idiaiterou) */}
+            {!hideTutors && (
+              <button
+                type="button"
+                title="Καθηγητές"
+                onClick={() => setTutorsModal({ id: subj.id, name: subj.name })}
+                className={`flex h-6 w-6 items-center justify-center rounded-md border transition hover:scale-105 active:scale-95 ${
+                  isDark
+                    ? 'border-slate-700/60 text-slate-400 hover:bg-slate-800/50'
+                    : 'border-slate-200 text-slate-500 hover:bg-slate-100'
+                }`}
+              >
+                <Users className="h-3 w-3" />
+              </button>
+            )}
             {/* Edit */}
             <button
               type="button"
@@ -157,8 +161,8 @@ export default function SubjectsGrid({
           </div>
         </div>
 
-        {/* Tutors — plain text */}
-        {tutors.length > 0 && (
+        {/* Tutors — plain text (not shown for idiaiterou) */}
+        {!hideTutors && tutors.length > 0 && (
           <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5">
             {tutors.map((t) => (
               <span

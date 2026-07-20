@@ -233,10 +233,8 @@ export default function GradeEntryModal({ schoolId, onClose, onSaved }: GradeEnt
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className={cardCls} style={{ background: 'var(--color-sidebar)' }}>
-        <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 30%, transparent))' }} />
-
         {/* Header */}
-        <div className={`flex items-center justify-between px-6 pt-5 pb-4 border-b ${isDark ? 'border-slate-800/70' : 'border-slate-200'}`}>
+        <div className="flex items-center justify-between px-6 py-4" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
           <div className="flex items-center gap-3">
             {phase === 2 && (
               <button type="button" onClick={handleBackToPhase1} disabled={saving} className={closeBtnCls}>
@@ -244,23 +242,25 @@ export default function GradeEntryModal({ schoolId, onClose, onSaved }: GradeEnt
               </button>
             )}
             <div className="flex h-8 w-8 items-center justify-center rounded-xl"
-              style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>
+              style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
               {phase === 1
-                ? <ClipboardList className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
-                : <Users className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />}
+                ? <ClipboardList className="h-4 w-4" style={{ color: 'var(--ch-icon)' }} />
+                : <Users className="h-4 w-4" style={{ color: 'var(--ch-icon)' }} />}
             </div>
             <div>
-              <h2 className={`text-sm font-semibold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>
+              <h2 className="text-sm font-semibold" style={{ color: 'var(--ch-text)' }}>
                 {phase === 1 ? 'Καταχώρηση βαθμών' : 'Μαθητές & βαθμοί'}
               </h2>
-              <p className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              <p className="text-[11px]" style={{ color: 'var(--ch-text-muted)' }}>
                 {phase === 1
                   ? 'Επίλεξε διαγώνισμα για να καταχωρήσεις βαθμούς.'
                   : `${selectedTest?.subjectName} · ${selectedTest?.classTitle}${selectedTest?.dateDisplay ? ` · ${selectedTest.dateDisplay}` : ''}${selectedTest?.timeRange ? ` · ${selectedTest.timeRange}` : ''}`}
               </p>
             </div>
           </div>
-          <button type="button" onClick={handleClose} disabled={saving} className={closeBtnCls}>
+          <button type="button" onClick={handleClose} disabled={saving}
+            className="flex h-7 w-7 items-center justify-center rounded-lg transition disabled:opacity-50"
+            style={{ background: 'var(--ch-btn-bg)', border: '1px solid var(--ch-btn-border)', color: 'var(--ch-btn-text)' }}>
             <X className="h-3.5 w-3.5" />
           </button>
         </div>

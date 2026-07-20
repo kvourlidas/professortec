@@ -4,27 +4,26 @@ import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../auth';
 import { useTheme } from '../../context/ThemeContext';
 import {
-  Loader2, Plus, Save, Trash2, Package, Clock,
+  Loader2, Plus, Save, Trash2, Package,
   CalendarDays, Repeat, CheckCircle2, XCircle, ChevronDown, X, Pencil,
 } from 'lucide-react';
 import AppDatePicker from '../../components/ui/AppDatePicker';
 
-type PackageType = 'hourly' | 'monthly' | 'yearly';
+type PackageType = 'monthly' | 'yearly';
 type PackageRow = {
   id: string; school_id: string; name: string; price: number; currency: string;
   is_active: boolean; sort_order: number; package_type: PackageType | null;
-  hours: number | null; starts_on: string | null; ends_on: string | null;
+  starts_on: string | null; ends_on: string | null;
   avatar_color?: string | null; is_custom?: boolean | null;
 };
 type FormRow = {
   id: string; name: string; price: string; currency: string; is_active: boolean;
-  sort_order: number; package_type: PackageType; hours: string;
+  sort_order: number; package_type: PackageType;
   starts_on: string; ends_on: string; avatar_color: string; is_custom: boolean;
 };
 
 function moneyStr(n: number | null | undefined) { if (n === null || n === undefined) return '0.00'; return Number(n).toFixed(2); }
-function numStr(n: number | null | undefined) { if (n === null || n === undefined) return ''; const s = Number(n); return Number.isFinite(s) ? String(s) : ''; }
-function typeLabel(t: PackageType) { if (t === 'hourly') return 'Ωριαίο'; if (t === 'monthly') return 'Μηνιαίο'; return 'Ετήσιο'; }
+function typeLabel(t: PackageType) { if (t === 'monthly') return 'Μηνιαίο'; return 'Ετήσιο'; }
 
 function isoToDisplay(v: string | null | undefined): string {
   if (!v) return '';
@@ -40,18 +39,15 @@ function displayToIso(v: string): string | null {
 }
 
 function TypeIcon({ type, className }: { type: PackageType; className?: string }) {
-  if (type === 'hourly') return <Clock className={className} />;
   if (type === 'monthly') return <CalendarDays className={className} />;
   return <Repeat className={className} />;
 }
 
 const TYPE_COLORS: Record<PackageType, { badge: string; icon: string }> = {
-  hourly:  { badge: 'bg-sky-500/10 text-sky-400 border-sky-500/20',          icon: 'text-sky-400' },
   monthly: { badge: 'bg-violet-500/10 text-violet-400 border-violet-500/20', icon: 'text-violet-400' },
   yearly:  { badge: 'bg-amber-500/10 text-amber-400 border-amber-500/20',    icon: 'text-amber-400' },
 };
 const TYPE_COLORS_LIGHT: Record<PackageType, { badge: string; icon: string }> = {
-  hourly:  { badge: 'bg-sky-50 text-sky-600 border-sky-200',          icon: 'text-sky-500' },
   monthly: { badge: 'bg-violet-50 text-violet-600 border-violet-200', icon: 'text-violet-500' },
   yearly:  { badge: 'bg-amber-50 text-amber-600 border-amber-200',    icon: 'text-amber-500' },
 };
@@ -124,17 +120,14 @@ function ColorPalette({ currentColor, onSelect, onReset, isDark }: {
   );
 }
 
-// ── Edge function helper ──────────────────────────────────────────────────────
 async function callEdgeFunction(name: string, body: Record<string, unknown>) {
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token;
   if (!token) throw new Error('Not authenticated');
-
   const res = await supabase.functions.invoke(name, {
     body,
     headers: { Authorization: `Bearer ${token}` },
   });
-
   if (res.error) throw new Error(res.error.message ?? 'Edge function error');
   return res.data;
 }
@@ -155,8 +148,6 @@ export default function PackageSubscriptionsPage() {
 
   const [addOpen,        setAddOpen]        = useState(false);
   const [newName,        setNewName]        = useState('');
-  const [newInputType,   setNewInputType]   = useState<'date_range' | 'hours'>('date_range');
-  const [newHours,       setNewHours]       = useState('');
   const [newPrice,       setNewPrice]       = useState('');
   const [newActive,      setNewActive]      = useState(true);
   const [newStartsOn,    setNewStartsOn]    = useState('');
@@ -164,8 +155,6 @@ export default function PackageSubscriptionsPage() {
   const [newAvatarColor, setNewAvatarColor] = useState(AVATAR_COLORS[0].value);
   const [addError,       setAddError]       = useState<string | null>(null);
   const [editingId,      setEditingId]      = useState<string | null>(null);
-
-  const newType: PackageType = newInputType === 'hours' ? 'hourly' : 'yearly';
 
   const [deleteOpen,   setDeleteOpen]   = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
@@ -198,7 +187,7 @@ export default function PackageSubscriptionsPage() {
       return a.id !== r.id || a.name !== r.name || a.price !== r.price ||
         a.currency !== r.currency || a.is_active !== r.is_active ||
         a.sort_order !== r.sort_order || a.package_type !== r.package_type ||
-        a.hours !== r.hours || a.starts_on !== r.starts_on || a.ends_on !== r.ends_on ||
+        a.starts_on !== r.starts_on || a.ends_on !== r.ends_on ||
         a.avatar_color !== r.avatar_color;
     });
   }, [initial, rows]);
@@ -208,7 +197,7 @@ export default function PackageSubscriptionsPage() {
     setLoading(true); setError(null); setInfo(null);
     const { data, error } = await supabase
       .from('packages')
-      .select('id,school_id,name,price,currency,is_active,sort_order,package_type,hours,starts_on,ends_on,avatar_color,is_custom')
+      .select('id,school_id,name,price,currency,is_active,sort_order,package_type,starts_on,ends_on,avatar_color,is_custom')
       .eq('school_id', schoolId)
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: true });
@@ -218,7 +207,6 @@ export default function PackageSubscriptionsPage() {
       currency: r.currency ?? 'EUR', is_active: !!r.is_active,
       sort_order: r.sort_order ?? 0,
       package_type: (r.package_type ?? 'monthly') as PackageType,
-      hours: numStr(r.hours),
       starts_on: isoToDisplay(r.starts_on),
       ends_on:   isoToDisplay(r.ends_on),
       avatar_color: r.avatar_color ?? AVATAR_COLORS[0].value,
@@ -242,7 +230,6 @@ export default function PackageSubscriptionsPage() {
     });
   };
 
-  // ── Save all via edge function ─────────────────────────────────────────────
   const saveAll = async () => {
     if (!schoolId || !rows) return;
     setSaving(true); setError(null); setInfo(null);
@@ -251,13 +238,11 @@ export default function PackageSubscriptionsPage() {
       const pn = Number((r.price ?? '0').trim().replace(',', '.').replace(/[^0-9.]/g, ''));
       const safePrice = Number.isFinite(pn) ? Math.max(0, pn) : 0;
       const type = (r.package_type ?? 'monthly') as PackageType;
-      const hn = Number((r.hours ?? '').trim().replace(/[^0-9]/g, ''));
-      const safeHours = type === 'hourly' ? (Number.isFinite(hn) ? Math.max(1, Math.floor(hn)) : 0) : null;
       return {
         id: r.id, name: r.name.trim(),
         price: Number(safePrice.toFixed(2)), currency: r.currency || 'EUR',
         is_active: r.is_active, sort_order: r.sort_order ?? 0,
-        package_type: type, hours: safeHours,
+        package_type: type, hours: null,
         starts_on: type === 'yearly' ? (displayToIso(r.starts_on) ?? null) : null,
         ends_on:   type === 'yearly' ? (displayToIso(r.ends_on)   ?? null) : null,
         avatar_color: r.avatar_color ?? AVATAR_COLORS[0].value,
@@ -266,7 +251,6 @@ export default function PackageSubscriptionsPage() {
     });
 
     if (packages.find(p => !p.name)) { setError('Το όνομα πακέτου είναι υποχρεωτικό.'); setSaving(false); return; }
-    if (packages.find(p => p.package_type === 'hourly' && (!p.hours || p.hours <= 0))) { setError('Για ωριαίο πακέτο, οι ώρες είναι υποχρεωτικές (>= 1).'); setSaving(false); return; }
 
     try {
       await callEdgeFunction('packagesubscriptions-update', { packages });
@@ -282,8 +266,7 @@ export default function PackageSubscriptionsPage() {
   const resetChanges = () => { if (!initial) return; setRows(initial); setError(null); setInfo(null); };
 
   const openAdd = () => {
-    setNewName(''); setNewInputType('date_range'); setNewHours('');
-    setNewPrice(''); setNewActive(true);
+    setNewName(''); setNewPrice(''); setNewActive(true);
     setNewStartsOn(''); setNewEndsOn('');
     setNewAvatarColor(AVATAR_COLORS[0].value);
     setAddError(null); setAddOpen(true);
@@ -291,17 +274,12 @@ export default function PackageSubscriptionsPage() {
 
   const cancelAdd = () => { setAddOpen(false); setAddError(null); };
 
-  // ── Add package via edge function ─────────────────────────────────────────
   const addPackage = async () => {
     if (!schoolId) return;
     const name = newName.trim();
     if (!name) { setAddError('Δώσε όνομα πακέτου.'); return; }
     const pn = Number(newPrice.trim().replace(',', '.').replace(/[^0-9.]/g, ''));
     const safePrice = Number.isFinite(pn) ? Math.max(0, pn) : 0;
-    const type = newType;
-    const hn = Number(newHours.trim().replace(/[^0-9]/g, ''));
-    const safeHours = type === 'hourly' ? (Number.isFinite(hn) ? Math.max(1, Math.floor(hn)) : 0) : null;
-    if (type === 'hourly' && (!safeHours || safeHours <= 0)) { setAddError('Για ωριαίο πακέτο, βάλε ώρες (>= 1).'); return; }
     const nextOrder = rows && rows.length ? Math.max(...rows.map(r => r.sort_order ?? 0)) + 1 : 1;
 
     setSaving(true); setAddError(null);
@@ -312,10 +290,10 @@ export default function PackageSubscriptionsPage() {
         currency: 'EUR',
         is_active: newActive,
         sort_order: nextOrder,
-        package_type: type,
-        hours: safeHours,
-        starts_on: type === 'yearly' ? (displayToIso(newStartsOn) ?? null) : null,
-        ends_on:   type === 'yearly' ? (displayToIso(newEndsOn)   ?? null) : null,
+        package_type: 'yearly',
+        hours: null,
+        starts_on: displayToIso(newStartsOn) ?? null,
+        ends_on:   displayToIso(newEndsOn)   ?? null,
         avatar_color: newAvatarColor,
         is_custom: true,
       });
@@ -332,7 +310,6 @@ export default function PackageSubscriptionsPage() {
     setError(null); setInfo(null); setDeleteTarget({ id, name }); setDeleteOpen(true);
   };
 
-  // ── Delete package via edge function ──────────────────────────────────────
   const confirmDelete = async () => {
     if (!deleteTarget) return;
     setSaving(true); setError(null); setInfo(null);
@@ -356,12 +333,12 @@ export default function PackageSubscriptionsPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3">
           <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
-            style={{ background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 60%, transparent))' }}>
-            <Package className="h-4 w-4" style={{ color: 'var(--color-input-bg)' }} />
+            style={{ background: 'var(--color-accent)' }}>
+            <Package className="h-4 w-4" style={{ color: 'var(--ch-icon)' }} />
           </div>
           <div>
             <h1 className={`text-base font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Πακέτα Συνδρομών</h1>
-            <p className={`mt-0.5 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Δημιούργησε πακέτα (όνομα + τύπος + τιμή). Για ωριαίο δηλώνεις ώρες.</p>
+            <p className={`mt-0.5 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Δημιούργησε πακέτα (μηνιαία ή ετήσια) για τη σχολή σου.</p>
           </div>
         </div>
         <button type="button" onClick={openAdd} className="btn-primary gap-2 px-4 py-2">
@@ -402,7 +379,6 @@ export default function PackageSubscriptionsPage() {
                 const isEditing = editingId === r.id;
 
                 if (r.is_custom && isEditing) {
-                  const inputType: 'date_range' | 'hours' = r.package_type === 'hourly' ? 'hours' : 'date_range';
                   return (
                     <div key={r.id} className={`relative rounded-xl border-2 border-dashed overflow-hidden ${isDark ? 'border-slate-700/80 bg-slate-900/40' : 'border-slate-300 bg-slate-50/80'}`}>
                       <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: `linear-gradient(90deg, ${r.avatar_color}, ${r.avatar_color}55)` }} />
@@ -418,35 +394,11 @@ export default function PackageSubscriptionsPage() {
                         </div>
 
                         <div className="flex flex-wrap items-center gap-3">
-                          <div className="flex items-center gap-1.5">
-                            <span className={`text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Τύπος</span>
-                            <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: isDark ? 'rgba(51,65,85,0.7)' : '#e2e8f0' }}>
-                              {(['date_range', 'hours'] as const).map(t => (
-                                <button key={t} type="button"
-                                  onClick={() => updateRow(r.id, { package_type: t === 'hours' ? 'hourly' : 'yearly', hours: t === 'hours' ? r.hours : '' })}
-                                  className={`px-3 py-1.5 text-[11px] font-medium transition ${inputType === t ? 'text-white' : isDark ? 'bg-slate-900/60 text-slate-400 hover:text-slate-200' : 'bg-white text-slate-500 hover:text-slate-700'}`}
-                                  style={inputType === t ? { background: 'var(--color-accent)' } : {}}>
-                                  {t === 'date_range' ? 'Ημερομηνίες' : 'Ώρες'}
-                                </button>
-                              ))}
-                            </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-36"><AppDatePicker value={r.starts_on} onChange={v => updateRow(r.id, { starts_on: v })} /></div>
+                            <span className={isDark ? 'text-slate-600' : 'text-slate-400'}>—</span>
+                            <div className="w-36"><AppDatePicker value={r.ends_on} onChange={v => updateRow(r.id, { ends_on: v })} /></div>
                           </div>
-
-                          {r.package_type === 'hourly' && (
-                            <div className="flex items-center gap-1.5">
-                              <span className={`text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>ΩΡ</span>
-                              <input value={r.hours} onChange={e => updateRow(r.id, { hours: e.target.value.replace(/[^0-9]/g, '') })}
-                                inputMode="numeric" className={`w-16 ${smallInputCls}`} placeholder="10" />
-                            </div>
-                          )}
-
-                          {r.package_type !== 'hourly' && (
-                            <div className="flex items-center gap-2">
-                              <div className="w-36"><AppDatePicker value={r.starts_on} onChange={v => updateRow(r.id, { starts_on: v })} /></div>
-                              <span className={isDark ? 'text-slate-600' : 'text-slate-400'}>—</span>
-                              <div className="w-36"><AppDatePicker value={r.ends_on} onChange={v => updateRow(r.id, { ends_on: v })} /></div>
-                            </div>
-                          )}
 
                           <div className="flex items-center gap-1.5">
                             <span className={`text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>€</span>
@@ -480,7 +432,6 @@ export default function PackageSubscriptionsPage() {
                     <div className="absolute left-0 top-3 bottom-3 w-0.5 rounded-full" style={{
                       background: r.is_custom
                         ? `${r.avatar_color}99`
-                        : r.package_type === 'hourly' ? 'rgba(56,189,248,0.5)'
                         : r.package_type === 'monthly' ? 'rgba(167,139,250,0.5)'
                         : 'rgba(251,191,36,0.5)',
                     }} />
@@ -521,11 +472,6 @@ export default function PackageSubscriptionsPage() {
                             {r.package_type === 'yearly' && hasDateRange && (
                               <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] ${isDark ? 'border-slate-700/60 text-slate-400' : 'border-slate-200 text-slate-500'}`}>
                                 <CalendarDays className="h-2.5 w-2.5" />{r.starts_on} – {r.ends_on}
-                              </span>
-                            )}
-                            {r.package_type === 'hourly' && r.hours && (
-                              <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] ${isDark ? 'border-slate-700/60 text-slate-400' : 'border-slate-200 text-slate-500'}`}>
-                                <Clock className="h-2.5 w-2.5" />{r.hours} ώρες
                               </span>
                             )}
                             <span className={`text-sm font-semibold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>€{r.price}</span>
@@ -579,33 +525,11 @@ export default function PackageSubscriptionsPage() {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-3">
-                      <div className="flex items-center gap-1.5">
-                        <span className={`text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Τύπος</span>
-                        <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: isDark ? 'rgba(51,65,85,0.7)' : '#e2e8f0' }}>
-                          {(['date_range', 'hours'] as const).map(t => (
-                            <button key={t} type="button" onClick={() => setNewInputType(t)}
-                              className={`px-3 py-1.5 text-[11px] font-medium transition ${newInputType === t ? 'text-white' : isDark ? 'bg-slate-900/60 text-slate-400 hover:text-slate-200' : 'bg-white text-slate-500 hover:text-slate-700'}`}
-                              style={newInputType === t ? { background: 'var(--color-accent)' } : {}}>
-                              {t === 'date_range' ? 'Ημερομηνίες' : 'Ώρες'}
-                            </button>
-                          ))}
-                        </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-36"><AppDatePicker value={newStartsOn} onChange={setNewStartsOn} /></div>
+                        <span className={isDark ? 'text-slate-600' : 'text-slate-400'}>—</span>
+                        <div className="w-36"><AppDatePicker value={newEndsOn} onChange={setNewEndsOn} /></div>
                       </div>
-
-                      {newInputType === 'hours' && (
-                        <div className="flex items-center gap-1.5">
-                          <span className={`text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>ΩΡ</span>
-                          <input value={newHours} onChange={e => setNewHours(e.target.value.replace(/[^0-9]/g, ''))} inputMode="numeric" className={`w-16 ${smallInputCls}`} placeholder="10" />
-                        </div>
-                      )}
-
-                      {newInputType === 'date_range' && (
-                        <div className="flex items-center gap-2">
-                          <div className="w-36"><AppDatePicker value={newStartsOn} onChange={setNewStartsOn} /></div>
-                          <span className={isDark ? 'text-slate-600' : 'text-slate-400'}>—</span>
-                          <div className="w-36"><AppDatePicker value={newEndsOn} onChange={setNewEndsOn} /></div>
-                        </div>
-                      )}
 
                       <div className="flex items-center gap-1.5">
                         <span className={`text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>€</span>

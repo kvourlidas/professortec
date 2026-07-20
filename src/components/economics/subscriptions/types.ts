@@ -1,5 +1,5 @@
 export type PeriodMode = 'range' | 'month';
-export type PackageType = 'hourly' | 'monthly' | 'yearly';
+export type PackageType = 'monthly' | 'yearly';
 export type PackageRow = {
   id: string;
   school_id: string;
@@ -10,7 +10,6 @@ export type PackageRow = {
   sort_order: number;
   created_at?: string;
   package_type: PackageType | null | undefined;
-  hours: number | null;
   starts_on: string | null;
   ends_on: string | null;
   is_custom?: boolean | null;
@@ -42,7 +41,6 @@ export type SubscriptionRow = {
   starts_on: string | null;
   ends_on: string | null;
   created_at?: string | null;
-  used_hours?: number | null;
   charge_amount?: number | null;
   paid_amount?: number | null;
   balance?: number | null;

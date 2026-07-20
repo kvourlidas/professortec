@@ -6,7 +6,7 @@ import {
   FileText, Layers, Pencil, Loader2, CheckCircle2, Lock,
   Users, BookOpen, UserCheck, AlertCircle, ChevronLeft, ChevronRight,
   GraduationCap, TrendingUp, Wallet, Receipt, BarChart3, HandCoins,
-  Banknote, CreditCard, Landmark, Tag, Ban,
+  Banknote, CreditCard, Landmark, Tag, Ban, Plus, Trash2,
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient.ts';
 import { useAuth } from '../auth.tsx';
@@ -17,7 +17,8 @@ import { STUDENT_SELECT, formatDateToGreek, isoToDisplay, displayToIso } from '.
 import type { StudentGradeRow } from '../components/grades/types.ts';
 import { PaymentModal } from '../components/economics/subscriptions/PaymentModal';
 import type { PaymentRow, StudentViewRow } from '../components/economics/subscriptions/types';
-import { isHourlyPackageName, parseMoney } from '../components/economics/subscriptions/utils';
+import { parseMoney } from '../components/economics/subscriptions/utils';
+import { StudentSlotModal } from '../components/students/StudentSlotModal';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -38,6 +39,11 @@ const MONTH_NAMES = [
 
 const CLASS_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316'];
 const PAYMENTS_PER_PAGE = 5;
+
+const DAY_LABEL: Record<string, string> = {
+  monday: 'Δευτέρα', tuesday: 'Τρίτη', wednesday: 'Τετάρτη',
+  thursday: 'Πέμπτη', friday: 'Παρασκευή', saturday: 'Σάββατο', sunday: 'Κυριακή',
+};
 
 type PaymentRow = { id: string; subscription_id: string; amount: number; created_at: string | null; payment_method?: string | null; cancelled_at?: string | null };
 
@@ -399,27 +405,37 @@ function EditField({ label, icon, children, isDark }: { label: string; icon?: Re
 
 // ── Card shell ─────────────────────────────────────────────────────────────
 
-function DashCard({ title, icon, isDark, onEdit, editing, accentTop, children }: {
+function DashCard({ title, icon, isDark, onEdit, editing, onAdd, children }: {
   title: string; icon: React.ReactNode; isDark: boolean;
-  onEdit?: () => void; editing?: boolean; accentTop?: boolean;
+  onEdit?: () => void; editing?: boolean;
+  onAdd?: () => void;
   children: React.ReactNode;
 }) {
   return (
     <div className={`overflow-hidden rounded-2xl border ${isDark
       ? 'border-slate-700/50 bg-slate-950/40 backdrop-blur-sm ring-1 ring-inset ring-white/[0.04]'
       : 'border-slate-200 bg-white shadow-sm'}`}>
-      {accentTop && <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 30%, transparent))' }} />}
-      <div className={`flex items-center justify-between px-4 py-3 border-b ${isDark ? 'border-slate-800/60' : 'border-slate-100'}`}>
+      <div className="flex shrink-0 items-center justify-between px-4 py-3" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
         <div className="flex items-center gap-2">
-          <span style={{ color: 'var(--color-accent)' }}>{icon}</span>
-          <h2 className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-300' : 'text-slate-500'}`}>{title}</h2>
+          <span style={{ color: 'var(--ch-icon)' }}>{icon}</span>
+          <h2 className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--ch-text)' }}>{title}</h2>
         </div>
-        {onEdit && !editing && (
-          <button type="button" onClick={onEdit}
-            className={`flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[10px] font-medium transition ${isDark ? 'border-slate-700/60 bg-slate-800/40 text-slate-400 hover:border-slate-500 hover:text-white' : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-700'}`}>
-            <Pencil className="h-2.5 w-2.5" />Επεξεργασία
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {onAdd && (
+            <button type="button" onClick={onAdd}
+              className="flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[10px] font-medium transition"
+              style={{ background: 'var(--ch-btn-bg)', border: '1px solid var(--ch-btn-border)', color: 'var(--ch-btn-text)' }}>
+              <Plus className="h-2.5 w-2.5" />Προσθήκη
+            </button>
+          )}
+          {onEdit && !editing && (
+            <button type="button" onClick={onEdit}
+              className="flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[10px] font-medium transition"
+              style={{ background: 'var(--ch-btn-bg)', border: '1px solid var(--ch-btn-border)', color: 'var(--ch-btn-text)' }}>
+              <Pencil className="h-2.5 w-2.5" />Επεξεργασία
+            </button>
+          )}
+        </div>
       </div>
       <div className="p-4">{children}</div>
     </div>
@@ -496,10 +512,15 @@ export default function StudentCardPage() {
   const [motherPhone, setMotherPhone] = useState('');
   const [motherEmail, setMotherEmail] = useState('');
 
+  const [slotModalOpen, setSlotModalOpen] = useState(false);
+  const [slotDeleting, setSlotDeleting] = useState<string | null>(null);
+  const [subjectNameMap, setSubjectNameMap] = useState<Map<string, string>>(new Map());
+
   const inputCls = `h-8 w-full rounded-lg border px-2.5 text-xs outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 focus:border-[color:var(--color-accent)] ${isDark ? 'border-slate-700/70 bg-slate-900/60 text-slate-100 placeholder-slate-500' : 'border-slate-200 bg-slate-50 text-slate-800 placeholder-slate-400'}`;
   const cancelBtnCls = `btn border px-3 py-1.5 text-xs disabled:opacity-50 ${isDark ? 'border-slate-600/60 bg-slate-800/50 text-slate-200 hover:bg-slate-700/60' : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'}`;
 
   const levelNameById = useMemo(() => new Map(levels.map(l => [l.id, l.name])), [levels]);
+  const isIdiaiterou = profile?.account_type === 'idiaiterou';
 
   const activeSub = useMemo(() => subscriptions.find(s => s.status === 'active') ?? null, [subscriptions]);
   const totalCharged = useMemo(() => subscriptions.reduce((a, s) => a + Number(s.charge_amount ?? s.price ?? 0), 0), [subscriptions]);
@@ -513,8 +534,7 @@ export default function StudentCardPage() {
   const pmBilled       = useMemo(() => {
     const sub = paymentModal?.row.sub;
     if (!sub) return 0;
-    const raw = Number((sub as any).charge_amount ?? sub.price ?? 0);
-    return isHourlyPackageName(sub.package_name) ? Math.abs(raw) : raw;
+    return Number((sub as any).charge_amount ?? sub.price ?? 0);
   }, [paymentModal]);
   const pmBalance      = useMemo(() => pmBilled - pmPaid, [pmBilled, pmPaid]);
   const pmHistoryTotal = useMemo(() => paymentModal?.allStudentPayments.filter(p => !p.cancelled_at).reduce((s, p) => s + Number(p.amount ?? 0), 0) ?? 0, [paymentModal]);
@@ -579,6 +599,30 @@ export default function StudentCardPage() {
             class_subject: classInfoMap.get(item.class_id)?.subject ?? null,
             day_of_week: item.day_of_week, start_time: item.start_time, end_time: item.end_time,
             start_date: item.start_date ?? null, end_date: item.end_date ?? null,
+          })));
+        }
+      }
+
+      if (profile?.account_type === 'idiaiterou') {
+        const { data: subjData } = await supabase.from('subjects').select('id, name');
+        const subMap = new Map((subjData ?? []).map((sub: any) => [sub.id, sub.name as string]));
+        setSubjectNameMap(subMap);
+
+        const { data: studentSlotData } = await supabase
+          .from('program_items')
+          .select('id, student_id, subject_id, day_of_week, start_time, end_time, start_date, end_date')
+          .eq('student_id', id!);
+        if (studentSlotData) {
+          setScheduleSlots(studentSlotData.map((item: any) => ({
+            id: item.id,
+            class_id: (item.subject_id ?? s.id) as string,
+            class_title: (item.subject_id ? subMap.get(item.subject_id) : null) ?? s.full_name,
+            class_subject: null,
+            day_of_week: item.day_of_week,
+            start_time: item.start_time ?? null,
+            end_time: item.end_time ?? null,
+            start_date: item.start_date ?? null,
+            end_date: item.end_date ?? null,
           })));
         }
       }
@@ -850,6 +894,39 @@ export default function StudentCardPage() {
     setTimeout(() => setParentsSuccess(false), 3000);
   };
 
+  const handleSlotCreated = async (_item: any) => {
+    setSlotModalOpen(false);
+    if (!id || !student) return;
+    const { data: slotData } = await supabase
+      .from('program_items')
+      .select('id, student_id, subject_id, day_of_week, start_time, end_time, start_date, end_date')
+      .eq('student_id', id);
+    if (slotData) {
+      setScheduleSlots(slotData.map((item: any) => ({
+        id: item.id,
+        class_id: (item.subject_id ?? student.id) as string,
+        class_title: (item.subject_id ? subjectNameMap.get(item.subject_id) : null) ?? student.full_name,
+        class_subject: null,
+        day_of_week: item.day_of_week,
+        start_time: item.start_time ?? null,
+        end_time: item.end_time ?? null,
+        start_date: item.start_date ?? null,
+        end_date: item.end_date ?? null,
+      })));
+    }
+  };
+
+  const handleDeleteSlot = async (slotId: string) => {
+    setSlotDeleting(slotId);
+    const res = await supabase.functions.invoke('student-slot-delete', {
+      body: { program_item_id: slotId },
+    });
+    setSlotDeleting(null);
+    if (!res.error) {
+      setScheduleSlots(prev => prev.filter(s => s.id !== slotId));
+    }
+  };
+
   function statusBadge(status: SubscriptionRow['status']) {
     const map: Record<string, { label: string; cls: string }> = {
       active:    { label: 'Ενεργή',     cls: isDark ? 'border-emerald-500/40 bg-emerald-950/30 text-emerald-300' : 'border-emerald-300 bg-emerald-50 text-emerald-700' },
@@ -894,8 +971,8 @@ export default function StudentCardPage() {
           <ArrowLeft className="h-4 w-4" />
         </button>
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
-          style={{ background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 60%, transparent))' }}>
-          <GraduationCap className="h-3.5 w-3.5" style={{ color: 'var(--color-input-bg)' }} />
+          style={{ background: 'var(--color-accent)' }}>
+          <GraduationCap className="h-3.5 w-3.5" style={{ color: 'var(--ch-icon)' }} />
         </div>
         <h1 className={`text-sm font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>{student.full_name}</h1>
         {hasBalanceData && (
@@ -915,7 +992,7 @@ export default function StudentCardPage() {
         <div className="flex flex-col gap-4">
 
           {/* Student info */}
-          <DashCard title="Στοιχεια Μαθητη" icon={<User className="h-3.5 w-3.5" />} isDark={isDark} accentTop
+          <DashCard title="Στοιχεια Μαθητη" icon={<User className="h-3.5 w-3.5" />} isDark={isDark}
             onEdit={() => { setStudentError(null); setEditingStudent(true); }} editing={editingStudent}>
             {studentError && (
               <div className={`mb-2 flex items-start gap-2 rounded-lg border px-2.5 py-2 text-xs ${isDark ? 'border-red-500/30 bg-red-950/40 text-red-200' : 'border-red-200 bg-red-50 text-red-700'}`}>
@@ -1011,7 +1088,7 @@ export default function StudentCardPage() {
           </DashCard>
 
           {/* Economics */}
-          <DashCard title="Οικονομικα & Ιστορικο" icon={<Wallet className="h-3.5 w-3.5" />} isDark={isDark} accentTop>
+          <DashCard title="Οικονομικα & Ιστορικο" icon={<Wallet className="h-3.5 w-3.5" />} isDark={isDark}>
             {subscriptions.length > 0 && (
               <div className="mb-4 grid grid-cols-3 gap-2">
                 <StatTile label="Χρεωση" value={`${totalCharged.toFixed(2)}€`} color="blue" isDark={isDark} />
@@ -1169,7 +1246,8 @@ export default function StudentCardPage() {
         {/* ── Right: program + calendar ── */}
         <div className="flex flex-col gap-4">
 
-          <DashCard title="Προγραμμα" icon={<BookOpen className="h-3.5 w-3.5" />} isDark={isDark}>
+          <DashCard title="Προγραμμα" icon={<BookOpen className="h-3.5 w-3.5" />} isDark={isDark}
+            onAdd={isIdiaiterou ? () => setSlotModalOpen(true) : undefined}>
             {classes.length > 0 && (
               <div className={`mb-3 flex flex-wrap gap-1.5 pb-3 border-b ${isDark ? 'border-slate-800/60' : 'border-slate-100'}`}>
                 {classes.map(c => {
@@ -1184,14 +1262,36 @@ export default function StudentCardPage() {
                 })}
               </div>
             )}
+            {isIdiaiterou && scheduleSlots.length > 0 && (
+              <div className={`mb-3 space-y-1.5 border-b pb-3 ${isDark ? 'border-slate-800/60' : 'border-slate-100'}`}>
+                {scheduleSlots.map(slot => {
+                  const isDeleting = slotDeleting === slot.id;
+                  return (
+                    <div key={slot.id} className={`flex items-center gap-2 rounded-lg border px-2.5 py-1.5 ${isDark ? 'border-slate-700/40 bg-slate-900/20' : 'border-slate-200 bg-slate-50'}`}>
+                      <span className="h-2 w-2 rounded-full shrink-0" style={{ background: 'var(--color-accent)' }} />
+                      <span className={`w-16 shrink-0 text-[11px] font-medium ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{DAY_LABEL[slot.day_of_week] ?? slot.day_of_week}</span>
+                      <span className={`flex-1 truncate text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{slot.class_title}</span>
+                      <span className={`shrink-0 tabular-nums text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{fmt12(slot.start_time)} – {fmt12(slot.end_time)}</span>
+                      <button type="button" onClick={() => handleDeleteSlot(slot.id)} disabled={!!slotDeleting}
+                        className={`flex h-5 w-5 items-center justify-center rounded border transition disabled:opacity-40 ${isDark ? 'border-slate-700 bg-slate-800 text-slate-500 hover:border-red-800 hover:text-red-400' : 'border-slate-200 bg-white text-slate-400 hover:border-red-200 hover:text-red-500'}`}>
+                        {isDeleting ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Trash2 className="h-2.5 w-2.5" />}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
             <MonthCalendar slots={scheduleSlots} tests={calendarTests} holidayDates={holidayDates} isDark={isDark} />
-            {classes.length === 0 && scheduleSlots.length === 0 && (
+            {!isIdiaiterou && classes.length === 0 && scheduleSlots.length === 0 && (
               <p className={`mt-2 text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Ο μαθητής δεν έχει ενταχθεί σε τμήμα.</p>
+            )}
+            {isIdiaiterou && scheduleSlots.length === 0 && (
+              <p className={`mt-2 text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Δεν έχει οριστεί ωράριο. Πάτησε «Προσθήκη» για να ορίσεις.</p>
             )}
           </DashCard>
 
           {/* ── Grades ── */}
-          <DashCard title="Βαθμοι" icon={<BarChart3 className="h-3.5 w-3.5" />} isDark={isDark} accentTop>
+          <DashCard title="Βαθμοι" icon={<BarChart3 className="h-3.5 w-3.5" />} isDark={isDark}>
             {gradesLoading ? (
               <div className={`divide-y ${isDark ? 'divide-slate-800/50' : 'divide-slate-100'} rounded-xl border overflow-hidden ${isDark ? 'border-slate-700/50' : 'border-slate-200'}`}>
                 {[...Array(3)].map((_, i) => (
@@ -1281,6 +1381,14 @@ export default function StudentCardPage() {
         onCancelPayment={cancelPayment}
         onClose={() => setPaymentModal(null)}
       />
+      {isIdiaiterou && slotModalOpen && student && (
+        <StudentSlotModal
+          studentId={student.id}
+          levelId={student.level_id}
+          onClose={() => setSlotModalOpen(false)}
+          onCreated={handleSlotCreated}
+        />
+      )}
     </div>
   );
 }

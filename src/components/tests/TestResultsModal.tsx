@@ -101,11 +101,6 @@ export default function TestResultsModal({ resultsModal, schoolId, onClose }: Te
   const modalCardCls = isDark
     ? 'relative w-full max-w-4xl overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl'
     : 'relative w-full max-w-4xl overflow-hidden rounded-2xl border border-slate-200 shadow-2xl';
-  const modalTitleCls = isDark ? 'text-sm font-semibold text-slate-50' : 'text-sm font-semibold text-slate-800';
-  const modalSubtitleCls = isDark ? 'mt-0.5 text-[11px] text-slate-400' : 'mt-0.5 text-[11px] text-slate-500';
-  const modalCloseBtnCls = isDark
-    ? 'flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-800/50 text-slate-400 transition hover:border-slate-600 hover:text-slate-200'
-    : 'flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-slate-500 transition hover:border-slate-300 hover:text-slate-700';
   const modalFooterCls = isDark
     ? 'flex justify-end gap-2.5 border-t border-slate-800/70 bg-slate-900/20 px-6 py-4 mt-3'
     : 'flex justify-end gap-2.5 border-t border-slate-200 bg-slate-50 px-6 py-4 mt-3';
@@ -134,21 +129,23 @@ export default function TestResultsModal({ resultsModal, schoolId, onClose }: Te
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className={modalCardCls} style={{ background: 'var(--color-sidebar)' }}>
-        <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 30%, transparent))' }} />
-
         {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-5 pb-4">
+        <div className="flex items-center justify-between px-6 py-4" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl"
-              style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>
-              <Users className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
+              style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
+              <Users className="h-4 w-4" style={{ color: 'var(--ch-icon)' }} />
             </div>
             <div>
-              <h2 className={modalTitleCls}>Μαθητές & βαθμοί</h2>
-              <p className={modalSubtitleCls}>{subtitle}</p>
+              <h2 className="text-sm font-semibold" style={{ color: 'var(--ch-text)' }}>Μαθητές & βαθμοί</h2>
+              <p className="mt-0.5 text-[11px]" style={{ color: 'var(--ch-text-muted)' }}>{subtitle}</p>
             </div>
           </div>
-          <button type="button" onClick={handleClose} className={modalCloseBtnCls}><X className="h-3.5 w-3.5" /></button>
+          <button type="button" onClick={handleClose}
+            className="flex h-7 w-7 items-center justify-center rounded-lg transition"
+            style={{ background: 'var(--ch-btn-bg)', border: '1px solid var(--ch-btn-border)', color: 'var(--ch-btn-text)' }}>
+            <X className="h-3.5 w-3.5" />
+          </button>
         </div>
 
         {/* Error */}

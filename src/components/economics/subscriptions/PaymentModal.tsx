@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Ban, Banknote, CreditCard, HandCoins, Landmark, Loader2, X } from 'lucide-react';
 import { CURRENCY_SYMBOL, typeColors } from './constants';
 import { TypeIcon } from './TypeIcon';
-import { formatDateTime, isHourlyPackageName, money, packageTypeFromName, typeLabel } from './utils';
+import { formatDateTime, money, packageTypeFromName, typeLabel } from './utils';
 import type { PaymentMethod, PaymentRow, StudentViewRow } from './types';
 
 interface Props {
@@ -35,8 +35,6 @@ export function PaymentModal({
   const sub       = row.sub!;
   const pkgType   = packageTypeFromName(sub.package_name);
   const colors    = typeColors(pkgType, isDark);
-  const isHourly  = isHourlyPackageName(sub.package_name);
-  const dispPrice = isHourly ? Number(sub.price ?? 0) : pmBilled;
 
   const inputCls = isDark
     ? 'rounded-lg border border-slate-700/70 bg-slate-900/60 px-2.5 py-2 text-sm text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/20'
@@ -46,34 +44,31 @@ export function PaymentModal({
     ? 'rounded-lg border border-slate-700/60 bg-slate-800/50 px-4 py-2 text-xs font-medium text-slate-200 hover:bg-slate-700/60 transition'
     : 'rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 transition';
 
-  const modalCloseBtnCls = isDark
-    ? 'flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-800/50 text-slate-400 transition hover:border-slate-600 hover:text-slate-200'
-    : 'flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-slate-500 transition hover:border-slate-300 hover:text-slate-700';
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
       <div
         className={`relative w-full max-w-2xl overflow-hidden rounded-2xl border shadow-2xl ${isDark ? 'border-slate-700/60' : 'border-slate-200 bg-white'}`}
         style={isDark ? { background: 'var(--color-sidebar)' } : {}}
       >
-        {/* Accent bar */}
-        <div className="h-[3px] w-full" style={{ background: 'linear-gradient(90deg,var(--color-accent),color-mix(in srgb,var(--color-accent) 30%,transparent))' }} />
-
         {/* Header */}
-        <div className={`flex items-center justify-between px-6 pt-5 pb-4 ${isDark ? 'border-b border-slate-800/60' : 'border-b border-slate-100'}`}>
+        <div className="flex items-center justify-between px-6 py-4" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl"
-              style={{ background: 'color-mix(in srgb,var(--color-accent) 15%,transparent)', border: '1px solid color-mix(in srgb,var(--color-accent) 30%,transparent)' }}>
-              <HandCoins className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
+              style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
+              <HandCoins className="h-4 w-4" style={{ color: 'var(--ch-icon)' }} />
             </div>
             <div>
-              <div className={`text-sm font-semibold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Πληρωμή συνδρομής</div>
-              <div className={`mt-0.5 text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              <div className="text-sm font-semibold" style={{ color: 'var(--ch-text)' }}>Πληρωμή συνδρομής</div>
+              <div className="mt-0.5 text-[11px]" style={{ color: 'var(--ch-text-muted)' }}>
                 Μαθητής: <span className="font-semibold" style={{ color: 'var(--color-accent)' }}>{row.student_name}</span>
               </div>
             </div>
           </div>
-          <button type="button" onClick={onClose} className={modalCloseBtnCls}><X className="h-3.5 w-3.5" /></button>
+          <button type="button" onClick={onClose}
+            className="flex h-7 w-7 items-center justify-center rounded-lg transition"
+            style={{ background: 'var(--ch-btn-bg)', border: '1px solid var(--ch-btn-border)', color: 'var(--ch-btn-text)' }}>
+            <X className="h-3.5 w-3.5" />
+          </button>
         </div>
 
         {/* 2-col body */}
@@ -96,7 +91,7 @@ export function PaymentModal({
             <div className={`grid grid-cols-3 gap-2 rounded-xl border p-3 ${isDark ? 'border-slate-700/50 bg-slate-900/40' : 'border-slate-200 bg-slate-50'}`}>
               <div className="text-center">
                 <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Χρέωση</p>
-                <p className={`text-sm font-bold tabular-nums ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{money(dispPrice)} {CURRENCY_SYMBOL}{isHourly ? ' /ώρα' : ''}</p>
+                <p className={`text-sm font-bold tabular-nums ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{money(pmBilled)} {CURRENCY_SYMBOL}</p>
               </div>
               <div className="text-center">
                 <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Πληρώθηκε</p>
@@ -174,7 +169,8 @@ export function PaymentModal({
               <>
                 <div className={`flex-1 overflow-hidden rounded-xl border ${isDark ? 'border-slate-700/50' : 'border-slate-200'}`}>
                   {/* Header */}
-                  <div className={`grid grid-cols-12 px-3 py-2 text-[10px] font-semibold uppercase tracking-widest ${isDark ? 'border-b border-slate-700/60 bg-slate-900/60 text-white' : 'border-b border-slate-200 bg-slate-50 text-slate-900'}`}>
+                  <div className="grid grid-cols-12 border-b px-3 py-2 text-[10px] font-semibold uppercase tracking-widest"
+                    style={{ background: 'var(--ch-bg)', borderColor: 'var(--ch-divider)', color: 'var(--ch-text)' }}>
                     <div className="col-span-5">Ημερομηνία</div>
                     <div className="col-span-2 text-center">Τρόπος</div>
                     <div className="col-span-3 text-right">Ποσό</div>

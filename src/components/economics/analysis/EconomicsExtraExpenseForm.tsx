@@ -37,9 +37,10 @@ export function EconomicsExtraExpenseForm({
 
   return (
     <div className={cardCls}>
-      <div className={`flex items-center gap-2.5 px-4 py-3 ${isDark ? 'border-b border-slate-800/70 bg-slate-900/30' : 'border-b border-slate-200 bg-slate-50'}`}>
-        <Receipt className="h-3.5 w-3.5" style={{ color: 'var(--color-accent)' }}/>
-        <span className={`text-xs font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Extra Έξοδα</span>
+      <div className="flex items-center gap-2.5 border-b px-4 py-3"
+        style={{ background: 'var(--ch-bg)', borderColor: 'var(--ch-divider)' }}>
+        <Receipt className="h-3.5 w-3.5" style={{ color: 'var(--ch-icon)' }}/>
+        <span className="text-xs font-semibold" style={{ color: 'var(--ch-text)' }}>Extra Έξοδα</span>
       </div>
       <div className="space-y-3 p-4">
         <div>

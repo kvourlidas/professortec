@@ -125,13 +125,6 @@ export default function SubjectTutorsModal({
     ? 'relative w-full max-w-3xl overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl'
     : 'relative w-full max-w-3xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl';
 
-  const headerTitleCls = isDark ? 'text-sm font-semibold text-slate-50' : 'text-sm font-semibold text-slate-800';
-  const headerSubtitleCls = isDark ? 'text-[11px] text-slate-400' : 'text-[11px] text-slate-500';
-
-  const closeBtnCls = isDark
-    ? 'flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-800/50 text-slate-400 transition hover:border-slate-600 hover:text-slate-200'
-    : 'flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-slate-500 transition hover:border-slate-300 hover:text-slate-700';
-
   const errorBannerCls = isDark
     ? 'mx-6 mb-3 flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-950/30 px-3.5 py-2.5 text-xs text-amber-200'
     : 'mx-6 mb-3 flex items-start gap-2.5 rounded-xl border border-amber-300 bg-amber-50 px-3.5 py-2.5 text-xs text-amber-700';
@@ -194,22 +187,19 @@ export default function SubjectTutorsModal({
         className={modalCardCls}
         style={isDark ? { background: 'var(--color-sidebar)' } : {}}
       >
-        {/* Accent bar */}
-        <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 30%, transparent))' }} />
-
         {/* Header */}
-        <div className={`flex items-center justify-between px-6 pt-5 pb-4 ${!isDark ? 'border-b border-slate-100' : ''}`}>
+        <div className="flex items-center justify-between px-6 py-4" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl"
-              style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>
-              <Users className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
+              style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
+              <Users className="h-4 w-4" style={{ color: 'var(--ch-icon)' }} />
             </div>
             <div>
-              <h2 className={headerTitleCls}>Καθηγητές μαθήματος</h2>
+              <h2 className="text-sm font-semibold" style={{ color: 'var(--ch-text)' }}>Καθηγητές μαθήματος</h2>
               {subjectName && (
                 <div className="mt-0.5 flex items-center gap-1.5">
                   <BookOpen className={`h-3 w-3 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-                  <p className={headerSubtitleCls}>{subjectName}</p>
+                  <p className="text-[11px]" style={{ color: 'var(--ch-text-muted)' }}>{subjectName}</p>
                   {pendingChanges > 0 && (
                     <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
                       style={{ background: 'color-mix(in srgb, var(--color-accent) 20%, transparent)', color: 'var(--color-accent)' }}>
@@ -220,7 +210,9 @@ export default function SubjectTutorsModal({
               )}
             </div>
           </div>
-          <button type="button" onClick={onClose} className={closeBtnCls}>
+          <button type="button" onClick={onClose}
+            className="flex h-7 w-7 items-center justify-center rounded-lg transition"
+            style={{ background: 'var(--ch-btn-bg)', border: '1px solid var(--ch-btn-border)', color: 'var(--ch-btn-text)' }}>
             <X className="h-3.5 w-3.5" />
           </button>
         </div>

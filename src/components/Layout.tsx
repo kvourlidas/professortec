@@ -4,7 +4,7 @@ import { useAuth } from '../auth';
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { navItems, type NavItem } from '../_nav';
+import { navItems, idiaiterouNavItems, type NavItem } from '../_nav';
 import { Menu, LogOut, ChevronRight, Building2 } from 'lucide-react';
 import logoLight from '../assets/edra-primary-transparent-light(PNG)(1).png';
 import logoDark from '../assets/edra-primary-transparent-dark(PNG).png';
@@ -32,12 +32,28 @@ export default function Layout({ children }: LayoutProps) {
   const { user, profile, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [schoolName, setSchoolName] = useState<string | null>(null);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const sidebarCollapsed = false;
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openGroup, setOpenGroup] = useState<string | null>('Μαθήματα');
   const location = useLocation();
 
   const isDark = theme === 'dark';
+  const isIdiaiterou = profile?.account_type === 'idiaiterou';
+  const activeNav = isIdiaiterou ? idiaiterouNavItems : navItems;
+
+  // both dark (violet) and light (olive) sidebars are dark → white text
+  const sbText         = 'text-white';
+  const sbTextMuted    = 'text-white/70';
+  const sbTextFaint    = 'text-white/55';
+  const sbActiveBg     = 'bg-white/20';
+  const sbActiveText   = 'text-white';
+  const sbHoverBg      = 'hover:bg-white/[0.12]';
+  const sbHoverText    = 'hover:text-white';
+  const sbIconInactive = 'text-white/55';
+  const sbIconActive   = 'text-white';
+  const sbIconHover    = 'group-hover:text-white';
+  const sbBorderColor  = 'rgba(255,255,255,0.15)';
+  const sbDotColor     = '#ffffff';
 
   useEffect(() => {
     const loadSchoolName = async () => {
@@ -51,12 +67,12 @@ export default function Layout({ children }: LayoutProps) {
 
   useEffect(() => {
     const path = location.pathname;
-    const match = navItems.find(
+    const match = activeNav.find(
       (it) => it.children?.some((ch) => ch.to && (path === ch.to || path.startsWith(ch.to + '/')))
     );
     if (match?.label) setOpenGroup(match.label);
     setMobileOpen(false);
-  }, [location.pathname]);
+  }, [location.pathname, activeNav]);
 
   const renderLink = (item: NavLinkItem) => {
     const Icon = item.icon;
@@ -70,12 +86,8 @@ export default function Layout({ children }: LayoutProps) {
           [
             'group flex items-center rounded-xl px-3 py-1.5 text-[12px] font-medium transition-all duration-150',
             isActive
-              ? isDark
-                ? 'bg-white/[0.08] text-slate-50 shadow-sm shadow-black/20'
-                : 'bg-slate-100 text-slate-900 shadow-sm'
-              : isDark
-              ? 'text-slate-400 hover:bg-white/[0.05] hover:text-slate-200'
-              : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800',
+              ? `${sbActiveBg} ${sbActiveText} shadow-sm shadow-black/10`
+              : `${sbTextMuted} ${sbHoverBg} ${sbHoverText}`,
           ].join(' ')
         }
       >
@@ -83,18 +95,14 @@ export default function Layout({ children }: LayoutProps) {
           <span className={`flex items-center justify-center ${sidebarCollapsed ? 'mx-auto' : 'mr-2'}`}>
             <Icon
               className={`h-3.5 w-3.5 transition-colors ${
-                isActive
-                  ? 'text-[color:var(--color-accent)]'
-                  : isDark
-                  ? 'text-slate-500 group-hover:text-slate-300'
-                  : 'text-slate-400 group-hover:text-slate-600'
+                isActive ? sbIconActive : `${sbIconInactive} ${sbIconHover}`
               }`}
             />
           </span>
         )}
         {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
         {isActive && !sidebarCollapsed && (
-          <span className="ml-auto h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'var(--color-accent)' }} />
+          <span className="ml-auto h-1.5 w-1.5 rounded-full" style={{ backgroundColor: sbDotColor }} />
         )}
       </NavLink>
     );
@@ -115,10 +123,8 @@ export default function Layout({ children }: LayoutProps) {
           className={[
             'group flex w-full items-center justify-between rounded-xl px-3 py-1.5 text-left text-[12px] font-medium transition-all duration-150',
             hasActiveChild
-              ? isDark ? 'text-slate-200' : 'text-slate-800'
-              : isDark
-              ? 'text-slate-400 hover:bg-white/[0.05] hover:text-slate-200'
-              : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700',
+              ? sbActiveText
+              : `${sbTextMuted} ${sbHoverBg} ${sbHoverText}`,
           ].join(' ')}
         >
           <span className="flex items-center">
@@ -127,10 +133,8 @@ export default function Layout({ children }: LayoutProps) {
                 <Icon
                   className={`h-3.5 w-3.5 transition-colors ${
                     hasActiveChild
-                      ? 'text-[color:var(--color-accent)]'
-                      : isDark
-                      ? 'text-slate-500 group-hover:text-slate-400'
-                      : 'text-slate-400 group-hover:text-slate-600'
+                      ? sbIconActive
+                      : `${sbIconInactive} ${sbIconHover}`
                   }`}
                 />
               </span>
@@ -140,9 +144,7 @@ export default function Layout({ children }: LayoutProps) {
 
           {!sidebarCollapsed && (
             <ChevronRight
-              className={`h-3.5 w-3.5 transition-transform duration-200 ${isOpen ? 'rotate-90' : ''} ${
-                isDark ? 'text-slate-600' : 'text-slate-400'
-              }`}
+              className={`h-3.5 w-3.5 transition-transform duration-200 ${isOpen ? 'rotate-90' : ''} ${sbTextFaint}`}
             />
           )}
         </button>
@@ -150,7 +152,7 @@ export default function Layout({ children }: LayoutProps) {
         {isOpen && !sidebarCollapsed && (
           <div className="mt-0.5 pl-6">
             <div className="relative">
-              <div className={`absolute left-0 top-1 bottom-1 w-px rounded-full ${isDark ? 'bg-slate-700/80' : 'bg-slate-200'}`} />
+              <div className={`absolute left-0 top-1 bottom-1 w-px rounded-full ${isDark ? 'bg-black/20' : 'bg-white/30'}`} />
               <div className="space-y-0.5 pl-3">
                 {item.children.map((child: NavLinkItem) => {
                   const ChildIcon = child.icon;
@@ -164,12 +166,8 @@ export default function Layout({ children }: LayoutProps) {
                         [
                           'group flex items-center rounded-lg px-2.5 py-1 text-[12px] font-medium transition-all duration-150',
                           isChildActive
-                            ? isDark
-                              ? 'bg-white/[0.08] text-slate-50 shadow-sm shadow-black/20'
-                              : 'bg-slate-100 text-slate-900'
-                            : isDark
-                            ? 'text-slate-500 hover:bg-white/[0.04] hover:text-slate-300'
-                            : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700',
+                            ? `${sbActiveBg} ${sbActiveText} shadow-sm`
+                            : `${sbTextMuted} ${isDark ? 'hover:bg-black/[0.05]' : 'hover:bg-white/[0.10]'} ${sbHoverText}`,
                         ].join(' ')
                       }
                     >
@@ -178,17 +176,15 @@ export default function Layout({ children }: LayoutProps) {
                           <ChildIcon
                             className={`h-3.5 w-3.5 transition-colors ${
                               isChildActive
-                                ? 'text-[color:var(--color-accent)]'
-                                : isDark
-                                ? 'text-slate-600 group-hover:text-slate-400'
-                                : 'text-slate-400 group-hover:text-slate-600'
+                                ? sbIconActive
+                                : `${sbIconInactive} ${sbIconHover}`
                             }`}
                           />
                         </span>
                       )}
                       <span className="truncate">{child.label}</span>
                       {isChildActive && (
-                        <span className="ml-auto h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'var(--color-accent)' }} />
+                        <span className="ml-auto h-1.5 w-1.5 rounded-full" style={{ backgroundColor: sbDotColor }} />
                       )}
                     </NavLink>
                   );
@@ -221,67 +217,31 @@ export default function Layout({ children }: LayoutProps) {
         `}
         style={{
           background: 'var(--color-sidebar-bg)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          borderColor: 'var(--color-border)',
+          borderColor: sbBorderColor,
         }}
       >
         {/* Top — branding + toggle */}
         <div
           className="flex flex-col gap-2.5 border-b px-3 pt-3 pb-3"
-          style={{ borderColor: 'var(--color-border-soft)' }}
+          style={{ borderColor: sbBorderColor }}
         >
-          {/* Row 1: logo/name + collapse button */}
-          <div className="flex items-center justify-between">
-            {!sidebarCollapsed && (
-              <div className="flex items-center gap-2 min-w-0">
-                <img
-                  src={isDark ? logoDark : logoLight}
-                  alt="edra"
-                  className="h-20 w-auto shrink-0 -my-3"
-                />
-                <div className="min-w-0">
-                  <p className={`truncate text-[11px] font-semibold leading-tight ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
-                    {schoolName || APP_NAME}
-                  </p>
-                  <p className={`truncate text-[10px] mt-0.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                    {schoolName ? APP_NAME : ''}
-                  </p>
-                </div>
-              </div>
-            )}
-            {sidebarCollapsed && (
-              <div className="mx-auto">
-                <img
-                  src={isDark ? logoDark : logoLight}
-                  alt="edra"
-                  className="h-10 w-10 object-contain"
-                />
-              </div>
-            )}
-            <button
-              type="button"
-              onClick={() => setSidebarCollapsed((prev) => !prev)}
-              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border transition ${
-                isDark
-                  ? 'border-slate-700/70 bg-slate-800/60 text-slate-400 hover:border-slate-600 hover:bg-slate-700/60 hover:text-slate-200'
-                  : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700'
-              }`}
-            >
-              <Menu className="h-3.5 w-3.5" />
-            </button>
+          {/* Row 1: logo */}
+          <div style={{ height: '48px', overflow: 'hidden' }}>
+            <img
+              src={logoDark}
+              alt="edra"
+              style={{ height: '200px', width: 'auto', marginTop: '-78px' }}
+            />
           </div>
 
           {/* Row 2: theme toggle */}
           {!sidebarCollapsed ? (
-            <div className={`flex rounded-xl p-0.5 ${isDark ? 'bg-slate-800/60' : 'bg-slate-100'}`}>
+            <div className="flex rounded-xl p-0.5 bg-white/20">
               <button
                 type="button"
                 onClick={toggleTheme}
                 className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-0.5 text-[11px] font-semibold transition-all duration-200 ${
-                  !isDark
-                    ? 'bg-white text-amber-500 shadow-sm shadow-black/10'
-                    : 'text-slate-500 hover:text-slate-300'
+                  !isDark ? 'bg-white/25 text-white shadow-sm' : 'text-white/60 hover:text-white'
                 }`}
               >
                 <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -297,9 +257,7 @@ export default function Layout({ children }: LayoutProps) {
                 type="button"
                 onClick={toggleTheme}
                 className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-0.5 text-[11px] font-semibold transition-all duration-200 ${
-                  isDark
-                    ? 'bg-slate-700 text-indigo-300 shadow-sm shadow-black/30'
-                    : 'text-slate-400 hover:text-slate-600'
+                  isDark ? 'bg-white/25 text-white shadow-sm' : 'text-white/60 hover:text-white'
                 }`}
               >
                 <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -314,9 +272,7 @@ export default function Layout({ children }: LayoutProps) {
                 type="button"
                 onClick={toggleTheme}
                 aria-label="Toggle theme"
-                className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all duration-200 ${
-                  isDark ? 'bg-slate-700 text-indigo-300' : 'bg-slate-100 text-amber-500'
-                }`}
+                className="flex h-8 w-8 items-center justify-center rounded-xl transition-all duration-200 bg-white/20 text-white"
               >
                 {isDark ? (
                   <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -338,69 +294,68 @@ export default function Layout({ children }: LayoutProps) {
 
         {/* Nav */}
         <nav className="mt-3 flex-1 space-y-0.5 overflow-y-auto px-2 pb-3">
-          {navItems.map((item: NavItem) =>
+          {activeNav.map((item: NavItem) =>
             item.children?.length
               ? renderGroup(item as NavGroupItem)
               : renderLink(item as NavLinkItem)
           )}
         </nav>
 
-        {/* School Info — pinned above user card */}
-        <div
-          className="border-t px-2 py-2"
-          style={{ borderColor: 'var(--color-border-soft)' }}
-        >
-          <NavLink
-            to="/school-info"
-            className={() =>
-              [
-                'group flex items-center rounded-xl px-3 py-1.5 text-[12px] font-medium transition-all duration-150',
-                location.pathname === '/school-info'
-                  ? isDark
-                    ? 'bg-white/[0.08] text-slate-50 shadow-sm shadow-black/20'
-                    : 'bg-slate-100 text-slate-900 shadow-sm'
-                  : isDark
-                  ? 'text-slate-400 hover:bg-white/[0.05] hover:text-slate-200'
-                  : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800',
-              ].join(' ')
-            }
+        {/* School Info — pinned above user card (frontistirio only) */}
+        {!isIdiaiterou && (
+          <div
+            className="border-t px-2 py-2"
+            style={{ borderColor: sbBorderColor }}
           >
-            <span className={`flex items-center justify-center ${sidebarCollapsed ? 'mx-auto' : 'mr-2'}`}>
-              <Building2
-                className={`h-3.5 w-3.5 transition-colors ${
+            <NavLink
+              to="/school-info"
+              className={() =>
+                [
+                  'group flex items-center rounded-xl px-3 py-1.5 text-[12px] font-medium transition-all duration-150',
                   location.pathname === '/school-info'
-                    ? 'text-[color:var(--color-accent)]'
-                    : isDark
-                    ? 'text-slate-500 group-hover:text-slate-300'
-                    : 'text-slate-400 group-hover:text-slate-600'
-                }`}
-              />
-            </span>
-            {!sidebarCollapsed && <span className="truncate">Πληροφορίες Σχολείου</span>}
-            {location.pathname === '/school-info' && !sidebarCollapsed && (
-              <span className="ml-auto h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'var(--color-accent)' }} />
-            )}
-          </NavLink>
-        </div>
+                    ? `${sbActiveBg} ${sbActiveText} shadow-sm shadow-black/10`
+                    : `${sbTextMuted} ${sbHoverBg} ${sbHoverText}`,
+                ].join(' ')
+              }
+            >
+              <span className={`flex items-center justify-center ${sidebarCollapsed ? 'mx-auto' : 'mr-2'}`}>
+                <Building2
+                  className={`h-3.5 w-3.5 transition-colors ${
+                    location.pathname === '/school-info'
+                      ? sbIconActive
+                      : `${sbIconInactive} ${sbIconHover}`
+                  }`}
+                />
+              </span>
+              {!sidebarCollapsed && <span className="truncate">Πληροφορίες Σχολείου</span>}
+              {location.pathname === '/school-info' && !sidebarCollapsed && (
+                <span className="ml-auto h-1.5 w-1.5 rounded-full" style={{ backgroundColor: sbDotColor }} />
+              )}
+            </NavLink>
+          </div>
+        )}
 
         {/* User profile — bottom of sidebar */}
         {!sidebarCollapsed && (
           <div
             className="border-t px-3 py-3"
-            style={{ borderColor: 'var(--color-border-soft)' }}
+            style={{ borderColor: sbBorderColor }}
           >
             <div className="flex items-center gap-2.5">
               <div
                 className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
-                style={{ background: 'color-mix(in srgb, var(--color-accent) 18%, transparent)', color: 'var(--color-accent)' }}
+                style={{
+                  background: isDark ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.25)',
+                  color: sbDotColor,
+                }}
               >
                 {(profile?.full_name || user?.email || '?')[0].toUpperCase()}
               </div>
               <div className="min-w-0 flex-1 flex flex-col">
-                <p className={`truncate text-[12px] font-semibold leading-tight ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                <p className={`truncate text-[12px] font-semibold leading-tight ${sbText}`}>
                   {profile?.full_name || user?.email}
                 </p>
-                <p className={`truncate text-[10px] capitalize leading-tight ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                <p className={`truncate text-[10px] capitalize leading-tight ${sbTextMuted}`}>
                   {profile?.role || 'no role'}
                 </p>
               </div>
@@ -408,7 +363,9 @@ export default function Layout({ children }: LayoutProps) {
                 onClick={signOut}
                 aria-label="Αποσύνδεση"
                 className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg transition ${
-                  isDark ? 'text-slate-600 hover:bg-red-500/10 hover:text-red-400' : 'text-slate-400 hover:bg-red-50 hover:text-red-500'
+                  isDark
+                    ? 'text-slate-600 hover:bg-red-500/10 hover:text-red-700'
+                    : 'text-white/60 hover:bg-white/10 hover:text-red-200'
                 }`}
               >
                 <LogOut className="h-3.5 w-3.5" />
@@ -419,17 +376,24 @@ export default function Layout({ children }: LayoutProps) {
 
         {/* Collapsed: avatar + logout stacked */}
         {sidebarCollapsed && (
-          <div className="border-t px-2 py-3 flex flex-col items-center gap-2" style={{ borderColor: 'var(--color-border-soft)' }}>
+          <div className="border-t px-2 py-3 flex flex-col items-center gap-2" style={{ borderColor: sbBorderColor }}>
             <div
-              className="flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-bold text-black"
-              style={{ backgroundColor: 'var(--color-accent)' }}
+              className="flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-bold"
+              style={{
+                background: isDark ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.25)',
+                color: sbDotColor,
+              }}
             >
               {(profile?.full_name || user?.email || '?')[0].toUpperCase()}
             </div>
             <button
               onClick={signOut}
               aria-label="Αποσύνδεση"
-              className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 transition hover:bg-red-500/10 hover:text-red-400"
+              className={`flex h-7 w-7 items-center justify-center rounded-lg transition ${
+                isDark
+                  ? 'text-slate-600 hover:bg-red-500/10 hover:text-red-700'
+                  : 'text-white/60 hover:bg-white/10 hover:text-red-200'
+              }`}
             >
               <LogOut className="h-3.5 w-3.5" />
             </button>
@@ -442,21 +406,21 @@ export default function Layout({ children }: LayoutProps) {
         {/* Mobile top bar */}
         <div
           className="flex items-center gap-3 border-b px-4 py-3 md:hidden"
-          style={{ background: 'var(--color-sidebar-bg)', borderColor: 'var(--color-border)' }}
+          style={{ background: 'var(--color-sidebar-bg)', borderColor: sbBorderColor }}
         >
           <button
             type="button"
             onClick={() => setMobileOpen(true)}
             className={`flex h-8 w-8 items-center justify-center rounded-lg border transition ${
               isDark
-                ? 'border-slate-700/70 bg-slate-800/60 text-slate-400 hover:text-slate-200'
-                : 'border-slate-200 bg-white text-slate-500 hover:text-slate-700'
+                ? 'border-black/20 bg-black/10 text-slate-900 hover:text-slate-900'
+                : 'border-white/30 bg-white/15 text-white hover:text-white'
             }`}
           >
             <Menu className="h-4 w-4" />
           </button>
           <img
-            src={isDark ? logoDark : logoLight}
+            src={logoDark}
             alt="edra"
             className="h-8 w-auto"
           />

@@ -283,19 +283,13 @@ export function NotificationSendForm({
 
   return (
     <div className={cardCls}>
-      {/* Accent line */}
-      <div className="h-0.5 w-full"
-        style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 25%, transparent))' }}
-      />
-
       {/* Header */}
-      <div className={`flex items-center gap-3 border-b px-5 py-3.5 rounded-t-[calc(1rem-1px)] ${isDark ? 'border-slate-700/60 bg-slate-900/30' : 'border-slate-200 bg-slate-50'}`}>
+      <div className="flex shrink-0 items-center gap-3 px-5 py-3" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
         <div className="flex h-7 w-7 items-center justify-center rounded-lg"
-          style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>
-          <Send className="h-3.5 w-3.5" style={{ color: 'var(--color-accent)' }} />
+          style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
+          <Send className="h-3.5 w-3.5" style={{ color: 'var(--ch-icon)' }} />
         </div>
-        <span className="text-xs font-semibold uppercase tracking-widest"
-          style={{ color: 'color-mix(in srgb, var(--color-accent) 80%, white)' }}>
+        <span className="text-xs font-semibold" style={{ color: 'var(--ch-text)' }}>
           Νέα ειδοποίηση
         </span>
       </div>

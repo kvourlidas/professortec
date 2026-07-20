@@ -808,32 +808,30 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
   }
 
   /* -------- Shared modal shell -------- */
-  const ModalShell = ({ title, subtitle, icon, onClose, children, accentBar = true }: {
+  const ModalShell = ({ title, subtitle, icon, onClose, children }: {
     title: string; subtitle?: string; icon?: React.ReactNode;
-    onClose: () => void; children: React.ReactNode; accentBar?: boolean;
+    onClose: () => void; children: React.ReactNode;
   }) => (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className={`relative w-full max-w-md overflow-hidden rounded-2xl border shadow-2xl ${
         isDark ? 'border-slate-700/60 bg-[#1f2d3d]' : 'border-slate-200 bg-white'
       }`}>
-        {accentBar && <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 30%, transparent))' }} />}
-        <div className="flex items-center justify-between px-6 pt-5 pb-4">
+        <div className="flex items-center justify-between px-6 py-4" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
           <div className="flex items-center gap-3">
             {icon && (
               <div className="flex h-8 w-8 items-center justify-center rounded-xl"
-                style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>
+                style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
                 {icon}
               </div>
             )}
             <div>
-              <h3 className={`text-sm font-semibold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>{title}</h3>
-              {subtitle && <p className={`text-[11px] mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{subtitle}</p>}
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--ch-text)' }}>{title}</h3>
+              {subtitle && <p className="text-[11px] mt-0.5" style={{ color: 'var(--ch-text-muted)' }}>{subtitle}</p>}
             </div>
           </div>
           <button type="button" onClick={onClose}
-            className={`flex h-7 w-7 items-center justify-center rounded-lg border transition ${
-              isDark ? 'border-slate-700/60 bg-slate-800/50 text-slate-400 hover:border-slate-600 hover:text-slate-200' : 'border-slate-200 bg-slate-50 text-slate-400 hover:border-slate-300 hover:text-slate-600'
-            }`}>
+            className="flex h-7 w-7 items-center justify-center rounded-lg transition"
+            style={{ background: 'var(--ch-btn-bg)', border: '1px solid var(--ch-btn-border)', color: 'var(--ch-btn-text)' }}>
             <X className="h-3.5 w-3.5" />
           </button>
         </div>
@@ -858,8 +856,8 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
       {/* Section header */}
       <div className="flex items-center gap-3">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
-          style={{ background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 60%, transparent))' }}>
-          <CalendarDays className="h-4 w-4" style= {{ color: 'var(--color-input-bg)'}}/>
+          style={{ background: 'var(--color-accent)' }}>
+          <CalendarDays className="h-4 w-4" style={{ color: 'var(--ch-icon)' }}/>
         </div>
         <h2 className={`text-sm font-semibold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Πρόγραμμα Τμημάτων & Εκδηλώσεις</h2>
       </div>
@@ -922,9 +920,8 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
 
           {/* Delete school event */}
           {schoolEventDeleteTarget && (
-            <ModalShell title="Διαγραφή εκδήλωσης" onClose={() => { if (!schoolEventDeleting) setSchoolEventDeleteTarget(null); }} accentBar={false}>
-              <div className="h-1 w-full bg-gradient-to-r from-red-600 via-red-500 to-rose-500 -mt-0.5" />
-              <div className="px-6 pb-6">
+            <ModalShell title="Διαγραφή εκδήλωσης" onClose={() => { if (!schoolEventDeleting) setSchoolEventDeleteTarget(null); }}>
+              <div className="px-6 pt-4 pb-6">
                 <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/15 ring-1 ring-red-500/30">
                   <CalendarDays className="h-5 w-5 text-red-400" />
                 </div>
@@ -948,7 +945,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
 
           {/* Program edit modal */}
           {eventModal && !showDeleteConfirm && (
-            <ModalShell title="Επεξεργασία μαθήματος" icon={<BookOpen className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />} onClose={handleEventModalClose}>
+            <ModalShell title="Επεξεργασία μαθήματος" icon={<BookOpen className="h-4 w-4" style={{ color: 'var(--ch-icon)' }} />} onClose={handleEventModalClose}>
               <div className="space-y-4 px-6 pb-2">
                 {eventError && <div className={errorBannerCls}><span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />{eventError}</div>}
 
@@ -1015,12 +1012,13 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
               <div className={`relative w-full max-w-sm overflow-hidden rounded-2xl border shadow-2xl ${
                 isDark ? 'border-slate-700/60 bg-[#1f2d3d]' : 'border-slate-200 bg-white'
               }`}>
-                <div className="h-1 w-full bg-gradient-to-r from-red-600 via-red-500 to-rose-500" />
-                <div className="p-6">
-                  <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/15 ring-1 ring-red-500/30">
+                <div className="px-6 py-4" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
+                  <div className="mb-1 flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/15 ring-1 ring-red-500/30">
                     <CalendarDays className="h-5 w-5 text-red-400" />
                   </div>
-                  <h3 className={`mb-1 text-sm font-semibold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Ακύρωση μαθήματος</h3>
+                  <h3 className="text-sm font-semibold" style={{ color: 'var(--ch-text)' }}>Ακύρωση μαθήματος</h3>
+                </div>
+                <div className="p-6">
                   <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Θέλετε σίγουρα να ακυρώσετε το μάθημα μόνο για τη συγκεκριμένη ημερομηνία;</p>
                   <div className="mt-5 flex justify-end gap-2.5">
                     <button type="button" onClick={handleProgramCancelDeleteConfirm} className={cancelBtnCls}>Όχι</button>
@@ -1037,7 +1035,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
           {/* Test edit modal */}
           {testModal && (
             <ModalShell title="Επεξεργασία διαγωνίσματος"
-              icon={<span className="text-[10px] font-bold" style={{ color: 'var(--color-accent)' }}>✎</span>}
+              icon={<span className="text-[10px] font-bold" style={{ color: 'var(--ch-icon)' }}>✎</span>}
               onClose={handleTestModalClose}>
               <div className="space-y-4 px-6 pb-2">
                 {testError && <div className={errorBannerCls}><span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />{testError}</div>}

@@ -1,4 +1,4 @@
-export type PackageType = 'hourly' | 'monthly' | 'yearly';
+export type PackageType = 'monthly' | 'yearly';
 
 export type CreatePackageInput = {
   name: string;
@@ -7,7 +7,6 @@ export type CreatePackageInput = {
   is_active: boolean;
   sort_order: number;
   package_type: PackageType;
-  hours: number | null;
   starts_on: string | null;
   ends_on: string | null;
   avatar_color: string;
@@ -23,7 +22,6 @@ export type UpdatePackageInput = {
     is_active: boolean;
     sort_order: number;
     package_type: PackageType;
-    hours: number | null;
     starts_on: string | null;
     ends_on: string | null;
     avatar_color: string;

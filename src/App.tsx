@@ -55,6 +55,12 @@ function ProtectedRoute({ children }: { children: ReactElement }) {
   return <Layout>{children}</Layout>;
 }
 
+function FrontistirioOnly({ children }: { children: ReactElement }) {
+  const { profile } = useAuth();
+  if (profile?.account_type === 'idiaiterou') return <Navigate to={p('/dashboard')} replace />;
+  return children;
+}
+
 export default function App() {
   return (
     <ThemeProvider>
@@ -70,30 +76,29 @@ export default function App() {
           }
         />
 
-        <Route path={p('/classes')} element={<ProtectedRoute><ClassesPage /></ProtectedRoute>} />
+        {/* Frontistirio-only routes */}
+        <Route path={p('/classes')} element={<ProtectedRoute><FrontistirioOnly><ClassesPage /></FrontistirioOnly></ProtectedRoute>} />
+        <Route path={p('/tutors')} element={<ProtectedRoute><FrontistirioOnly><TutorsPage /></FrontistirioOnly></ProtectedRoute>} />
+        <Route path={p('/program')} element={<ProtectedRoute><FrontistirioOnly><ProgramPage /></FrontistirioOnly></ProtectedRoute>} />
+        <Route path={p('/program/events')} element={<ProtectedRoute><FrontistirioOnly><EventsPage /></FrontistirioOnly></ProtectedRoute>} />
+        <Route path={p('/school-info')} element={<ProtectedRoute><FrontistirioOnly><SchoolInfoPage /></FrontistirioOnly></ProtectedRoute>} />
+        <Route path={p('/economics/analysis')} element={<ProtectedRoute><FrontistirioOnly><EconomicsAnalysisPage /></FrontistirioOnly></ProtectedRoute>} />
+        <Route path={p('/economics/package-subscriptions')} element={<ProtectedRoute><FrontistirioOnly><PackageSubscriptionsPage /></FrontistirioOnly></ProtectedRoute>} />
+        <Route path={p('/economics/student-subscriptions')} element={<ProtectedRoute><FrontistirioOnly><StudentsSubscriptionsPage /></FrontistirioOnly></ProtectedRoute>} />
+        <Route path={p('/economics/tutors-payments')} element={<ProtectedRoute><FrontistirioOnly><TutorsPaymentsPage /></FrontistirioOnly></ProtectedRoute>} />
+
+        {/* Shared routes (both account types) */}
         <Route path={p('/levels')} element={<ProtectedRoute><LevelsPage /></ProtectedRoute>} />
         <Route path={p('/students')} element={<ProtectedRoute><StudentsPage /></ProtectedRoute>} />
         <Route path={p('/students/:id')} element={<ProtectedRoute><StudentCardPage /></ProtectedRoute>} />
-        <Route path={p('/tutors')} element={<ProtectedRoute><TutorsPage /></ProtectedRoute>} />
         <Route path={p('/subjects')} element={<ProtectedRoute><SubjectsPage /></ProtectedRoute>} />
-
-        <Route path={p('/program')} element={<ProtectedRoute><ProgramPage /></ProtectedRoute>} />
         <Route path={p('/program/tests')} element={<ProtectedRoute><TestsPage /></ProtectedRoute>} />
         <Route path={p('/program/tests/:id/results')} element={<ProtectedRoute><TestResultsPage /></ProtectedRoute>} />
-        <Route path={p('/program/events')} element={<ProtectedRoute><EventsPage /></ProtectedRoute>} />
         <Route path={p('/program/holidays')} element={<ProtectedRoute><HolidaysPage /></ProtectedRoute>} />
-
         <Route path={p('/grades')} element={<ProtectedRoute><GradesPage /></ProtectedRoute>} />
-        <Route path={p('/school-info')} element={<ProtectedRoute><SchoolInfoPage /></ProtectedRoute>} />
-
         <Route path={p('/student-app/feedback')} element={<ProtectedRoute><StudentFeedbackPage /></ProtectedRoute>} />
         <Route path={p('/student-app/messages')} element={<ProtectedRoute><StudentMessagesPage /></ProtectedRoute>} />
         <Route path={p('/student-app/notifications')} element={<ProtectedRoute><SendNotificationsPage /></ProtectedRoute>} />
-
-        <Route path={p('/economics/analysis')} element={<ProtectedRoute><EconomicsAnalysisPage /></ProtectedRoute>} />
-        <Route path={p('/economics/package-subscriptions')} element={<ProtectedRoute><PackageSubscriptionsPage /></ProtectedRoute>} />
-        <Route path={p('/economics/student-subscriptions')} element={<ProtectedRoute><StudentsSubscriptionsPage /></ProtectedRoute>} />
-        <Route path={p('/economics/tutors-payments')} element={<ProtectedRoute><TutorsPaymentsPage /></ProtectedRoute>} />
 
         <Route path="*" element={<Navigate to={p('/dashboard')} replace />} />
       </Routes>

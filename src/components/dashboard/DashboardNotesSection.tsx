@@ -212,18 +212,14 @@ export default function DashboardNotesSection({ schoolId }: DashboardNotesSectio
           ? 'border-slate-700/50 bg-slate-950/40 ring-white/[0.04]'
           : 'border-slate-200 bg-white/80 ring-black/[0.02]'
       }`}>
-        <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 30%, transparent))' }} />
-
         {/* Header — inside card */}
-        <div className="flex items-center justify-between px-5 pt-4 pb-0">
+        <div className="flex shrink-0 items-center justify-between px-5 py-3" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
           <div className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border"
-              style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', borderColor: 'color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>
-              <StickyNote className="h-3.5 w-3.5" style={{ color: 'var(--color-accent)' }} />
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
+              style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
+              <StickyNote className="h-3.5 w-3.5" style={{ color: 'var(--ch-icon)' }} />
             </div>
-            <div>
-              <p className={`text-sm font-semibold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Σημειώσεις</p>
-            </div>
+            <p className="text-sm font-semibold" style={{ color: 'var(--ch-text)' }}>Σημειώσεις</p>
           </div>
           <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] ${
             isDark ? 'border-slate-700/60 bg-slate-800/50 text-slate-400' : 'border-slate-200 bg-slate-100 text-slate-500'

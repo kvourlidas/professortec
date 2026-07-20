@@ -28,6 +28,71 @@ export type NavItem = {
   children?: NavItem[];
 };
 
+export const idiaiterouNavItems: NavItem[] = [
+  {
+    label: 'Dashboard',
+    to: '/dashboard',
+    icon: LayoutDashboard,
+  },
+  {
+    label: 'Μαθητές',
+    to: '/students',
+    icon: Users,
+  },
+  {
+    label: 'Μαθήματα',
+    icon: BookOpen,
+    children: [
+      {
+        label: 'Επίπεδα',
+        to: '/levels',
+        icon: Layers3,
+      },
+      {
+        label: 'Μαθήματα',
+        to: '/subjects',
+        icon: NotebookTabs,
+      },
+    ],
+  },
+  {
+    label: 'Αργίες',
+    to: '/program/holidays',
+    icon: CalendarX2,
+  },
+  {
+    label: 'Διαγωνίσματα',
+    to: '/program/tests',
+    icon: ClipboardList,
+  },
+  {
+    label: 'Βαθμοί',
+    to: '/grades',
+    icon: BarChart3,
+  },
+  {
+    label: 'Εφαρμογή μαθητών',
+    icon: Smartphone,
+    children: [
+      {
+        label: 'Feedback μαθητών',
+        to: '/student-app/feedback',
+        icon: MessageSquareText,
+      },
+      {
+        label: 'Μηνύματα μαθητών',
+        to: '/student-app/messages',
+        icon: MessageSquareText,
+      },
+      {
+        label: 'Ειδοποιήσεις μαθητών',
+        to: '/student-app/notifications',
+        icon: Bell,
+      },
+    ],
+  },
+];
+
 export const navItems: NavItem[] = [
   {
     label: 'Dashboard',

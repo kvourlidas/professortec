@@ -330,8 +330,8 @@ export default function ProgramPage() {
       {/* ── Header ── */}
       <div className="flex items-start gap-3">
         <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
-          style={{ background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 60%, transparent))' }}>
-          <CalendarDays className="h-4.5 w-4.5" style={{ color: 'var(--color-input-bg)' }} />
+          style={{ background: 'var(--color-accent)' }}>
+          <CalendarDays className="h-4.5 w-4.5" style={{ color: 'var(--ch-icon)' }} />
         </div>
         <div>
           <h1 className={`text-base font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>

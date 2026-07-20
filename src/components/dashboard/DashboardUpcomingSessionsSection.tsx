@@ -335,16 +335,14 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
       <div className={`flex flex-col flex-1 overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-md ring-1 ring-inset ${
         isDark ? 'border-slate-700/50 bg-slate-950/40 ring-white/[0.04]' : 'border-slate-200 bg-white/80 ring-black/[0.02]'
       }`}>
-        <div className="h-0.5 w-full shrink-0" style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 30%, transparent))' }} />
-
         {/* Header — inside card */}
-        <div className="flex shrink-0 items-center justify-between px-5 pt-4 pb-0">
+        <div className="flex shrink-0 items-center justify-between px-5 py-3" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
           <div className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border"
-              style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', borderColor: 'color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>
-              <CalendarClock className="h-3.5 w-3.5" style={{ color: 'var(--color-accent)' }} />
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
+              style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
+              <CalendarClock className="h-3.5 w-3.5" style={{ color: 'var(--ch-icon)' }} />
             </div>
-            <p className={`text-sm font-semibold ${primary}`}>Επόμενες Συνεδρίες</p>
+            <p className="text-sm font-semibold" style={{ color: 'var(--ch-text)' }}>Επόμενες Συνεδρίες</p>
           </div>
         </div>
 

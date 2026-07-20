@@ -198,25 +198,22 @@ export default function DashboardMonthlyTestsAvgGradesSection({ schoolId }: Prop
         ? 'border-slate-700/50 bg-slate-950/40 ring-white/[0.04]'
         : 'border-slate-200 bg-white/80 ring-black/[0.02]'
     }`}>
-      <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 30%, transparent))' }} />
-
-      <div className="px-5 py-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg border"
-              style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', borderColor: 'color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>
-              <BarChart2 className="h-3.5 w-3.5" style={{ color: 'var(--color-accent)' }} />
-            </div>
-            <div>
-              <p className={`text-sm font-semibold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Τεστ & Μέσος Όρος</p>
-              <p className={`mt-0.5 text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                {monthLabel} {year} · {rows.length} τεστ · {selectedSubjectIds.length === 0 ? 'Όλα τα μαθήματα' : 'Φιλτραρισμένα'}
-              </p>
-            </div>
+      <div className="flex shrink-0 items-center justify-between px-5 py-3" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
+        <div className="flex items-center gap-3">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
+            style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
+            <BarChart2 className="h-3.5 w-3.5" style={{ color: 'var(--ch-icon)' }} />
           </div>
+          <div>
+            <p className="text-sm font-semibold" style={{ color: 'var(--ch-text)' }}>Τεστ & Μέσος Όρος</p>
+            <p className="mt-0.5 text-[11px]" style={{ color: 'var(--ch-text-muted)' }}>
+              {monthLabel} {year} · {rows.length} τεστ · {selectedSubjectIds.length === 0 ? 'Όλα τα μαθήματα' : 'Φιλτραρισμένα'}
+            </p>
+          </div>
+        </div>
 
-          {/* Controls */}
-          <div className="flex flex-wrap items-center gap-1.5">
+        {/* Controls */}
+        <div className="flex flex-wrap items-center gap-1.5">
             <div ref={subjectsWrapRef}>
               <DropdownShell isDark={isDark} label={subjectsLabel} open={openSubjects} onToggle={() => { setOpenMonth(false); setOpenYear(false); setOpenSubjects((v) => !v); }} widthClass="w-[180px]">
                 <div className="dropdown-scrollbar max-h-64 overflow-y-auto p-1.5">
@@ -266,10 +263,11 @@ export default function DashboardMonthlyTestsAvgGradesSection({ schoolId }: Prop
               </DropdownShell>
             </div>
           </div>
-        </div>
+      </div>
 
+      <div className="px-5 py-4">
         {/* Chart area */}
-        <div className="mt-4 h-48">
+        <div className="mt-0 h-48">
           {loading ? (
             <div className="flex h-full items-center justify-center gap-2">
               <Loader2 className="h-5 w-5 animate-spin text-slate-500" />

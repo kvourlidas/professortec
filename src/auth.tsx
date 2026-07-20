@@ -4,12 +4,14 @@ import { supabase } from './lib/supabaseClient';
 import type { User } from '@supabase/supabase-js';
 
 type Role = 'super_admin' | 'school_owner' | 'teacher' | 'student';
+export type AccountType = 'frontistirio' | 'idiaiterou';
 
-type Profile = {
+export type Profile = {
   id: string;
   full_name: string | null;
   role: Role;
   school_id: string | null;
+  account_type: AccountType;
 };
 
 type AuthContextValue = {
@@ -21,6 +23,7 @@ type AuthContextValue = {
   clearAuthError: () => void;
 
   signInWeb: (email: string, password: string) => Promise<boolean>;
+  signUpWeb: (email: string, password: string, fullName: string, accountType: AccountType) => Promise<'ok' | 'confirm_email' | 'error'>;
   signOut: () => Promise<void>;
 };
 
@@ -75,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: pData, error: pErr } = await supabase
       .from('profiles')
-      .select('id, full_name, role, school_id')
+      .select('id, full_name, role, school_id, account_type')
       .eq('id', u.id)
       .maybeSingle();
 
@@ -119,6 +122,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAuthError('Πρόβλημα σύνδεσης. Δοκίμασε ξανά.');
       await hardSignOut();
       return false;
+    }
+  };
+
+  const signUpWeb = async (
+    email: string,
+    password: string,
+    fullName: string,
+    accountType: AccountType,
+  ): Promise<'ok' | 'confirm_email' | 'error'> => {
+    setAuthError(null);
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name: fullName, account_type: accountType } },
+    });
+
+    if (error || !data.user) {
+      setAuthError(error?.message ?? 'Πρόβλημα εγγραφής. Δοκίμασε ξανά.');
+      return 'error';
+    }
+
+    // No session means email confirmation is required
+    if (!data.session) return 'confirm_email';
+
+    try {
+      const ok = await withTimeout(hydrateFromUser(data.user), BOOT_TIMEOUT_MS, 'hydrateFromUser');
+      if (!ok) {
+        setAuthError('Πρόβλημα εγγραφής. Δοκίμασε ξανά.');
+        return 'error';
+      }
+      return 'ok';
+    } catch (e) {
+      console.error(e);
+      setAuthError('Πρόβλημα σύνδεσης. Δοκίμασε ξανά.');
+      await hardSignOut();
+      return 'error';
     }
   };
 
@@ -173,6 +213,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         authError,
         clearAuthError,
         signInWeb,
+        signUpWeb,
         signOut,
       }}
     >

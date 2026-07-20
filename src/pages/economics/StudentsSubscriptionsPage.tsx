@@ -3,7 +3,6 @@ import { useSubscriptionsPage } from '../../components/economics/subscriptions/u
 import { SubscriptionsTable } from '../../components/economics/subscriptions/SubscriptionsTable';
 import { AssignRenewModal } from '../../components/economics/subscriptions/AssignRenewModal';
 import { DeleteSubscriptionModal } from '../../components/economics/subscriptions/DeleteSubscriptionModal';
-import { EndSubscriptionModal } from '../../components/economics/subscriptions/EndSubscriptionModal';
 import { PaymentModal } from '../../components/economics/subscriptions/PaymentModal';
 
 type PayFilter = 'all' | 'settled' | 'owes' | 'unpaid';
@@ -30,8 +29,8 @@ export default function StudentsSubscriptionsPage() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-3">
             <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
-              style={{ background: 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 60%, transparent))' }}>
-              <Briefcase className="h-4 w-4" style={{ color: 'var(--color-input-bg)' }} />
+              style={{ background: 'var(--color-accent)' }}>
+              <Briefcase className="h-4 w-4" style={{ color: 'var(--ch-icon)' }} />
             </div>
             <div>
               <h1 className={`text-base font-semibold tracking-tight ${p.isDark ? 'text-slate-50' : 'text-slate-800'}`}>Συνδρομές Μαθητών</h1>
@@ -99,7 +98,6 @@ export default function StudentsSubscriptionsPage() {
           onPayment={p.openPaymentModal}
           onRenew={p.openRenew}
           onDelete={p.setDeleteTarget}
-          onEnd={p.setEndTarget}
         />
 
         {/* Expired / renewed subscriptions table */}
@@ -175,15 +173,6 @@ export default function StudentsSubscriptionsPage() {
           isDark={p.isDark}
           onCancel={() => p.setDeleteTarget(null)}
           onConfirm={p.confirmDelete}
-        />
-
-        {/* End hourly subscription modal */}
-        <EndSubscriptionModal
-          target={p.endTarget}
-          ending={p.endingLoading}
-          isDark={p.isDark}
-          onCancel={() => p.setEndTarget(null)}
-          onConfirm={p.confirmEnd}
         />
 
         {/* Payment modal */}

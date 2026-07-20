@@ -56,10 +56,8 @@ export default function GradesListCard<
         ? 'border-slate-700/50 bg-slate-950/40 ring-white/[0.04]'
         : 'border-slate-200 bg-white/80 ring-black/[0.02]'
     }`}>
-      <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 30%, transparent))' }} />
-
-      {/* Tab row */}
-      <div className={`grid grid-cols-2 border-b ${isDark ? 'border-slate-800/70' : 'border-slate-200'}`}>
+      {/* Tab row — solid accent header */}
+      <div className="grid grid-cols-2" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
         {tabs.map(({ key, label, icon, count }) => {
           const active = tab === key;
           return (
@@ -67,27 +65,23 @@ export default function GradesListCard<
               key={key}
               type="button"
               onClick={() => setTab(key)}
-              className={`relative flex items-center justify-center gap-2 px-4 py-3 text-[12px] font-semibold transition-colors duration-150 ${
-                active
-                  ? isDark ? 'text-white bg-slate-900/60' : 'text-slate-900 bg-white'
-                  : isDark ? 'text-slate-500 hover:text-slate-300 hover:bg-white/[0.02]' : 'text-slate-400 bg-slate-50 hover:text-slate-600 hover:bg-slate-100/60'
-              }`}
+              className="relative flex items-center justify-center gap-2 px-4 py-3 text-[12px] font-semibold transition-colors duration-150"
+              style={{
+                color: active ? 'var(--ch-text)' : 'var(--ch-text-muted)',
+                background: active ? 'var(--ch-icon-bg)' : 'transparent',
+              }}
             >
-              <span style={active ? { color: 'var(--color-accent)' } : undefined}>{icon}</span>
+              <span style={{ color: active ? 'var(--ch-icon)' : 'var(--ch-text-muted)' }}>{icon}</span>
               <span>{label}</span>
               {count > 0 && (
-                <span className={`rounded-full px-1.5 py-px text-[10px] tabular-nums font-medium ${
-                  active
-                    ? ''
-                    : isDark ? 'bg-slate-800 text-slate-500' : 'bg-slate-100 text-slate-400'
-                }`}
-                  style={active ? { background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', color: 'var(--color-accent)' } : undefined}>
+                <span className="rounded-full px-1.5 py-px text-[10px] tabular-nums font-medium"
+                  style={{ background: 'var(--ch-icon-bg)', color: 'var(--ch-text)' }}>
                   {count}
                 </span>
               )}
               <span
                 className="absolute bottom-0 left-0 right-0 h-[2px]"
-                style={{ background: active ? 'var(--color-accent)' : isDark ? 'rgb(30 41 59 / 0.8)' : 'rgb(226 232 240)' }}
+                style={{ background: active ? 'var(--ch-text)' : 'transparent' }}
               />
             </button>
           );

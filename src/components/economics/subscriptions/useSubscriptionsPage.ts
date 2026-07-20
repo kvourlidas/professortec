@@ -4,7 +4,7 @@ import { useAuth } from '../../../auth';
 import { useTheme } from '../../../context/ThemeContext';
 import type { PeriodMode, PackageRow, PaymentRow, StudentRow, StudentViewRow, SubscriptionRow } from './types';
 import {
-  isoToDisplayDate, isHourlyPackageName, monthKeyToRange, pad2, parseMoney, resolvePackageType, round2, todayLocalISODate,
+  isoToDisplayDate, monthKeyToRange, pad2, parseMoney, resolvePackageType, round2, todayLocalISODate,
 } from './utils';
 
 const PAGE_SIZE = 15;
@@ -73,9 +73,7 @@ async function buildViewRows(
       .order('created_at', { ascending: false });
     for (const rs of (renewedData ?? []) as any[]) {
       if (carriedDebtMap.has(rs.student_id)) continue;
-      const hourly = isHourlyPackageName(rs.package_name ?? '');
-      const billedRaw = Number(rs.charge_amount ?? rs.price ?? 0);
-      const billed = hourly ? Math.abs(billedRaw) : billedRaw;
+      const billed = Number(rs.charge_amount ?? rs.price ?? 0);
       const debt = Math.max(0, billed - Number(rs.paid_amount ?? 0));
       if (debt > 0) carriedDebtMap.set(rs.student_id, { amount: debt, fromName: rs.package_name ?? '—' });
     }
@@ -128,8 +126,7 @@ export function useSubscriptionsPage() {
   const pmBilled = useMemo(() => {
     const sub = paymentModal?.row.sub;
     if (!sub) return 0;
-    const raw = Number((sub as any).charge_amount ?? sub.price ?? 0);
-    return isHourlyPackageName(sub.package_name) ? Math.abs(raw) : raw;
+    return Number((sub as any).charge_amount ?? sub.price ?? 0);
   }, [paymentModal]);
   const pmBalance      = useMemo(() => pmBilled - pmPaid, [pmBilled, pmPaid]);
   const pmHistoryTotal = useMemo(() => paymentModal?.allStudentPayments.reduce((s, p) => p.cancelled_at ? s : s + Number(p.amount ?? 0), 0) ?? 0, [paymentModal]);
@@ -137,10 +134,6 @@ export function useSubscriptionsPage() {
   // ── Delete ─────────────────────────────────────────────────────────────────
   const [deleteTarget, setDeleteTarget] = useState<StudentViewRow | null>(null);
   const [deleting,     setDeleting]     = useState(false);
-
-  // ── End (manual close of hourly subscription) ─────────────────────────────
-  const [endTarget,    setEndTarget]    = useState<StudentViewRow | null>(null);
-  const [endingLoading,setEndingLoading]= useState(false);
 
   // ── Assign / Renew modal ───────────────────────────────────────────────────
   const [assignOpen,       setAssignOpen]       = useState(false);
@@ -214,7 +207,7 @@ export function useSubscriptionsPage() {
     if (!schoolId) return;
     const { data, error } = await supabase
       .from('packages')
-      .select('id,school_id,name,price,currency,is_active,sort_order,created_at,package_type,hours,starts_on,ends_on,is_custom,avatar_color')
+      .select('id,school_id,name,price,currency,is_active,sort_order,created_at,package_type,starts_on,ends_on,is_custom,avatar_color')
       .eq('school_id', schoolId)
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: true });
@@ -255,7 +248,7 @@ export function useSubscriptionsPage() {
     }
     let q = supabase
       .from('student_subscriptions_with_totals')
-      .select('id,school_id,student_id,package_id,package_name,price,currency,status,starts_on,ends_on,created_at,used_hours,charge_amount,paid_amount,balance', { count: 'exact' })
+      .select('id,school_id,student_id,package_id,package_name,price,currency,status,starts_on,ends_on,created_at,charge_amount,paid_amount,balance', { count: 'exact' })
       .eq('school_id', schoolId)
       .eq('status', 'active')
       .order('created_at', { ascending: false });
@@ -281,7 +274,7 @@ export function useSubscriptionsPage() {
     }
     let q = supabase
       .from('student_subscriptions_with_totals')
-      .select('id,school_id,student_id,package_id,package_name,price,currency,status,starts_on,ends_on,created_at,used_hours,charge_amount,paid_amount,balance', { count: 'exact' })
+      .select('id,school_id,student_id,package_id,package_name,price,currency,status,starts_on,ends_on,created_at,charge_amount,paid_amount,balance', { count: 'exact' })
       .eq('school_id', schoolId)
       .in('status', ['completed', 'expired', 'renewed']) // completed = expired by date/hours; renewed = manually renewed
       .order('created_at', { ascending: false });
@@ -394,20 +387,6 @@ export function useSubscriptionsPage() {
     setDeleting(false);
   };
 
-  const confirmEnd = async () => {
-    if (!endTarget?.sub || !schoolId) return;
-    setEndingLoading(true); setError(null); setInfo(null);
-    try {
-      const { error: rpcErr } = await supabase.rpc('end_subscription', {
-        p_subscription_id: endTarget.sub.id,
-        p_school_id: schoolId,
-      });
-      if (rpcErr) throw new Error(rpcErr.message);
-      setEndTarget(null); setInfo('Η συνδρομή ορίστηκε ως ολοκληρωμένη.'); await load();
-    } catch (err: any) { setError(err.message ?? 'Αποτυχία λήξης συνδρομής.'); }
-    setEndingLoading(false);
-  };
-
   const resetModal = () => {
     setSelPackage(null); setCustomPrice(''); setDiscountPct(''); setDiscountMode('pct'); setDiscountReason(''); setPackageQ('');
     setAssignStartsOn(isoToDisplayDate(todayLocalISODate())); setAssignEndsOn('');
@@ -438,10 +417,6 @@ export function useSubscriptionsPage() {
       setAssignPeriodMode('range');
     } else if (pt === 'monthly') {
       setAssignPeriodMode('month');
-    } else {
-      setAssignStartsOn(assignStartsOn || isoToDisplayDate(todayLocalISODate()));
-      setAssignEndsOn(pkg.is_custom && pkg.ends_on ? isoToDisplayDate(pkg.ends_on) : '');
-      setAssignPeriodMode('range');
     }
   };
 
@@ -451,7 +426,7 @@ export function useSubscriptionsPage() {
     if (!selPackage) { setAssignError('Επίλεξε πακέτο.'); return; }
     const pkg = selPackage;
     const pt = resolvePackageType(pkg);
-    const yearly = pt === 'yearly', monthly = pt === 'monthly', hourly = pt === 'hourly';
+    const yearly = pt === 'yearly', monthly = pt === 'monthly';
     let startsISO: string | null = null, endsISO: string | null = null;
     if (yearly) {
       startsISO = pkg.starts_on ?? null; endsISO = pkg.ends_on ?? null;
@@ -466,13 +441,6 @@ export function useSubscriptionsPage() {
         if (!range) { setAssignError('Επίλεξε μήνα και έτος.'); return; }
         startsISO = range.startISO; endsISO = range.endISO;
       }
-    } else if (hourly) {
-      startsISO = displayToISODate(assignStartsOn) ?? todayLocalISODate();
-      if (pkg.is_custom && assignEndsOn) {
-        const e = displayToISODate(assignEndsOn);
-        if (!e) { setAssignError('Βάλε έγκυρη ημερομηνία λήξης.'); setSaving(false); return; }
-        endsISO = e;
-      } else { endsISO = null; }
     }
     if (!isRenew) {
       const { data: existingActive } = await supabase
@@ -518,10 +486,6 @@ export function useSubscriptionsPage() {
       if (assignPeriodMode === 'range' && assignStartsOn && assignEndsOn) return `${assignStartsOn} – ${assignEndsOn}`;
       if (assignPeriodMode === 'month' && assignMonthNum && assignYear) return `${monthLabel(assignMonthNum)} ${assignYear}`;
     }
-    if (pt === 'hourly') {
-      if (selPackage.is_custom && assignStartsOn && assignEndsOn) return `${assignStartsOn} – ${assignEndsOn}`;
-      if (assignStartsOn) return `Από ${assignStartsOn}`;
-    }
     return null;
   };
 
@@ -548,8 +512,6 @@ export function useSubscriptionsPage() {
 
     // delete
     deleteTarget, setDeleteTarget, deleting, confirmDelete,
-    // end (hourly subscription manual close)
-    endTarget, setEndTarget, endingLoading, confirmEnd,
 
     // assign / renew
     assignOpen, setAssignOpen, isRenew, saving, assignError, setAssignError,

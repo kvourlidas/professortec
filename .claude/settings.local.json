@@ -31,7 +31,22 @@
       "Bash(npx supabase *)",
       "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\KOSTAS\\\\Desktop\\\\Projects\\\\ProfessorTec\\\\web-app\" -Recurse -Filter \"*migration*\" -File)",
       "Bash(find \"c:\\\\Users\\\\KOSTAS\\\\Desktop\\\\Projects\\\\ProfessorTec\" -type f -name \"seed.sql\" 2>/dev/null)",
-      "Read(//c/Users/KOSTAS/Desktop/Projects/ProfessorTec/**)"
+      "Read(//c/Users/KOSTAS/Desktop/Projects/ProfessorTec/**)",
+      "Bash(Get-ChildItem -Path src -Recurse -Directory)",
+      "Bash(Format-Table -AutoSize)",
+      "Bash(findstr /V node_modules)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\KOSTAS\\\\Desktop\\\\Projects\\\\ProfessorTec\\\\web-app\" -Recurse -Directory)",
+      "Bash(Sort-Object)",
+      "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\KOSTAS\\\\Desktop\\\\Projects\\\\ProfessorTec\\\\web-app\" | Where-Object { $_.PSIsContainer } | Select-Object -ExpandProperty Name | Sort-Object)",
+      "mcp__claude_ai_Supabase__get_logs",
+      "Bash(Remove-Item \"c:\\\\Users\\\\KOSTAS\\\\Desktop\\\\Projects\\\\ProfessorTec\\\\web-app\\\\src\\\\components\\\\economics\\\\subscriptions\\\\EndSubscriptionModal.tsx\" -Force)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\KOSTAS\\\\Desktop\\\\Projects\\\\ProfessorTec\\\\web-app\\\\src\" -Directory)",
+      "Bash(Select-Object Name)",
+      "PowerShell(head -20)",
+      "Bash(grep -E \"\\\\.md$|schema|database|CLAUDE\")",
+      "Bash(grep -rn \"h-0.5.*linear-gradient\\\\|linear-gradient.*h-0.5\" src/components/dashboard/DashboardMetricsSection.tsx src/components/grades/GradesPanel.tsx src/components/notifications/NotificationHistory.tsx src/components/notifications/NotificationSendForm.tsx src/components/program/ProgramClassesPanel.tsx src/components/program/ProgramScheduleGrid.tsx src/pages/TestResultsPage.tsx src/pages/economics/TutorsPaymentsPage.tsx src/pages/StudentCardPage.tsx)",
+      "Bash(grep -rn \"h-0.5 w-full.*style\\\\|\\\\\"h-0.5 w-full\\\\\"\" src/components/dashboard/DashboardMetricsSection.tsx src/components/grades/GradesPanel.tsx src/components/notifications/NotificationHistory.tsx src/components/notifications/NotificationSendForm.tsx src/components/program/ProgramClassesPanel.tsx src/components/program/ProgramScheduleGrid.tsx src/pages/TestResultsPage.tsx src/pages/economics/TutorsPaymentsPage.tsx src/pages/StudentCardPage.tsx)",
+      "Bash(python3 -c ' *)"
     ]
   }
 }

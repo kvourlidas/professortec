@@ -79,8 +79,6 @@ export default function ClassStudentsModal({ open, onClose, classId, classTitle 
   const listDivideCls = `divide-y p-1 ${isDark ? 'divide-slate-800/50' : 'divide-slate-100'}`;
   const footerCls = `mt-3 flex items-center justify-between gap-3 border-t px-6 py-4 ${isDark ? 'border-slate-800/70 bg-slate-900/20' : 'border-slate-100 bg-slate-50/50'}`;
   const cancelBtnCls = `btn border px-4 py-1.5 disabled:opacity-50 ${isDark ? 'border-slate-600/60 bg-slate-800/50 text-slate-200 hover:bg-slate-700/60' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'}`;
-  const closeBtnCls = `flex h-7 w-7 items-center justify-center rounded-lg border transition ${isDark ? 'border-slate-700/60 bg-slate-800/50 text-slate-400 hover:border-slate-600 hover:text-slate-200' : 'border-slate-200 bg-slate-100 text-slate-500 hover:border-slate-300 hover:text-slate-700'}`;
-
   const scrollStyle: React.CSSProperties = {
     scrollbarWidth: 'thin',
     scrollbarColor: isDark
@@ -91,22 +89,19 @@ export default function ClassStudentsModal({ open, onClose, classId, classTitle 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className={`relative w-full max-w-3xl overflow-hidden rounded-2xl border shadow-2xl ${modalBg}`}>
-        {/* Accent bar */}
-        <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 30%, transparent))' }} />
-
         {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-5 pb-4">
+        <div className="flex items-center justify-between px-6 py-4" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl"
-              style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>
-              <Users className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
+              style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
+              <Users className="h-4 w-4" style={{ color: 'var(--ch-icon)' }} />
             </div>
             <div>
-              <h2 className={`text-sm font-semibold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Μαθητές τμήματος</h2>
+              <h2 className="text-sm font-semibold" style={{ color: 'var(--ch-text)' }}>Μαθητές τμήματος</h2>
               {classTitle && (
                 <div className="mt-0.5 flex items-center gap-1.5">
                   <GraduationCap className={`h-3 w-3 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-                  <p className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{classTitle}</p>
+                  <p className="text-[11px]" style={{ color: 'var(--ch-text-muted)' }}>{classTitle}</p>
                   {pendingChanges > 0 && (
                     <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
                       style={{ background: 'color-mix(in srgb, var(--color-accent) 20%, transparent)', color: 'var(--color-accent)' }}>
@@ -117,7 +112,9 @@ export default function ClassStudentsModal({ open, onClose, classId, classTitle 
               )}
             </div>
           </div>
-          <button type="button" onClick={onClose} className={closeBtnCls}>
+          <button type="button" onClick={onClose}
+            className="flex h-7 w-7 items-center justify-center rounded-lg transition"
+            style={{ background: 'var(--ch-btn-bg)', border: '1px solid var(--ch-btn-border)', color: 'var(--ch-btn-text)' }}>
             <X className="h-3.5 w-3.5" />
           </button>
         </div>

@@ -31,14 +31,15 @@ export default function SubjectDeleteModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className={modalCardCls} style={{ background: 'var(--color-sidebar)' }}>
-        <div className="h-1 w-full bg-gradient-to-r from-red-600 via-red-500 to-rose-500" />
-        <div className="p-6">
-          <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/15 ring-1 ring-red-500/30">
+        <div className="px-6 py-4" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
+          <div className="mb-1 flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/15 ring-1 ring-red-500/30">
             <BookOpen className="h-5 w-5 text-red-400" />
           </div>
-          <h3 className={`mb-1 text-sm font-semibold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>
+          <h3 className="text-sm font-semibold" style={{ color: 'var(--ch-text)' }}>
             Διαγραφή μαθήματος
           </h3>
+        </div>
+        <div className="p-6">
           <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
             Σίγουρα θέλετε να διαγράψετε το μάθημα{' '}
             <span className={`font-semibold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>

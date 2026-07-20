@@ -7,66 +7,90 @@
 
 
 @layer base {
-  /* ─── DARK MODE (default) ─── */
+  /* ─── DARK MODE (slate + violet) ─── */
   :root,
   .dark {
-    --color-background: #253649;
-    --color-surface: #1f2d3d;
-    --color-primary: #2563eb;
-    --color-primary-soft: #dbeafe;
-    --color-accent: #ffc947;
-    --color-input-bg: #303f50;
+    --color-background: #000000;
+    --color-surface: #0d0d0d;
+    --color-primary: #333333;
+    --color-primary-soft: #1a1a1a;
+    --color-accent: #111111;
+    --color-input-bg: #161616;
 
-    --color-button-bg: #f3b421;
-    --color-button-text: #000000;
+    --color-button-bg: #222222;
+    --color-button-text: #ffffff;
 
-    --color-text-main: #ffffff;
-    --color-text-td: #ffffff;
-    --color-text-muted: #6b7280;
+    --color-text-main: #e4e0f0;
+    --color-text-td: #d4d0e0;
+    --color-text-muted: #6a6880;
 
-    --color-sidebar: #1f2d3d;
-    --color-sidebar-muted: #1f2937;
-    --color-sidebar-border: #111827;
+    --color-sidebar: #0d0d0d;
+    --color-sidebar-muted: #080808;
+    --color-sidebar-border: #000000;
 
-    --color-header-bg: rgba(15, 23, 42, 0.70);
-    --color-sidebar-bg: rgba(15, 23, 42, 0.75);
-    --color-border: rgba(51, 65, 85, 0.6);
-    --color-border-soft: rgba(51, 65, 85, 0.5);
+    --color-header-bg: rgba(0, 0, 0, 0.92);
+    --color-sidebar-bg: #111111;
+    --color-border: rgba(35, 35, 35, 0.90);
+    --color-border-soft: rgba(35, 35, 35, 0.60);
+
+    /* Card header (dark mode = near-black) */
+    --ch-bg: var(--color-accent);
+    --ch-text: #e4e0f0;
+    --ch-text-muted: rgba(228,224,240,0.60);
+    --ch-icon-bg: rgba(255,255,255,0.08);
+    --ch-icon-border: rgba(255,255,255,0.12);
+    --ch-icon: #e4e0f0;
+    --ch-btn-bg: rgba(255,255,255,0.07);
+    --ch-btn-border: rgba(255,255,255,0.12);
+    --ch-btn-text: #e4e0f0;
+    --ch-divider: rgba(255,255,255,0.08);
 
     /* FullCalendar */
-    --fc-border-color: rgba(148, 163, 184, 0.7);
+    --fc-border-color: rgba(35, 35, 35, 0.9);
     --fc-page-bg-color: var(--color-sidebar);
     --fc-neutral-bg-color: var(--color-sidebar);
     --fc-neutral-text-color: var(--color-text-main);
   }
 
-  /* ─── LIGHT MODE ─── */
+  /* ─── LIGHT MODE (olive & creme) ─── */
   :root:not(.dark) {
-    --color-background: #f1f5f9;
-    --color-surface: #ffffff;
-    --color-primary: #2563eb;
-    --color-primary-soft: #dbeafe;
-    --color-accent: #2563eb;
-    --color-input-bg: #f8fafc;
+    --color-background: #f7f0dd;
+    --color-surface: #f7f0dd;
+    --color-primary: #5b6038;
+    --color-primary-soft: #d4d3b0;
+    --color-accent: #7c8060;
+    --color-input-bg: #efe5cb;
 
-    --color-button-bg: #2563eb;
+    --color-button-bg: #7c8060;
     --color-button-text: #ffffff;
 
     --color-text-main: #0f172a;
     --color-text-td: #1e293b;
     --color-text-muted: #64748b;
 
-    --color-sidebar: #ffffff;
-    --color-sidebar-muted: #f8fafc;
-    --color-sidebar-border: #e2e8f0;
+    --color-sidebar: #f7f0dd;
+    --color-sidebar-muted: #efe5cb;
+    --color-sidebar-border: #d9ccae;
 
-    --color-header-bg: rgba(255, 255, 255, 0.85);
-    --color-sidebar-bg: rgba(255, 255, 255, 0.92);
-    --color-border: rgba(203, 213, 225, 0.8);
-    --color-border-soft: rgba(203, 213, 225, 0.6);
+    --color-header-bg: rgba(247, 240, 221, 0.88);
+    --color-sidebar-bg: #5b6038;
+    --color-border: rgba(217, 204, 174, 0.8);
+    --color-border-soft: rgba(217, 204, 174, 0.6);
+
+    /* Card header (light mode = olive accent) */
+    --ch-bg: var(--color-accent);
+    --ch-text: #ffffff;
+    --ch-text-muted: rgba(255,255,255,0.75);
+    --ch-icon-bg: rgba(255,255,255,0.15);
+    --ch-icon-border: rgba(255,255,255,0.22);
+    --ch-icon: #ffffff;
+    --ch-btn-bg: rgba(255,255,255,0.12);
+    --ch-btn-border: rgba(255,255,255,0.22);
+    --ch-btn-text: #ffffff;
+    --ch-divider: rgba(0,0,0,0.08);
 
     /* FullCalendar */
-    --fc-border-color: rgba(203, 213, 225, 0.9);
+    --fc-border-color: rgba(217, 204, 174, 0.9);
     --fc-page-bg-color: var(--color-sidebar);
     --fc-neutral-bg-color: var(--color-sidebar);
     --fc-neutral-text-color: var(--color-text-main);
@@ -175,13 +199,13 @@
 .react-datepicker__day--selected,
 .react-datepicker__day--keyboard-selected {
   background-color: var(--color-accent) !important;
-  color: #000000 !important;
+  color: #ffffff !important;
 }
 
 .react-datepicker__day--selected:hover,
 .react-datepicker__day--keyboard-selected:hover {
-  background-color: #e0ad30 !important;
-  color: #000000 !important;
+  background-color: color-mix(in srgb, var(--color-accent) 80%, black) !important;
+  color: #ffffff !important;
 }
 
 .react-datepicker__triangle {

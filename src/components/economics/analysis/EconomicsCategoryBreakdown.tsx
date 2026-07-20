@@ -20,9 +20,7 @@ export function EconomicsCategoryBreakdown({
     ? 'overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]'
     : 'overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md';
 
-  const cardHeaderCls = isDark
-    ? 'flex items-center justify-between border-b border-slate-800/70 bg-slate-900/30 px-4 py-3'
-    : 'flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3';
+  const cardHeaderCls = 'flex items-center justify-between border-b px-4 py-3';
 
   const catItemCls = isDark
     ? 'rounded-xl border border-slate-800/60 bg-slate-900/30 px-3 py-2.5'
@@ -32,10 +30,10 @@ export function EconomicsCategoryBreakdown({
 
   return (
     <div className={`${cardCls} lg:col-span-4`}>
-      <div className={cardHeaderCls}>
+      <div className={cardHeaderCls} style={{ background: 'var(--ch-bg)', borderColor: 'var(--ch-divider)' }}>
         <div className="flex items-center gap-2">
-          <Tag className={`h-3.5 w-3.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}/>
-          <span className={`text-xs font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Έξοδα ανά κατηγορία</span>
+          <Tag className="h-3.5 w-3.5" style={{ color: 'var(--ch-icon)' }}/>
+          <span className="text-xs font-semibold" style={{ color: 'var(--ch-text)' }}>Έξοδα ανά κατηγορία</span>
         </div>
         {expenseByCategory.length > PAGE_SIZE && (
           <EconomicsPaginationBar page={catPage} total={catTotalPages} onPrev={onPrev} onNext={onNext} isDark={isDark}/>

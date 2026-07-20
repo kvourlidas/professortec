@@ -252,11 +252,9 @@ function LevelSection({
         </div>
 
         <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg"
-          style={{ background: levelId
-            ? 'linear-gradient(135deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 60%, transparent))'
-            : isDark ? '#334155' : '#e2e8f0' }}>
+          style={{ background: levelId ? 'var(--color-accent)' : isDark ? '#334155' : '#e2e8f0' }}>
           <GraduationCap className="h-3.5 w-3.5"
-            style={{ color: levelId ? 'var(--color-input-bg)' : isDark ? '#94a3b8' : '#64748b' }} />
+            style={{ color: levelId ? 'var(--ch-icon)' : isDark ? '#94a3b8' : '#64748b' }} />
         </div>
         <span className={`text-sm font-semibold tracking-tight ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
           {levelName}
