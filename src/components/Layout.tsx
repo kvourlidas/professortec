@@ -41,19 +41,19 @@ export default function Layout({ children }: LayoutProps) {
   const isIdiaiterou = profile?.account_type === 'idiaiterou';
   const activeNav = isIdiaiterou ? idiaiterouNavItems : navItems;
 
-  // both dark (violet) and light (olive) sidebars are dark → white text
-  const sbText         = 'text-white';
-  const sbTextMuted    = 'text-white/70';
-  const sbTextFaint    = 'text-white/55';
-  const sbActiveBg     = 'bg-white/20';
-  const sbActiveText   = 'text-white';
-  const sbHoverBg      = 'hover:bg-white/[0.12]';
-  const sbHoverText    = 'hover:text-white';
-  const sbIconInactive = 'text-white/55';
-  const sbIconActive   = 'text-white';
-  const sbIconHover    = 'group-hover:text-white';
-  const sbBorderColor  = 'rgba(255,255,255,0.15)';
-  const sbDotColor     = '#ffffff';
+  // Sidebar is now a neutral surface (muted tone in both themes), so text follows theme rather than being forced white
+  const sbText         = isDark ? 'text-white' : 'text-[#4B4B43]';
+  const sbTextMuted    = isDark ? 'text-white/70' : 'text-[#4B4B43]/70';
+  const sbTextFaint    = isDark ? 'text-white/55' : 'text-[#4B4B43]/55';
+  const sbActiveBg     = isDark ? 'bg-white/15' : 'bg-[#4B4B43]/10';
+  const sbActiveText   = isDark ? 'text-white' : 'text-[#4B4B43]';
+  const sbHoverBg      = isDark ? 'hover:bg-white/[0.10]' : 'hover:bg-[#4B4B43]/[0.06]';
+  const sbHoverText    = isDark ? 'hover:text-white' : 'hover:text-[#4B4B43]';
+  const sbIconInactive = isDark ? 'text-white/55' : 'text-[#4B4B43]/55';
+  const sbIconActive   = isDark ? 'text-white' : 'text-[#4B4B43]';
+  const sbIconHover    = isDark ? 'group-hover:text-white' : 'group-hover:text-[#4B4B43]';
+  const sbBorderColor  = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(75,75,67,0.14)';
+  const sbDotColor     = isDark ? '#ffffff' : '#4B4B43';
 
   useEffect(() => {
     const loadSchoolName = async () => {
@@ -228,7 +228,7 @@ export default function Layout({ children }: LayoutProps) {
           {/* Row 1: logo */}
           <div style={{ height: '48px', overflow: 'hidden' }}>
             <img
-              src={logoDark}
+              src={isDark ? logoDark : logoLight}
               alt="edra"
               style={{ height: '200px', width: 'auto', marginTop: '-78px' }}
             />
@@ -236,12 +236,12 @@ export default function Layout({ children }: LayoutProps) {
 
           {/* Row 2: theme toggle */}
           {!sidebarCollapsed ? (
-            <div className="flex rounded-xl p-0.5 bg-white/20">
+            <div className={`flex rounded-xl p-0.5 ${isDark ? 'bg-white/10' : 'bg-[#4B4B43]/[0.08]'}`}>
               <button
                 type="button"
                 onClick={toggleTheme}
                 className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-0.5 text-[11px] font-semibold transition-all duration-200 ${
-                  !isDark ? 'bg-white/25 text-white shadow-sm' : 'text-white/60 hover:text-white'
+                  !isDark ? `${sbActiveBg} ${sbActiveText} shadow-sm` : `${sbTextMuted} ${sbHoverText}`
                 }`}
               >
                 <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -257,7 +257,7 @@ export default function Layout({ children }: LayoutProps) {
                 type="button"
                 onClick={toggleTheme}
                 className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-0.5 text-[11px] font-semibold transition-all duration-200 ${
-                  isDark ? 'bg-white/25 text-white shadow-sm' : 'text-white/60 hover:text-white'
+                  isDark ? `${sbActiveBg} ${sbActiveText} shadow-sm` : `${sbTextMuted} ${sbHoverText}`
                 }`}
               >
                 <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -272,7 +272,7 @@ export default function Layout({ children }: LayoutProps) {
                 type="button"
                 onClick={toggleTheme}
                 aria-label="Toggle theme"
-                className="flex h-8 w-8 items-center justify-center rounded-xl transition-all duration-200 bg-white/20 text-white"
+                className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all duration-200 ${isDark ? 'bg-white/10 text-white' : 'bg-[#4B4B43]/[0.08] text-[#4B4B43]'}`}
               >
                 {isDark ? (
                   <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -345,7 +345,7 @@ export default function Layout({ children }: LayoutProps) {
               <div
                 className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
                 style={{
-                  background: isDark ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.25)',
+                  background: isDark ? 'rgba(255,255,255,0.10)' : 'rgba(75,75,67,0.10)',
                   color: sbDotColor,
                 }}
               >
@@ -364,8 +364,8 @@ export default function Layout({ children }: LayoutProps) {
                 aria-label="Αποσύνδεση"
                 className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg transition ${
                   isDark
-                    ? 'text-slate-600 hover:bg-red-500/10 hover:text-red-700'
-                    : 'text-white/60 hover:bg-white/10 hover:text-red-200'
+                    ? 'text-white/55 hover:bg-red-500/15 hover:text-red-300'
+                    : 'text-[#4B4B43]/60 hover:bg-red-500/10 hover:text-red-600'
                 }`}
               >
                 <LogOut className="h-3.5 w-3.5" />
@@ -380,7 +380,7 @@ export default function Layout({ children }: LayoutProps) {
             <div
               className="flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-bold"
               style={{
-                background: isDark ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.25)',
+                background: isDark ? 'rgba(255,255,255,0.10)' : 'rgba(75,75,67,0.10)',
                 color: sbDotColor,
               }}
             >
@@ -391,8 +391,8 @@ export default function Layout({ children }: LayoutProps) {
               aria-label="Αποσύνδεση"
               className={`flex h-7 w-7 items-center justify-center rounded-lg transition ${
                 isDark
-                  ? 'text-slate-600 hover:bg-red-500/10 hover:text-red-700'
-                  : 'text-white/60 hover:bg-white/10 hover:text-red-200'
+                  ? 'text-white/55 hover:bg-red-500/15 hover:text-red-300'
+                  : 'text-[#4B4B43]/60 hover:bg-red-500/10 hover:text-red-600'
               }`}
             >
               <LogOut className="h-3.5 w-3.5" />
@@ -413,14 +413,14 @@ export default function Layout({ children }: LayoutProps) {
             onClick={() => setMobileOpen(true)}
             className={`flex h-8 w-8 items-center justify-center rounded-lg border transition ${
               isDark
-                ? 'border-black/20 bg-black/10 text-slate-900 hover:text-slate-900'
-                : 'border-white/30 bg-white/15 text-white hover:text-white'
+                ? 'border-white/15 bg-white/10 text-white hover:text-white'
+                : 'border-[#4B4B43]/15 bg-[#4B4B43]/[0.06] text-[#4B4B43] hover:text-[#4B4B43]'
             }`}
           >
             <Menu className="h-4 w-4" />
           </button>
           <img
-            src={logoDark}
+            src={isDark ? logoDark : logoLight}
             alt="edra"
             className="h-8 w-auto"
           />

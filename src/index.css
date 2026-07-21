@@ -7,90 +7,104 @@
 
 
 @layer base {
-  /* ─── DARK MODE (slate + violet) ─── */
+  /* ─── DARK MODE (deep olive) ─── */
   :root,
   .dark {
-    --color-background: #000000;
-    --color-surface: #0d0d0d;
-    --color-primary: #333333;
-    --color-primary-soft: #1a1a1a;
-    --color-accent: #111111;
-    --color-input-bg: #161616;
+    --color-background: #2a3023;
+    --color-surface: #404734;
+    --color-primary: #aab48a;
+    --color-primary-hover: #b7c195;
+    --color-primary-active: #8d976f;
+    --color-primary-soft: color-mix(in srgb, var(--color-primary) 30%, var(--color-background));
+    --color-accent: var(--color-primary);
+    --color-accent-hover: var(--color-primary-hover);
+    --color-accent-active: var(--color-primary-active);
+    --color-butter: #f8efcf;
+    --color-butter-hover: #f3e5bc;
+    --color-on-accent: #232819;
+    --color-input-bg: #333a2b;
 
-    --color-button-bg: #222222;
-    --color-button-text: #ffffff;
+    --color-button-bg: var(--color-accent);
+    --color-button-text: var(--color-on-accent);
 
-    --color-text-main: #e4e0f0;
-    --color-text-td: #d4d0e0;
-    --color-text-muted: #6a6880;
+    --color-text-main: #f5f2e9;
+    --color-text-td: #f5f2e9;
+    --color-text-muted: #d4d0c5;
 
-    --color-sidebar: #0d0d0d;
-    --color-sidebar-muted: #080808;
-    --color-sidebar-border: #000000;
+    --color-sidebar: #404734;
+    --color-sidebar-muted: #333a2b;
+    --color-sidebar-border: rgba(255,255,255,0.10);
 
-    --color-header-bg: rgba(0, 0, 0, 0.92);
-    --color-sidebar-bg: #111111;
-    --color-border: rgba(35, 35, 35, 0.90);
-    --color-border-soft: rgba(35, 35, 35, 0.60);
+    --color-header-bg: rgba(42, 48, 35, 0.92);
+    --color-sidebar-bg: #333a2b;
+    --color-border: rgba(255,255,255,0.10);
+    --color-border-soft: rgba(255,255,255,0.06);
 
-    /* Card header (dark mode = near-black) */
+    /* Card header (dark mode = light olive accent, dark text) */
     --ch-bg: var(--color-accent);
-    --ch-text: #e4e0f0;
-    --ch-text-muted: rgba(228,224,240,0.60);
-    --ch-icon-bg: rgba(255,255,255,0.08);
-    --ch-icon-border: rgba(255,255,255,0.12);
-    --ch-icon: #e4e0f0;
-    --ch-btn-bg: rgba(255,255,255,0.07);
-    --ch-btn-border: rgba(255,255,255,0.12);
-    --ch-btn-text: #e4e0f0;
-    --ch-divider: rgba(255,255,255,0.08);
+    --ch-text: var(--color-on-accent);
+    --ch-text-muted: color-mix(in srgb, var(--color-on-accent) 65%, transparent);
+    --ch-icon-bg: color-mix(in srgb, var(--color-on-accent) 10%, transparent);
+    --ch-icon-border: color-mix(in srgb, var(--color-on-accent) 16%, transparent);
+    --ch-icon: var(--color-on-accent);
+    --ch-btn-bg: color-mix(in srgb, var(--color-on-accent) 9%, transparent);
+    --ch-btn-border: color-mix(in srgb, var(--color-on-accent) 16%, transparent);
+    --ch-btn-text: var(--color-on-accent);
+    --ch-divider: color-mix(in srgb, var(--color-on-accent) 12%, transparent);
 
     /* FullCalendar */
-    --fc-border-color: rgba(35, 35, 35, 0.9);
+    --fc-border-color: rgba(255, 255, 255, 0.10);
     --fc-page-bg-color: var(--color-sidebar);
     --fc-neutral-bg-color: var(--color-sidebar);
     --fc-neutral-text-color: var(--color-text-main);
   }
 
-  /* ─── LIGHT MODE (olive & creme) ─── */
+  /* ─── LIGHT MODE (olive & butter creme) ─── */
   :root:not(.dark) {
-    --color-background: #f7f0dd;
-    --color-surface: #f7f0dd;
-    --color-primary: #5b6038;
-    --color-primary-soft: #d4d3b0;
-    --color-accent: #7c8060;
-    --color-input-bg: #efe5cb;
+    --color-background: #f8f4e7;
+    --color-surface: #f2ecd9;
+    --color-primary: #a3ad84;
+    --color-primary-hover: #929c73;
+    --color-primary-active: #7d875e;
+    --color-primary-soft: color-mix(in srgb, var(--color-primary) 30%, var(--color-background));
+    --color-accent: var(--color-primary);
+    --color-accent-hover: var(--color-primary-hover);
+    --color-accent-active: var(--color-primary-active);
+    --color-butter: #f9f0c8;
+    --color-butter-hover: #f3e7b3;
+    --color-on-accent: #4b4b43;
+    --color-input-bg: #eae3cc;
 
-    --color-button-bg: #7c8060;
-    --color-button-text: #ffffff;
+    --color-button-bg: var(--color-accent);
+    --color-button-text: var(--color-on-accent);
 
-    --color-text-main: #0f172a;
-    --color-text-td: #1e293b;
-    --color-text-muted: #64748b;
+    --color-text-main: #4b4b43;
+    --color-text-td: #4b4b43;
+    --color-text-muted: #77756d;
 
-    --color-sidebar: #f7f0dd;
-    --color-sidebar-muted: #efe5cb;
-    --color-sidebar-border: #d9ccae;
+    --color-sidebar: #f2ecd9;
+    --color-sidebar-muted: #eae3cc;
+    --color-sidebar-border: rgba(75,75,67,0.14);
 
-    --color-header-bg: rgba(247, 240, 221, 0.88);
-    --color-sidebar-bg: #5b6038;
-    --color-border: rgba(217, 204, 174, 0.8);
-    --color-border-soft: rgba(217, 204, 174, 0.6);
+    --color-header-bg: rgba(248, 244, 231, 0.88);
+    --color-sidebar-bg: #eae3cc;
+    --color-border: rgba(75,75,67,0.16);
+    --color-border-soft: rgba(75,75,67,0.10);
 
-    /* Card header (light mode = olive accent) */
+    /* Card header (light mode = olive accent, dark text) */
     --ch-bg: var(--color-accent);
-    --ch-text: #ffffff;
-    --ch-text-muted: rgba(255,255,255,0.75);
-    --ch-icon-bg: rgba(255,255,255,0.15);
-    --ch-icon-border: rgba(255,255,255,0.22);
-    --ch-icon: #ffffff;
-    --ch-btn-bg: rgba(255,255,255,0.12);
-    --ch-btn-border: rgba(255,255,255,0.22);
-    --ch-btn-text: #ffffff;
-    --ch-divider: rgba(0,0,0,0.08);
+    --ch-text: var(--color-on-accent);
+    --ch-text-muted: color-mix(in srgb, var(--color-on-accent) 65%, transparent);
+    --ch-icon-bg: color-mix(in srgb, var(--color-on-accent) 10%, transparent);
+    --ch-icon-border: color-mix(in srgb, var(--color-on-accent) 16%, transparent);
+    --ch-icon: var(--color-on-accent);
+    --ch-btn-bg: color-mix(in srgb, var(--color-on-accent) 8%, transparent);
+    --ch-btn-border: color-mix(in srgb, var(--color-on-accent) 16%, transparent);
+    --ch-btn-text: var(--color-on-accent);
+    --ch-divider: color-mix(in srgb, var(--color-on-accent) 10%, transparent);
 
     /* FullCalendar */
-    --fc-border-color: rgba(217, 204, 174, 0.9);
+    --fc-border-color: rgba(75, 75, 67, 0.18);
     --fc-page-bg-color: var(--color-sidebar);
     --fc-neutral-bg-color: var(--color-sidebar);
     --fc-neutral-text-color: var(--color-text-main);
@@ -188,7 +202,7 @@
 
 .react-datepicker__day:not(.react-datepicker__day--selected):not(.react-datepicker__day--keyboard-selected):hover {
   background-color: var(--color-primary) !important;
-  color: #ffffff !important;
+  color: var(--color-on-accent) !important;
 }
 
 .react-datepicker__day--today {
@@ -199,13 +213,13 @@
 .react-datepicker__day--selected,
 .react-datepicker__day--keyboard-selected {
   background-color: var(--color-accent) !important;
-  color: #ffffff !important;
+  color: var(--color-on-accent) !important;
 }
 
 .react-datepicker__day--selected:hover,
 .react-datepicker__day--keyboard-selected:hover {
-  background-color: color-mix(in srgb, var(--color-accent) 80%, black) !important;
-  color: #ffffff !important;
+  background-color: var(--color-accent-active) !important;
+  color: var(--color-on-accent) !important;
 }
 
 .react-datepicker__triangle {
@@ -318,8 +332,16 @@
   }
 
   .btn-primary:hover:not(:disabled)::after { left: 130%; }
-  .btn-primary:hover:not(:disabled) { filter: brightness(1.12); }
-  .btn-primary:active:not(:disabled) { transform: scale(0.97); filter: brightness(0.93); transition-duration: 0.08s; }
+  .btn-primary:hover:not(:disabled) {
+    background: var(--color-accent-hover);
+    border-color: color-mix(in srgb, var(--color-accent-hover) 75%, white 25%);
+  }
+  .btn-primary:active:not(:disabled) {
+    background: var(--color-accent-active);
+    border-color: color-mix(in srgb, var(--color-accent-active) 75%, white 25%);
+    transform: scale(0.97);
+    transition-duration: 0.08s;
+  }
   .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
 
   /* ── Ghost button ── */
@@ -525,7 +547,7 @@
 .fc .fc-button-primary:not(:disabled):active {
   background-color: var(--color-accent) !important;
   border-color: var(--color-accent) !important;
-  color: var(--color-input-bg) !important;
+  color: var(--color-on-accent) !important;
   font-weight: 700;
 }
 
@@ -581,12 +603,12 @@
 /* ── Today highlight ── */
 .fc .fc-timegrid-col.fc-day-today,
 .fc .fc-daygrid-day.fc-day-today {
-  background-color: color-mix(in srgb, var(--color-accent) 6%, transparent) !important;
+  background-color: color-mix(in srgb, var(--color-butter) 35%, transparent) !important;
 }
 
 .fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
   background-color: var(--color-accent);
-  color: var(--color-input-bg);
+  color: var(--color-on-accent);
   border-radius: 50%;
   width: 22px;
   height: 22px;
