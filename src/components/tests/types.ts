@@ -3,12 +3,12 @@ export type SubjectRow = { id: string; school_id: string; name: string; level_id
 export type LevelRow = { id: string; school_id: string; name: string };
 export type ClassSubjectRow = { class_id: string; subject_id: string; school_id?: string | null };
 export type TestRow = {
-  id: string; school_id: string; class_id: string; subject_id: string;
+  id: string; school_id: string; class_id: string | null; level_id: string | null; subject_id: string;
   test_date: string; start_time: string | null; end_time: string | null;
   title: string | null; description: string | null;
 };
 export type AddTestForm = {
-  classId: string | null; subjectId: string | null; date: string;
+  classId: string | null; levelId: string | null; subjectId: string | null; date: string;
   startTime: string; endTime: string; title: string;
 };
 export type EditTestForm = AddTestForm & { id: string };
@@ -24,5 +24,5 @@ export type DeleteTarget = {
 };
 
 export const emptyForm: AddTestForm = {
-  classId: null, subjectId: null, date: '', startTime: '', endTime: '', title: '',
+  classId: null, levelId: null, subjectId: null, date: '', startTime: '', endTime: '', title: '',
 };

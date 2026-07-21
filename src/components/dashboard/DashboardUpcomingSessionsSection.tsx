@@ -9,10 +9,11 @@ type ClassRow = { id: string; title: string; subject: string | null; subject_id:
 type TutorRow = { id: string; full_name: string | null };
 type ProgramRow = { id: string };
 type ProgramItemRow = {
-  id: string; program_id: string; class_id: string; day_of_week: string;
+  id: string; program_id: string; class_id: string | null; student_id: string | null; day_of_week: string;
   start_time: string | null; end_time: string | null;
   start_date: string | null; end_date: string | null; subject_id: string | null; tutor_id: string | null;
 };
+type StudentRow = { id: string; full_name: string | null };
 type ProgramItemOverrideRow = {
   id: string; program_item_id: string; override_date: string | null;
   start_time: string | null; end_time: string | null;
@@ -22,10 +23,11 @@ type HolidayRow = { date: string };
 type SubjectRow = { id: string; name: string };
 type SubjectTutorLinkRow = { subject_id: string; tutor_id: string };
 type TestRow = {
-  id: string; class_id: string; subject_id: string | null;
+  id: string; class_id: string | null; level_id: string | null; subject_id: string | null;
   test_date: string; start_time: string | null; end_time: string | null;
   title: string | null; active_during_holiday: boolean | null;
 };
+type LevelRow = { id: string; name: string };
 type UpcomingSession = {
   id: string; classTitle: string; subjectName: string | null; tutorName: string | null;
   date: Date; startTime: Date; endTime: Date; dateStr: string; isCurrent: boolean;
@@ -66,12 +68,14 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
 
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [tutors, setTutors] = useState<TutorRow[]>([]);
+  const [students, setStudents] = useState<StudentRow[]>([]);
   const [programItems, setProgramItems] = useState<ProgramItemRow[]>([]);
   const [overrides, setOverrides] = useState<ProgramItemOverrideRow[]>([]);
   const [holidays, setHolidays] = useState<HolidayRow[]>([]);
   const [subjects, setSubjects] = useState<SubjectRow[]>([]);
   const [subjectTutorLinks, setSubjectTutorLinks] = useState<SubjectTutorLinkRow[]>([]);
   const [tests, setTests] = useState<TestRow[]>([]);
+  const [levels, setLevels] = useState<LevelRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [now, setNow] = useState(() => new Date());
 
@@ -85,18 +89,22 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
     const load = async () => {
       setLoading(true);
       try {
-        const [{ data: cd }, { data: td }, { data: sd }, { data: std }, { data: hd }] = await Promise.all([
+        const [{ data: cd }, { data: td }, { data: sd }, { data: std }, { data: hd }, { data: stud }, { data: lvd }] = await Promise.all([
           supabase.from('classes').select('id, title, subject, subject_id, tutor_id').eq('school_id', schoolId),
           supabase.from('tutors').select('id, full_name').eq('school_id', schoolId),
           supabase.from('subjects').select('id, name').eq('school_id', schoolId),
           supabase.from('subject_tutors').select('subject_id, tutor_id').eq('school_id', schoolId),
           supabase.from('school_holidays').select('date').eq('school_id', schoolId),
+          supabase.from('students').select('id, full_name').eq('school_id', schoolId),
+          supabase.from('levels').select('id, name').eq('school_id', schoolId),
         ]);
         setClasses((cd ?? []) as ClassRow[]);
         setTutors((td ?? []) as TutorRow[]);
         setSubjects((sd ?? []) as SubjectRow[]);
         setSubjectTutorLinks((std ?? []) as SubjectTutorLinkRow[]);
         setHolidays((hd ?? []) as HolidayRow[]);
+        setStudents((stud ?? []) as StudentRow[]);
+        setLevels((lvd ?? []) as LevelRow[]);
         const { data: pr } = await supabase.from('programs').select('id').eq('school_id', schoolId).order('created_at', { ascending: true }).limit(1);
         const program = (pr?.[0] as ProgramRow) ?? null;
         if (!program) { setLoading(false); return; }
@@ -107,7 +115,7 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
           const { data: ovd } = await supabase.from('program_item_overrides').select('*').in('program_item_id', items.map((r) => r.id));
           setOverrides((ovd ?? []) as ProgramItemOverrideRow[]);
         }
-        const { data: testData } = await supabase.from('tests').select('id, class_id, subject_id, test_date, start_time, end_time, title, active_during_holiday').eq('school_id', schoolId);
+        const { data: testData } = await supabase.from('tests').select('id, class_id, level_id, subject_id, test_date, start_time, end_time, title, active_during_holiday').eq('school_id', schoolId);
         setTests((testData ?? []) as TestRow[]);
       } catch (e) { console.error(e); }
       setLoading(false);
@@ -123,6 +131,8 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
     const tMap = new Map(tutors.map((t) => [t.id, t.full_name ?? '']));
     const sMap = new Map(subjects.map((s) => [s.id, s.name]));
     const cMap = new Map(classes.map((c) => [c.id, c]));
+    const stuMap = new Map(students.map((s) => [s.id, s]));
+    const lvlMap = new Map(levels.map((l) => [l.id, l]));
     const tBySubj = new Map<string, string>();
     subjectTutorLinks.forEach((l) => { if (!tBySubj.has(l.subject_id)) { const n = tMap.get(l.tutor_id); if (n) tBySubj.set(l.subject_id, n); } });
     const ovMap = new Map<string, ProgramItemOverrideRow>();
@@ -131,17 +141,18 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
     const usedOverrideIds = new Set<string>();
     const out: UpcomingSession[] = [];
 
-    const pushClassSession = (id: string, cls: ClassRow, item: ProgramItemRow, dateObj: Date, ds: string, st: string, et: string) => {
+    const pushClassSession = (id: string, cls: ClassRow | null, item: ProgramItemRow, dateObj: Date, ds: string, st: string, et: string) => {
       const [sH, sM] = st.split(':').map(Number);
       const [eH, eM] = et.split(':').map(Number);
       const startTime = new Date(dateObj); startTime.setHours(sH, sM, 0, 0);
       const endTime = new Date(dateObj); endTime.setHours(eH, eM, 0, 0);
       if (endTime <= now) return;
-      const sid = item.subject_id ?? cls.subject_id ?? null;
+      const sid = item.subject_id ?? cls?.subject_id ?? null;
+      const title = cls ? cls.title : (item.student_id ? (stuMap.get(item.student_id)?.full_name ?? 'Μαθητής') : 'Μαθητής');
       out.push({
-        id, classTitle: cls.title,
-        subjectName: sid ? (sMap.get(sid) ?? cls.subject) : cls.subject ?? null,
-        tutorName: (item.tutor_id ? tMap.get(item.tutor_id) : null) ?? (sid ? tBySubj.get(sid) : null) ?? (cls.tutor_id ? tMap.get(cls.tutor_id) : null) ?? null,
+        id, classTitle: title,
+        subjectName: sid ? (sMap.get(sid) ?? cls?.subject ?? null) : cls?.subject ?? null,
+        tutorName: (item.tutor_id ? tMap.get(item.tutor_id) : null) ?? (sid ? tBySubj.get(sid) : null) ?? (cls?.tutor_id ? tMap.get(cls.tutor_id) : null) ?? null,
         date: new Date(dateObj), startTime, endTime, dateStr: ds,
         isCurrent: now >= startTime && now < endTime,
         sessionType: 'class', testTitle: null,
@@ -149,8 +160,9 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
     };
 
     programItems.forEach((item) => {
-      const cls = cMap.get(item.class_id);
-      if (!cls || !item.day_of_week || !item.start_time || !item.end_time) return;
+      const cls = item.class_id ? cMap.get(item.class_id) : undefined;
+      const isStudentSlot = !cls && !!item.student_id;
+      if ((!cls && !isStudentSlot) || !item.day_of_week || !item.start_time || !item.end_time) return;
       const dow = WEEKDAY_TO_INDEX[item.day_of_week];
       if (dow === undefined) return;
       const ps = item.start_date ? new Date(item.start_date + 'T00:00:00') : new Date('1970-01-01');
@@ -165,7 +177,7 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
         if (ov?.id) usedOverrideIds.add(ov.id);
         const isHol = hSet.has(ds);
         if (!ov?.is_deleted && !(!!ov?.is_inactive || (isHol && !ov?.holiday_active_override))) {
-          pushClassSession(`${item.id}-${ds}`, cls, item, cur, ds, ov?.start_time ?? item.start_time!, ov?.end_time ?? item.end_time!);
+          pushClassSession(`${item.id}-${ds}`, cls ?? null, item, cur, ds, ov?.start_time ?? item.start_time!, ov?.end_time ?? item.end_time!);
         }
         const next = new Date(cur); next.setDate(next.getDate() + 7); cur = next;
       }
@@ -176,8 +188,8 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
       if (!ov.override_date || ov.is_deleted || usedOverrideIds.has(ov.id)) return;
       const item = piMap.get(ov.program_item_id);
       if (!item) return;
-      const cls = cMap.get(item.class_id);
-      if (!cls) return;
+      const cls = item.class_id ? cMap.get(item.class_id) : undefined;
+      if (!cls && !item.student_id) return;
       const ds = ov.override_date;
       const dateObj = new Date(ds + 'T00:00:00');
       if (dateObj < wStart || dateObj > wEnd) return;
@@ -186,7 +198,7 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
       const st = ov.start_time ?? item.start_time;
       const et = ov.end_time ?? item.end_time;
       if (!st || !et) return;
-      pushClassSession(`override-${ov.id}`, cls, item, dateObj, ds, st, et);
+      pushClassSession(`override-${ov.id}`, cls ?? null, item, dateObj, ds, st, et);
     });
     tests.forEach((test) => {
       if (!test.start_time || !test.end_time) return;
@@ -199,10 +211,11 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
       const startTime = new Date(testDate); startTime.setHours(sH, sM, 0, 0);
       const endTime = new Date(testDate); endTime.setHours(eH, eM, 0, 0);
       if (endTime <= now) return;
-      const cls = cMap.get(test.class_id);
+      const cls = test.class_id ? cMap.get(test.class_id) : undefined;
+      const level = test.level_id ? lvlMap.get(test.level_id) : undefined;
       const sid = test.subject_id ?? null;
       out.push({
-        id: `test-${test.id}`, classTitle: cls?.title ?? '',
+        id: `test-${test.id}`, classTitle: cls?.title ?? level?.name ?? '',
         subjectName: sid ? (sMap.get(sid) ?? null) : null,
         tutorName: (sid ? tBySubj.get(sid) : null) ?? null,
         date: testDate, startTime, endTime, dateStr: test.test_date,
@@ -219,7 +232,7 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
       upcoming.push(...future.filter((s) => s.startTime.getTime() === firstStart));
     }
     return { currentSessions: current, upcomingSessions: upcoming };
-  }, [programItems, overrides, holidays, classes, tutors, subjects, subjectTutorLinks, tests, now]);
+  }, [programItems, overrides, holidays, classes, students, levels, tutors, subjects, subjectTutorLinks, tests, now]);
 
   /* ── theme tokens ── */
   const muted = isDark ? 'text-slate-500' : 'text-slate-400';

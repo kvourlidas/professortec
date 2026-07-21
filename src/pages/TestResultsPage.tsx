@@ -11,7 +11,8 @@ import type { GradeInfo, StudentRow, TestResultRow } from '../components/tests/t
 
 type TestDetail = {
   id: string;
-  class_id: string;
+  class_id: string | null;
+  level_id: string | null;
   subject_id: string;
   test_date: string;
   start_time: string | null;
@@ -30,6 +31,7 @@ export default function TestResultsPage() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const schoolId = profile?.school_id ?? null;
+  const usesLevels = profile?.account_type === 'idiaiterou';
 
   const [loadingTest, setLoadingTest] = useState(true);
   const [test, setTest] = useState<TestDetail | null>(null);
@@ -55,25 +57,29 @@ export default function TestResultsPage() {
         const [
           { data: testData, error: testErr },
           { data: classesData },
+          { data: levelsData },
           { data: subjectsData },
         ] = await Promise.all([
-          supabase.from('tests').select('id, class_id, subject_id, test_date, start_time, end_time, title').eq('id', testId).eq('school_id', schoolId).single(),
+          supabase.from('tests').select('id, class_id, level_id, subject_id, test_date, start_time, end_time, title').eq('id', testId).eq('school_id', schoolId).single(),
           supabase.from('classes').select('id, title').eq('school_id', schoolId),
+          supabase.from('levels').select('id, name').eq('school_id', schoolId),
           supabase.from('subjects').select('id, name').eq('school_id', schoolId),
         ]);
         if (testErr || !testData) { setLoadingTest(false); return; }
         const classById = new Map<string, string>((classesData ?? []).map((c: { id: string; title: string }) => [c.id, c.title]));
+        const levelById = new Map<string, string>((levelsData ?? []).map((l: { id: string; name: string }) => [l.id, l.name]));
         const subjById = new Map<string, string>((subjectsData ?? []).map((s: { id: string; name: string }) => [s.id, s.name]));
-        const t = testData as { id: string; class_id: string; subject_id: string; test_date: string; start_time: string | null; end_time: string | null; title: string | null };
+        const t = testData as { id: string; class_id: string | null; level_id: string | null; subject_id: string; test_date: string; start_time: string | null; end_time: string | null; title: string | null };
         setTest({
           id: t.id,
           class_id: t.class_id,
+          level_id: t.level_id,
           subject_id: t.subject_id,
           test_date: t.test_date,
           start_time: t.start_time,
           end_time: t.end_time,
           title: t.title,
-          classTitle: classById.get(t.class_id) ?? '—',
+          classTitle: (t.class_id ? classById.get(t.class_id) : null) ?? (t.level_id ? levelById.get(t.level_id) : null) ?? '—',
           subjectName: subjById.get(t.subject_id) ?? '—',
           dateDisplay: new Date(t.test_date).toLocaleDateString('el-GR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }),
           timeRange: t.start_time && t.end_time ? `${t.start_time.slice(0, 5)} – ${t.end_time.slice(0, 5)}` : '',
@@ -266,7 +272,7 @@ export default function TestResultsPage() {
             {[
               { icon: <Calendar className="h-3.5 w-3.5" />, label: 'Ημερομηνία', value: test.dateDisplay },
               { icon: <Clock className="h-3.5 w-3.5" />, label: 'Ώρα', value: test.timeRange || '—' },
-              { icon: <BookOpen className="h-3.5 w-3.5" />, label: 'Τμήμα', value: test.classTitle },
+              { icon: <BookOpen className="h-3.5 w-3.5" />, label: usesLevels ? 'Επίπεδο' : 'Τμήμα', value: test.classTitle },
               { icon: <Tag className="h-3.5 w-3.5" />, label: 'Μάθημα', value: test.subjectName },
             ].map(({ icon, label, value }) => (
               <div key={label} className={`rounded-xl border p-3 ${isDark ? 'border-slate-700/50 bg-slate-900/40' : 'border-slate-200 bg-slate-50'}`}>

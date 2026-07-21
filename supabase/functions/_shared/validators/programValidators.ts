@@ -38,7 +38,8 @@ export function validateCreateProgramBody(body: any) {
 
 export function validateUpdateProgramBody(body: any): UpdateProgramInput {
   const program_item_id = body?.program_item_id?.trim?.();
-  const class_id = body?.class_id?.trim?.();
+  const class_id = body?.class_id?.trim?.() || null;
+  const student_id = body?.student_id?.trim?.() || null;
   const subject_id = body?.subject_id?.trim?.() || null;
   const tutor_id = body?.tutor_id?.trim?.() || null;
   const day_of_week = body?.day_of_week?.trim?.();
@@ -48,7 +49,7 @@ export function validateUpdateProgramBody(body: any): UpdateProgramInput {
   const end_date = body?.end_date?.trim?.();
 
   if (!program_item_id) throw new ValidationError("Missing program_item_id");
-  if (!class_id) throw new ValidationError("Missing class_id");
+  if (!class_id && !student_id) throw new ValidationError("Missing class_id");
   if (!day_of_week) throw new ValidationError("Missing day_of_week");
   if (!start_time) throw new ValidationError("Missing start_time");
   if (!end_time) throw new ValidationError("Missing end_time");

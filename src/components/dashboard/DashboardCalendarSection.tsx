@@ -33,10 +33,11 @@ type ClassRow = {
 type TutorRow = { id: string; full_name: string | null };
 type ProgramRow = { id: string; school_id: string; name: string; description: string | null };
 type ProgramItemRow = {
-  id: string; program_id: string; class_id: string; day_of_week: string;
+  id: string; program_id: string; class_id: string | null; student_id: string | null; day_of_week: string;
   position: number | null; start_time: string | null; end_time: string | null;
   start_date: string | null; end_date: string | null; subject_id: string | null; tutor_id: string | null;
 };
+type StudentRow = { id: string; full_name: string | null };
 type ProgramItemOverrideRow = {
   id: string; program_item_id: string; override_date: string | null;
   start_time: string | null; end_time: string | null; is_deleted: boolean | null;
@@ -51,17 +52,18 @@ type SubjectRow = { id: string; school_id: string; name: string; level_id: strin
 type ClassSubjectRow = { class_id: string; subject_id: string; school_id?: string | null };
 type SubjectTutorLinkRow = { subject_id: string; tutor_id: string; school_id?: string | null };
 type TestRow = {
-  id: string; school_id: string; class_id: string; subject_id: string;
+  id: string; school_id: string; class_id: string | null; level_id: string | null; subject_id: string;
   test_date: string; start_time: string | null; end_time: string | null;
   title: string | null; description: string | null; active_during_holiday: boolean | null;
 };
+type LevelRow = { id: string; name: string };
 type CalendarEventModal = {
   programItemId: string; originalDateStr: string; date: string;
   startTime: string; endTime: string;
-  classId: string | null; subjectId: string | null; overrideId?: string; activeDuringHoliday: boolean;
+  classId: string | null; studentId: string | null; subjectId: string | null; overrideId?: string; activeDuringHoliday: boolean;
 };
 type TestModalState = {
-  testId: string; classId: string | null; subjectId: string | null; date: string;
+  testId: string; classId: string | null; levelId: string | null; subjectId: string | null; date: string;
   startTime: string; endTime: string;
   title: string; activeDuringHoliday: boolean;
 };
@@ -133,6 +135,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
 
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [tutors, setTutors] = useState<TutorRow[]>([]);
+  const [students, setStudents] = useState<StudentRow[]>([]);
   const [program, setProgram] = useState<ProgramRow | null>(null);
   const [programItems, setProgramItems] = useState<ProgramItemRow[]>([]);
   const [overrides, setOverrides] = useState<ProgramItemOverrideRow[]>([]);
@@ -154,6 +157,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
   const [subjects, setSubjects] = useState<SubjectRow[]>([]);
   const [classSubjects, setClassSubjects] = useState<ClassSubjectRow[]>([]);
   const [tests, setTests] = useState<TestRow[]>([]);
+  const [levels, setLevels] = useState<LevelRow[]>([]);
   const [subjectTutorLinks, setSubjectTutorLinks] = useState<SubjectTutorLinkRow[]>([]);
 
   const [eventModal, setEventModal] = useState<CalendarEventModal | null>(null);
@@ -187,6 +191,12 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     if (!schoolId) { setTutors([]); return; }
     supabase.from('tutors').select('id, full_name').eq('school_id', schoolId).order('full_name', { ascending: true })
       .then(({ data, error }) => { if (error) { console.error(error); setTutors([]); } else { setTutors((data ?? []) as TutorRow[]); } });
+  }, [schoolId]);
+
+  useEffect(() => {
+    if (!schoolId) { setStudents([]); return; }
+    supabase.from('students').select('id, full_name').eq('school_id', schoolId).order('full_name', { ascending: true })
+      .then(({ data, error }) => { if (error) { console.error(error); setStudents([]); } else { setStudents((data ?? []) as StudentRow[]); } });
   }, [schoolId]);
 
   useEffect(() => {
@@ -227,20 +237,22 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
   }, [schoolId]);
 
   useEffect(() => {
-    if (!schoolId) { setSubjects([]); setClassSubjects([]); setTests([]); setSubjectTutorLinks([]); return; }
+    if (!schoolId) { setSubjects([]); setClassSubjects([]); setTests([]); setSubjectTutorLinks([]); setLevels([]); return; }
     const loadExtra = async () => {
       try {
-        const [{ data: subjData, error: subjErr }, { data: classSubjData, error: classSubjErr }, { data: testsData, error: testsErr }, { data: stData, error: stErr }] = await Promise.all([
+        const [{ data: subjData, error: subjErr }, { data: classSubjData, error: classSubjErr }, { data: testsData, error: testsErr }, { data: stData, error: stErr }, { data: levelData, error: levelErr }] = await Promise.all([
           supabase.from('subjects').select('id, school_id, name, level_id').eq('school_id', schoolId).order('name', { ascending: true }),
           supabase.from('class_subjects').select('class_id, subject_id, school_id').eq('school_id', schoolId),
-          supabase.from('tests').select('id, school_id, class_id, subject_id, test_date, start_time, end_time, title, description, active_during_holiday').eq('school_id', schoolId).order('test_date', { ascending: true }),
+          supabase.from('tests').select('id, school_id, class_id, level_id, subject_id, test_date, start_time, end_time, title, description, active_during_holiday').eq('school_id', schoolId).order('test_date', { ascending: true }),
           supabase.from('subject_tutors').select('subject_id, tutor_id, school_id').eq('school_id', schoolId),
+          supabase.from('levels').select('id, name').eq('school_id', schoolId),
         ]);
         if (subjErr) { console.error(subjErr); setSubjects([]); } else { setSubjects((subjData ?? []) as SubjectRow[]); }
         if (classSubjErr) { console.error(classSubjErr); setClassSubjects([]); } else { setClassSubjects((classSubjData ?? []) as ClassSubjectRow[]); }
         if (testsErr) { console.error(testsErr); setTests([]); } else { setTests((testsData ?? []) as TestRow[]); }
         if (stErr) { console.error(stErr); setSubjectTutorLinks([]); } else { setSubjectTutorLinks((stData ?? []) as SubjectTutorLinkRow[]); }
-      } catch (e) { console.error(e); setSubjects([]); setClassSubjects([]); setTests([]); }
+        if (levelErr) { console.error(levelErr); setLevels([]); } else { setLevels((levelData ?? []) as LevelRow[]); }
+      } catch (e) { console.error(e); setSubjects([]); setClassSubjects([]); setTests([]); setLevels([]); }
     };
     loadExtra();
   }, [schoolId]);
@@ -289,6 +301,10 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     };
     const classMap = new Map<string, ClassRow>();
     classes.forEach((c) => classMap.set(c.id, c));
+    const studentMap = new Map<string, StudentRow>();
+    students.forEach((s) => studentMap.set(s.id, s));
+    const levelMap = new Map<string, LevelRow>();
+    levels.forEach((l) => levelMap.set(l.id, l));
     const programItemMap = new Map<string, ProgramItemRow>();
     programItems.forEach((pi) => programItemMap.set(pi.id, pi));
     const overrideMap = new Map<string, ProgramItemOverrideRow>();
@@ -299,8 +315,9 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     const hideStandaloneTestKeys = new Set<string>();
 
     programItems.forEach((item) => {
-      const cls = classMap.get(item.class_id);
-      if (!cls || !item.day_of_week || !item.start_time || !item.end_time) return;
+      const cls = item.class_id ? classMap.get(item.class_id) : undefined;
+      const student = !cls && item.student_id ? studentMap.get(item.student_id) : undefined;
+      if ((!cls && !student) || !item.day_of_week || !item.start_time || !item.end_time) return;
       const dow = WEEKDAY_TO_INDEX[item.day_of_week];
       if (dow === undefined) return;
       const patternStartDate = item.start_date ? new Date(item.start_date + 'T00:00:00') : new Date('1970-01-01T00:00:00');
@@ -309,14 +326,14 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
       const effectiveEnd = patternEndDate < viewEnd ? patternEndDate : viewEnd;
       if (effectiveStart > effectiveEnd) return;
       let currentDate = getNextDateForDow(effectiveStart, dow);
-      const subjectIdForSlot = item.subject_id ?? cls.subject_id ?? null;
-      const tutorName = (item.tutor_id && tutorMap[item.tutor_id]) || getTutorNameForSubject(subjectIdForSlot) || (cls.tutor_id && tutorMap[cls.tutor_id]) || null;
+      const subjectIdForSlot = item.subject_id ?? cls?.subject_id ?? null;
+      const tutorName = (item.tutor_id && tutorMap[item.tutor_id]) || getTutorNameForSubject(subjectIdForSlot) || (cls?.tutor_id && tutorMap[cls.tutor_id]) || null;
       while (currentDate <= effectiveEnd) {
         const dateStr = formatLocalYMD(currentDate);
         const next = new Date(currentDate); next.setDate(next.getDate() + 7);
         const isHoliday = holidayDateSet.has(dateStr);
         const holidayName = holidayNameByDate.get(dateStr) ?? null;
-        const key = `${item.class_id}-${dateStr}`;
+        const key = cls ? `${item.class_id}-${dateStr}` : `student-${item.student_id}-${dateStr}`;
         const override = overrideMap.get(`${item.id}-${dateStr}`);
         let isDeleted = false;
         let startTimeStr = item.start_time!;
@@ -332,13 +349,13 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
           const [eH, eM] = endTimeStr.split(':').map(Number);
           const start = new Date(currentDate); start.setHours(sH, sM, 0, 0);
           const end = new Date(currentDate); end.setHours(eH, eM, 0, 0);
-          const testsForClassDate = testsByKey.get(key) ?? [];
+          const testsForClassDate = cls ? (testsByKey.get(key) ?? []) : [];
           const shouldCombineTest = !isHoliday && testsForClassDate.length > 0;
           const combinedTest = shouldCombineTest ? testsForClassDate[0] : null;
-          const titleBase = cls.title;
+          const titleBase = cls ? cls.title : (student?.full_name ?? 'Μαθητής');
           const title = combinedTest ? `${titleBase} · Διαγώνισμα` : titleBase;
           if (combinedTest) hideStandaloneTestKeys.add(key);
-          out.push({ id: `${item.id}-${dateStr}`, title, start, end, editable: !isInactive, startEditable: !isInactive, durationEditable: !isInactive, classNames: [isInactive ? 'fc-event-inactive' : combinedTest ? 'fc-event-test' : 'fc-event-program'], extendedProps: { kind: 'program', programItemId: item.id, classId: cls.id, subjectId: item.subject_id ?? null, subject: (item.subject_id ? subjectById.get(item.subject_id)?.name : null) ?? cls.subject ?? null, tutorName, overrideDate: dateStr, overrideId, isHoliday, holidayName, isInactive, activeDuringHoliday, testId: combinedTest?.id ?? null, testSubjectId: combinedTest?.subject_id ?? null } });
+          out.push({ id: `${item.id}-${dateStr}`, title, start, end, editable: !isInactive, startEditable: !isInactive, durationEditable: !isInactive, classNames: [isInactive ? 'fc-event-inactive' : combinedTest ? 'fc-event-test' : 'fc-event-program'], extendedProps: { kind: 'program', programItemId: item.id, classId: cls?.id ?? null, studentId: student ? item.student_id : null, subjectId: item.subject_id ?? null, subject: (item.subject_id ? subjectById.get(item.subject_id)?.name : null) ?? cls?.subject ?? null, tutorName, overrideDate: dateStr, overrideId, isHoliday, holidayName, isInactive, activeDuringHoliday, testId: combinedTest?.id ?? null, testSubjectId: combinedTest?.subject_id ?? null } });
         }
         currentDate = next;
       }
@@ -348,8 +365,9 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
       if (!ov.override_date || ov.is_deleted || usedOverrideIds.has(ov.id)) return;
       const item = programItemMap.get(ov.program_item_id);
       if (!item) return;
-      const cls = classMap.get(item.class_id);
-      if (!cls) return;
+      const cls = item.class_id ? classMap.get(item.class_id) : undefined;
+      const student = !cls && item.student_id ? studentMap.get(item.student_id) : undefined;
+      if (!cls && !student) return;
       const overrideDateObj = new Date(ov.override_date + 'T00:00:00');
       if (overrideDateObj < viewStart || overrideDateObj > viewEnd) return;
       const dateStr = ov.override_date;
@@ -366,16 +384,16 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
       const [eH, eM] = baseEndTime.split(':').map(Number);
       const start = new Date(overrideDateObj); start.setHours(sH, sM, 0, 0);
       const end = new Date(overrideDateObj); end.setHours(eH, eM, 0, 0);
-      const subjectIdForSlot = item.subject_id ?? cls.subject_id ?? null;
-      const tutorName = (item.tutor_id && tutorMap[item.tutor_id]) || getTutorNameForSubject(subjectIdForSlot) || (cls.tutor_id && tutorMap[cls.tutor_id]) || null;
-      const key = `${item.class_id}-${dateStr}`;
-      const testsForClassDate = testsByKey.get(key) ?? [];
+      const subjectIdForSlot = item.subject_id ?? cls?.subject_id ?? null;
+      const tutorName = (item.tutor_id && tutorMap[item.tutor_id]) || getTutorNameForSubject(subjectIdForSlot) || (cls?.tutor_id && tutorMap[cls.tutor_id]) || null;
+      const key = cls ? `${item.class_id}-${dateStr}` : `student-${item.student_id}-${dateStr}`;
+      const testsForClassDate = cls ? (testsByKey.get(key) ?? []) : [];
       const shouldCombineTest = !isHoliday && testsForClassDate.length > 0;
       const combinedTest = shouldCombineTest ? testsForClassDate[0] : null;
-      const titleBase = cls.title;
+      const titleBase = cls ? cls.title : (student?.full_name ?? 'Μαθητής');
       const title = combinedTest ? `${titleBase} · Διαγώνισμα` : titleBase;
       if (combinedTest) hideStandaloneTestKeys.add(key);
-      out.push({ id: `${item.id}-${dateStr}-override`, title, start, end, editable: !isInactive, startEditable: !isInactive, durationEditable: !isInactive, classNames: [isInactive ? 'fc-event-inactive' : combinedTest ? 'fc-event-test' : 'fc-event-program'], extendedProps: { kind: 'program', programItemId: item.id, classId: cls.id, subjectId: item.subject_id ?? null, subject: (item.subject_id ? subjectById.get(item.subject_id)?.name : null) ?? cls.subject ?? null, tutorName, overrideDate: dateStr, overrideId: ov.id, isHoliday, holidayName, isInactive, activeDuringHoliday, testId: combinedTest?.id ?? null, testSubjectId: combinedTest?.subject_id ?? null } });
+      out.push({ id: `${item.id}-${dateStr}-override`, title, start, end, editable: !isInactive, startEditable: !isInactive, durationEditable: !isInactive, classNames: [isInactive ? 'fc-event-inactive' : combinedTest ? 'fc-event-test' : 'fc-event-program'], extendedProps: { kind: 'program', programItemId: item.id, classId: cls?.id ?? null, studentId: student ? item.student_id : null, subjectId: item.subject_id ?? null, subject: (item.subject_id ? subjectById.get(item.subject_id)?.name : null) ?? cls?.subject ?? null, tutorName, overrideDate: dateStr, overrideId: ov.id, isHoliday, holidayName, isInactive, activeDuringHoliday, testId: combinedTest?.id ?? null, testSubjectId: combinedTest?.subject_id ?? null } });
     });
 
     tests.forEach((t) => {
@@ -387,7 +405,8 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
       const holidayName = holidayNameByDate.get(t.test_date) ?? null;
       const activeDuringHoliday = isHoliday ? !!t.active_during_holiday : false;
       const isInactive = isHoliday && !activeDuringHoliday;
-      const cls = classMap.get(t.class_id);
+      const cls = t.class_id ? classMap.get(t.class_id) : undefined;
+      const level = t.level_id ? levelMap.get(t.level_id) : undefined;
       const subj = subjectById.get(t.subject_id);
       const baseStart = t.start_time ?? '09:00'; const baseEnd = t.end_time ?? '10:00';
       const [sH, sM] = baseStart.split(':').map(Number); const [eH, eM] = baseEnd.split(':').map(Number);
@@ -395,6 +414,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
       const end = new Date(dateObj); end.setHours(eH, eM, 0, 0);
       const titleParts: string[] = [];
       if (cls?.title) titleParts.push(cls.title);
+      else if (level?.name) titleParts.push(level.name);
       if (subj?.name) titleParts.push(subj.name);
       if (t.title) titleParts.push(t.title);
       const label = titleParts.length > 0 ? `Διαγώνισμα · ${titleParts.join(' · ')}` : 'Διαγώνισμα';
@@ -410,7 +430,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     });
 
     return out;
-  }, [viewRange, programItems, classes, tutors, subjectTutorLinks, overrides, holidays, holidayDateSet, holidayNameByDate, schoolEvents, tests, subjects, subjectById]);
+  }, [viewRange, programItems, classes, students, levels, tutors, subjectTutorLinks, overrides, holidays, holidayDateSet, holidayNameByDate, schoolEvents, tests, subjects, subjectById]);
 
   /* -------- Drag & drop (unchanged) -------- */
   const handleEventDrop = async (arg: EventDropArg) => {
@@ -612,13 +632,14 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     if (!testId || !event.start || !event.end) return;
     const testRow = tests.find((t) => t.id === testId) ?? null;
     const classId = (event.extendedProps['classId'] as string | undefined) ?? testRow?.class_id ?? null;
+    const levelId = testRow?.level_id ?? null;
     const subjectId = (event.extendedProps['subjectId'] as string | undefined) ?? (event.extendedProps['testSubjectId'] as string | undefined) ?? testRow?.subject_id ?? null;
     const dateIso = formatLocalYMD(event.start);
     const isHoliday = holidayDateSet.has(dateIso);
     const start24 = `${pad2(event.start.getHours())}:${pad2(event.start.getMinutes())}`;
     const end24 = `${pad2(event.end.getHours())}:${pad2(event.end.getMinutes())}`;
     setTestError(null);
-    setTestModal({ testId, classId, subjectId, date: formatDateDisplay(dateIso), startTime: start24, endTime: end24, title: testRow?.title ?? '', activeDuringHoliday: isHoliday ? !!testRow?.active_during_holiday : false });
+    setTestModal({ testId, classId, levelId, subjectId, date: formatDateDisplay(dateIso), startTime: start24, endTime: end24, title: testRow?.title ?? '', activeDuringHoliday: isHoliday ? !!testRow?.active_during_holiday : false });
     setShowDeleteConfirm(false); setEventModal(null);
   };
 
@@ -639,8 +660,9 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
       const start24 = `${pad2(event.start.getHours())}:${pad2(event.start.getMinutes())}`;
       const end24 = `${pad2(event.end.getHours())}:${pad2(event.end.getMinutes())}`;
       const classIdProp = event.extendedProps['classId'] as string | undefined;
+      const studentIdProp = (event.extendedProps['studentId'] as string | null | undefined) ?? null;
       const prefilledSubjectId = (event.extendedProps['subjectId'] as string | null | undefined) ?? null;
-      setEventModal({ programItemId, originalDateStr: dateIso, date: formatDateDisplay(dateIso), startTime: start24, endTime: end24, classId: classIdProp ?? null, subjectId: prefilledSubjectId, overrideId: overrideId ?? undefined, activeDuringHoliday: !!event.extendedProps['activeDuringHoliday'] });
+      setEventModal({ programItemId, originalDateStr: dateIso, date: formatDateDisplay(dateIso), startTime: start24, endTime: end24, classId: classIdProp ?? null, studentId: studentIdProp, subjectId: prefilledSubjectId, overrideId: overrideId ?? undefined, activeDuringHoliday: !!event.extendedProps['activeDuringHoliday'] });
       setShowDeleteConfirm(false);
     }
   };
@@ -659,9 +681,9 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
 
   const handleEventModalSave = async () => {
     if (!eventModal) return;
-    const { programItemId, originalDateStr, date, startTime, endTime, classId, subjectId, activeDuringHoliday } = eventModal;
-    if (!classId) { setEventError('Επιλέξτε τμήμα.'); return; }
-    const subjectOptions = getSubjectsForClass(classId);
+    const { programItemId, originalDateStr, date, startTime, endTime, classId, studentId, subjectId, activeDuringHoliday } = eventModal;
+    if (!classId && !studentId) { setEventError('Επιλέξτε τμήμα.'); return; }
+    const subjectOptions = classId ? getSubjectsForClass(classId) : [];
     if (subjectOptions.length > 0 && !subjectId) { setEventError('Επιλέξτε μάθημα για το τμήμα.'); return; }
     if (!date) { setEventError('Επιλέξτε ημερομηνία μαθήματος.'); return; }
     const newDateStr = parseDateDisplayToISO(date);
@@ -686,7 +708,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
       }
       const finalSubjectId = subjectId ?? null;
       if (currentItem && finalSubjectId !== (currentItem.subject_id ?? null)) {
-        const result = await callEdgeFunction('program-update', { program_item_id: currentItem.id, class_id: currentItem.class_id, subject_id: finalSubjectId, tutor_id: currentItem.tutor_id ?? null, day_of_week: currentItem.day_of_week, start_time: currentItem.start_time, end_time: currentItem.end_time, start_date: currentItem.start_date, end_date: currentItem.end_date });
+        const result = await callEdgeFunction('program-update', { program_item_id: currentItem.id, class_id: currentItem.class_id, student_id: currentItem.student_id ?? null, subject_id: finalSubjectId, tutor_id: currentItem.tutor_id ?? null, day_of_week: currentItem.day_of_week, start_time: currentItem.start_time, end_time: currentItem.end_time, start_date: currentItem.start_date, end_date: currentItem.end_date });
         currentItem = result.item as ProgramItemRow;
         setProgramItems((prev) => prev.map((pi) => (pi.id === programItemId ? currentItem! : pi)));
       }
@@ -728,6 +750,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     setTestModal((prev) => {
       if (!prev) return prev;
       if (field === 'classId') return { ...prev, classId: value || null, subjectId: null };
+      if (field === 'levelId') return { ...prev, levelId: value || null, subjectId: null };
       if (field === 'subjectId') return { ...prev, subjectId: value || null };
       return { ...prev, [field]: value as any };
     });
@@ -736,10 +759,10 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
 
   const handleTestModalSave = async () => {
     if (!testModal) return;
-    const { testId, classId, subjectId, date, startTime, endTime, title, activeDuringHoliday } = testModal;
-    if (!classId) { setTestError('Επιλέξτε τμήμα.'); return; }
-    const subjectOptions = getSubjectsForClass(classId);
-    if (subjectOptions.length > 0 && !subjectId) { setTestError('Επιλέξτε μάθημα για το τμήμα.'); return; }
+    const { testId, classId, levelId, subjectId, date, startTime, endTime, title, activeDuringHoliday } = testModal;
+    if (!classId && !levelId) { setTestError('Επιλέξτε τμήμα.'); return; }
+    const subjectOptions = levelId ? subjects.filter((s) => s.level_id === levelId) : classId ? getSubjectsForClass(classId) : [];
+    if (subjectOptions.length > 0 && !subjectId) { setTestError('Επιλέξτε μάθημα.'); return; }
     if (!date) { setTestError('Επιλέξτε ημερομηνία διαγωνίσματος.'); return; }
     const testDateISO = parseDateDisplayToISO(date);
     if (!testDateISO) { setTestError('Μη έγκυρη ημερομηνία (π.χ. 12/05/2025).'); return; }
@@ -748,7 +771,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     const finalActiveDuringHoliday = isHoliday ? !!activeDuringHoliday : false;
     setSavingTest(true); setTestError(null);
     try {
-      const result = await callEdgeFunction('tests-update', { test_id: testId, class_id: classId, subject_id: subjectId ?? subjectOptions[0]?.id ?? null, test_date: testDateISO, start_time: `${startTime}:00`, end_time: `${endTime}:00`, title: title || null, active_during_holiday: finalActiveDuringHoliday });
+      const result = await callEdgeFunction('tests-update', { test_id: testId, class_id: classId, level_id: levelId, subject_id: subjectId ?? subjectOptions[0]?.id ?? null, test_date: testDateISO, start_time: `${startTime}:00`, end_time: `${endTime}:00`, title: title || null, active_during_holiday: finalActiveDuringHoliday });
       setTests((prev) => prev.map((t) => (t.id === testId ? (result.item as TestRow) : t)));
       setTestModal(null);
     } catch (err) { console.error(err); setTestError('Αποτυχία ενημέρωσης διαγωνίσματος.'); }
@@ -777,7 +800,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
       setSavingTest(true); setTestError(null);
       const test = tests.find((t) => t.id === testModal.testId);
       if (!test) return;
-      const result = await callEdgeFunction('tests-update', { test_id: test.id, class_id: test.class_id, subject_id: test.subject_id ?? null, test_date: test.test_date, start_time: test.start_time, end_time: test.end_time, title: test.title ?? null, active_during_holiday: false });
+      const result = await callEdgeFunction('tests-update', { test_id: test.id, class_id: test.class_id, level_id: test.level_id, subject_id: test.subject_id ?? null, test_date: test.test_date, start_time: test.start_time, end_time: test.end_time, title: test.title ?? null, active_during_holiday: false });
       setSavingTest(false);
       setTests((prev) => prev.map((t) => (t.id === test.id ? (result.item as TestRow) : t)));
       setTestModal(null); setShowDeleteConfirm(false);
@@ -789,8 +812,18 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
   const testModalIsHoliday = useMemo(() => { if (!testModal) return false; const iso = parseDateDisplayToISO(testModal.date); if (!iso) return false; return holidayDateSet.has(iso); }, [testModal, holidayDateSet]);
   const testModalHolidayName = useMemo(() => { if (!testModal) return null; const iso = parseDateDisplayToISO(testModal.date); if (!iso) return null; return holidayNameByDate.get(iso) ?? null; }, [testModal, holidayNameByDate]);
 
-  const programSubjectOptions = useMemo(() => { if (!eventModal?.classId) return []; return getSubjectsForClass(eventModal.classId); }, [eventModal?.classId, classes, classSubjects, subjects, subjectById]);
-  const testSubjectOptions = useMemo(() => { if (!testModal?.classId) return []; return getSubjectsForClass(testModal.classId); }, [testModal?.classId, classes, classSubjects, subjects, subjectById]);
+  const studentById = useMemo(() => { const m = new Map<string, StudentRow>(); students.forEach((s) => m.set(s.id, s)); return m; }, [students]);
+
+  const programSubjectOptions = useMemo(() => {
+    if (eventModal?.studentId) return [...subjects].sort((a, b) => a.name.localeCompare(b.name, 'el-GR'));
+    if (!eventModal?.classId) return [];
+    return getSubjectsForClass(eventModal.classId);
+  }, [eventModal?.classId, eventModal?.studentId, classes, classSubjects, subjects, subjectById]);
+  const testSubjectOptions = useMemo(() => {
+    if (testModal?.levelId) return subjects.filter((s) => s.level_id === testModal.levelId).sort((a, b) => a.name.localeCompare(b.name, 'el-GR'));
+    if (!testModal?.classId) return [];
+    return getSubjectsForClass(testModal.classId);
+  }, [testModal?.classId, testModal?.levelId, classes, classSubjects, subjects, subjectById]);
 
   // const requestDeleteSchoolEventFromModal = () => { if (!schoolEventEditing) return; setSchoolEventDeleteTarget({ id: schoolEventEditing.id, name: schoolEventEditing.name }); };
 
@@ -949,15 +982,21 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
               <div className="space-y-4 px-6 pb-2">
                 {eventError && <div className={errorBannerCls}><span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />{eventError}</div>}
 
-                <FormField label="Τμήμα" icon={<GraduationCap className="h-3 w-3" />}>
-                  <select value={eventModal.classId ?? ''} onChange={handleProgramFieldChange('classId')} className={selectCls}>
-                    <option value="">Επιλέξτε τμήμα</option>
-                    {classes.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
-                  </select>
-                </FormField>
+                {eventModal.studentId ? (
+                  <FormField label="Μαθητής" icon={<GraduationCap className="h-3 w-3" />}>
+                    <div className={`${selectCls} flex items-center`}>{studentById.get(eventModal.studentId)?.full_name ?? '—'}</div>
+                  </FormField>
+                ) : (
+                  <FormField label="Τμήμα" icon={<GraduationCap className="h-3 w-3" />}>
+                    <select value={eventModal.classId ?? ''} onChange={handleProgramFieldChange('classId')} className={selectCls}>
+                      <option value="">Επιλέξτε τμήμα</option>
+                      {classes.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+                    </select>
+                  </FormField>
+                )}
 
                 <FormField label="Μάθημα" icon={<Layers className="h-3 w-3" />}>
-                  <select value={eventModal.subjectId ?? ''} onChange={handleProgramFieldChange('subjectId')} className={selectCls} disabled={!eventModal.classId || programSubjectOptions.length === 0}>
+                  <select value={eventModal.subjectId ?? ''} onChange={handleProgramFieldChange('subjectId')} className={selectCls} disabled={(!eventModal.classId && !eventModal.studentId) || programSubjectOptions.length === 0}>
                     <option value="">{programSubjectOptions.length === 0 ? 'Δεν υπάρχουν μαθήματα' : 'Επιλέξτε μάθημα'}</option>
                     {programSubjectOptions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
@@ -1040,15 +1079,24 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
               <div className="space-y-4 px-6 pb-2">
                 {testError && <div className={errorBannerCls}><span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />{testError}</div>}
 
-                <FormField label="Τμήμα" icon={<GraduationCap className="h-3 w-3" />}>
-                  <select value={testModal.classId ?? ''} onChange={handleTestFieldChange('classId')} className={selectCls}>
-                    <option value="">Επιλέξτε τμήμα</option>
-                    {classes.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
-                  </select>
-                </FormField>
+                {testModal.levelId !== null ? (
+                  <FormField label="Επίπεδο" icon={<GraduationCap className="h-3 w-3" />}>
+                    <select value={testModal.levelId ?? ''} onChange={handleTestFieldChange('levelId')} className={selectCls}>
+                      <option value="">Επιλέξτε επίπεδο</option>
+                      {levels.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                    </select>
+                  </FormField>
+                ) : (
+                  <FormField label="Τμήμα" icon={<GraduationCap className="h-3 w-3" />}>
+                    <select value={testModal.classId ?? ''} onChange={handleTestFieldChange('classId')} className={selectCls}>
+                      <option value="">Επιλέξτε τμήμα</option>
+                      {classes.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+                    </select>
+                  </FormField>
+                )}
 
                 <FormField label="Μάθημα" icon={<Layers className="h-3 w-3" />}>
-                  <select value={testModal.subjectId ?? ''} onChange={handleTestFieldChange('subjectId')} className={selectCls} disabled={!testModal.classId || testSubjectOptions.length === 0}>
+                  <select value={testModal.subjectId ?? ''} onChange={handleTestFieldChange('subjectId')} className={selectCls} disabled={(!testModal.classId && !testModal.levelId) || testSubjectOptions.length === 0}>
                     <option value="">{testSubjectOptions.length === 0 ? 'Δεν υπάρχουν μαθήματα' : 'Επιλέξτε μάθημα'}</option>
                     {testSubjectOptions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>

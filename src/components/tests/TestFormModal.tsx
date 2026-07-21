@@ -4,7 +4,7 @@ import { X, ClipboardList, BookOpen, Tag, Calendar, Loader2 } from 'lucide-react
 import { useTheme } from '../../context/ThemeContext';
 import AppDatePicker from '../ui/AppDatePicker';
 import TimePicker from '../ui/TimePicker';
-import type { AddTestForm, ClassRow, ClassSubjectRow, EditTestForm, SubjectRow } from './types';
+import type { AddTestForm, ClassRow, ClassSubjectRow, EditTestForm, LevelRow, SubjectRow } from './types';
 import { emptyForm } from './types';
 import { parseDateDisplayToISO } from './utils';
 
@@ -26,8 +26,10 @@ type TestFormModalProps = {
   mode: 'add' | 'edit';
   editTestData: EditTestForm | null;
   classes: ClassRow[];
+  levels: LevelRow[];
   subjects: SubjectRow[];
   classSubjects: ClassSubjectRow[];
+  usesLevels?: boolean;
   error: string | null;
   saving: boolean;
   onClose: () => void;
@@ -35,7 +37,7 @@ type TestFormModalProps = {
 };
 
 export default function TestFormModal({
-  open, mode, editTestData, classes, subjects, classSubjects, error, saving, onClose, onSubmit,
+  open, mode, editTestData, classes, levels, subjects, classSubjects, usesLevels, error, saving, onClose, onSubmit,
 }: TestFormModalProps) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
@@ -74,12 +76,18 @@ export default function TestFormModal({
     return Array.from(merged.values()).sort((a, b) => a.name.localeCompare(b.name, 'el-GR'));
   };
 
+  const getSubjectsForLevel = (levelId: string | null): SubjectRow[] => {
+    const opts = levelId ? subjects.filter((s) => s.level_id === levelId) : subjects;
+    return [...opts].sort((a, b) => a.name.localeCompare(b.name, 'el-GR'));
+  };
+
   if (!open) return null;
 
   const handleFieldChange = (field: keyof AddTestForm) => (e: ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
     const value = e.target.value;
     setForm((prev) => {
       if (field === 'classId') return { ...prev, classId: value || null, subjectId: null };
+      if (field === 'levelId') return { ...prev, levelId: value || null, subjectId: null };
       if (field === 'subjectId') return { ...prev, subjectId: value || null };
       return { ...prev, [field]: value as any };
     });
@@ -102,7 +110,7 @@ export default function TestFormModal({
     : 'flex justify-end gap-2.5 border-t border-slate-200 bg-slate-50 px-6 py-4 mt-3';
   const cancelBtnCls = 'btn border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-slate-200 hover:bg-slate-700/60 disabled:opacity-50';
 
-  const subOpts = getSubjectsForClass(form.classId);
+  const subOpts = usesLevels ? getSubjectsForLevel(form.levelId) : getSubjectsForClass(form.classId);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -135,14 +143,23 @@ export default function TestFormModal({
         <form onSubmit={handleSubmit}>
           <div className="max-h-[60vh] overflow-y-auto px-6 pb-2">
             <div className="space-y-4">
-              <FormField label="Τμήμα *" icon={<BookOpen className="h-3 w-3" />}>
-                <select className={inputCls} value={form.classId ?? ''} onChange={handleFieldChange('classId')} required>
-                  <option value="">Επιλέξτε τμήμα</option>
-                  {classes.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
-                </select>
-              </FormField>
-              <FormField label="Μάθημα *" icon={<Tag className="h-3 w-3" />} hint={subOpts.length === 0 && form.classId ? 'Ρυθμίστε τα μαθήματα στη σελίδα «Τμήματα».' : undefined}>
-                <select className={inputCls} value={form.subjectId ?? ''} onChange={handleFieldChange('subjectId')} disabled={subOpts.length === 0 || !form.classId}>
+              {usesLevels ? (
+                <FormField label="Επίπεδο *" icon={<BookOpen className="h-3 w-3" />}>
+                  <select className={inputCls} value={form.levelId ?? ''} onChange={handleFieldChange('levelId')} required>
+                    <option value="">Επιλέξτε επίπεδο</option>
+                    {levels.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                  </select>
+                </FormField>
+              ) : (
+                <FormField label="Τμήμα *" icon={<BookOpen className="h-3 w-3" />}>
+                  <select className={inputCls} value={form.classId ?? ''} onChange={handleFieldChange('classId')} required>
+                    <option value="">Επιλέξτε τμήμα</option>
+                    {classes.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+                  </select>
+                </FormField>
+              )}
+              <FormField label="Μάθημα *" icon={<Tag className="h-3 w-3" />} hint={subOpts.length === 0 && (usesLevels ? form.levelId : form.classId) ? 'Ρυθμίστε τα μαθήματα στη σελίδα «Μαθήματα».' : undefined}>
+                <select className={inputCls} value={form.subjectId ?? ''} onChange={handleFieldChange('subjectId')} disabled={subOpts.length === 0 || (usesLevels ? !form.levelId : !form.classId)}>
                   <option value="">{subOpts.length === 0 ? 'Δεν έχουν οριστεί μαθήματα' : 'Επιλέξτε μάθημα'}</option>
                   {subOpts.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>

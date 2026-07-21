@@ -71,6 +71,11 @@ export const idiaiterouNavItems: NavItem[] = [
     icon: BarChart3,
   },
   {
+    label: 'Οικονομικά',
+    to: '/economics/analysis',
+    icon: Wallet,
+  },
+  {
     label: 'Εφαρμογή μαθητών',
     icon: Smartphone,
     children: [

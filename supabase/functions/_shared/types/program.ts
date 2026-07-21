@@ -13,7 +13,7 @@ export type CreateProgramInput = {
 
 export type UpdateProgramInput = {
   program_item_id: string;
-  class_id: string;
+  class_id: string | null;
   subject_id: string | null;
   tutor_id: string | null;
   day_of_week: string;
