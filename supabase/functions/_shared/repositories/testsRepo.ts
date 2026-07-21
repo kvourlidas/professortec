@@ -11,6 +11,7 @@ export async function insertTest(
     .insert({
       school_id: schoolId,
       class_id: input.class_id,
+      level_id: input.level_id,
       subject_id: input.subject_id,
       test_date: input.test_date,
       start_time: input.start_time,
@@ -18,7 +19,7 @@ export async function insertTest(
       title: input.title,
       description: input.description,
     })
-    .select("id, school_id, class_id, subject_id, test_date, start_time, end_time, title, description")
+    .select("id, school_id, class_id, level_id, subject_id, test_date, start_time, end_time, title, description")
     .maybeSingle();
 
   if (error || !data) {
@@ -57,6 +58,7 @@ export async function updateTestById(
 ) {
   const updatePayload: Record<string, unknown> = {
     class_id: input.class_id,
+    level_id: input.level_id,
     subject_id: input.subject_id,
     test_date: input.test_date,
     start_time: input.start_time,
@@ -71,7 +73,7 @@ export async function updateTestById(
     .from("tests")
     .update(updatePayload)
     .eq("id", input.test_id)
-    .select("id, school_id, class_id, subject_id, test_date, start_time, end_time, title, description, active_during_holiday")
+    .select("id, school_id, class_id, level_id, subject_id, test_date, start_time, end_time, title, description, active_during_holiday")
     .maybeSingle();
 
   if (error || !data) {

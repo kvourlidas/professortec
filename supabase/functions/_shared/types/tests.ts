@@ -1,5 +1,6 @@
 export type CreateTestInput = {
-  class_id: string;
+  class_id: string | null;
+  level_id: string | null;
   subject_id: string | null;
   test_date: string;
   start_time: string;
@@ -10,7 +11,8 @@ export type CreateTestInput = {
 
 export type UpdateTestInput = {
   test_id: string;
-  class_id: string;
+  class_id: string | null;
+  level_id: string | null;
   subject_id: string | null;
   test_date: string;
   start_time: string;

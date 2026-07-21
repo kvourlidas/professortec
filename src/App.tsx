@@ -82,7 +82,6 @@ export default function App() {
         <Route path={p('/program')} element={<ProtectedRoute><FrontistirioOnly><ProgramPage /></FrontistirioOnly></ProtectedRoute>} />
         <Route path={p('/program/events')} element={<ProtectedRoute><FrontistirioOnly><EventsPage /></FrontistirioOnly></ProtectedRoute>} />
         <Route path={p('/school-info')} element={<ProtectedRoute><FrontistirioOnly><SchoolInfoPage /></FrontistirioOnly></ProtectedRoute>} />
-        <Route path={p('/economics/analysis')} element={<ProtectedRoute><FrontistirioOnly><EconomicsAnalysisPage /></FrontistirioOnly></ProtectedRoute>} />
         <Route path={p('/economics/package-subscriptions')} element={<ProtectedRoute><FrontistirioOnly><PackageSubscriptionsPage /></FrontistirioOnly></ProtectedRoute>} />
         <Route path={p('/economics/student-subscriptions')} element={<ProtectedRoute><FrontistirioOnly><StudentsSubscriptionsPage /></FrontistirioOnly></ProtectedRoute>} />
         <Route path={p('/economics/tutors-payments')} element={<ProtectedRoute><FrontistirioOnly><TutorsPaymentsPage /></FrontistirioOnly></ProtectedRoute>} />
@@ -96,6 +95,7 @@ export default function App() {
         <Route path={p('/program/tests/:id/results')} element={<ProtectedRoute><TestResultsPage /></ProtectedRoute>} />
         <Route path={p('/program/holidays')} element={<ProtectedRoute><HolidaysPage /></ProtectedRoute>} />
         <Route path={p('/grades')} element={<ProtectedRoute><GradesPage /></ProtectedRoute>} />
+        <Route path={p('/economics/analysis')} element={<ProtectedRoute><EconomicsAnalysisPage /></ProtectedRoute>} />
         <Route path={p('/student-app/feedback')} element={<ProtectedRoute><StudentFeedbackPage /></ProtectedRoute>} />
         <Route path={p('/student-app/messages')} element={<ProtectedRoute><StudentMessagesPage /></ProtectedRoute>} />
         <Route path={p('/student-app/notifications')} element={<ProtectedRoute><SendNotificationsPage /></ProtectedRoute>} />
