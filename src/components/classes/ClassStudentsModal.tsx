@@ -71,7 +71,7 @@ export default function ClassStudentsModal({ open, onClose, classId, classTitle 
     [...initialAssignedIds].filter((id) => !assignedIds.has(id)).length;
 
   // Style helpers
-  const modalBg = isDark ? 'border-slate-700/60 bg-[#1f2d3d]' : 'border-slate-200 bg-white';
+  const modalBg = isDark ? 'border-slate-700/60 bg-[#252920]' : 'border-slate-200 bg-white';
   const panelCls = `overflow-hidden rounded-xl border ${isDark ? 'border-slate-700/60 bg-slate-900/40' : 'border-slate-200 bg-slate-50'}`;
   const panelHeaderCls = `flex items-center justify-between border-b px-3.5 py-2.5 ${isDark ? 'border-slate-700/60 bg-slate-900/30' : 'border-slate-200 bg-slate-100/80'}`;
   const searchInputCls = `h-7 w-32 rounded-lg border pl-6 pr-2 text-[11px] outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/20 focus:border-[color:var(--color-accent)] ${isDark ? 'border-slate-700/60 bg-slate-800/60 text-slate-200 placeholder-slate-500' : 'border-slate-200 bg-white text-slate-700 placeholder-slate-400'}`;

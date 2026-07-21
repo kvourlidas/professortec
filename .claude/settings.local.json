@@ -46,7 +46,9 @@
       "Bash(grep -E \"\\\\.md$|schema|database|CLAUDE\")",
       "Bash(grep -rn \"h-0.5.*linear-gradient\\\\|linear-gradient.*h-0.5\" src/components/dashboard/DashboardMetricsSection.tsx src/components/grades/GradesPanel.tsx src/components/notifications/NotificationHistory.tsx src/components/notifications/NotificationSendForm.tsx src/components/program/ProgramClassesPanel.tsx src/components/program/ProgramScheduleGrid.tsx src/pages/TestResultsPage.tsx src/pages/economics/TutorsPaymentsPage.tsx src/pages/StudentCardPage.tsx)",
       "Bash(grep -rn \"h-0.5 w-full.*style\\\\|\\\\\"h-0.5 w-full\\\\\"\" src/components/dashboard/DashboardMetricsSection.tsx src/components/grades/GradesPanel.tsx src/components/notifications/NotificationHistory.tsx src/components/notifications/NotificationSendForm.tsx src/components/program/ProgramClassesPanel.tsx src/components/program/ProgramScheduleGrid.tsx src/pages/TestResultsPage.tsx src/pages/economics/TutorsPaymentsPage.tsx src/pages/StudentCardPage.tsx)",
-      "Bash(python3 -c ' *)"
+      "Bash(python3 -c ' *)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\KOSTAS\\\\Desktop\\\\Projects\\\\ProfessorTec\\\\web-app\" -Force)",
+      "Bash(Select-Object Name, PSIsContainer)"
     ]
   }
 }

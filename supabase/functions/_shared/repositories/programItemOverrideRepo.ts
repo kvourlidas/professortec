@@ -41,6 +41,7 @@ export async function upsertProgramItemOverride(
         is_deleted: input.is_deleted,
         is_inactive: input.is_inactive,
         holiday_active_override: input.holiday_active_override,
+        charge_amount: input.charge_amount,
       })
       .eq("id", existing.id)
       .select("*")
@@ -60,6 +61,7 @@ export async function upsertProgramItemOverride(
       is_deleted: input.is_deleted,
       is_inactive: input.is_inactive,
       holiday_active_override: input.holiday_active_override,
+      charge_amount: input.charge_amount,
     })
     .select("*")
     .single();

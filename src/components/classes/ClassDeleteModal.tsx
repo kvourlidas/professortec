@@ -15,7 +15,7 @@ export default function ClassDeleteModal({ deleteTarget, deleting, isDark, onCan
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className={`relative w-full max-w-sm overflow-hidden rounded-2xl border shadow-2xl ${isDark ? 'border-slate-700/60 bg-[#1f2d3d]' : 'border-slate-200 bg-white'}`}>
+      <div className={`relative w-full max-w-sm overflow-hidden rounded-2xl border shadow-2xl ${isDark ? 'border-slate-700/60 bg-[#252920]' : 'border-slate-200 bg-white'}`}>
         <div className="h-1 w-full bg-gradient-to-r from-red-600 via-red-500 to-rose-500" />
         <div className="p-6">
           <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/15 ring-1 ring-red-500/30">

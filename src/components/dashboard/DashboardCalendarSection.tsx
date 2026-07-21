@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../context/ThemeContext';
+import { useAuth } from '../../auth';
 
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -33,15 +34,18 @@ type ClassRow = {
 type TutorRow = { id: string; full_name: string | null };
 type ProgramRow = { id: string; school_id: string; name: string; description: string | null };
 type ProgramItemRow = {
-  id: string; program_id: string; class_id: string; day_of_week: string;
+  id: string; program_id: string; class_id: string | null; student_id: string | null; day_of_week: string;
   position: number | null; start_time: string | null; end_time: string | null;
   start_date: string | null; end_date: string | null; subject_id: string | null; tutor_id: string | null;
+  charge_per_session: number | null;
 };
 type ProgramItemOverrideRow = {
   id: string; program_item_id: string; override_date: string | null;
   start_time: string | null; end_time: string | null; is_deleted: boolean | null;
   is_inactive: boolean | null; holiday_active_override: boolean | null;
+  charge_amount: number | null;
 };
+type StudentRow = { id: string; full_name: string };
 type HolidayRow = { id: string; school_id: string; date: string; name: string | null };
 type SchoolEventRow = {
   id: string; school_id: string; name: string; description: string | null;
@@ -59,6 +63,7 @@ type CalendarEventModal = {
   programItemId: string; originalDateStr: string; date: string;
   startTime: string; endTime: string;
   classId: string | null; subjectId: string | null; overrideId?: string; activeDuringHoliday: boolean;
+  studentId: string | null; studentName: string | null; chargeAmount: string;
 };
 type TestModalState = {
   testId: string; classId: string | null; subjectId: string | null; date: string;
@@ -122,6 +127,8 @@ type DashboardCalendarSectionProps = { schoolId: string | null };
 export default function DashboardCalendarSection({ schoolId }: DashboardCalendarSectionProps) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const { profile } = useAuth();
+  const isIdiaiterou = profile?.account_type === 'idiaiterou';
 
   // Dynamic classes based on theme
   const inputCls = `h-9 w-full rounded-lg border px-3 text-sm outline-none transition disabled:opacity-60 ${
@@ -155,6 +162,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
   const [classSubjects, setClassSubjects] = useState<ClassSubjectRow[]>([]);
   const [tests, setTests] = useState<TestRow[]>([]);
   const [subjectTutorLinks, setSubjectTutorLinks] = useState<SubjectTutorLinkRow[]>([]);
+  const [students, setStudents] = useState<StudentRow[]>([]);
 
   const [eventModal, setEventModal] = useState<CalendarEventModal | null>(null);
   const [eventError, setEventError] = useState<string | null>(null);
@@ -227,6 +235,12 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
   }, [schoolId]);
 
   useEffect(() => {
+    if (!schoolId || !isIdiaiterou) { setStudents([]); return; }
+    supabase.from('students').select('id, full_name').eq('school_id', schoolId).order('full_name', { ascending: true })
+      .then(({ data, error }) => { if (error) { console.error(error); setStudents([]); } else { setStudents((data ?? []) as StudentRow[]); } });
+  }, [schoolId, isIdiaiterou]);
+
+  useEffect(() => {
     if (!schoolId) { setSubjects([]); setClassSubjects([]); setTests([]); setSubjectTutorLinks([]); return; }
     const loadExtra = async () => {
       try {
@@ -246,6 +260,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
   }, [schoolId]);
 
   const subjectById = useMemo(() => { const m = new Map<string, SubjectRow>(); subjects.forEach((s) => m.set(s.id, s)); return m; }, [subjects]);
+  const studentMap = useMemo(() => { const m = new Map<string, string>(); students.forEach((s) => { if (s.id && s.full_name) m.set(s.id, s.full_name); }); return m; }, [students]);
 
   const getSubjectsForClass = (classId: string | null): SubjectRow[] => {
     if (!classId) return [];
@@ -299,7 +314,47 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     const hideStandaloneTestKeys = new Set<string>();
 
     programItems.forEach((item) => {
-      const cls = classMap.get(item.class_id);
+      // Handle student-based private lesson slots (idiaitera)
+      if (!item.class_id && item.student_id) {
+        if (!item.day_of_week || !item.start_time || !item.end_time) return;
+        const studentName = studentMap.get(item.student_id) ?? 'Μαθητής';
+        const dow = WEEKDAY_TO_INDEX[item.day_of_week];
+        if (dow === undefined) return;
+        const patternStartDate = item.start_date ? new Date(item.start_date + 'T00:00:00') : new Date('1970-01-01T00:00:00');
+        const patternEndDate = item.end_date ? new Date(item.end_date + 'T23:59:59') : new Date('2999-12-31T23:59:59');
+        const effectiveStart = patternStartDate > viewStart ? patternStartDate : viewStart;
+        const effectiveEnd = patternEndDate < viewEnd ? patternEndDate : viewEnd;
+        if (effectiveStart > effectiveEnd) return;
+        let currentDate = getNextDateForDow(effectiveStart, dow);
+        while (currentDate <= effectiveEnd) {
+          const dateStr = formatLocalYMD(currentDate);
+          const next = new Date(currentDate); next.setDate(next.getDate() + 7);
+          const isHoliday = holidayDateSet.has(dateStr);
+          const holidayName = holidayNameByDate.get(dateStr) ?? null;
+          const override = overrideMap.get(`${item.id}-${dateStr}`);
+          let isDeleted = false;
+          let startTimeStr = item.start_time!;
+          let endTimeStr = item.end_time!;
+          let overrideId: string | undefined;
+          const manualInactive = !!override?.is_inactive;
+          const holidayActiveOverride = !!override?.holiday_active_override;
+          const isInactive = manualInactive || (isHoliday && !holidayActiveOverride);
+          const activeDuringHoliday = isHoliday ? holidayActiveOverride && !manualInactive : false;
+          if (override) { usedOverrideIds.add(override.id); overrideId = override.id; if (override.is_deleted) isDeleted = true; if (override.start_time) startTimeStr = override.start_time; if (override.end_time) endTimeStr = override.end_time; }
+          if (!isDeleted) {
+            const [sH, sM] = startTimeStr.split(':').map(Number);
+            const [eH, eM] = endTimeStr.split(':').map(Number);
+            const start = new Date(currentDate); start.setHours(sH, sM, 0, 0);
+            const end = new Date(currentDate); end.setHours(eH, eM, 0, 0);
+            const chargeAmount = override?.charge_amount != null ? override.charge_amount : item.charge_per_session;
+            out.push({ id: `${item.id}-${dateStr}`, title: studentName, start, end, editable: !isInactive, startEditable: !isInactive, durationEditable: !isInactive, classNames: [isInactive ? 'fc-event-inactive' : 'fc-event-student'], extendedProps: { kind: 'program', programItemId: item.id, classId: null, studentId: item.student_id, studentName, subjectId: item.subject_id ?? null, subject: null, tutorName: null, overrideDate: dateStr, overrideId, isHoliday, holidayName, isInactive, activeDuringHoliday, testId: null, testSubjectId: null, chargePerSession: item.charge_per_session, chargeAmount } });
+          }
+          currentDate = next;
+        }
+        return;
+      }
+
+      const cls = classMap.get(item.class_id ?? '');
       if (!cls || !item.day_of_week || !item.start_time || !item.end_time) return;
       const dow = WEEKDAY_TO_INDEX[item.day_of_week];
       if (dow === undefined) return;
@@ -348,8 +403,6 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
       if (!ov.override_date || ov.is_deleted || usedOverrideIds.has(ov.id)) return;
       const item = programItemMap.get(ov.program_item_id);
       if (!item) return;
-      const cls = classMap.get(item.class_id);
-      if (!cls) return;
       const overrideDateObj = new Date(ov.override_date + 'T00:00:00');
       if (overrideDateObj < viewStart || overrideDateObj > viewEnd) return;
       const dateStr = ov.override_date;
@@ -366,6 +419,17 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
       const [eH, eM] = baseEndTime.split(':').map(Number);
       const start = new Date(overrideDateObj); start.setHours(sH, sM, 0, 0);
       const end = new Date(overrideDateObj); end.setHours(eH, eM, 0, 0);
+
+      // Student-based override (idiaitera slot moved to a new date)
+      if (!item.class_id && item.student_id) {
+        const studentName = studentMap.get(item.student_id) ?? 'Μαθητής';
+        const chargeAmount = ov.charge_amount != null ? ov.charge_amount : item.charge_per_session;
+        out.push({ id: `${item.id}-${dateStr}-override`, title: studentName, start, end, editable: !isInactive, startEditable: !isInactive, durationEditable: !isInactive, classNames: [isInactive ? 'fc-event-inactive' : 'fc-event-student'], extendedProps: { kind: 'program', programItemId: item.id, classId: null, studentId: item.student_id, studentName, subjectId: item.subject_id ?? null, subject: null, tutorName: null, overrideDate: dateStr, overrideId: ov.id, isHoliday, holidayName, isInactive, activeDuringHoliday, testId: null, testSubjectId: null, chargePerSession: item.charge_per_session, chargeAmount } });
+        return;
+      }
+
+      const cls = classMap.get(item.class_id ?? '');
+      if (!cls) return;
       const subjectIdForSlot = item.subject_id ?? cls.subject_id ?? null;
       const tutorName = (item.tutor_id && tutorMap[item.tutor_id]) || getTutorNameForSubject(subjectIdForSlot) || (cls.tutor_id && tutorMap[cls.tutor_id]) || null;
       const key = `${item.class_id}-${dateStr}`;
@@ -638,9 +702,14 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
       const overrideId = event.extendedProps['overrideId'] as string | null;
       const start24 = `${pad2(event.start.getHours())}:${pad2(event.start.getMinutes())}`;
       const end24 = `${pad2(event.end.getHours())}:${pad2(event.end.getMinutes())}`;
-      const classIdProp = event.extendedProps['classId'] as string | undefined;
+      const classIdProp = (event.extendedProps['classId'] as string | null | undefined) ?? null;
       const prefilledSubjectId = (event.extendedProps['subjectId'] as string | null | undefined) ?? null;
-      setEventModal({ programItemId, originalDateStr: dateIso, date: formatDateDisplay(dateIso), startTime: start24, endTime: end24, classId: classIdProp ?? null, subjectId: prefilledSubjectId, overrideId: overrideId ?? undefined, activeDuringHoliday: !!event.extendedProps['activeDuringHoliday'] });
+      const studentIdProp = (event.extendedProps['studentId'] as string | null | undefined) ?? null;
+      const studentNameProp = (event.extendedProps['studentName'] as string | null | undefined) ?? null;
+      const chargeAmountProp = event.extendedProps['chargeAmount'] as number | null | undefined;
+      const chargePerSessionProp = event.extendedProps['chargePerSession'] as number | null | undefined;
+      const currentCharge = chargeAmountProp ?? chargePerSessionProp ?? null;
+      setEventModal({ programItemId, originalDateStr: dateIso, date: formatDateDisplay(dateIso), startTime: start24, endTime: end24, classId: classIdProp, subjectId: prefilledSubjectId, overrideId: overrideId ?? undefined, activeDuringHoliday: !!event.extendedProps['activeDuringHoliday'], studentId: studentIdProp, studentName: studentNameProp, chargeAmount: currentCharge != null ? String(currentCharge) : '' });
       setShowDeleteConfirm(false);
     }
   };
@@ -659,10 +728,13 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
 
   const handleEventModalSave = async () => {
     if (!eventModal) return;
-    const { programItemId, originalDateStr, date, startTime, endTime, classId, subjectId, activeDuringHoliday } = eventModal;
-    if (!classId) { setEventError('Επιλέξτε τμήμα.'); return; }
-    const subjectOptions = getSubjectsForClass(classId);
-    if (subjectOptions.length > 0 && !subjectId) { setEventError('Επιλέξτε μάθημα για το τμήμα.'); return; }
+    const { programItemId, originalDateStr, date, startTime, endTime, classId, subjectId, activeDuringHoliday, studentId, chargeAmount } = eventModal;
+    const isStudentSession = !!studentId;
+    if (!isStudentSession && !classId) { setEventError('Επιλέξτε τμήμα.'); return; }
+    if (!isStudentSession) {
+      const subjectOptions = getSubjectsForClass(classId!);
+      if (subjectOptions.length > 0 && !subjectId) { setEventError('Επιλέξτε μάθημα για το τμήμα.'); return; }
+    }
     if (!date) { setEventError('Επιλέξτε ημερομηνία μαθήματος.'); return; }
     const newDateStr = parseDateDisplayToISO(date);
     if (!newDateStr) { setEventError('Μη έγκυρη ημερομηνία (π.χ. 12/05/2025).'); return; }
@@ -670,6 +742,8 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     const startTimeDb = `${startTime}:00`; const endTimeDb = `${endTime}:00`;
     const isHoliday = holidayDateSet.has(newDateStr);
     const finalHolidayActiveOverride = isHoliday ? !!activeDuringHoliday : false;
+    const parsedCharge = chargeAmount.trim() ? Number(chargeAmount.replace(',', '.')) : null;
+    const finalCharge = (parsedCharge !== null && !isNaN(parsedCharge)) ? parsedCharge : null;
     const applyOverride = (prev: ProgramItemOverrideRow[], date: string, upserted: ProgramItemOverrideRow) => {
       const ex = prev.find((o) => o.program_item_id === programItemId && o.override_date === date);
       if (ex) return prev.map((o) => (o.id === ex.id ? upserted : o));
@@ -679,24 +753,26 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
       setEventError(null);
       const item = programItems.find((pi) => pi.id === programItemId);
       let currentItem = item ?? null;
-      if (item && classId !== item.class_id) {
-        const result = await callEdgeFunction('program-update', { program_item_id: item.id, class_id: classId, subject_id: item.subject_id ?? null, tutor_id: item.tutor_id ?? null, day_of_week: item.day_of_week, start_time: item.start_time, end_time: item.end_time, start_date: item.start_date, end_date: item.end_date });
-        currentItem = result.item as ProgramItemRow;
-        setProgramItems((prev) => prev.map((pi) => (pi.id === programItemId ? currentItem! : pi)));
-      }
-      const finalSubjectId = subjectId ?? null;
-      if (currentItem && finalSubjectId !== (currentItem.subject_id ?? null)) {
-        const result = await callEdgeFunction('program-update', { program_item_id: currentItem.id, class_id: currentItem.class_id, subject_id: finalSubjectId, tutor_id: currentItem.tutor_id ?? null, day_of_week: currentItem.day_of_week, start_time: currentItem.start_time, end_time: currentItem.end_time, start_date: currentItem.start_date, end_date: currentItem.end_date });
-        currentItem = result.item as ProgramItemRow;
-        setProgramItems((prev) => prev.map((pi) => (pi.id === programItemId ? currentItem! : pi)));
+      if (!isStudentSession) {
+        if (item && classId !== item.class_id) {
+          const result = await callEdgeFunction('program-update', { program_item_id: item.id, class_id: classId, subject_id: item.subject_id ?? null, tutor_id: item.tutor_id ?? null, day_of_week: item.day_of_week, start_time: item.start_time, end_time: item.end_time, start_date: item.start_date, end_date: item.end_date });
+          currentItem = result.item as ProgramItemRow;
+          setProgramItems((prev) => prev.map((pi) => (pi.id === programItemId ? currentItem! : pi)));
+        }
+        const finalSubjectId = subjectId ?? null;
+        if (currentItem && finalSubjectId !== (currentItem.subject_id ?? null)) {
+          const result = await callEdgeFunction('program-update', { program_item_id: currentItem.id, class_id: currentItem.class_id, subject_id: finalSubjectId, tutor_id: currentItem.tutor_id ?? null, day_of_week: currentItem.day_of_week, start_time: currentItem.start_time, end_time: currentItem.end_time, start_date: currentItem.start_date, end_date: currentItem.end_date });
+          currentItem = result.item as ProgramItemRow;
+          setProgramItems((prev) => prev.map((pi) => (pi.id === programItemId ? currentItem! : pi)));
+        }
       }
       const upsertOverrideForDate = async (targetDate: string) => {
-        const result = await callEdgeFunction('program-item-override-upsert', { program_item_id: programItemId, override_date: targetDate, start_time: startTimeDb, end_time: endTimeDb, is_deleted: false, is_inactive: false, holiday_active_override: holidayDateSet.has(targetDate) ? finalHolidayActiveOverride : false });
+        const result = await callEdgeFunction('program-item-override-upsert', { program_item_id: programItemId, override_date: targetDate, start_time: startTimeDb, end_time: endTimeDb, is_deleted: false, is_inactive: false, holiday_active_override: holidayDateSet.has(targetDate) ? finalHolidayActiveOverride : false, charge_amount: finalCharge });
         setOverrides((prev) => applyOverride(prev, targetDate, result.item as ProgramItemOverrideRow));
       };
       if (newDateStr === originalDateStr) { await upsertOverrideForDate(newDateStr); }
       else {
-        const oldResult = await callEdgeFunction('program-item-override-upsert', { program_item_id: programItemId, override_date: originalDateStr, start_time: null, end_time: null, is_deleted: true, is_inactive: false, holiday_active_override: false });
+        const oldResult = await callEdgeFunction('program-item-override-upsert', { program_item_id: programItemId, override_date: originalDateStr, start_time: null, end_time: null, is_deleted: true, is_inactive: false, holiday_active_override: false, charge_amount: null });
         setOverrides((prev) => applyOverride(prev, originalDateStr, oldResult.item as ProgramItemOverrideRow));
         await upsertOverrideForDate(newDateStr);
       }
@@ -814,7 +890,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
   }) => (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className={`relative w-full max-w-md overflow-hidden rounded-2xl border shadow-2xl ${
-        isDark ? 'border-slate-700/60 bg-[#1f2d3d]' : 'border-slate-200 bg-white'
+        isDark ? 'border-slate-700/60 bg-[#252920]' : 'border-slate-200 bg-white'
       }`}>
         <div className="flex items-center justify-between px-6 py-4" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
           <div className="flex items-center gap-3">
@@ -949,19 +1025,43 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
               <div className="space-y-4 px-6 pb-2">
                 {eventError && <div className={errorBannerCls}><span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />{eventError}</div>}
 
-                <FormField label="Τμήμα" icon={<GraduationCap className="h-3 w-3" />}>
-                  <select value={eventModal.classId ?? ''} onChange={handleProgramFieldChange('classId')} className={selectCls}>
-                    <option value="">Επιλέξτε τμήμα</option>
-                    {classes.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
-                  </select>
-                </FormField>
+                {/* Student session: show student name (read-only) + charge field */}
+                {eventModal.studentId ? (
+                  <>
+                    <FormField label="Μαθητής" icon={<GraduationCap className="h-3 w-3" />}>
+                      <div className={`flex h-9 w-full items-center rounded-lg border px-3 text-sm ${
+                        isDark ? 'border-slate-700/70 bg-slate-900/40 text-slate-300' : 'border-slate-200 bg-slate-50 text-slate-700'
+                      }`}>{eventModal.studentName ?? '—'}</div>
+                    </FormField>
+                    <FormField label="Χρέωση (€)" icon={<span className="text-[10px] font-bold">€</span>}>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.50"
+                        className={inputCls}
+                        value={eventModal.chargeAmount}
+                        onChange={(e) => setEventModal((p) => p ? { ...p, chargeAmount: e.target.value } : p)}
+                        placeholder="π.χ. 25.00"
+                      />
+                    </FormField>
+                  </>
+                ) : (
+                  <>
+                    <FormField label="Τμήμα" icon={<GraduationCap className="h-3 w-3" />}>
+                      <select value={eventModal.classId ?? ''} onChange={handleProgramFieldChange('classId')} className={selectCls}>
+                        <option value="">Επιλέξτε τμήμα</option>
+                        {classes.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+                      </select>
+                    </FormField>
 
-                <FormField label="Μάθημα" icon={<Layers className="h-3 w-3" />}>
-                  <select value={eventModal.subjectId ?? ''} onChange={handleProgramFieldChange('subjectId')} className={selectCls} disabled={!eventModal.classId || programSubjectOptions.length === 0}>
-                    <option value="">{programSubjectOptions.length === 0 ? 'Δεν υπάρχουν μαθήματα' : 'Επιλέξτε μάθημα'}</option>
-                    {programSubjectOptions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                  </select>
-                </FormField>
+                    <FormField label="Μάθημα" icon={<Layers className="h-3 w-3" />}>
+                      <select value={eventModal.subjectId ?? ''} onChange={handleProgramFieldChange('subjectId')} className={selectCls} disabled={!eventModal.classId || programSubjectOptions.length === 0}>
+                        <option value="">{programSubjectOptions.length === 0 ? 'Δεν υπάρχουν μαθήματα' : 'Επιλέξτε μάθημα'}</option>
+                        {programSubjectOptions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                      </select>
+                    </FormField>
+                  </>
+                )}
 
                 <FormField label="Ημερομηνία" icon={<CalendarDays className="h-3 w-3" />}>
                   <AppDatePicker value={eventModal.date} onChange={(v) => setEventModal((p) => (p ? { ...p, date: v } : p))} placeholder="dd/mm/yyyy" />
@@ -1010,7 +1110,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
           {eventModal && showDeleteConfirm && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
               <div className={`relative w-full max-w-sm overflow-hidden rounded-2xl border shadow-2xl ${
-                isDark ? 'border-slate-700/60 bg-[#1f2d3d]' : 'border-slate-200 bg-white'
+                isDark ? 'border-slate-700/60 bg-[#252920]' : 'border-slate-200 bg-white'
               }`}>
                 <div className="px-6 py-4" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
                   <div className="mb-1 flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/15 ring-1 ring-red-500/30">

@@ -19,6 +19,7 @@ import { PaymentModal } from '../components/economics/subscriptions/PaymentModal
 import type { PaymentRow, StudentViewRow } from '../components/economics/subscriptions/types';
 import { parseMoney } from '../components/economics/subscriptions/utils';
 import { StudentSlotModal } from '../components/students/StudentSlotModal';
+import { PrivateLessonPaymentModal } from '../components/students/PrivateLessonPaymentModal';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -46,6 +47,25 @@ const DAY_LABEL: Record<string, string> = {
 };
 
 type PaymentRow = { id: string; subscription_id: string; amount: number; created_at: string | null; payment_method?: string | null; cancelled_at?: string | null };
+
+type PrivateSlotOverride = {
+  id: string;
+  program_item_id: string;
+  override_date: string;
+  is_deleted: boolean;
+  holiday_active_override: boolean;
+  charge_amount: number | null;
+};
+
+type PrivateLessonPayment = {
+  id: string;
+  student_id: string;
+  amount: number;
+  payment_method: 'cash' | 'card' | 'bank_transfer' | null;
+  note: string | null;
+  created_at: string;
+  cancelled_at: string | null;
+};
 
 type CalendarTest = {
   id: string;
@@ -516,6 +536,12 @@ export default function StudentCardPage() {
   const [slotDeleting, setSlotDeleting] = useState<string | null>(null);
   const [subjectNameMap, setSubjectNameMap] = useState<Map<string, string>>(new Map());
 
+  // Private lesson billing (idiaitera only)
+  const [privateSlotOverrides, setPrivateSlotOverrides] = useState<PrivateSlotOverride[]>([]);
+  const [privatePayments, setPrivatePayments] = useState<PrivateLessonPayment[]>([]);
+  const [showPrivatePaymentModal, setShowPrivatePaymentModal] = useState(false);
+  const [cancellingPrivatePaymentId, setCancellingPrivatePaymentId] = useState<string | null>(null);
+
   const inputCls = `h-8 w-full rounded-lg border px-2.5 text-xs outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 focus:border-[color:var(--color-accent)] ${isDark ? 'border-slate-700/70 bg-slate-900/60 text-slate-100 placeholder-slate-500' : 'border-slate-200 bg-slate-50 text-slate-800 placeholder-slate-400'}`;
   const cancelBtnCls = `btn border px-3 py-1.5 text-xs disabled:opacity-50 ${isDark ? 'border-slate-600/60 bg-slate-800/50 text-slate-200 hover:bg-slate-700/60' : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'}`;
 
@@ -538,6 +564,49 @@ export default function StudentCardPage() {
   }, [paymentModal]);
   const pmBalance      = useMemo(() => pmBilled - pmPaid, [pmBilled, pmPaid]);
   const pmHistoryTotal = useMemo(() => paymentModal?.allStudentPayments.filter(p => !p.cancelled_at).reduce((s, p) => s + Number(p.amount ?? 0), 0) ?? 0, [paymentModal]);
+
+  // Compute total charged for private lessons (sum over all session occurrences up to today)
+  const privateTotalCharged = useMemo(() => {
+    if (!isIdiaiterou) return 0;
+    const today = toISODate(new Date());
+    let total = 0;
+    const overridesByItem = new Map<string, PrivateSlotOverride[]>();
+    privateSlotOverrides.forEach(o => {
+      const arr = overridesByItem.get(o.program_item_id) ?? [];
+      arr.push(o);
+      overridesByItem.set(o.program_item_id, arr);
+    });
+    for (const slot of scheduleSlots) {
+      if (!slot.start_date) continue;
+      const dow = DAYS.find(d => d.value === slot.day_of_week);
+      if (!dow) continue;
+      const overrideMap = new Map<string, PrivateSlotOverride>();
+      (overridesByItem.get(slot.id) ?? []).forEach(o => overrideMap.set(o.override_date, o));
+      const start = new Date(slot.start_date + 'T00:00:00');
+      const endLimit = slot.end_date ? new Date(slot.end_date + 'T00:00:00') : null;
+      // Advance to first occurrence of day_of_week
+      let cur = new Date(start);
+      while (cur.getDay() !== dow.js) cur.setDate(cur.getDate() + 1);
+      while (true) {
+        const dateStr = toISODate(cur);
+        if (dateStr > today) break;
+        if (endLimit && cur > endLimit) break;
+        const ov = overrideMap.get(dateStr);
+        if (ov?.is_deleted) { cur.setDate(cur.getDate() + 7); continue; }
+        if (holidayDates.has(dateStr) && !ov?.holiday_active_override) { cur.setDate(cur.getDate() + 7); continue; }
+        const charge = ov?.charge_amount != null ? Number(ov.charge_amount) : (slot.charge_per_session != null ? Number(slot.charge_per_session) : 0);
+        total += charge;
+        cur.setDate(cur.getDate() + 7);
+      }
+    }
+    return total;
+  }, [isIdiaiterou, scheduleSlots, privateSlotOverrides, holidayDates]);
+
+  const privateTotalPaid = useMemo(() =>
+    privatePayments.filter(p => !p.cancelled_at).reduce((a, p) => a + Number(p.amount), 0),
+    [privatePayments]);
+
+  const privateBalance = privateTotalCharged - privateTotalPaid;
 
   useEffect(() => {
     if (!id || !schoolId) return;
@@ -610,7 +679,7 @@ export default function StudentCardPage() {
 
         const { data: studentSlotData } = await supabase
           .from('program_items')
-          .select('id, student_id, subject_id, day_of_week, start_time, end_time, start_date, end_date')
+          .select('id, student_id, subject_id, day_of_week, start_time, end_time, start_date, end_date, charge_per_session')
           .eq('student_id', id!);
         if (studentSlotData) {
           setScheduleSlots(studentSlotData.map((item: any) => ({
@@ -623,8 +692,34 @@ export default function StudentCardPage() {
             end_time: item.end_time ?? null,
             start_date: item.start_date ?? null,
             end_date: item.end_date ?? null,
+            charge_per_session: item.charge_per_session ?? null,
           })));
+
+          // Load overrides for these slots
+          const slotIds = studentSlotData.map((item: any) => item.id);
+          if (slotIds.length > 0) {
+            const { data: ovData } = await supabase
+              .from('program_item_overrides')
+              .select('id, program_item_id, override_date, is_deleted, holiday_active_override, charge_amount')
+              .in('program_item_id', slotIds);
+            setPrivateSlotOverrides((ovData ?? []).map((o: any) => ({
+              id: o.id,
+              program_item_id: o.program_item_id,
+              override_date: o.override_date,
+              is_deleted: !!o.is_deleted,
+              holiday_active_override: !!o.holiday_active_override,
+              charge_amount: o.charge_amount ?? null,
+            })));
+          }
         }
+
+        // Load private lesson payments
+        const { data: plPayData } = await supabase
+          .from('private_lesson_payments')
+          .select('id, student_id, amount, payment_method, note, created_at, cancelled_at')
+          .eq('student_id', id!).eq('school_id', schoolId)
+          .order('created_at', { ascending: false });
+        setPrivatePayments((plPayData ?? []) as PrivateLessonPayment[]);
       }
 
       if (classIds.length > 0) {
@@ -771,6 +866,38 @@ export default function StudentCardPage() {
     }
   };
 
+  const reloadPrivatePayments = async () => {
+    if (!id || !schoolId) return;
+    const { data } = await supabase
+      .from('private_lesson_payments')
+      .select('id, student_id, amount, payment_method, note, created_at, cancelled_at')
+      .eq('student_id', id).eq('school_id', schoolId)
+      .order('created_at', { ascending: false });
+    setPrivatePayments((data ?? []) as PrivateLessonPayment[]);
+  };
+
+  const handleAddPrivatePayment = async (amount: number, method: 'cash' | 'card' | 'bank_transfer', note: string) => {
+    if (!id || !schoolId) return;
+    const { error } = await supabase.from('private_lesson_payments').insert({
+      school_id: schoolId, student_id: id, amount, payment_method: method, note: note || null,
+    });
+    if (error) throw new Error(error.message);
+    setShowPrivatePaymentModal(false);
+    await reloadPrivatePayments();
+  };
+
+  const handleCancelPrivatePayment = async (paymentId: string) => {
+    setCancellingPrivatePaymentId(paymentId);
+    try {
+      await supabase.from('private_lesson_payments')
+        .update({ cancelled_at: new Date().toISOString() })
+        .eq('id', paymentId);
+      await reloadPrivatePayments();
+    } finally {
+      setCancellingPrivatePaymentId(null);
+    }
+  };
+
   function populateStudentForm(s: StudentRow) {
     setFullName(s.full_name ?? ''); setDateOfBirth(isoToDisplay(s.date_of_birth));
     setPhone(s.phone ?? ''); setEmail(s.email ?? '');
@@ -899,7 +1026,7 @@ export default function StudentCardPage() {
     if (!id || !student) return;
     const { data: slotData } = await supabase
       .from('program_items')
-      .select('id, student_id, subject_id, day_of_week, start_time, end_time, start_date, end_date')
+      .select('id, student_id, subject_id, day_of_week, start_time, end_time, start_date, end_date, charge_per_session')
       .eq('student_id', id);
     if (slotData) {
       setScheduleSlots(slotData.map((item: any) => ({
@@ -912,6 +1039,7 @@ export default function StudentCardPage() {
         end_time: item.end_time ?? null,
         start_date: item.start_date ?? null,
         end_date: item.end_date ?? null,
+        charge_per_session: item.charge_per_session ?? null,
       })));
     }
   };
@@ -1087,8 +1215,84 @@ export default function StudentCardPage() {
             )}
           </DashCard>
 
-          {/* Economics */}
-          <DashCard title="Οικονομικα & Ιστορικο" icon={<Wallet className="h-3.5 w-3.5" />} isDark={isDark}>
+          {/* Economics — idiaitera private lesson billing */}
+          {isIdiaiterou && (
+            <DashCard title="Οικονομικα & Πληρωμες" icon={<Wallet className="h-3.5 w-3.5" />} isDark={isDark}
+              onAdd={() => setShowPrivatePaymentModal(true)}>
+              {/* Summary tiles */}
+              <div className="mb-4 grid grid-cols-3 gap-2">
+                <StatTile label="Χρεωση" value={`${privateTotalCharged.toFixed(2)}€`} color="blue" isDark={isDark} />
+                <StatTile label="Πληρωμενο" value={`${privateTotalPaid.toFixed(2)}€`} color="green" isDark={isDark} />
+                <StatTile label="Υπολοιπο" value={`${privateBalance.toFixed(2)}€`} color={privateBalance > 0 ? 'red' : 'green'} isDark={isDark} />
+              </div>
+
+              {/* Payment history */}
+              {privatePayments.length === 0 ? (
+                <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Δεν υπάρχουν καταχωρημένες πληρωμές.</p>
+              ) : (
+                <div className={`overflow-hidden rounded-xl border ${isDark ? 'border-slate-700/50' : 'border-slate-200'}`}>
+                  <div className={`flex items-center gap-1.5 px-3 py-1.5 ${isDark ? 'bg-slate-900/20' : 'bg-slate-50/80'}`}>
+                    <Receipt className={`h-2.5 w-2.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+                    <span className={`text-[9px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                      Ιστορικό Πληρωμών ({privatePayments.length})
+                    </span>
+                  </div>
+                  <div className={`divide-y ${isDark ? 'divide-slate-800/50' : 'divide-slate-100'}`}>
+                    {privatePayments.map((p, i) => {
+                      const isCancelled = !!p.cancelled_at;
+                      const isCancelling = cancellingPrivatePaymentId === p.id;
+                      const muted = isDark ? 'text-slate-500' : 'text-slate-400';
+                      return (
+                        <div key={p.id ?? i}
+                          className={`relative flex items-center justify-between px-3 py-2 transition-colors ${
+                            isCancelled
+                              ? (isDark ? 'bg-red-950/10' : 'bg-red-50/40')
+                              : (isDark ? 'bg-slate-950/20' : 'bg-white')
+                          }`}>
+                          {isCancelled && (
+                            <div className="pointer-events-none absolute inset-x-0 top-1/2 h-[1.5px] -translate-y-1/2"
+                              style={{ background: 'rgba(239,68,68,0.5)' }} />
+                          )}
+                          <div className="flex items-center gap-2">
+                            <span className={`h-1.5 w-1.5 rounded-full ${isCancelled ? (isDark ? 'bg-red-500/40' : 'bg-red-400/50') : (isDark ? 'bg-emerald-400' : 'bg-emerald-500')}`} />
+                            <div>
+                              <span className={`text-[11px] tabular-nums ${isCancelled ? muted : (isDark ? 'text-slate-400' : 'text-slate-500')}`}>{fmtDateTime(p.created_at)}</span>
+                              {p.note && <p className={`text-[10px] ${muted}`}>{p.note}</p>}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {!isCancelled && p.payment_method === 'card' && (
+                              <span className={`flex items-center gap-1 text-[11px] font-medium ${isDark ? 'text-sky-400' : 'text-sky-600'}`}><CreditCard className="h-3 w-3" />Κάρτα</span>
+                            )}
+                            {!isCancelled && p.payment_method === 'cash' && (
+                              <span className={`flex items-center gap-1 text-[11px] font-medium ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}><Banknote className="h-3 w-3" />Μετρητά</span>
+                            )}
+                            {!isCancelled && p.payment_method === 'bank_transfer' && (
+                              <span className={`flex items-center gap-1 text-[11px] font-medium ${isDark ? 'text-violet-400' : 'text-violet-600'}`}><Landmark className="h-3 w-3" />Τράπεζα</span>
+                            )}
+                            <span className={`text-xs font-semibold tabular-nums ${isCancelled ? muted : (isDark ? 'text-emerald-300' : 'text-emerald-700')}`}>
+                              +{Number(p.amount).toFixed(2)}€
+                            </span>
+                            {!isCancelled && (
+                              <button type="button" title="Ακύρωση πληρωμής"
+                                disabled={isCancelling || !!cancellingPrivatePaymentId}
+                                onClick={() => handleCancelPrivatePayment(p.id)}
+                                className={`flex h-5 w-5 items-center justify-center rounded border transition-all hover:scale-105 active:scale-95 disabled:opacity-40 ${isDark ? 'border-amber-800/50 bg-amber-950/40 text-amber-400 hover:bg-amber-950/70' : 'border-amber-200 bg-amber-50 text-amber-600 hover:bg-amber-100'}`}>
+                                {isCancelling ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Ban className="h-2.5 w-2.5" />}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </DashCard>
+          )}
+
+          {/* Economics — subscription-based (frontistirio only) */}
+          {!isIdiaiterou && <DashCard title="Οικονομικα & Ιστορικο" icon={<Wallet className="h-3.5 w-3.5" />} isDark={isDark}>
             {subscriptions.length > 0 && (
               <div className="mb-4 grid grid-cols-3 gap-2">
                 <StatTile label="Χρεωση" value={`${totalCharged.toFixed(2)}€`} color="blue" isDark={isDark} />
@@ -1240,7 +1444,7 @@ export default function StudentCardPage() {
                 })}
               </div>
             )}
-          </DashCard>
+          </DashCard>}
         </div>
 
         {/* ── Right: program + calendar ── */}
@@ -1387,6 +1591,14 @@ export default function StudentCardPage() {
           levelId={student.level_id}
           onClose={() => setSlotModalOpen(false)}
           onCreated={handleSlotCreated}
+        />
+      )}
+      {isIdiaiterou && showPrivatePaymentModal && student && (
+        <PrivateLessonPaymentModal
+          studentName={student.full_name}
+          balance={privateBalance}
+          onSubmit={handleAddPrivatePayment}
+          onClose={() => setShowPrivatePaymentModal(false)}
         />
       )}
     </div>

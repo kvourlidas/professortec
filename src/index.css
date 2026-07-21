@@ -7,77 +7,77 @@
 
 
 @layer base {
-  /* ─── DARK MODE (slate + violet) ─── */
+  /* ─── DARK MODE ─── */
   :root,
   .dark {
-    --color-background: #000000;
-    --color-surface: #0d0d0d;
-    --color-primary: #333333;
-    --color-primary-soft: #1a1a1a;
-    --color-accent: #111111;
-    --color-input-bg: #161616;
+    --color-background: #2A3023;
+    --color-surface: #404734;
+    --color-primary: #AAB48A;
+    --color-primary-soft: #4A5240;
+    --color-accent: #F8EFCF;
+    --color-input-bg: #333A2B;
 
-    --color-button-bg: #222222;
-    --color-button-text: #ffffff;
+    --color-button-bg: #F8EFCF;
+    --color-button-text: #2A3023;
 
-    --color-text-main: #e4e0f0;
-    --color-text-td: #d4d0e0;
-    --color-text-muted: #6a6880;
+    --color-text-main: #F5F2E9;
+    --color-text-td: #D4D0C5;
+    --color-text-muted: #8C9082;
 
-    --color-sidebar: #0d0d0d;
-    --color-sidebar-muted: #080808;
-    --color-sidebar-border: #000000;
+    --color-sidebar: #333A2B;
+    --color-sidebar-muted: #2E3526;
+    --color-sidebar-border: #252C1F;
 
-    --color-header-bg: rgba(0, 0, 0, 0.92);
-    --color-sidebar-bg: #111111;
-    --color-border: rgba(35, 35, 35, 0.90);
-    --color-border-soft: rgba(35, 35, 35, 0.60);
+    --color-header-bg: rgba(51, 58, 43, 0.95);
+    --color-sidebar-bg: #333A2B;
+    --color-border: rgba(100, 115, 80, 0.35);
+    --color-border-soft: rgba(100, 115, 80, 0.20);
 
-    /* Card header (dark mode = near-black) */
-    --ch-bg: var(--color-accent);
-    --ch-text: #e4e0f0;
-    --ch-text-muted: rgba(228,224,240,0.60);
-    --ch-icon-bg: rgba(255,255,255,0.08);
-    --ch-icon-border: rgba(255,255,255,0.12);
-    --ch-icon: #e4e0f0;
-    --ch-btn-bg: rgba(255,255,255,0.07);
-    --ch-btn-border: rgba(255,255,255,0.12);
-    --ch-btn-text: #e4e0f0;
-    --ch-divider: rgba(255,255,255,0.08);
+    /* Card header — sidebar-toned panel, butter-beige icon accent */
+    --ch-bg: #333A2B;
+    --ch-text: #F5F2E9;
+    --ch-text-muted: rgba(245, 242, 233, 0.50);
+    --ch-icon-bg: rgba(248, 239, 207, 0.12);
+    --ch-icon-border: rgba(248, 239, 207, 0.22);
+    --ch-icon: #F8EFCF;
+    --ch-btn-bg: rgba(255, 255, 255, 0.05);
+    --ch-btn-border: rgba(255, 255, 255, 0.08);
+    --ch-btn-text: #F5F2E9;
+    --ch-divider: rgba(255, 255, 255, 0.06);
 
     /* FullCalendar */
-    --fc-border-color: rgba(35, 35, 35, 0.9);
+    --fc-border-color: rgba(100, 115, 80, 0.32);
     --fc-page-bg-color: var(--color-sidebar);
     --fc-neutral-bg-color: var(--color-sidebar);
     --fc-neutral-text-color: var(--color-text-main);
   }
 
-  /* ─── LIGHT MODE (olive & creme) ─── */
+  /* ─── LIGHT MODE ─── */
   :root:not(.dark) {
-    --color-background: #f7f0dd;
-    --color-surface: #f7f0dd;
-    --color-primary: #5b6038;
-    --color-primary-soft: #d4d3b0;
-    --color-accent: #7c8060;
-    --color-input-bg: #efe5cb;
+    --color-background: #F8F4E7;
+    --color-surface: #F2ECD9;
+    --color-primary: #A3AD84;
+    --color-primary-soft: #C8D2A8;
+    --color-accent: #A3AD84;
+    --color-input-bg: #EAE3CC;
 
-    --color-button-bg: #7c8060;
+    --color-button-bg: #A3AD84;
     --color-button-text: #ffffff;
 
-    --color-text-main: #0f172a;
-    --color-text-td: #1e293b;
-    --color-text-muted: #64748b;
+    --color-text-main: #4B4B43;
+    --color-text-td: #4B4B43;
+    --color-text-muted: #77756D;
 
-    --color-sidebar: #f7f0dd;
-    --color-sidebar-muted: #efe5cb;
-    --color-sidebar-border: #d9ccae;
+    --color-sidebar: #F2ECD9;
+    --color-sidebar-muted: #EAE3CC;
+    --color-sidebar-border: #D6CEBC;
 
-    --color-header-bg: rgba(247, 240, 221, 0.88);
-    --color-sidebar-bg: #5b6038;
-    --color-border: rgba(217, 204, 174, 0.8);
-    --color-border-soft: rgba(217, 204, 174, 0.6);
+    --color-header-bg: rgba(242, 236, 217, 0.92);
+    --color-sidebar-bg: #A3AD84;
+    --color-border: rgba(160, 150, 110, 0.45);
+    --color-border-soft: rgba(160, 150, 110, 0.28);
 
-    /* Card header (light mode = olive accent) */
+    /* Card header (light mode = olive) */
     --ch-bg: var(--color-accent);
     --ch-text: #ffffff;
     --ch-text-muted: rgba(255,255,255,0.75);
@@ -90,7 +90,7 @@
     --ch-divider: rgba(0,0,0,0.08);
 
     /* FullCalendar */
-    --fc-border-color: rgba(217, 204, 174, 0.9);
+    --fc-border-color: rgba(160, 150, 110, 0.45);
     --fc-page-bg-color: var(--color-sidebar);
     --fc-neutral-bg-color: var(--color-sidebar);
     --fc-neutral-text-color: var(--color-text-main);
@@ -639,6 +639,11 @@
   border-left: 3px solid var(--color-accent) !important;
 }
 
+.fc-event-student {
+  background: color-mix(in srgb, #10b981 15%, var(--color-sidebar)) !important;
+  border-left: 3px solid #10b981 !important;
+}
+
 .fc-event-test {
   background: color-mix(in srgb, #a855f7 15%, var(--color-sidebar)) !important;
   border-left: 3px solid #a855f7 !important;
@@ -728,16 +733,16 @@
 .login-card-inner {
   border-radius: inherit;
   padding: 2rem 2.25rem;
-  background: rgba(15, 23, 42, 0.88);
+  background: rgba(28, 31, 23, 0.94);
   backdrop-filter: blur(18px);
 }
 
 .programs-card {
-  background: rgba(15, 23, 42, 0.22);
+  background: rgba(59, 64, 48, 0.22);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(90, 100, 75, 0.18);
+  box-shadow: inset 0 1px 0 rgba(246, 231, 161, 0.04);
 }
 
 /* ── Global minimal scrollbar ───────────────────────────────────────────── */
@@ -786,14 +791,61 @@
 
 /* ==== FullCalendar Light Mode overrides ==== */
 :root:not(.dark) {
-  --fc-event-text-color: #1e293b;
+  --fc-event-text-color: #4B4B43;
 }
 
 :root:not(.dark) .fc-theme-standard .fc-scrollgrid {
-  background-color: #ffffff;
+  background-color: #F2ECD9;
 }
 
 :root:not(.dark) .fc-daygrid-day:hover,
 :root:not(.dark) .fc-timegrid-col:hover {
-  background-color: rgba(241, 245, 249, 0.6);
+  background-color: rgba(163, 173, 132, 0.12);
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   Tailwind overrides — remap slate colors to olive/warm palette.
+   Unlayered rules outrank all @tailwind layers; no !important needed.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Dark: text ── */
+.dark .text-slate-50  { color: #F5F2E9; }
+.dark .text-slate-100 { color: #EDEAE2; }
+.dark .text-slate-200 { color: #D4D0C5; }
+.dark .text-slate-300 { color: #BAB7AC; }
+.dark .text-slate-400 { color: #9EA09A; }
+.dark .text-slate-500 { color: #7E8079; }
+.dark .text-slate-600 { color: #636460; }
+.dark .text-slate-700 { color: #4F504D; }
+.dark .text-slate-800 { color: #3C3D3A; }
+
+/* ── Dark: backgrounds ── */
+.dark .bg-slate-800         { background-color: #333A2B; }
+.dark .bg-slate-800\/50     { background-color: rgba(51, 58, 43, 0.50); }
+.dark .bg-slate-800\/80     { background-color: rgba(51, 58, 43, 0.80); }
+.dark .bg-slate-900\/20     { background-color: rgba(42, 48, 35, 0.20); }
+.dark .bg-slate-900\/60     { background-color: rgba(42, 48, 35, 0.60); }
+/* modal card backgrounds (previously hardcoded #1f2d3d → #252920 in components) */
+.dark .bg-\[\#252920\]      { background-color: #404734; }
+
+/* ── Dark: borders ── */
+.dark .border-slate-600\/60 { border-color: rgba(100, 115, 80, 0.50); }
+.dark .border-slate-700\/50 { border-color: rgba(100, 115, 80, 0.32); }
+.dark .border-slate-700\/60 { border-color: rgba(100, 115, 80, 0.40); }
+.dark .border-slate-700\/70 { border-color: rgba(100, 115, 80, 0.48); }
+.dark .border-slate-800\/70 { border-color: rgba(70, 80, 55, 0.55); }
+
+/* ── Dark: hover backgrounds ── */
+.dark .hover\:bg-slate-700\/60:hover { background-color: rgba(64, 71, 52, 0.60); }
+.dark .hover\:bg-slate-800\/60:hover { background-color: rgba(51, 58, 43, 0.60); }
+
+/* ── Dark: divide separators ── */
+.dark .divide-slate-800\/50 > :not([hidden]) ~ :not([hidden]) { border-color: rgba(70, 80, 55, 0.50); }
+.dark .divide-slate-800\/60 > :not([hidden]) ~ :not([hidden]) { border-color: rgba(70, 80, 55, 0.60); }
+
+/* ── Light: text remapped to warm brown-olive ── */
+:root:not(.dark) .text-slate-400 { color: #8E8C84; }
+:root:not(.dark) .text-slate-500 { color: #77756D; }
+:root:not(.dark) .text-slate-600 { color: #625F58; }
+:root:not(.dark) .text-slate-700 { color: #4F4D47; }
+:root:not(.dark) .text-slate-800 { color: #3E3C37; }
