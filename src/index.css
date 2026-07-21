@@ -7,90 +7,104 @@
 
 
 @layer base {
-  /* ─── DARK MODE ─── */
+  /* ─── DARK MODE (deep olive) ─── */
   :root,
   .dark {
-    --color-background: #2A3023;
+    --color-background: #2a3023;
     --color-surface: #404734;
-    --color-primary: #AAB48A;
-    --color-primary-soft: #4A5240;
-    --color-accent: #F8EFCF;
-    --color-input-bg: #333A2B;
+    --color-primary: #aab48a;
+    --color-primary-hover: #b7c195;
+    --color-primary-active: #8d976f;
+    --color-primary-soft: color-mix(in srgb, var(--color-primary) 30%, var(--color-background));
+    --color-accent: var(--color-primary);
+    --color-accent-hover: var(--color-primary-hover);
+    --color-accent-active: var(--color-primary-active);
+    --color-butter: #f8efcf;
+    --color-butter-hover: #f3e5bc;
+    --color-on-accent: #232819;
+    --color-input-bg: #333a2b;
 
-    --color-button-bg: #F8EFCF;
-    --color-button-text: #2A3023;
+    --color-button-bg: var(--color-accent);
+    --color-button-text: var(--color-on-accent);
 
-    --color-text-main: #F5F2E9;
-    --color-text-td: #D4D0C5;
-    --color-text-muted: #8C9082;
+    --color-text-main: #f5f2e9;
+    --color-text-td: #f5f2e9;
+    --color-text-muted: #d4d0c5;
 
-    --color-sidebar: #333A2B;
-    --color-sidebar-muted: #2E3526;
-    --color-sidebar-border: #252C1F;
+    --color-sidebar: #404734;
+    --color-sidebar-muted: #333a2b;
+    --color-sidebar-border: rgba(255,255,255,0.10);
 
-    --color-header-bg: rgba(51, 58, 43, 0.95);
-    --color-sidebar-bg: #333A2B;
-    --color-border: rgba(100, 115, 80, 0.35);
-    --color-border-soft: rgba(100, 115, 80, 0.20);
+    --color-header-bg: rgba(42, 48, 35, 0.92);
+    --color-sidebar-bg: #333a2b;
+    --color-border: rgba(255,255,255,0.10);
+    --color-border-soft: rgba(255,255,255,0.06);
 
-    /* Card header — sidebar-toned panel, butter-beige icon accent */
-    --ch-bg: #333A2B;
-    --ch-text: #F5F2E9;
-    --ch-text-muted: rgba(245, 242, 233, 0.50);
-    --ch-icon-bg: rgba(248, 239, 207, 0.12);
-    --ch-icon-border: rgba(248, 239, 207, 0.22);
-    --ch-icon: #F8EFCF;
-    --ch-btn-bg: rgba(255, 255, 255, 0.05);
-    --ch-btn-border: rgba(255, 255, 255, 0.08);
-    --ch-btn-text: #F5F2E9;
-    --ch-divider: rgba(255, 255, 255, 0.06);
+    /* Card header (dark mode = light olive accent, dark text) */
+    --ch-bg: var(--color-accent);
+    --ch-text: var(--color-on-accent);
+    --ch-text-muted: color-mix(in srgb, var(--color-on-accent) 65%, transparent);
+    --ch-icon-bg: color-mix(in srgb, var(--color-on-accent) 10%, transparent);
+    --ch-icon-border: color-mix(in srgb, var(--color-on-accent) 16%, transparent);
+    --ch-icon: var(--color-on-accent);
+    --ch-btn-bg: color-mix(in srgb, var(--color-on-accent) 9%, transparent);
+    --ch-btn-border: color-mix(in srgb, var(--color-on-accent) 16%, transparent);
+    --ch-btn-text: var(--color-on-accent);
+    --ch-divider: color-mix(in srgb, var(--color-on-accent) 12%, transparent);
 
     /* FullCalendar */
-    --fc-border-color: rgba(100, 115, 80, 0.32);
+    --fc-border-color: rgba(255, 255, 255, 0.10);
     --fc-page-bg-color: var(--color-sidebar);
     --fc-neutral-bg-color: var(--color-sidebar);
     --fc-neutral-text-color: var(--color-text-main);
   }
 
-  /* ─── LIGHT MODE ─── */
+  /* ─── LIGHT MODE (olive & butter creme) ─── */
   :root:not(.dark) {
-    --color-background: #F8F4E7;
-    --color-surface: #F2ECD9;
-    --color-primary: #A3AD84;
-    --color-primary-soft: #C8D2A8;
-    --color-accent: #A3AD84;
-    --color-input-bg: #EAE3CC;
+    --color-background: #f8f4e7;
+    --color-surface: #f2ecd9;
+    --color-primary: #a3ad84;
+    --color-primary-hover: #929c73;
+    --color-primary-active: #7d875e;
+    --color-primary-soft: color-mix(in srgb, var(--color-primary) 30%, var(--color-background));
+    --color-accent: var(--color-primary);
+    --color-accent-hover: var(--color-primary-hover);
+    --color-accent-active: var(--color-primary-active);
+    --color-butter: #f9f0c8;
+    --color-butter-hover: #f3e7b3;
+    --color-on-accent: #4b4b43;
+    --color-input-bg: #eae3cc;
 
-    --color-button-bg: #A3AD84;
-    --color-button-text: #ffffff;
+    --color-button-bg: var(--color-accent);
+    --color-button-text: var(--color-on-accent);
 
-    --color-text-main: #4B4B43;
-    --color-text-td: #4B4B43;
-    --color-text-muted: #77756D;
+    --color-text-main: #4b4b43;
+    --color-text-td: #4b4b43;
+    --color-text-muted: #77756d;
 
-    --color-sidebar: #F2ECD9;
-    --color-sidebar-muted: #EAE3CC;
-    --color-sidebar-border: #D6CEBC;
+    --color-sidebar: #f2ecd9;
+    --color-sidebar-muted: #eae3cc;
+    --color-sidebar-border: rgba(75,75,67,0.14);
 
-    --color-header-bg: rgba(242, 236, 217, 0.92);
-    --color-sidebar-bg: #A3AD84;
-    --color-border: rgba(160, 150, 110, 0.45);
-    --color-border-soft: rgba(160, 150, 110, 0.28);
+    --color-header-bg: rgba(248, 244, 231, 0.88);
+    --color-sidebar-bg: #eae3cc;
+    --color-border: rgba(75,75,67,0.16);
+    --color-border-soft: rgba(75,75,67,0.10);
 
-    /* Card header (light mode = olive) */
+    /* Card header (light mode = olive accent, dark text) */
     --ch-bg: var(--color-accent);
-    --ch-text: #ffffff;
-    --ch-text-muted: rgba(255,255,255,0.75);
-    --ch-icon-bg: rgba(255,255,255,0.15);
-    --ch-icon-border: rgba(255,255,255,0.22);
-    --ch-icon: #ffffff;
-    --ch-btn-bg: rgba(255,255,255,0.12);
-    --ch-btn-border: rgba(255,255,255,0.22);
-    --ch-btn-text: #ffffff;
-    --ch-divider: rgba(0,0,0,0.08);
+    --ch-text: var(--color-on-accent);
+    --ch-text-muted: color-mix(in srgb, var(--color-on-accent) 65%, transparent);
+    --ch-icon-bg: color-mix(in srgb, var(--color-on-accent) 10%, transparent);
+    --ch-icon-border: color-mix(in srgb, var(--color-on-accent) 16%, transparent);
+    --ch-icon: var(--color-on-accent);
+    --ch-btn-bg: color-mix(in srgb, var(--color-on-accent) 8%, transparent);
+    --ch-btn-border: color-mix(in srgb, var(--color-on-accent) 16%, transparent);
+    --ch-btn-text: var(--color-on-accent);
+    --ch-divider: color-mix(in srgb, var(--color-on-accent) 10%, transparent);
 
     /* FullCalendar */
-    --fc-border-color: rgba(160, 150, 110, 0.45);
+    --fc-border-color: rgba(75, 75, 67, 0.18);
     --fc-page-bg-color: var(--color-sidebar);
     --fc-neutral-bg-color: var(--color-sidebar);
     --fc-neutral-text-color: var(--color-text-main);
@@ -188,7 +202,7 @@
 
 .react-datepicker__day:not(.react-datepicker__day--selected):not(.react-datepicker__day--keyboard-selected):hover {
   background-color: var(--color-primary) !important;
-  color: #ffffff !important;
+  color: var(--color-on-accent) !important;
 }
 
 .react-datepicker__day--today {
@@ -199,13 +213,13 @@
 .react-datepicker__day--selected,
 .react-datepicker__day--keyboard-selected {
   background-color: var(--color-accent) !important;
-  color: #ffffff !important;
+  color: var(--color-on-accent) !important;
 }
 
 .react-datepicker__day--selected:hover,
 .react-datepicker__day--keyboard-selected:hover {
-  background-color: color-mix(in srgb, var(--color-accent) 80%, black) !important;
-  color: #ffffff !important;
+  background-color: var(--color-accent-active) !important;
+  color: var(--color-on-accent) !important;
 }
 
 .react-datepicker__triangle {
@@ -318,8 +332,16 @@
   }
 
   .btn-primary:hover:not(:disabled)::after { left: 130%; }
-  .btn-primary:hover:not(:disabled) { filter: brightness(1.12); }
-  .btn-primary:active:not(:disabled) { transform: scale(0.97); filter: brightness(0.93); transition-duration: 0.08s; }
+  .btn-primary:hover:not(:disabled) {
+    background: var(--color-accent-hover);
+    border-color: color-mix(in srgb, var(--color-accent-hover) 75%, white 25%);
+  }
+  .btn-primary:active:not(:disabled) {
+    background: var(--color-accent-active);
+    border-color: color-mix(in srgb, var(--color-accent-active) 75%, white 25%);
+    transform: scale(0.97);
+    transition-duration: 0.08s;
+  }
   .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
 
   /* ── Ghost button ── */
@@ -525,7 +547,7 @@
 .fc .fc-button-primary:not(:disabled):active {
   background-color: var(--color-accent) !important;
   border-color: var(--color-accent) !important;
-  color: var(--color-input-bg) !important;
+  color: var(--color-on-accent) !important;
   font-weight: 700;
 }
 
@@ -581,12 +603,12 @@
 /* ── Today highlight ── */
 .fc .fc-timegrid-col.fc-day-today,
 .fc .fc-daygrid-day.fc-day-today {
-  background-color: color-mix(in srgb, var(--color-accent) 6%, transparent) !important;
+  background-color: color-mix(in srgb, var(--color-butter) 35%, transparent) !important;
 }
 
 .fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
   background-color: var(--color-accent);
-  color: var(--color-input-bg);
+  color: var(--color-on-accent);
   border-radius: 50%;
   width: 22px;
   height: 22px;
@@ -637,11 +659,6 @@
 .fc-event-program {
   background: color-mix(in srgb, var(--color-accent) 15%, var(--color-sidebar)) !important;
   border-left: 3px solid var(--color-accent) !important;
-}
-
-.fc-event-student {
-  background: color-mix(in srgb, #10b981 15%, var(--color-sidebar)) !important;
-  border-left: 3px solid #10b981 !important;
 }
 
 .fc-event-test {
@@ -733,16 +750,16 @@
 .login-card-inner {
   border-radius: inherit;
   padding: 2rem 2.25rem;
-  background: rgba(28, 31, 23, 0.94);
+  background: rgba(15, 23, 42, 0.88);
   backdrop-filter: blur(18px);
 }
 
 .programs-card {
-  background: rgba(59, 64, 48, 0.22);
+  background: rgba(15, 23, 42, 0.22);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(90, 100, 75, 0.18);
-  box-shadow: inset 0 1px 0 rgba(246, 231, 161, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 /* ── Global minimal scrollbar ───────────────────────────────────────────── */
@@ -791,61 +808,14 @@
 
 /* ==== FullCalendar Light Mode overrides ==== */
 :root:not(.dark) {
-  --fc-event-text-color: #4B4B43;
+  --fc-event-text-color: #1e293b;
 }
 
 :root:not(.dark) .fc-theme-standard .fc-scrollgrid {
-  background-color: #F2ECD9;
+  background-color: #ffffff;
 }
 
 :root:not(.dark) .fc-daygrid-day:hover,
 :root:not(.dark) .fc-timegrid-col:hover {
-  background-color: rgba(163, 173, 132, 0.12);
+  background-color: rgba(241, 245, 249, 0.6);
 }
-
-/* ═══════════════════════════════════════════════════════════════════
-   Tailwind overrides — remap slate colors to olive/warm palette.
-   Unlayered rules outrank all @tailwind layers; no !important needed.
-   ═══════════════════════════════════════════════════════════════════ */
-
-/* ── Dark: text ── */
-.dark .text-slate-50  { color: #F5F2E9; }
-.dark .text-slate-100 { color: #EDEAE2; }
-.dark .text-slate-200 { color: #D4D0C5; }
-.dark .text-slate-300 { color: #BAB7AC; }
-.dark .text-slate-400 { color: #9EA09A; }
-.dark .text-slate-500 { color: #7E8079; }
-.dark .text-slate-600 { color: #636460; }
-.dark .text-slate-700 { color: #4F504D; }
-.dark .text-slate-800 { color: #3C3D3A; }
-
-/* ── Dark: backgrounds ── */
-.dark .bg-slate-800         { background-color: #333A2B; }
-.dark .bg-slate-800\/50     { background-color: rgba(51, 58, 43, 0.50); }
-.dark .bg-slate-800\/80     { background-color: rgba(51, 58, 43, 0.80); }
-.dark .bg-slate-900\/20     { background-color: rgba(42, 48, 35, 0.20); }
-.dark .bg-slate-900\/60     { background-color: rgba(42, 48, 35, 0.60); }
-/* modal card backgrounds (previously hardcoded #1f2d3d → #252920 in components) */
-.dark .bg-\[\#252920\]      { background-color: #404734; }
-
-/* ── Dark: borders ── */
-.dark .border-slate-600\/60 { border-color: rgba(100, 115, 80, 0.50); }
-.dark .border-slate-700\/50 { border-color: rgba(100, 115, 80, 0.32); }
-.dark .border-slate-700\/60 { border-color: rgba(100, 115, 80, 0.40); }
-.dark .border-slate-700\/70 { border-color: rgba(100, 115, 80, 0.48); }
-.dark .border-slate-800\/70 { border-color: rgba(70, 80, 55, 0.55); }
-
-/* ── Dark: hover backgrounds ── */
-.dark .hover\:bg-slate-700\/60:hover { background-color: rgba(64, 71, 52, 0.60); }
-.dark .hover\:bg-slate-800\/60:hover { background-color: rgba(51, 58, 43, 0.60); }
-
-/* ── Dark: divide separators ── */
-.dark .divide-slate-800\/50 > :not([hidden]) ~ :not([hidden]) { border-color: rgba(70, 80, 55, 0.50); }
-.dark .divide-slate-800\/60 > :not([hidden]) ~ :not([hidden]) { border-color: rgba(70, 80, 55, 0.60); }
-
-/* ── Light: text remapped to warm brown-olive ── */
-:root:not(.dark) .text-slate-400 { color: #8E8C84; }
-:root:not(.dark) .text-slate-500 { color: #77756D; }
-:root:not(.dark) .text-slate-600 { color: #625F58; }
-:root:not(.dark) .text-slate-700 { color: #4F4D47; }
-:root:not(.dark) .text-slate-800 { color: #3E3C37; }

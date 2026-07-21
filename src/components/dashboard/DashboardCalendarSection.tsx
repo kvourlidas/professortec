@@ -22,7 +22,7 @@ import EventFormModal, {
   type EventFormState,
   type SchoolEventForEdit,
 } from '../events/EventFormModal';
-import { CalendarDays, Clock, BookOpen, GraduationCap, X, Loader2, Layers } from 'lucide-react';
+import { CalendarDays, Clock, BookOpen, GraduationCap, X, Loader2, Layers, Euro } from 'lucide-react';
 
 /* ------------ Types (unchanged) ------------ */
 
@@ -36,12 +36,14 @@ type ProgramItemRow = {
   id: string; program_id: string; class_id: string | null; student_id: string | null; day_of_week: string;
   position: number | null; start_time: string | null; end_time: string | null;
   start_date: string | null; end_date: string | null; subject_id: string | null; tutor_id: string | null;
+  charge_per_session: number | null;
 };
 type StudentRow = { id: string; full_name: string | null };
 type ProgramItemOverrideRow = {
   id: string; program_item_id: string; override_date: string | null;
   start_time: string | null; end_time: string | null; is_deleted: boolean | null;
   is_inactive: boolean | null; holiday_active_override: boolean | null;
+  charge_amount: number | null;
 };
 type HolidayRow = { id: string; school_id: string; date: string; name: string | null };
 type SchoolEventRow = {
@@ -61,6 +63,7 @@ type CalendarEventModal = {
   programItemId: string; originalDateStr: string; date: string;
   startTime: string; endTime: string;
   classId: string | null; studentId: string | null; subjectId: string | null; overrideId?: string; activeDuringHoliday: boolean;
+  chargeAmount: string;
 };
 type TestModalState = {
   testId: string; classId: string | null; levelId: string | null; subjectId: string | null; date: string;
@@ -277,6 +280,13 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     return Array.from(merged.values()).sort((a, b) => a.name.localeCompare(b.name, 'el-GR'));
   };
 
+  const resolveChargeForDate = (programItemId: string, dateStr: string): number | null => {
+    const ov = overrides.find((o) => o.program_item_id === programItemId && o.override_date === dateStr);
+    if (ov && ov.charge_amount != null) return ov.charge_amount;
+    const item = programItems.find((pi) => pi.id === programItemId);
+    return item?.charge_per_session ?? null;
+  };
+
   /* -------- Build events (unchanged) -------- */
   const events = useMemo(() => {
     if (!viewRange) return [];
@@ -479,13 +489,14 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     };
     try {
       const movedToHoliday = holidayDateSet.has(newDateStr);
+      const carriedCharge = resolveChargeForDate(programItemId, oldDateStr);
       if (oldDateStr === newDateStr) {
-        const result = await callEdgeFunction('program-item-override-upsert', { program_item_id: programItemId, override_date: newDateStr, start_time: newStartTimeDb, end_time: newEndTimeDb, is_deleted: false, is_inactive: false, holiday_active_override: movedToHoliday });
+        const result = await callEdgeFunction('program-item-override-upsert', { program_item_id: programItemId, override_date: newDateStr, start_time: newStartTimeDb, end_time: newEndTimeDb, is_deleted: false, is_inactive: false, holiday_active_override: movedToHoliday, charge_amount: carriedCharge });
         setOverrides((prev) => applyOverride(prev, newDateStr, result.item as ProgramItemOverrideRow));
       } else {
-        const oldResult = await callEdgeFunction('program-item-override-upsert', { program_item_id: programItemId, override_date: oldDateStr, start_time: null, end_time: null, is_deleted: true, is_inactive: false, holiday_active_override: false });
+        const oldResult = await callEdgeFunction('program-item-override-upsert', { program_item_id: programItemId, override_date: oldDateStr, start_time: null, end_time: null, is_deleted: true, is_inactive: false, holiday_active_override: false, charge_amount: null });
         setOverrides((prev) => applyOverride(prev, oldDateStr, oldResult.item as ProgramItemOverrideRow));
-        const newResult = await callEdgeFunction('program-item-override-upsert', { program_item_id: programItemId, override_date: newDateStr, start_time: newStartTimeDb, end_time: newEndTimeDb, is_deleted: false, is_inactive: false, holiday_active_override: movedToHoliday });
+        const newResult = await callEdgeFunction('program-item-override-upsert', { program_item_id: programItemId, override_date: newDateStr, start_time: newStartTimeDb, end_time: newEndTimeDb, is_deleted: false, is_inactive: false, holiday_active_override: movedToHoliday, charge_amount: carriedCharge });
         setOverrides((prev) => applyOverride(prev, newDateStr, newResult.item as ProgramItemOverrideRow));
       }
     } catch (err) { console.error(err); revert(); }
@@ -662,7 +673,8 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
       const classIdProp = event.extendedProps['classId'] as string | undefined;
       const studentIdProp = (event.extendedProps['studentId'] as string | null | undefined) ?? null;
       const prefilledSubjectId = (event.extendedProps['subjectId'] as string | null | undefined) ?? null;
-      setEventModal({ programItemId, originalDateStr: dateIso, date: formatDateDisplay(dateIso), startTime: start24, endTime: end24, classId: classIdProp ?? null, studentId: studentIdProp, subjectId: prefilledSubjectId, overrideId: overrideId ?? undefined, activeDuringHoliday: !!event.extendedProps['activeDuringHoliday'] });
+      const resolvedCharge = resolveChargeForDate(programItemId, dateIso);
+      setEventModal({ programItemId, originalDateStr: dateIso, date: formatDateDisplay(dateIso), startTime: start24, endTime: end24, classId: classIdProp ?? null, studentId: studentIdProp, subjectId: prefilledSubjectId, overrideId: overrideId ?? undefined, activeDuringHoliday: !!event.extendedProps['activeDuringHoliday'], chargeAmount: resolvedCharge != null ? String(resolvedCharge) : '' });
       setShowDeleteConfirm(false);
     }
   };
@@ -681,7 +693,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
 
   const handleEventModalSave = async () => {
     if (!eventModal) return;
-    const { programItemId, originalDateStr, date, startTime, endTime, classId, studentId, subjectId, activeDuringHoliday } = eventModal;
+    const { programItemId, originalDateStr, date, startTime, endTime, classId, studentId, subjectId, activeDuringHoliday, chargeAmount } = eventModal;
     if (!classId && !studentId) { setEventError('Επιλέξτε τμήμα.'); return; }
     const subjectOptions = classId ? getSubjectsForClass(classId) : [];
     if (subjectOptions.length > 0 && !subjectId) { setEventError('Επιλέξτε μάθημα για το τμήμα.'); return; }
@@ -689,6 +701,9 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     const newDateStr = parseDateDisplayToISO(date);
     if (!newDateStr) { setEventError('Μη έγκυρη ημερομηνία (π.χ. 12/05/2025).'); return; }
     if (!startTime || !endTime) { setEventError('Συμπληρώστε σωστά τις ώρες.'); return; }
+    const trimmedCharge = chargeAmount.trim();
+    const parsedCharge = trimmedCharge ? Number(trimmedCharge.replace(',', '.')) : null;
+    if (parsedCharge !== null && (Number.isNaN(parsedCharge) || parsedCharge < 0)) { setEventError('Μη έγκυρο ποσό χρέωσης.'); return; }
     const startTimeDb = `${startTime}:00`; const endTimeDb = `${endTime}:00`;
     const isHoliday = holidayDateSet.has(newDateStr);
     const finalHolidayActiveOverride = isHoliday ? !!activeDuringHoliday : false;
@@ -713,12 +728,12 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
         setProgramItems((prev) => prev.map((pi) => (pi.id === programItemId ? currentItem! : pi)));
       }
       const upsertOverrideForDate = async (targetDate: string) => {
-        const result = await callEdgeFunction('program-item-override-upsert', { program_item_id: programItemId, override_date: targetDate, start_time: startTimeDb, end_time: endTimeDb, is_deleted: false, is_inactive: false, holiday_active_override: holidayDateSet.has(targetDate) ? finalHolidayActiveOverride : false });
+        const result = await callEdgeFunction('program-item-override-upsert', { program_item_id: programItemId, override_date: targetDate, start_time: startTimeDb, end_time: endTimeDb, is_deleted: false, is_inactive: false, holiday_active_override: holidayDateSet.has(targetDate) ? finalHolidayActiveOverride : false, charge_amount: parsedCharge });
         setOverrides((prev) => applyOverride(prev, targetDate, result.item as ProgramItemOverrideRow));
       };
       if (newDateStr === originalDateStr) { await upsertOverrideForDate(newDateStr); }
       else {
-        const oldResult = await callEdgeFunction('program-item-override-upsert', { program_item_id: programItemId, override_date: originalDateStr, start_time: null, end_time: null, is_deleted: true, is_inactive: false, holiday_active_override: false });
+        const oldResult = await callEdgeFunction('program-item-override-upsert', { program_item_id: programItemId, override_date: originalDateStr, start_time: null, end_time: null, is_deleted: true, is_inactive: false, holiday_active_override: false, charge_amount: null });
         setOverrides((prev) => applyOverride(prev, originalDateStr, oldResult.item as ProgramItemOverrideRow));
         await upsertOverrideForDate(newDateStr);
       }
@@ -731,7 +746,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     const { programItemId, originalDateStr } = eventModal;
     try {
       setEventError(null);
-      const result = await callEdgeFunction('program-item-override-upsert', { program_item_id: programItemId, override_date: originalDateStr, start_time: null, end_time: null, is_deleted: true, is_inactive: false, holiday_active_override: false });
+      const result = await callEdgeFunction('program-item-override-upsert', { program_item_id: programItemId, override_date: originalDateStr, start_time: null, end_time: null, is_deleted: true, is_inactive: false, holiday_active_override: false, charge_amount: null });
       const upserted = result.item as ProgramItemOverrideRow;
       setOverrides((prev) => {
         const existing = prev.find((o) => o.program_item_id === programItemId && o.override_date === originalDateStr);
@@ -1014,6 +1029,19 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
                     <TimePicker value={eventModal.endTime} onChange={(t) => setEventModal((p) => p ? { ...p, endTime: t } : p)} required />
                   </FormField>
                 </div>
+
+                {eventModal.studentId && (
+                  <FormField label="Χρέωση (€)" icon={<Euro className="h-3 w-3" />}>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      className={selectCls}
+                      value={eventModal.chargeAmount}
+                      onChange={(e) => { const v = e.target.value.replace(',', '.').replace(/[^0-9.]/g, ''); setEventModal((p) => (p ? { ...p, chargeAmount: v } : p)); }}
+                      placeholder="π.χ. 25 (προαιρετικό)"
+                    />
+                  </FormField>
+                )}
 
                 {programModalIsHoliday && (
                   <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-2.5 text-xs text-emerald-700 dark:text-emerald-100">

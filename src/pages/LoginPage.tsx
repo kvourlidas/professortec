@@ -76,9 +76,9 @@ export default function LoginPage() {
     boxShadow: '0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04) inset, 0 1px 0 rgba(255,255,255,0.08) inset',
     backdropFilter: 'blur(24px) saturate(1.4)',
   } : {
-    border: '1px solid rgba(203,213,225,0.7)',
-    background: 'rgba(255,255,255,0.85)',
-    boxShadow: '0 20px 60px rgba(99,102,241,0.08), 0 4px 16px rgba(0,0,0,0.06)',
+    border: '1px solid color-mix(in srgb, var(--color-accent) 20%, transparent)',
+    background: 'color-mix(in srgb, var(--color-surface) 85%, transparent)',
+    boxShadow: '0 20px 60px color-mix(in srgb, var(--color-primary) 12%, transparent), 0 4px 16px rgba(0,0,0,0.06)',
     backdropFilter: 'blur(16px)',
   };
 
@@ -88,14 +88,10 @@ export default function LoginPage() {
       : 'border-slate-200 bg-white/70 text-slate-800 placeholder-slate-400 focus:border-[color:var(--color-accent)]/50 focus:bg-white focus:ring-2 focus:ring-[color:var(--color-accent)]/10'
   }`;
 
-  const accentBtn = isDark
-    ? { background: '#f3b421', color: '#000000', borderColor: 'color-mix(in srgb, #f3b421 75%, white 25%)' }
-    : { background: '#2563eb', color: '#ffffff', borderColor: 'color-mix(in srgb, #2563eb 75%, white 25%)' };
-
   return (
     <div
       className="relative min-h-screen flex flex-col items-center justify-center px-4 overflow-hidden"
-      style={{ background: isDark ? '#0b0d11' : '#f5f6fa' }}
+      style={{ background: 'var(--color-background)' }}
     >
       {/* ── DARK MODE BACKGROUND ── */}
       {isDark && (
@@ -123,12 +119,12 @@ export default function LoginPage() {
       {/* ── LIGHT MODE BACKGROUND ── */}
       {!isDark && (
         <>
-          <div className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(ellipse 90% 70% at 50% 0%, #e8eeff 0%, transparent 65%)' }} />
-          <div className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(ellipse 60% 50% at 10% 80%, color-mix(in srgb, var(--color-accent) 8%, transparent) 0%, transparent 70%)' }} />
-          <div className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(ellipse 50% 40% at 90% 20%, color-mix(in srgb, var(--color-accent) 6%, transparent) 0%, transparent 70%)' }} />
+          <div className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(ellipse 90% 70% at 50% 0%, var(--color-butter) 0%, transparent 65%)' }} />
+          <div className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(ellipse 60% 50% at 10% 80%, color-mix(in srgb, var(--color-accent) 10%, transparent) 0%, transparent 70%)' }} />
+          <div className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(ellipse 50% 40% at 90% 20%, color-mix(in srgb, var(--color-butter) 45%, transparent) 0%, transparent 70%)' }} />
           <div
             className="pointer-events-none absolute inset-0 opacity-[0.35]"
-            style={{ backgroundImage: 'radial-gradient(circle, #c7d2fe 1px, transparent 1px)', backgroundSize: '28px 28px' }}
+            style={{ backgroundImage: 'radial-gradient(circle, color-mix(in srgb, var(--color-accent) 30%, transparent) 1px, transparent 1px)', backgroundSize: '28px 28px' }}
           />
         </>
       )}
@@ -176,8 +172,8 @@ export default function LoginPage() {
             {mode === 'login' && (
               <>
                 <div className="mb-6 space-y-1">
-                  <h1 className={`text-lg font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-800'}`}>Καλώς ήρθες!</h1>
-                  <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-400'}`}>Σύνδεσε τον λογαριασμό σου.</p>
+                  <h1 className="text-lg font-bold tracking-tight text-[color:var(--color-text-main)]">Καλώς ήρθες!</h1>
+                  <p className="text-xs text-[color:var(--color-text-muted)]">Σύνδεσε τον λογαριασμό σου.</p>
                 </div>
 
                 {authError && <ErrorBox isDark={isDark} msg={authError} />}
@@ -194,7 +190,7 @@ export default function LoginPage() {
                     <ToggleEye show={showPw} toggle={() => setShowPw(v => !v)} isDark={isDark} />
                   </Field>
 
-                  <button type="submit" disabled={pending} className="btn-primary mt-2 h-10 w-full flex items-center justify-center gap-2 rounded-lg text-sm font-medium tracking-wide transition-all duration-150 active:scale-[0.98] disabled:opacity-60" style={accentBtn}>
+                  <button type="submit" disabled={pending} className="btn-primary mt-2 h-10 w-full flex items-center justify-center gap-2 rounded-lg text-sm font-medium tracking-wide transition-all duration-150 active:scale-[0.98] disabled:opacity-60">
                     {pending ? <><Loader2 className="h-4 w-4 animate-spin" />Σύνδεση…</> : 'Σύνδεση'}
                   </button>
                 </form>
@@ -205,16 +201,16 @@ export default function LoginPage() {
             {mode === 'signup' && (
               <>
                 <div className="mb-6 space-y-1">
-                  <h1 className={`text-lg font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-800'}`}>Δημιουργία λογαριασμού</h1>
-                  <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-400'}`}>Επίλεξε τον τύπο του λογαριασμού σου.</p>
+                  <h1 className="text-lg font-bold tracking-tight text-[color:var(--color-text-main)]">Δημιουργία λογαριασμού</h1>
+                  <p className="text-xs text-[color:var(--color-text-muted)]">Επίλεξε τον τύπο του λογαριασμού σου.</p>
                 </div>
 
                 {confirmEmail ? (
-                  <div className={`flex flex-col items-center gap-3 py-6 text-center ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                  <div className="flex flex-col items-center gap-3 py-6 text-center text-[color:var(--color-text-main)]">
                     <CheckCircle2 className="h-10 w-10 text-green-400" />
                     <p className="text-sm font-medium">Έλεγξε το email σου!</p>
-                    <p className="text-xs text-slate-400">Στείλαμε σύνδεσμο επιβεβαίωσης στο <span className="font-semibold">{signupEmail}</span>.</p>
-                    <button type="button" onClick={() => switchMode('login')} className="mt-2 text-xs underline text-slate-400 hover:text-slate-200">Πίσω στη σύνδεση</button>
+                    <p className="text-xs text-[color:var(--color-text-muted)]">Στείλαμε σύνδεσμο επιβεβαίωσης στο <span className="font-semibold">{signupEmail}</span>.</p>
+                    <button type="button" onClick={() => switchMode('login')} className="mt-2 text-xs underline text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text-main)]">Πίσω στη σύνδεση</button>
                   </div>
                 ) : (
                   <>
@@ -261,7 +257,6 @@ export default function LoginPage() {
                         type="submit"
                         disabled={pending || !accountType}
                         className="btn-primary mt-2 h-10 w-full flex items-center justify-center gap-2 rounded-lg text-sm font-medium tracking-wide transition-all duration-150 active:scale-[0.98] disabled:opacity-40"
-                        style={accentBtn}
                       >
                         {pending ? <><Loader2 className="h-4 w-4 animate-spin" />Εγγραφή…</> : 'Εγγραφή'}
                       </button>
@@ -277,7 +272,7 @@ export default function LoginPage() {
         {/* Subtitle */}
         <p
           className="mt-3 text-[11px] tracking-widest uppercase font-semibold"
-          style={{ color: isDark ? 'rgba(255,255,255,0.18)' : 'rgba(100,116,139,0.6)' }}
+          style={{ color: isDark ? 'rgba(255,255,255,0.18)' : 'color-mix(in srgb, var(--color-text-muted) 70%, transparent)' }}
         >
           Διαχειριση Φροντιστηριου
         </p>
@@ -300,10 +295,10 @@ function ErrorBox({ isDark, msg }: { isDark: boolean; msg: string }) {
   );
 }
 
-function Field({ label, isDark, children }: { label: string; isDark: boolean; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; isDark: boolean; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <label className={`block text-xs font-bold uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{label}</label>
+      <label className="block text-xs font-bold uppercase tracking-widest text-[color:var(--color-text-muted)]">{label}</label>
       <div className="relative">{children}</div>
     </div>
   );

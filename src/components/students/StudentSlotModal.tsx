@@ -76,9 +76,13 @@ export function StudentSlotModal({ studentId, levelId, onClose, onCreated }: Stu
       setError('Η ημερομηνία έναρξης πρέπει να είναι πριν τη λήξη.');
       return;
     }
+    const chargeNum = chargePerSession.trim() ? Number(chargePerSession.replace(',', '.')) : null;
+    if (chargeNum !== null && (Number.isNaN(chargeNum) || chargeNum <= 0)) {
+      setError('Μη έγκυρο ποσό χρέωσης.');
+      return;
+    }
     setSaving(true);
     setError(null);
-    const chargeVal = chargePerSession.trim() ? Number(chargePerSession.replace(',', '.')) : undefined;
     const res = await supabase.functions.invoke('student-slot-create', {
       body: {
         student_id: studentId,
@@ -88,7 +92,7 @@ export function StudentSlotModal({ studentId, levelId, onClose, onCreated }: Stu
         end_time: endTime,
         start_date: isoStart,
         end_date: isoEnd,
-        charge_per_session: (chargeVal !== undefined && !isNaN(chargeVal)) ? chargeVal : undefined,
+        charge_per_session: chargeNum,
       },
     });
     setSaving(false);
@@ -172,15 +176,14 @@ export function StudentSlotModal({ studentId, levelId, onClose, onCreated }: Stu
             </FormField>
           </div>
 
-          <FormField label="ΧΡΕΩΣΗ ΑΝΑ ΜΑΘΗΜΑ (€)" isDark={isDark}>
+          <FormField label="ΧΡΕΩΣΗ ΑΝΑ ΣΥΝΕΔΡΙΑ (€)" isDark={isDark}>
             <input
-              type="number"
-              min="0"
-              step="0.50"
+              type="text"
+              inputMode="decimal"
               className={selectCls}
               value={chargePerSession}
-              onChange={e => setChargePerSession(e.target.value)}
-              placeholder="π.χ. 25.00"
+              onChange={e => setChargePerSession(e.target.value.replace(',', '.').replace(/[^0-9.]/g, ''))}
+              placeholder="π.χ. 25 (προαιρετικό)"
             />
           </FormField>
         </div>

@@ -9,8 +9,7 @@ export function validateUpsertProgramItemOverrideBody(body: any): UpsertProgramI
   const is_deleted = typeof body?.is_deleted === "boolean" ? body.is_deleted : false;
   const is_inactive = typeof body?.is_inactive === "boolean" ? body.is_inactive : false;
   const holiday_active_override = typeof body?.holiday_active_override === "boolean" ? body.holiday_active_override : false;
-  const charge_amount = (body?.charge_amount !== undefined && body?.charge_amount !== null && body?.charge_amount !== '')
-    ? Number(body.charge_amount) : null;
+  const charge_amount = typeof body?.charge_amount === "number" && Number.isFinite(body.charge_amount) ? body.charge_amount : null;
 
   if (!program_item_id) throw new ValidationError("Missing program_item_id");
   if (!override_date) throw new ValidationError("Missing override_date");
