@@ -53,11 +53,9 @@
       "mcp__claude_ai_Supabase__get_edge_function",
       "Bash(npx tsc *)",
       "Bash(npx eslint *)",
-      "Bash(npx vite *)",
-      "Skill(run)",
-      "Skill(run:*)",
-      "Bash(chromium-cli --help)",
-      "Bash(npx --no-install playwright --version)"
+      "Bash(git push *)",
+      "Bash(git pull *)",
+      "Bash(git stash *)"
     ]
   }
 }
