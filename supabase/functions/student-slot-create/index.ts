@@ -33,6 +33,9 @@ serve(async (req) => {
     if (!start_date) throw new ValidationError("Missing start_date");
     const end_date = body?.end_date?.trim?.();
     if (!end_date) throw new ValidationError("Missing end_date");
+    const charge_per_session = typeof body?.charge_per_session === "number" && Number.isFinite(body.charge_per_session) && body.charge_per_session > 0
+      ? body.charge_per_session
+      : null;
 
     // Verify student belongs to this school
     const { data: student, error: stuErr } = await supabase
@@ -61,8 +64,8 @@ serve(async (req) => {
     // Insert slot
     const { data: item, error: insertErr } = await supabase
       .from("program_items")
-      .insert({ program_id: programId, student_id, subject_id, day_of_week, position, start_time, end_time, start_date, end_date })
-      .select("id, student_id, subject_id, day_of_week, start_time, end_time, start_date, end_date, position")
+      .insert({ program_id: programId, student_id, subject_id, day_of_week, position, start_time, end_time, start_date, end_date, charge_per_session })
+      .select("id, student_id, subject_id, day_of_week, start_time, end_time, start_date, end_date, position, charge_per_session")
       .maybeSingle();
 
     if (insertErr || !item) throw new Error(insertErr?.message ?? "Failed to create slot");

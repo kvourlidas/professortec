@@ -53,6 +53,7 @@ export type ProgramSlot = {
   end_time: string | null;
   start_date: string | null;
   end_date: string | null;
+  charge_per_session?: number | null;
 };
 
 export const STUDENT_SELECT = `

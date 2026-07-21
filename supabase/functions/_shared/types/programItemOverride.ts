@@ -6,4 +6,5 @@ export type UpsertProgramItemOverrideInput = {
   is_deleted: boolean;
   is_inactive: boolean;
   holiday_active_override: boolean;
+  charge_amount: number | null;
 };

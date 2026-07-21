@@ -47,6 +47,7 @@ export function StudentSlotModal({ studentId, levelId, onClose, onCreated }: Stu
   const [endTime, setEndTime] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [chargePerSession, setChargePerSession] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -75,6 +76,11 @@ export function StudentSlotModal({ studentId, levelId, onClose, onCreated }: Stu
       setError('Η ημερομηνία έναρξης πρέπει να είναι πριν τη λήξη.');
       return;
     }
+    const chargeNum = chargePerSession.trim() ? Number(chargePerSession.replace(',', '.')) : null;
+    if (chargeNum !== null && (Number.isNaN(chargeNum) || chargeNum <= 0)) {
+      setError('Μη έγκυρο ποσό χρέωσης.');
+      return;
+    }
     setSaving(true);
     setError(null);
     const res = await supabase.functions.invoke('student-slot-create', {
@@ -86,6 +92,7 @@ export function StudentSlotModal({ studentId, levelId, onClose, onCreated }: Stu
         end_time: endTime,
         start_date: isoStart,
         end_date: isoEnd,
+        charge_per_session: chargeNum,
       },
     });
     setSaving(false);
@@ -168,6 +175,17 @@ export function StudentSlotModal({ studentId, levelId, onClose, onCreated }: Stu
               <AppDatePicker value={endDate} onChange={setEndDate} placeholder="π.χ. 12/05/2026" />
             </FormField>
           </div>
+
+          <FormField label="ΧΡΕΩΣΗ ΑΝΑ ΣΥΝΕΔΡΙΑ (€)" isDark={isDark}>
+            <input
+              type="text"
+              inputMode="decimal"
+              className={selectCls}
+              value={chargePerSession}
+              onChange={e => setChargePerSession(e.target.value.replace(',', '.').replace(/[^0-9.]/g, ''))}
+              placeholder="π.χ. 25 (προαιρετικό)"
+            />
+          </FormField>
         </div>
 
         <div className={modalFooterCls}>

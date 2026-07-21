@@ -19,6 +19,7 @@ import { PaymentModal } from '../components/economics/subscriptions/PaymentModal
 import type { PaymentRow, StudentViewRow } from '../components/economics/subscriptions/types';
 import { parseMoney } from '../components/economics/subscriptions/utils';
 import { StudentSlotModal } from '../components/students/StudentSlotModal';
+import { computeAccruedCharges, type ChargeOverrideRow } from '../components/students/chargeUtils';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -46,6 +47,11 @@ const DAY_LABEL: Record<string, string> = {
 };
 
 type PaymentRow = { id: string; subscription_id: string; amount: number; created_at: string | null; payment_method?: string | null; cancelled_at?: string | null };
+
+type LessonPaymentRow = { id: string; amount: number; payment_method: string | null; note: string | null; created_at: string; cancelled_at: string | null };
+type LessonHistoryEntry =
+  | { kind: 'charge'; date: string; amount: number; label: string }
+  | { kind: 'payment'; date: string; amount: number; label: string; payment: LessonPaymentRow };
 
 type CalendarTest = {
   id: string;
@@ -516,6 +522,17 @@ export default function StudentCardPage() {
   const [slotDeleting, setSlotDeleting] = useState<string | null>(null);
   const [subjectNameMap, setSubjectNameMap] = useState<Map<string, string>>(new Map());
 
+  // idiaitera: per-session charges + private lesson payments
+  const [lessonOverrides, setLessonOverrides] = useState<ChargeOverrideRow[]>([]);
+  const [lessonPayments, setLessonPayments] = useState<LessonPaymentRow[]>([]);
+  const [lessonPaymentAmount, setLessonPaymentAmount] = useState('');
+  const [lessonPaymentMethod, setLessonPaymentMethod] = useState<'cash' | 'card' | 'bank_transfer'>('cash');
+  const [lessonPaymentNote, setLessonPaymentNote] = useState('');
+  const [lessonPaymentSaving, setLessonPaymentSaving] = useState(false);
+  const [lessonPaymentError, setLessonPaymentError] = useState<string | null>(null);
+  const [cancellingLessonPaymentId, setCancellingLessonPaymentId] = useState<string | null>(null);
+  const [lessonHistoryPage, setLessonHistoryPage] = useState(0);
+
   const inputCls = `h-8 w-full rounded-lg border px-2.5 text-xs outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 focus:border-[color:var(--color-accent)] ${isDark ? 'border-slate-700/70 bg-slate-900/60 text-slate-100 placeholder-slate-500' : 'border-slate-200 bg-slate-50 text-slate-800 placeholder-slate-400'}`;
   const cancelBtnCls = `btn border px-3 py-1.5 text-xs disabled:opacity-50 ${isDark ? 'border-slate-600/60 bg-slate-800/50 text-slate-200 hover:bg-slate-700/60' : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'}`;
 
@@ -529,6 +546,34 @@ export default function StudentCardPage() {
   const totalBalance = useMemo(() => subscriptions.reduce((a, s) => a + Math.max(0, Number(s.balance ?? 0)), 0), [subscriptions]);
   const hasBalanceData = activeSub && activeSub.balance != null;
   const owes = hasBalanceData && totalBalance > 0;
+
+  // idiaitera: accrued session charges (computed, not stored) + payment history
+  const accruedCharges = useMemo(() => {
+    if (!isIdiaiterou) return [];
+    const items = scheduleSlots
+      .filter(s => s.charge_per_session != null)
+      .map(s => ({ id: s.id, day_of_week: s.day_of_week, start_date: s.start_date, end_date: s.end_date, charge_per_session: s.charge_per_session ?? null, subject_id: null }));
+    return computeAccruedCharges(items, lessonOverrides, holidayDates, toISODate(new Date()));
+  }, [isIdiaiterou, scheduleSlots, lessonOverrides, holidayDates]);
+
+  const lessonTotalCharged = useMemo(() => accruedCharges.reduce((a, c) => a + c.amount, 0), [accruedCharges]);
+  const lessonTotalPaid = useMemo(() => lessonPayments.filter(p => !p.cancelled_at).reduce((a, p) => a + Number(p.amount), 0), [lessonPayments]);
+  const lessonBalance = lessonTotalCharged - lessonTotalPaid;
+
+  const lessonHistory = useMemo<LessonHistoryEntry[]>(() => {
+    const slotById = new Map(scheduleSlots.map(s => [s.id, s]));
+    const chargeEntries: LessonHistoryEntry[] = accruedCharges.map(c => ({
+      kind: 'charge', date: c.date, amount: c.amount,
+      label: slotById.get(c.programItemId)?.class_title ?? 'Μάθημα',
+    }));
+    const paymentEntries: LessonHistoryEntry[] = lessonPayments.map(p => ({
+      kind: 'payment', date: p.created_at.slice(0, 10), amount: Number(p.amount), label: 'Πληρωμή', payment: p,
+    }));
+    return [...chargeEntries, ...paymentEntries].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+  }, [accruedCharges, lessonPayments, scheduleSlots]);
+
+  const lessonHistoryPageCount = Math.max(1, Math.ceil(lessonHistory.length / PAYMENTS_PER_PAGE));
+  const lessonHistoryPageRows = lessonHistory.slice(lessonHistoryPage * PAYMENTS_PER_PAGE, (lessonHistoryPage + 1) * PAYMENTS_PER_PAGE);
 
   const pmPaid         = useMemo(() => paymentModal?.row.paid ?? 0, [paymentModal]);
   const pmBilled       = useMemo(() => {
@@ -610,7 +655,7 @@ export default function StudentCardPage() {
 
         const { data: studentSlotData } = await supabase
           .from('program_items')
-          .select('id, student_id, subject_id, day_of_week, start_time, end_time, start_date, end_date')
+          .select('id, student_id, subject_id, day_of_week, start_time, end_time, start_date, end_date, charge_per_session')
           .eq('student_id', id!);
         if (studentSlotData) {
           setScheduleSlots(studentSlotData.map((item: any) => ({
@@ -623,8 +668,24 @@ export default function StudentCardPage() {
             end_time: item.end_time ?? null,
             start_date: item.start_date ?? null,
             end_date: item.end_date ?? null,
+            charge_per_session: item.charge_per_session ?? null,
           })));
+          const slotIds = studentSlotData.map((item: any) => item.id as string);
+          if (slotIds.length > 0) {
+            const { data: overrideData } = await supabase
+              .from('program_item_overrides')
+              .select('program_item_id, override_date, is_deleted, is_inactive, holiday_active_override, charge_amount')
+              .in('program_item_id', slotIds);
+            setLessonOverrides((overrideData ?? []) as ChargeOverrideRow[]);
+          }
         }
+
+        const { data: lessonPaymentData } = await supabase
+          .from('private_lesson_payments')
+          .select('id, amount, payment_method, note, created_at, cancelled_at')
+          .eq('student_id', id!)
+          .order('created_at', { ascending: false });
+        setLessonPayments((lessonPaymentData ?? []) as LessonPaymentRow[]);
       }
 
       if (classIds.length > 0) {
@@ -769,6 +830,41 @@ export default function StudentCardPage() {
     } finally {
       setCancellingPaymentId(null);
     }
+  };
+
+  // ── idiaitera: private lesson payments (direct table access, no subscription/view involved) ──
+  const addLessonPayment = async () => {
+    if (!schoolId || !id) return;
+    const amount = Number(lessonPaymentAmount.replace(',', '.'));
+    if (!lessonPaymentAmount.trim() || Number.isNaN(amount) || amount <= 0) {
+      setLessonPaymentError('Συμπληρώστε έγκυρο ποσό.');
+      return;
+    }
+    setLessonPaymentSaving(true);
+    setLessonPaymentError(null);
+    const { data, error } = await supabase
+      .from('private_lesson_payments')
+      .insert({ school_id: schoolId, student_id: id, amount: Number(amount.toFixed(2)), payment_method: lessonPaymentMethod, note: lessonPaymentNote.trim() || null })
+      .select('id, amount, payment_method, note, created_at, cancelled_at')
+      .maybeSingle();
+    setLessonPaymentSaving(false);
+    if (error || !data) {
+      setLessonPaymentError('Αποτυχία καταχώρησης πληρωμής.');
+      return;
+    }
+    setLessonPayments(prev => [data as LessonPaymentRow, ...prev]);
+    setLessonPaymentAmount(''); setLessonPaymentNote(''); setLessonHistoryPage(0);
+  };
+
+  const cancelLessonPayment = async (paymentId: string) => {
+    setCancellingLessonPaymentId(paymentId);
+    const { error } = await supabase
+      .from('private_lesson_payments')
+      .update({ cancelled_at: new Date().toISOString() })
+      .eq('id', paymentId);
+    setCancellingLessonPaymentId(null);
+    if (error) { setLessonPaymentError('Αποτυχία ακύρωσης πληρωμής.'); return; }
+    setLessonPayments(prev => prev.map(p => (p.id === paymentId ? { ...p, cancelled_at: new Date().toISOString() } : p)));
   };
 
   function populateStudentForm(s: StudentRow) {
@@ -1089,6 +1185,7 @@ export default function StudentCardPage() {
 
           {/* Economics */}
           <DashCard title="Οικονομικα & Ιστορικο" icon={<Wallet className="h-3.5 w-3.5" />} isDark={isDark}>
+            {!isIdiaiterou && <>
             {subscriptions.length > 0 && (
               <div className="mb-4 grid grid-cols-3 gap-2">
                 <StatTile label="Χρεωση" value={`${totalCharged.toFixed(2)}€`} color="blue" isDark={isDark} />
@@ -1238,6 +1335,143 @@ export default function StudentCardPage() {
                     </div>
                   );
                 })}
+              </div>
+            )}
+            </>}
+
+            {isIdiaiterou && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-3 gap-2">
+                  <StatTile label="Χρεωση" value={`${lessonTotalCharged.toFixed(2)}€`} color="blue" isDark={isDark} />
+                  <StatTile label="Πληρωμενο" value={`${lessonTotalPaid.toFixed(2)}€`} color="green" isDark={isDark} />
+                  <StatTile label="Υπολοιπο" value={`${lessonBalance.toFixed(2)}€`} color={lessonBalance > 0 ? 'red' : 'green'} isDark={isDark} />
+                </div>
+
+                {lessonPaymentError && (
+                  <div className={`rounded-lg border px-3 py-2 text-[11px] ${isDark ? 'border-red-500/30 bg-red-950/30 text-red-300' : 'border-red-200 bg-red-50 text-red-700'}`}>
+                    {lessonPaymentError}
+                  </div>
+                )}
+
+                {/* Add payment */}
+                <div className={`rounded-xl border p-3 ${isDark ? 'border-slate-700/50 bg-slate-900/30' : 'border-slate-200 bg-slate-50'}`}>
+                  <p className={`mb-2 text-[9px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Νέα πληρωμή</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      type="text" inputMode="decimal"
+                      className={`${inputCls} w-24`}
+                      placeholder="Ποσό"
+                      value={lessonPaymentAmount}
+                      onChange={e => setLessonPaymentAmount(e.target.value.replace(',', '.').replace(/[^0-9.]/g, ''))}
+                      disabled={lessonPaymentSaving}
+                    />
+                    <div className="flex gap-1">
+                      {([
+                        { m: 'cash', Icon: Banknote, label: 'Μετρητά' },
+                        { m: 'card', Icon: CreditCard, label: 'Κάρτα' },
+                        { m: 'bank_transfer', Icon: Landmark, label: 'Τράπεζα' },
+                      ] as { m: 'cash' | 'card' | 'bank_transfer'; Icon: React.ElementType; label: string }[]).map(({ m, Icon, label }) => (
+                        <button key={m} type="button" title={label} disabled={lessonPaymentSaving}
+                          onClick={() => setLessonPaymentMethod(m)}
+                          className={`flex h-8 w-8 items-center justify-center rounded-lg border transition disabled:opacity-50 ${
+                            lessonPaymentMethod === m
+                              ? 'border-[color:var(--color-accent)] bg-[color:var(--color-accent)]/20 text-[color:var(--color-accent)]'
+                              : isDark ? 'border-slate-700 bg-slate-800 text-slate-400' : 'border-slate-300 bg-white text-slate-500'
+                          }`}>
+                          <Icon className="h-3.5 w-3.5" />
+                        </button>
+                      ))}
+                    </div>
+                    <input
+                      type="text"
+                      className={`${inputCls} min-w-[8rem] flex-1`}
+                      placeholder="Σημείωση (προαιρετικό)"
+                      value={lessonPaymentNote}
+                      onChange={e => setLessonPaymentNote(e.target.value)}
+                      disabled={lessonPaymentSaving}
+                    />
+                    <button type="button" onClick={addLessonPayment} disabled={lessonPaymentSaving}
+                      className="btn-primary flex items-center gap-1.5 px-3 py-1.5 text-xs disabled:opacity-60">
+                      {lessonPaymentSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <HandCoins className="h-3 w-3" />}
+                      Καταχώρηση
+                    </button>
+                  </div>
+                </div>
+
+                {/* History */}
+                <div className={`rounded-xl border overflow-hidden ${isDark ? 'border-slate-700/50' : 'border-slate-200'}`}>
+                  <div className={`flex items-center gap-1.5 px-3 py-1.5 ${isDark ? 'bg-slate-900/40' : 'bg-slate-50'}`}>
+                    <Receipt className={`h-2.5 w-2.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+                    <span className={`text-[9px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Ιστορικο ({lessonHistory.length})</span>
+                  </div>
+                  {lessonHistory.length === 0 ? (
+                    <div className={`flex items-center gap-2 px-3 py-2.5 ${isDark ? 'bg-slate-950/20' : 'bg-white'}`}>
+                      <TrendingUp className={`h-3 w-3 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />
+                      <span className={`text-[11px] ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>Δεν υπάρχει ιστορικό ακόμα.</span>
+                    </div>
+                  ) : (
+                    <>
+                      <div className={`divide-y ${isDark ? 'divide-slate-800/50' : 'divide-slate-100'}`}>
+                        {lessonHistoryPageRows.map((entry, i) => {
+                          const isCharge = entry.kind === 'charge';
+                          const isCancelled = !isCharge && !!entry.payment.cancelled_at;
+                          const isCancelling = !isCharge && cancellingLessonPaymentId === entry.payment.id;
+                          const muted = isDark ? 'text-slate-500' : 'text-slate-400';
+                          return (
+                            <div key={`${entry.kind}-${i}-${entry.date}`}
+                              className={`relative flex items-center justify-between px-3 py-2 transition-colors ${
+                                isCancelled ? (isDark ? 'bg-red-950/10' : 'bg-red-50/40') : (isDark ? 'bg-slate-950/20' : 'bg-white')
+                              }`}>
+                              {isCancelled && (
+                                <div className="pointer-events-none absolute inset-x-0 top-1/2 h-[1.5px] -translate-y-1/2" style={{ background: 'rgba(239,68,68,0.5)' }} />
+                              )}
+                              <div className="flex items-center gap-2">
+                                <span className={`h-1.5 w-1.5 rounded-full ${isCancelled ? (isDark ? 'bg-red-500/40' : 'bg-red-400/50') : isCharge ? (isDark ? 'bg-sky-400' : 'bg-sky-500') : (isDark ? 'bg-emerald-400' : 'bg-emerald-500')}`} />
+                                <span className={`text-[11px] tabular-nums ${isCancelled ? muted : (isDark ? 'text-slate-400' : 'text-slate-500')}`}>{formatDateToGreek(entry.date)}</span>
+                                <span className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>· {entry.label}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {!isCharge && !isCancelled && entry.payment.payment_method === 'card' && (
+                                  <span className={`flex items-center gap-1 text-[11px] font-medium ${isDark ? 'text-sky-400' : 'text-sky-600'}`}><CreditCard className="h-3 w-3" />Κάρτα</span>
+                                )}
+                                {!isCharge && !isCancelled && entry.payment.payment_method === 'cash' && (
+                                  <span className={`flex items-center gap-1 text-[11px] font-medium ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}><Banknote className="h-3 w-3" />Μετρητά</span>
+                                )}
+                                {!isCharge && !isCancelled && entry.payment.payment_method === 'bank_transfer' && (
+                                  <span className={`flex items-center gap-1 text-[11px] font-medium ${isDark ? 'text-violet-400' : 'text-violet-600'}`}><Landmark className="h-3 w-3" />Τράπεζα</span>
+                                )}
+                                <span className={`text-xs font-semibold tabular-nums ${isCancelled ? muted : isCharge ? (isDark ? 'text-sky-300' : 'text-sky-700') : (isDark ? 'text-emerald-300' : 'text-emerald-700')}`}>
+                                  {isCharge ? '−' : '+'}{entry.amount.toFixed(2)}€
+                                </span>
+                                {!isCharge && !isCancelled && (
+                                  <button type="button" title="Ακύρωση πληρωμής"
+                                    disabled={isCancelling || !!cancellingLessonPaymentId}
+                                    onClick={() => cancelLessonPayment(entry.payment.id)}
+                                    className={`flex h-5 w-5 items-center justify-center rounded border transition-all hover:scale-105 active:scale-95 disabled:opacity-40 ${isDark ? 'border-amber-800/50 bg-amber-950/40 text-amber-400 hover:bg-amber-950/70' : 'border-amber-200 bg-amber-50 text-amber-600 hover:bg-amber-100'}`}>
+                                    {isCancelling ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Ban className="h-2.5 w-2.5" />}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {lessonHistoryPageCount > 1 && (
+                        <div className={`flex items-center justify-between gap-2 px-3 py-2 border-t ${isDark ? 'border-slate-800/60 bg-slate-900/30' : 'border-slate-100 bg-slate-50'}`}>
+                          <button type="button" disabled={lessonHistoryPage <= 0} onClick={() => setLessonHistoryPage(p => Math.max(0, p - 1))}
+                            className={`flex h-6 w-6 items-center justify-center rounded border transition disabled:opacity-30 ${isDark ? 'border-slate-700 bg-slate-800 text-slate-400 hover:text-slate-200' : 'border-slate-200 bg-white text-slate-500 hover:text-slate-700'}`}>
+                            <ChevronLeft className="h-3 w-3" />
+                          </button>
+                          <span className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{lessonHistoryPage + 1} / {lessonHistoryPageCount}</span>
+                          <button type="button" disabled={lessonHistoryPage >= lessonHistoryPageCount - 1} onClick={() => setLessonHistoryPage(p => Math.min(lessonHistoryPageCount - 1, p + 1))}
+                            className={`flex h-6 w-6 items-center justify-center rounded border transition disabled:opacity-30 ${isDark ? 'border-slate-700 bg-slate-800 text-slate-400 hover:text-slate-200' : 'border-slate-200 bg-white text-slate-500 hover:text-slate-700'}`}>
+                            <ChevronRight className="h-3 w-3" />
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
             )}
           </DashCard>
