@@ -18,6 +18,7 @@ const GradesPage = () => {
   const { profile } = useAuth();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const isPrivateLessons = profile?.account_type === 'idiaiterou';
 
   // ── Data ──────────────────────────────────────────────────────────────────
   const [students, setStudents] = useState<StudentRow[]>([]);
@@ -48,9 +49,10 @@ const GradesPage = () => {
     if (!profile?.school_id) return;
     supabase.from('students').select('id, school_id, full_name, email').eq('school_id', profile.school_id).order('full_name', { ascending: true })
       .then(({ data, error }) => { if (!error) setStudents(data ?? []); });
+    if (isPrivateLessons) return;
     supabase.from('tutors').select('id, school_id, full_name, email').eq('school_id', profile.school_id).order('full_name', { ascending: true })
       .then(({ data, error }) => { if (!error) setTutors(data ?? []); });
-  }, [profile?.school_id]);
+  }, [profile?.school_id, isPrivateLessons]);
 
   // ── Close dropdown on outside click ──────────────────────────────────────
   useEffect(() => {
@@ -173,36 +175,38 @@ const GradesPage = () => {
           <div>
             <h1 className={`text-base font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Βαθμοί</h1>
             <p className={`mt-0.5 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              Δες την πορεία βαθμών για μαθητές και καθηγητές.
+              {isPrivateLessons ? 'Δες την πορεία βαθμών για τους μαθητές σου.' : 'Δες την πορεία βαθμών για μαθητές και καθηγητές.'}
             </p>
           </div>
         </div>
 
         {/* Students / Tutors toggle */}
-        <div className={`inline-flex items-center gap-0.5 rounded-lg p-0.5 ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
-          {([
-            { key: 'students' as const, label: 'Μαθητές',    icon: <Users className="h-3.5 w-3.5" /> },
-            { key: 'tutors'   as const, label: 'Καθηγητές',  icon: <GraduationCap className="h-3.5 w-3.5" /> },
-          ] as const).map(({ key, label, icon }) => {
-            const active = listType === key;
-            return (
-              <button key={key} type="button" onClick={() => handleSwitchType(key)}
-                className={`flex items-center gap-1.5 rounded-md px-3.5 py-1.5 text-xs font-medium transition-all ${
-                  active
-                    ? isDark
-                      ? 'bg-slate-800 text-white shadow-sm'
-                      : 'bg-white text-slate-800 shadow-sm'
-                    : isDark
-                      ? 'text-slate-500 hover:text-slate-300'
-                      : 'text-slate-400 hover:text-slate-600'
-                }`}
-              >
-                <span style={active ? { color: 'var(--color-accent)' } : undefined}>{icon}</span>
-                <span style={active ? { color: 'var(--color-accent)' } : undefined}>{label}</span>
-              </button>
-            );
-          })}
-        </div>
+        {!isPrivateLessons && (
+          <div className={`inline-flex items-center gap-0.5 rounded-lg p-0.5 ${isDark ? 'bg-slate-800' : 'bg-slate-100'}`}>
+            {([
+              { key: 'students' as const, label: 'Μαθητές',    icon: <Users className="h-3.5 w-3.5" /> },
+              { key: 'tutors'   as const, label: 'Καθηγητές',  icon: <GraduationCap className="h-3.5 w-3.5" /> },
+            ] as const).map(({ key, label, icon }) => {
+              const active = listType === key;
+              return (
+                <button key={key} type="button" onClick={() => handleSwitchType(key)}
+                  className={`flex items-center gap-1.5 rounded-md px-3.5 py-1.5 text-xs font-medium transition-all ${
+                    active
+                      ? isDark
+                        ? 'bg-slate-800 text-white shadow-sm'
+                        : 'bg-white text-slate-800 shadow-sm'
+                      : isDark
+                        ? 'text-slate-500 hover:text-slate-300'
+                        : 'text-slate-400 hover:text-slate-600'
+                  }`}
+                >
+                  <span style={active ? { color: 'var(--color-accent)' } : undefined}>{icon}</span>
+                  <span style={active ? { color: 'var(--color-accent)' } : undefined}>{label}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Dropdown selector */}
         <div ref={dropRef} className="relative z-30">

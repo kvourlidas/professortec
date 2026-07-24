@@ -32,7 +32,19 @@ async function callEdgeFunction(name: string, body: Record<string, unknown>) {
     headers: { Authorization: `Bearer ${token}` },
   });
 
-  if (res.error) throw new Error(res.error.message ?? 'Edge function error');
+  if (res.error) {
+    let message = res.error.message ?? 'Edge function error';
+    const ctx = (res.error as any)?.context;
+    if (ctx && typeof ctx.json === 'function') {
+      try {
+        const parsed = await ctx.clone().json();
+        if (parsed?.error) message = parsed.error;
+      } catch {
+        // response body wasn't JSON — fall back to the generic message
+      }
+    }
+    throw new Error(message);
+  }
   return res.data;
 }
 
@@ -163,7 +175,7 @@ export default function TestsPage() {
     if (!schoolId) { setError('Το προφίλ σας δεν είναι συνδεδεμένο με σχολείο.'); return; }
     if (isPrivateLessons) {
       if (form.studentAssignments.length === 0) { setError('Επιλέξτε τουλάχιστον έναν μαθητή.'); return; }
-      if (form.studentAssignments.some((a) => !a.subjectId)) { setError('Επιλέξτε μάθημα για κάθε μαθητή.'); return; }
+      if (!form.subjectId) { setError('Επιλέξτε μάθημα.'); return; }
     } else if (!form.classId) { setError('Επιλέξτε τμήμα.'); return; }
     if (!form.date) { setError('Επιλέξτε ημερομηνία.'); return; }
     const testDateISO = parseDateDisplayToISO(form.date);
@@ -174,14 +186,14 @@ export default function TestsPage() {
       const data = await callEdgeFunction('tests-create', {
         class_id: isPrivateLessons ? null : form.classId,
         level_id: null,
-        subject_id: isPrivateLessons ? null : form.subjectId,
+        subject_id: form.subjectId,
         test_date: testDateISO,
         start_time: form.startTime,
         end_time: form.endTime,
         title: form.title || null,
         description: null,
         student_assignments: isPrivateLessons
-          ? form.studentAssignments.map((a) => ({ student_id: a.studentId, subject_id: a.subjectId }))
+          ? form.studentAssignments.map((a) => ({ student_id: a.studentId, subject_id: form.subjectId }))
           : null,
       });
       const item = data.item as TestRow & { test_results?: { test_id: string; student_id: string; subject_id: string | null }[] };
@@ -192,7 +204,7 @@ export default function TestsPage() {
       setModalOpen(false);
     } catch (err) {
       console.error(err);
-      setError('Αποτυχία δημιουργίας διαγωνίσματος.');
+      setError(err instanceof Error ? err.message : 'Αποτυχία δημιουργίας διαγωνίσματος.');
     } finally {
       setSaving(false);
     }
@@ -202,10 +214,13 @@ export default function TestsPage() {
   const openEditModal = (testId: string) => {
     const t = tests.find((tt) => tt.id === testId); if (!t) return;
     setError(null);
+    const assignments = isPrivateLessons ? (testAssignments[t.id] ?? []) : [];
+    const commonSubjectId = t.subject_id ?? assignments.find((a) => a.subjectId)?.subjectId ?? null;
     setEditForm({
-      id: t.id, classId: t.class_id, levelId: t.level_id ?? null, subjectId: t.subject_id ?? null,
+      id: t.id, classId: t.class_id, levelId: t.level_id ?? null, subjectId: commonSubjectId,
       date: formatDateDisplay(t.test_date), startTime: t.start_time?.slice(0, 5) ?? '', endTime: t.end_time?.slice(0, 5) ?? '',
-      title: t.title ?? '', studentAssignments: isPrivateLessons ? (testAssignments[t.id] ?? []) : [],
+      title: t.title ?? '',
+      studentAssignments: isPrivateLessons ? assignments.map((a) => ({ ...a, subjectId: commonSubjectId })) : [],
     });
     setEditModalOpen(true);
   };
@@ -216,7 +231,7 @@ export default function TestsPage() {
     if (!schoolId || !editForm) return;
     if (isPrivateLessons) {
       if (form.studentAssignments.length === 0) { setError('Επιλέξτε τουλάχιστον έναν μαθητή.'); return; }
-      if (form.studentAssignments.some((a) => !a.subjectId)) { setError('Επιλέξτε μάθημα για κάθε μαθητή.'); return; }
+      if (!form.subjectId) { setError('Επιλέξτε μάθημα.'); return; }
     } else if (!form.classId) { setError('Επιλέξτε τμήμα.'); return; }
     const testDateISO = parseDateDisplayToISO(form.date);
     if (!testDateISO) { setError('Μη έγκυρη ημερομηνία.'); return; }
@@ -227,13 +242,13 @@ export default function TestsPage() {
         test_id: editForm.id,
         class_id: isPrivateLessons ? null : form.classId,
         level_id: null,
-        subject_id: isPrivateLessons ? null : form.subjectId,
+        subject_id: form.subjectId,
         test_date: testDateISO,
         start_time: form.startTime,
         end_time: form.endTime,
         title: form.title || null,
         student_assignments: isPrivateLessons
-          ? form.studentAssignments.map((a) => ({ student_id: a.studentId, subject_id: a.subjectId }))
+          ? form.studentAssignments.map((a) => ({ student_id: a.studentId, subject_id: form.subjectId }))
           : null,
       });
       const item = data.item as TestRow & { test_results?: { test_id: string; student_id: string; subject_id: string | null }[] };
@@ -244,7 +259,7 @@ export default function TestsPage() {
       closeEditModal();
     } catch (err) {
       console.error(err);
-      setError('Αποτυχία ενημέρωσης.');
+      setError(err instanceof Error ? err.message : 'Αποτυχία ενημέρωσης.');
     } finally {
       setSavingEdit(false);
     }

@@ -121,6 +121,61 @@ function getNextDateForDow(from: Date, dow: number): Date {
   return d;
 }
 
+/* -------- Shared form components --------
+   Defined at module scope (not inside the component) so they keep a stable identity
+   across re-renders — nesting them inside the component would make React treat them
+   as new component types on every render, remounting inputs and dropping focus mid-typing. */
+function FormField({ label, icon, children }: { label: string; icon?: React.ReactNode; children: React.ReactNode }) {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  return (
+    <div className="space-y-1.5">
+      <label className={`flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+        {icon && <span className="opacity-70">{icon}</span>}
+        {label}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+/* -------- Shared modal shell -------- */
+function ModalShell({ title, subtitle, icon, onClose, children }: {
+  title: string; subtitle?: string; icon?: React.ReactNode;
+  onClose: () => void; children: React.ReactNode;
+}) {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className={`relative w-full max-w-md overflow-hidden rounded-2xl border shadow-2xl ${
+        isDark ? 'border-slate-700/60 bg-[#1f2d3d]' : 'border-slate-200 bg-white'
+      }`}>
+        <div className="flex items-center justify-between px-6 py-4" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
+          <div className="flex items-center gap-3">
+            {icon && (
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl"
+                style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
+                {icon}
+              </div>
+            )}
+            <div>
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--ch-text)' }}>{title}</h3>
+              {subtitle && <p className="text-[11px] mt-0.5" style={{ color: 'var(--ch-text-muted)' }}>{subtitle}</p>}
+            </div>
+          </div>
+          <button type="button" onClick={onClose}
+            className="flex h-7 w-7 items-center justify-center rounded-lg transition"
+            style={{ background: 'var(--ch-btn-bg)', border: '1px solid var(--ch-btn-border)', color: 'var(--ch-btn-text)' }}>
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 /* ------------ Component ------------ */
 
 type DashboardCalendarSectionProps = { schoolId: string | null };
@@ -856,53 +911,6 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
   }, [testModal?.classId, testModal?.levelId, classes, classSubjects, subjects, subjectById]);
 
   // const requestDeleteSchoolEventFromModal = () => { if (!schoolEventEditing) return; setSchoolEventDeleteTarget({ id: schoolEventEditing.id, name: schoolEventEditing.name }); };
-
-  /* -------- Shared form components -------- */
-  function FormField({ label, icon, children }: { label: string; icon?: React.ReactNode; children: React.ReactNode }) {
-    return (
-      <div className="space-y-1.5">
-        <label className={`flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-          {icon && <span className="opacity-70">{icon}</span>}
-          {label}
-        </label>
-        {children}
-      </div>
-    );
-  }
-
-  /* -------- Shared modal shell -------- */
-  const ModalShell = ({ title, subtitle, icon, onClose, children }: {
-    title: string; subtitle?: string; icon?: React.ReactNode;
-    onClose: () => void; children: React.ReactNode;
-  }) => (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className={`relative w-full max-w-md overflow-hidden rounded-2xl border shadow-2xl ${
-        isDark ? 'border-slate-700/60 bg-[#1f2d3d]' : 'border-slate-200 bg-white'
-      }`}>
-        <div className="flex items-center justify-between px-6 py-4" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
-          <div className="flex items-center gap-3">
-            {icon && (
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl"
-                style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
-                {icon}
-              </div>
-            )}
-            <div>
-              <h3 className="text-sm font-semibold" style={{ color: 'var(--ch-text)' }}>{title}</h3>
-              {subtitle && <p className="text-[11px] mt-0.5" style={{ color: 'var(--ch-text-muted)' }}>{subtitle}</p>}
-            </div>
-          </div>
-          <button type="button" onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded-lg transition"
-            style={{ background: 'var(--ch-btn-bg)', border: '1px solid var(--ch-btn-border)', color: 'var(--ch-btn-text)' }}>
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-
 
   /* ---- Modal footer helpers ---- */
   const cancelBtnCls = 'btn border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-slate-200 hover:bg-slate-700/60';

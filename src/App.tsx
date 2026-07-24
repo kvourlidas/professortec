@@ -1,34 +1,43 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Suspense, lazy } from 'react';
 import type { ReactElement } from 'react';
 
-import LoginPage from './pages/LoginPage';
-import DashboardPage from './pages/DashboardPage';
-import ClassesPage from './pages/ClassesPage';
-import LevelsPage from './pages/LevelsPage';
-import StudentsPage from './pages/StudentsPage';
-import StudentCardPage from './pages/StudentCardPage';
-import SubjectsPage from './pages/SubjectsPage';
-import TutorsPage from './pages/TutorsPage';
-import ProgramPage from './pages/ProgramPage';
-import HolidaysPage from './pages/HolidaysPage';
-import EventsPage from './pages/EventsPage';
-import TestsPage from './pages/TestsPage';
-import TestResultsPage from './pages/TestResultsPage';
-import GradesPage from './pages/GradesPage';
-import SchoolInfoPage from './pages/SchoolInfoPage';
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const ClassesPage = lazy(() => import('./pages/ClassesPage'));
+const LevelsPage = lazy(() => import('./pages/LevelsPage'));
+const StudentsPage = lazy(() => import('./pages/StudentsPage'));
+const StudentCardPage = lazy(() => import('./pages/StudentCardPage'));
+const SubjectsPage = lazy(() => import('./pages/SubjectsPage'));
+const TutorsPage = lazy(() => import('./pages/TutorsPage'));
+const ProgramPage = lazy(() => import('./pages/ProgramPage'));
+const HolidaysPage = lazy(() => import('./pages/HolidaysPage'));
+const EventsPage = lazy(() => import('./pages/EventsPage'));
+const TestsPage = lazy(() => import('./pages/TestsPage'));
+const TestResultsPage = lazy(() => import('./pages/TestResultsPage'));
+const GradesPage = lazy(() => import('./pages/GradesPage'));
+const SchoolInfoPage = lazy(() => import('./pages/SchoolInfoPage'));
 
-import EconomicsAnalysisPage from './pages/economics/EconomicsAnalysisPage';
-import PackageSubscriptionsPage from './pages/economics/PackageSubscriptionsPage';
-import StudentsSubscriptionsPage from './pages/economics/StudentsSubscriptionsPage';
-import TutorsPaymentsPage from './pages/economics/TutorsPaymentsPage';
+const EconomicsAnalysisPage = lazy(() => import('./pages/economics/EconomicsAnalysisPage'));
+const PackageSubscriptionsPage = lazy(() => import('./pages/economics/PackageSubscriptionsPage'));
+const StudentsSubscriptionsPage = lazy(() => import('./pages/economics/StudentsSubscriptionsPage'));
+const TutorsPaymentsPage = lazy(() => import('./pages/economics/TutorsPaymentsPage'));
 
-import StudentFeedbackPage from './pages/student-app/StudentFeedbackPage';
-import StudentMessagesPage from './pages/student-app/StudentMessagesPage';
-import SendNotificationsPage from './pages/student-app/SendNotificationsPage';
+const StudentFeedbackPage = lazy(() => import('./pages/student-app/StudentFeedbackPage'));
+const StudentMessagesPage = lazy(() => import('./pages/student-app/StudentMessagesPage'));
+const SendNotificationsPage = lazy(() => import('./pages/student-app/SendNotificationsPage'));
 
 import { useAuth } from './auth';
 import Layout from './components/Layout';
 import { ThemeProvider } from './context/ThemeContext';
+
+function RouteFallback() {
+  return (
+    <div className="flex min-h-screen items-center justify-center text-slate-700">
+      Loading...
+    </div>
+  );
+}
 
 const BASE = '';
 
@@ -39,6 +48,7 @@ function p(path: string) {
 
 function ProtectedRoute({ children }: { children: ReactElement }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -49,7 +59,7 @@ function ProtectedRoute({ children }: { children: ReactElement }) {
   }
 
   if (!user) {
-    return <Navigate to={p('/login')} replace />;
+    return <Navigate to={p('/login')} replace state={{ from: `${location.pathname}${location.search}` }} />;
   }
 
   return <Layout>{children}</Layout>;
@@ -64,6 +74,7 @@ function FrontistirioOnly({ children }: { children: ReactElement }) {
 export default function App() {
   return (
     <ThemeProvider>
+      <Suspense fallback={<RouteFallback />}>
       <Routes>
         <Route path={p('/login')} element={<LoginPage />} />
 
@@ -102,6 +113,7 @@ export default function App() {
 
         <Route path="*" element={<Navigate to={p('/dashboard')} replace />} />
       </Routes>
+      </Suspense>
     </ThemeProvider>
   );
 }

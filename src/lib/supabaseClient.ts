@@ -53,8 +53,15 @@ document.addEventListener('visibilitychange', () => {
   else onHidden();
 });
 
-// Also handle real focus (user alt-tabs back)
+// Also handle real focus (user alt-tabs back).
+// Guard against the boot-time race: some browsers fire a 'focus' event right after
+// initial page load, at the same moment the Supabase client is doing its own internal
+// session check. Calling startAutoRefresh() again on top of that serialises with it
+// and roughly doubles the boot latency (~9s instead of ~4s). Skip the first focus
+// event if it lands within this window — real alt-tab focus events after that still work.
+const bootAt = Date.now();
 window.addEventListener('focus', () => {
+  if (Date.now() - bootAt < 4000) return;
   if (document.visibilityState === 'visible') onVisible();
 });
 

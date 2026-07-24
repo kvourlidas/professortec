@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
-import { X, ClipboardList, BookOpen, Tag, Calendar, Loader2, Users } from 'lucide-react';
+import { X, ClipboardList, BookOpen, Tag, Calendar, Loader2, Users, Search, Plus } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import AppDatePicker from '../ui/AppDatePicker';
 import TimePicker from '../ui/TimePicker';
@@ -43,6 +43,8 @@ export default function TestFormModal({
   const isDark = theme === 'dark';
 
   const [form, setForm] = useState<AddTestForm>(emptyForm);
+  const [studentQuery, setStudentQuery] = useState('');
+  const [studentDropOpen, setStudentDropOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -52,6 +54,8 @@ export default function TestFormModal({
     } else {
       setForm(emptyForm);
     }
+    setStudentQuery('');
+    setStudentDropOpen(false);
   }, [open, mode, editTestData]);
 
   const subjectById = useMemo(() => {
@@ -84,6 +88,11 @@ export default function TestFormModal({
     const assignedIds = new Set(form.studentAssignments.map((a) => a.studentId));
     return (students ?? []).filter((s) => !assignedIds.has(s.id)).sort((a, b) => (a.full_name ?? '').localeCompare(b.full_name ?? '', 'el-GR'));
   }, [students, form.studentAssignments]);
+  const filteredAvailableStudents = useMemo(() => {
+    const q = studentQuery.trim().toLowerCase();
+    if (!q) return availableStudents;
+    return availableStudents.filter((s) => (s.full_name ?? '').toLowerCase().includes(q));
+  }, [availableStudents, studentQuery]);
 
   if (!open) return null;
 
@@ -95,17 +104,21 @@ export default function TestFormModal({
       return { ...prev, [field]: value as any };
     });
   };
-  const handleAddStudent = (e: ChangeEvent<HTMLSelectElement>) => {
-    const studentId = e.target.value;
-    if (!studentId) return;
-    setForm((prev) => ({ ...prev, studentAssignments: [...prev.studentAssignments, { studentId, subjectId: null }] }));
+  // Private lessons share a single subject across every assigned student — changing it
+  // re-applies to all current assignments so the whole test always has one common subject.
+  const handleCommonSubjectChange = (e: ChangeEvent<HTMLSelectElement>) => {
+    const subjectId = e.target.value || null;
+    setForm((prev) => ({
+      ...prev,
+      subjectId,
+      studentAssignments: prev.studentAssignments.map((a) => ({ ...a, subjectId })),
+    }));
+  };
+  const addStudentAssignment = (studentId: string) => {
+    setForm((prev) => ({ ...prev, studentAssignments: [...prev.studentAssignments, { studentId, subjectId: prev.subjectId }] }));
   };
   const handleRemoveStudent = (studentId: string) => {
     setForm((prev) => ({ ...prev, studentAssignments: prev.studentAssignments.filter((a) => a.studentId !== studentId) }));
-  };
-  const handleAssignmentSubjectChange = (studentId: string) => (e: ChangeEvent<HTMLSelectElement>) => {
-    const subjectId = e.target.value || null;
-    setForm((prev) => ({ ...prev, studentAssignments: prev.studentAssignments.map((a) => (a.studentId === studentId ? { ...a, subjectId } : a)) }));
   };
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -116,9 +129,6 @@ export default function TestFormModal({
   const inputCls = isDark
     ? 'h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 text-sm text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30'
     : 'h-9 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30';
-  const rowSelectCls = isDark
-    ? 'h-9 w-full shrink-0 rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 text-sm text-slate-100 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30 sm:w-48'
-    : 'h-9 w-full shrink-0 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30 sm:w-48';
   const labelCls = `flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`;
   const modalCardCls = isDark
     ? `relative w-full ${isPrivateLessons ? 'max-w-2xl' : 'max-w-md'} overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl`
@@ -126,11 +136,23 @@ export default function TestFormModal({
   const modalFooterCls = isDark
     ? 'flex justify-end gap-2.5 border-t border-slate-800/70 bg-slate-900/20 px-6 py-4 mt-3'
     : 'flex justify-end gap-2.5 border-t border-slate-200 bg-slate-50 px-6 py-4 mt-3';
-  const cancelBtnCls = 'btn border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-slate-200 hover:bg-slate-700/60 disabled:opacity-50';
+  const cancelBtnCls = 'btn border border-red-500/40 bg-red-500/10 px-4 py-1.5 text-red-400 transition hover:border-red-400/60 hover:bg-red-500/20 hover:text-red-300 disabled:opacity-50';
   const assignmentRowCls = isDark
     ? 'flex flex-col gap-2 rounded-xl border border-slate-700/60 bg-slate-900/40 px-3 py-2.5 sm:flex-row sm:items-center sm:gap-2.5'
     : 'flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 sm:flex-row sm:items-center sm:gap-2.5';
   const removeBtnCls = 'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-red-500/40 bg-red-500/10 text-red-400 transition hover:bg-red-500/20';
+  const studentDropPanelCls = isDark
+    ? 'relative z-20 mt-1.5 overflow-hidden rounded-xl border border-slate-700/60 bg-slate-900 shadow-2xl'
+    : 'relative z-20 mt-1.5 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl';
+  const studentSearchInputCls = isDark
+    ? 'h-8 w-full rounded-lg border border-slate-700/60 bg-slate-800/70 pl-8 pr-3 text-xs text-slate-200 placeholder-slate-600 outline-none'
+    : 'h-8 w-full rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-3 text-xs text-slate-700 placeholder-slate-400 outline-none';
+  const studentRowOptionCls = isDark
+    ? 'cursor-pointer px-3 py-2 text-xs text-slate-200 transition hover:bg-slate-800/70'
+    : 'cursor-pointer px-3 py-2 text-xs text-slate-700 transition hover:bg-slate-50';
+  const addStudentBtnCls = isDark
+    ? 'flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-700/70 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:border-[color:var(--color-accent)]/60 hover:text-[color:var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-40'
+    : 'flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-xs font-semibold text-slate-500 transition hover:border-[color:var(--color-accent)]/60 hover:text-[color:var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-40';
 
   const subOpts = isPrivateLessons ? [] : getSubjectsForClass(form.classId);
 
@@ -166,31 +188,64 @@ export default function TestFormModal({
           <div className="max-h-[65vh] overflow-y-auto px-6 pb-2">
             <div className="space-y-4">
               {isPrivateLessons ? (
-                <FormField label="Μαθητές *" icon={<Users className="h-3 w-3" />}
-                  hint={form.studentAssignments.length === 0 ? 'Προσθέστε τουλάχιστον έναν μαθητή.' : undefined}>
-                  <select className={inputCls} value="" onChange={handleAddStudent} disabled={availableStudents.length === 0}>
-                    <option value="">{availableStudents.length === 0 ? 'Δεν υπάρχουν άλλοι διαθέσιμοι μαθητές' : 'Προσθήκη μαθητή...'}</option>
-                    {availableStudents.map((s) => <option key={s.id} value={s.id}>{s.full_name ?? 'Χωρίς όνομα'}</option>)}
-                  </select>
-                  {form.studentAssignments.length > 0 && (
-                    <div className="mt-2.5 space-y-2">
-                      {form.studentAssignments.map((a) => (
-                        <div key={a.studentId} className={assignmentRowCls}>
-                          <span className={`flex-1 truncate text-xs font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
-                            {studentById.get(a.studentId)?.full_name ?? 'Άγνωστος'}
-                          </span>
-                          <select className={rowSelectCls} value={a.subjectId ?? ''} onChange={handleAssignmentSubjectChange(a.studentId)}>
-                            <option value="">Επιλέξτε μάθημα</option>
-                            {sortedSubjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                          </select>
-                          <button type="button" onClick={() => handleRemoveStudent(a.studentId)} className={`${removeBtnCls} self-end sm:self-auto`}>
-                            <X className="h-3.5 w-3.5" />
-                          </button>
+                <>
+                  <FormField label="Μαθητές *" icon={<Users className="h-3 w-3" />}
+                    hint={form.studentAssignments.length === 0 ? 'Προσθέστε τουλάχιστον έναν μαθητή.' : undefined}>
+                    {form.studentAssignments.length > 0 && (
+                      <div className="mb-2.5 space-y-2">
+                        {form.studentAssignments.map((a) => (
+                          <div key={a.studentId} className={assignmentRowCls}>
+                            <span className={`flex-1 truncate text-xs font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                              {studentById.get(a.studentId)?.full_name ?? 'Άγνωστος'}
+                            </span>
+                            <button type="button" onClick={() => handleRemoveStudent(a.studentId)} className={removeBtnCls}>
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <button type="button" onClick={() => setStudentDropOpen((v) => !v)} disabled={availableStudents.length === 0}
+                      className={addStudentBtnCls}>
+                      <Plus className="h-3.5 w-3.5" />
+                      {availableStudents.length === 0 ? 'Δεν υπάρχουν άλλοι διαθέσιμοι μαθητές' : 'Προσθήκη μαθητή'}
+                    </button>
+
+                    {studentDropOpen && (
+                      <>
+                        <div className="fixed inset-0 z-10" onClick={() => setStudentDropOpen(false)} />
+                        <div className={studentDropPanelCls}>
+                          <div className="border-b p-2" style={{ borderColor: isDark ? 'rgba(148,163,184,0.15)' : 'rgba(203,213,225,0.6)' }}>
+                            <div className="relative">
+                              <Search className={`pointer-events-none absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />
+                              <input autoFocus value={studentQuery} onChange={(e) => setStudentQuery(e.target.value)}
+                                placeholder="Αναζήτηση μαθητή..." className={studentSearchInputCls} />
+                            </div>
+                          </div>
+                          <div className="max-h-40 overflow-y-auto">
+                            {filteredAvailableStudents.length === 0 ? (
+                              <p className={`px-3 py-2.5 text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Δεν βρέθηκαν μαθητές.</p>
+                            ) : filteredAvailableStudents.map((s) => (
+                              <div key={s.id} className={studentRowOptionCls}
+                                onClick={() => { addStudentAssignment(s.id); setStudentDropOpen(false); setStudentQuery(''); }}>
+                                {s.full_name ?? 'Χωρίς όνομα'}
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </FormField>
+                      </>
+                    )}
+                  </FormField>
+
+                  <FormField label="Μάθημα *" icon={<Tag className="h-3 w-3" />}
+                    hint={sortedSubjects.length === 0 ? 'Δεν έχουν οριστεί μαθήματα.' : undefined}>
+                    <select className={inputCls} value={form.subjectId ?? ''} onChange={handleCommonSubjectChange} disabled={sortedSubjects.length === 0}>
+                      <option value="">{sortedSubjects.length === 0 ? 'Δεν έχουν οριστεί μαθήματα' : 'Επιλέξτε μάθημα'}</option>
+                      {sortedSubjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                  </FormField>
+                </>
               ) : (
                 <>
                   <FormField label="Τμήμα *" icon={<BookOpen className="h-3 w-3" />}>

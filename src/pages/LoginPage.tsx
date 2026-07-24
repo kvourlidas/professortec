@@ -1,7 +1,7 @@
 // src/pages/LoginPage.tsx
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
 import type { AccountType } from '../auth';
 import { useTheme } from '../context/ThemeContext';
@@ -13,6 +13,8 @@ type Mode = 'login' | 'signup';
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const redirectTo = (location.state as { from?: string } | null)?.from || '/dashboard';
   const { user, signInWeb, signUpWeb, authError, clearAuthError } = useAuth();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
@@ -35,8 +37,8 @@ export default function LoginPage() {
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
-    if (user) navigate('/dashboard', { replace: true });
-  }, [user, navigate]);
+    if (user) navigate(redirectTo, { replace: true });
+  }, [user, navigate, redirectTo]);
 
   useEffect(() => {
     clearAuthError();
@@ -49,7 +51,7 @@ export default function LoginPage() {
     setPending(true);
     const ok = await signInWeb(email.trim(), pw);
     setPending(false);
-    if (ok) navigate('/dashboard', { replace: true });
+    if (ok) navigate(redirectTo, { replace: true });
   };
 
   const onSignup = async (e: FormEvent<HTMLFormElement>) => {

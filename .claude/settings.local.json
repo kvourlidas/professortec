@@ -57,7 +57,11 @@
       "Bash(git pull *)",
       "Bash(git stash *)",
       "Bash(xargs grep -l \"test_results\\\\|student_test_grades\\\\|CREATE TABLE.*tests\")",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Bash(npx vite *)",
+      "Bash(xargs grep -l \"FunctionsHttpError\")",
+      "Bash(grep -n \"^export default function\\\\|^function \\\\|^const.*=.*=>\\\\s*{$\\\\|^export function\" src/components/dashboard/DashboardCalendarSection.tsx)",
+      "mcp__claude_ai_Supabase__get_publishable_keys"
     ]
   }
 }
