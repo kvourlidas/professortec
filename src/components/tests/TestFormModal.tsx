@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
-import { X, ClipboardList, BookOpen, Tag, Calendar, Loader2 } from 'lucide-react';
+import { X, ClipboardList, BookOpen, Tag, Calendar, Loader2, Users } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import AppDatePicker from '../ui/AppDatePicker';
 import TimePicker from '../ui/TimePicker';
-import type { AddTestForm, ClassRow, ClassSubjectRow, EditTestForm, LevelRow, SubjectRow } from './types';
+import type { AddTestForm, ClassRow, ClassSubjectRow, EditTestForm, StudentRow, SubjectRow } from './types';
 import { emptyForm } from './types';
 import { parseDateDisplayToISO } from './utils';
 
@@ -26,10 +26,10 @@ type TestFormModalProps = {
   mode: 'add' | 'edit';
   editTestData: EditTestForm | null;
   classes: ClassRow[];
-  levels: LevelRow[];
   subjects: SubjectRow[];
   classSubjects: ClassSubjectRow[];
-  usesLevels?: boolean;
+  students?: StudentRow[];
+  isPrivateLessons?: boolean;
   error: string | null;
   saving: boolean;
   onClose: () => void;
@@ -37,7 +37,7 @@ type TestFormModalProps = {
 };
 
 export default function TestFormModal({
-  open, mode, editTestData, classes, levels, subjects, classSubjects, usesLevels, error, saving, onClose, onSubmit,
+  open, mode, editTestData, classes, subjects, classSubjects, students, isPrivateLessons, error, saving, onClose, onSubmit,
 }: TestFormModalProps) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
@@ -76,10 +76,14 @@ export default function TestFormModal({
     return Array.from(merged.values()).sort((a, b) => a.name.localeCompare(b.name, 'el-GR'));
   };
 
-  const getSubjectsForLevel = (levelId: string | null): SubjectRow[] => {
-    const opts = levelId ? subjects.filter((s) => s.level_id === levelId) : subjects;
-    return [...opts].sort((a, b) => a.name.localeCompare(b.name, 'el-GR'));
-  };
+  const studentById = useMemo(() => {
+    const m = new Map<string, StudentRow>(); (students ?? []).forEach((s) => m.set(s.id, s)); return m;
+  }, [students]);
+  const sortedSubjects = useMemo(() => [...subjects].sort((a, b) => a.name.localeCompare(b.name, 'el-GR')), [subjects]);
+  const availableStudents = useMemo(() => {
+    const assignedIds = new Set(form.studentAssignments.map((a) => a.studentId));
+    return (students ?? []).filter((s) => !assignedIds.has(s.id)).sort((a, b) => (a.full_name ?? '').localeCompare(b.full_name ?? '', 'el-GR'));
+  }, [students, form.studentAssignments]);
 
   if (!open) return null;
 
@@ -87,10 +91,21 @@ export default function TestFormModal({
     const value = e.target.value;
     setForm((prev) => {
       if (field === 'classId') return { ...prev, classId: value || null, subjectId: null };
-      if (field === 'levelId') return { ...prev, levelId: value || null, subjectId: null };
       if (field === 'subjectId') return { ...prev, subjectId: value || null };
       return { ...prev, [field]: value as any };
     });
+  };
+  const handleAddStudent = (e: ChangeEvent<HTMLSelectElement>) => {
+    const studentId = e.target.value;
+    if (!studentId) return;
+    setForm((prev) => ({ ...prev, studentAssignments: [...prev.studentAssignments, { studentId, subjectId: null }] }));
+  };
+  const handleRemoveStudent = (studentId: string) => {
+    setForm((prev) => ({ ...prev, studentAssignments: prev.studentAssignments.filter((a) => a.studentId !== studentId) }));
+  };
+  const handleAssignmentSubjectChange = (studentId: string) => (e: ChangeEvent<HTMLSelectElement>) => {
+    const subjectId = e.target.value || null;
+    setForm((prev) => ({ ...prev, studentAssignments: prev.studentAssignments.map((a) => (a.studentId === studentId ? { ...a, subjectId } : a)) }));
   };
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -101,16 +116,23 @@ export default function TestFormModal({
   const inputCls = isDark
     ? 'h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 text-sm text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30'
     : 'h-9 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30';
+  const rowSelectCls = isDark
+    ? 'h-9 w-full shrink-0 rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 text-sm text-slate-100 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30 sm:w-48'
+    : 'h-9 w-full shrink-0 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30 sm:w-48';
   const labelCls = `flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`;
   const modalCardCls = isDark
-    ? 'relative w-full max-w-md overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl'
-    : 'relative w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 shadow-2xl';
+    ? `relative w-full ${isPrivateLessons ? 'max-w-2xl' : 'max-w-md'} overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl`
+    : `relative w-full ${isPrivateLessons ? 'max-w-2xl' : 'max-w-md'} overflow-hidden rounded-2xl border border-slate-200 shadow-2xl`;
   const modalFooterCls = isDark
     ? 'flex justify-end gap-2.5 border-t border-slate-800/70 bg-slate-900/20 px-6 py-4 mt-3'
     : 'flex justify-end gap-2.5 border-t border-slate-200 bg-slate-50 px-6 py-4 mt-3';
   const cancelBtnCls = 'btn border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-slate-200 hover:bg-slate-700/60 disabled:opacity-50';
+  const assignmentRowCls = isDark
+    ? 'flex flex-col gap-2 rounded-xl border border-slate-700/60 bg-slate-900/40 px-3 py-2.5 sm:flex-row sm:items-center sm:gap-2.5'
+    : 'flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 sm:flex-row sm:items-center sm:gap-2.5';
+  const removeBtnCls = 'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-red-500/40 bg-red-500/10 text-red-400 transition hover:bg-red-500/20';
 
-  const subOpts = usesLevels ? getSubjectsForLevel(form.levelId) : getSubjectsForClass(form.classId);
+  const subOpts = isPrivateLessons ? [] : getSubjectsForClass(form.classId);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -141,29 +163,50 @@ export default function TestFormModal({
         )}
 
         <form onSubmit={handleSubmit}>
-          <div className="max-h-[60vh] overflow-y-auto px-6 pb-2">
+          <div className="max-h-[65vh] overflow-y-auto px-6 pb-2">
             <div className="space-y-4">
-              {usesLevels ? (
-                <FormField label="Επίπεδο *" icon={<BookOpen className="h-3 w-3" />}>
-                  <select className={inputCls} value={form.levelId ?? ''} onChange={handleFieldChange('levelId')} required>
-                    <option value="">Επιλέξτε επίπεδο</option>
-                    {levels.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+              {isPrivateLessons ? (
+                <FormField label="Μαθητές *" icon={<Users className="h-3 w-3" />}
+                  hint={form.studentAssignments.length === 0 ? 'Προσθέστε τουλάχιστον έναν μαθητή.' : undefined}>
+                  <select className={inputCls} value="" onChange={handleAddStudent} disabled={availableStudents.length === 0}>
+                    <option value="">{availableStudents.length === 0 ? 'Δεν υπάρχουν άλλοι διαθέσιμοι μαθητές' : 'Προσθήκη μαθητή...'}</option>
+                    {availableStudents.map((s) => <option key={s.id} value={s.id}>{s.full_name ?? 'Χωρίς όνομα'}</option>)}
                   </select>
+                  {form.studentAssignments.length > 0 && (
+                    <div className="mt-2.5 space-y-2">
+                      {form.studentAssignments.map((a) => (
+                        <div key={a.studentId} className={assignmentRowCls}>
+                          <span className={`flex-1 truncate text-xs font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                            {studentById.get(a.studentId)?.full_name ?? 'Άγνωστος'}
+                          </span>
+                          <select className={rowSelectCls} value={a.subjectId ?? ''} onChange={handleAssignmentSubjectChange(a.studentId)}>
+                            <option value="">Επιλέξτε μάθημα</option>
+                            {sortedSubjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                          </select>
+                          <button type="button" onClick={() => handleRemoveStudent(a.studentId)} className={`${removeBtnCls} self-end sm:self-auto`}>
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </FormField>
               ) : (
-                <FormField label="Τμήμα *" icon={<BookOpen className="h-3 w-3" />}>
-                  <select className={inputCls} value={form.classId ?? ''} onChange={handleFieldChange('classId')} required>
-                    <option value="">Επιλέξτε τμήμα</option>
-                    {classes.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
-                  </select>
-                </FormField>
+                <>
+                  <FormField label="Τμήμα *" icon={<BookOpen className="h-3 w-3" />}>
+                    <select className={inputCls} value={form.classId ?? ''} onChange={handleFieldChange('classId')} required>
+                      <option value="">Επιλέξτε τμήμα</option>
+                      {classes.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+                    </select>
+                  </FormField>
+                  <FormField label="Μάθημα *" icon={<Tag className="h-3 w-3" />} hint={subOpts.length === 0 && form.classId ? 'Ρυθμίστε τα μαθήματα στη σελίδα «Μαθήματα».' : undefined}>
+                    <select className={inputCls} value={form.subjectId ?? ''} onChange={handleFieldChange('subjectId')} disabled={subOpts.length === 0 || !form.classId}>
+                      <option value="">{subOpts.length === 0 ? 'Δεν έχουν οριστεί μαθήματα' : 'Επιλέξτε μάθημα'}</option>
+                      {subOpts.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                  </FormField>
+                </>
               )}
-              <FormField label="Μάθημα *" icon={<Tag className="h-3 w-3" />} hint={subOpts.length === 0 && (usesLevels ? form.levelId : form.classId) ? 'Ρυθμίστε τα μαθήματα στη σελίδα «Μαθήματα».' : undefined}>
-                <select className={inputCls} value={form.subjectId ?? ''} onChange={handleFieldChange('subjectId')} disabled={subOpts.length === 0 || (usesLevels ? !form.levelId : !form.classId)}>
-                  <option value="">{subOpts.length === 0 ? 'Δεν έχουν οριστεί μαθήματα' : 'Επιλέξτε μάθημα'}</option>
-                  {subOpts.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              </FormField>
               <FormField label="Ημερομηνία *" icon={<Calendar className="h-3 w-3" />}>
                 <AppDatePicker value={form.date} onChange={(v) => handleFieldChange('date')({ target: { value: v } } as any)} placeholder="π.χ. 12/05/2025" />
               </FormField>

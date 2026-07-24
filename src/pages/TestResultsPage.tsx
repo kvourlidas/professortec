@@ -13,7 +13,7 @@ type TestDetail = {
   id: string;
   class_id: string | null;
   level_id: string | null;
-  subject_id: string;
+  subject_id: string | null;
   test_date: string;
   start_time: string | null;
   end_time: string | null;
@@ -31,10 +31,10 @@ export default function TestResultsPage() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const schoolId = profile?.school_id ?? null;
-  const usesLevels = profile?.account_type === 'idiaiterou';
 
   const [loadingTest, setLoadingTest] = useState(true);
   const [test, setTest] = useState<TestDetail | null>(null);
+  const [subjectNameById, setSubjectNameById] = useState<Map<string, string>>(new Map());
 
   const [loadingStudents, setLoadingStudents] = useState(true);
   const [allStudents, setAllStudents] = useState<StudentRow[]>([]);
@@ -43,6 +43,9 @@ export default function TestResultsPage() {
   const [gradeByStudent, setGradeByStudent] = useState<Record<string, GradeInfo>>({});
   const [searchLeft, setSearchLeft] = useState('');
   const [searchRight, setSearchRight] = useState('');
+
+  // A test created via the idiaitera per-student flow has no class/level — subject lives per assignment instead.
+  const isPrivateTest = !!test && !test.class_id && !test.level_id;
 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -69,7 +72,8 @@ export default function TestResultsPage() {
         const classById = new Map<string, string>((classesData ?? []).map((c: { id: string; title: string }) => [c.id, c.title]));
         const levelById = new Map<string, string>((levelsData ?? []).map((l: { id: string; name: string }) => [l.id, l.name]));
         const subjById = new Map<string, string>((subjectsData ?? []).map((s: { id: string; name: string }) => [s.id, s.name]));
-        const t = testData as { id: string; class_id: string | null; level_id: string | null; subject_id: string; test_date: string; start_time: string | null; end_time: string | null; title: string | null };
+        setSubjectNameById(subjById);
+        const t = testData as { id: string; class_id: string | null; level_id: string | null; subject_id: string | null; test_date: string; start_time: string | null; end_time: string | null; title: string | null };
         setTest({
           id: t.id,
           class_id: t.class_id,
@@ -80,7 +84,7 @@ export default function TestResultsPage() {
           end_time: t.end_time,
           title: t.title,
           classTitle: (t.class_id ? classById.get(t.class_id) : null) ?? (t.level_id ? levelById.get(t.level_id) : null) ?? '—',
-          subjectName: subjById.get(t.subject_id) ?? '—',
+          subjectName: (t.subject_id ? subjById.get(t.subject_id) : null) ?? '—',
           dateDisplay: new Date(t.test_date).toLocaleDateString('el-GR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }),
           timeRange: t.start_time && t.end_time ? `${t.start_time.slice(0, 5)} – ${t.end_time.slice(0, 5)}` : '',
         });
@@ -101,7 +105,7 @@ export default function TestResultsPage() {
           { data: resultsData, error: resultsErr },
         ] = await Promise.all([
           supabase.from('students').select('id, school_id, full_name').eq('school_id', schoolId).order('full_name', { ascending: true }),
-          supabase.from('test_results').select('id, test_id, student_id, grade').eq('test_id', testId),
+          supabase.from('test_results').select('id, test_id, student_id, subject_id, grade').eq('test_id', testId),
         ]);
         if (studentsErr) throw studentsErr;
         if (resultsErr) throw resultsErr;
@@ -112,7 +116,7 @@ export default function TestResultsPage() {
         (resultsData ?? []).forEach((raw) => {
           const r = raw as TestResultRow;
           newAssigned.add(r.student_id);
-          gradeMap[r.student_id] = { grade: r.grade !== null ? String(r.grade) : '', existingResultId: r.id };
+          gradeMap[r.student_id] = { grade: r.grade !== null ? String(r.grade) : '', existingResultId: r.id, subjectId: r.subject_id ?? null };
         });
         studentsList.forEach((s) => { if (!gradeMap[s.id]) gradeMap[s.id] = { grade: '', existingResultId: undefined }; });
         setAssignedIds(newAssigned);
@@ -177,6 +181,10 @@ export default function TestResultsPage() {
   const assignedStudents = useMemo(() =>
     allStudents.filter((s) => assignedIds.has(s.id) && (s.full_name ?? '').toLowerCase().includes(searchRight.toLowerCase())),
     [allStudents, assignedIds, searchRight]);
+
+  const allAssignedStudents = useMemo(() =>
+    allStudents.filter((s) => assignedIds.has(s.id)),
+    [allStudents, assignedIds]);
 
   // ── Style helpers ──
   const cardCls = `overflow-hidden rounded-2xl border shadow-sm ${
@@ -264,17 +272,21 @@ export default function TestResultsPage() {
             <ClipboardList className="h-3.5 w-3.5" style={{ color: 'var(--ch-icon)' }} />
           </div>
           <h2 className="text-sm font-semibold" style={{ color: 'var(--ch-text)' }}>
-            {test.title || `${test.subjectName} — ${test.classTitle}`}
+            {test.title || (isPrivateTest ? 'Διαγώνισμα' : `${test.subjectName} — ${test.classTitle}`)}
           </h2>
         </div>
         <div className="p-5">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {[
+            {(isPrivateTest ? [
               { icon: <Calendar className="h-3.5 w-3.5" />, label: 'Ημερομηνία', value: test.dateDisplay },
               { icon: <Clock className="h-3.5 w-3.5" />, label: 'Ώρα', value: test.timeRange || '—' },
-              { icon: <BookOpen className="h-3.5 w-3.5" />, label: usesLevels ? 'Επίπεδο' : 'Τμήμα', value: test.classTitle },
+              { icon: <Users className="h-3.5 w-3.5" />, label: 'Μαθητές', value: loadingStudents ? 'Φόρτωση...' : (allAssignedStudents.map((s) => s.full_name).join(', ') || '—') },
+            ] : [
+              { icon: <Calendar className="h-3.5 w-3.5" />, label: 'Ημερομηνία', value: test.dateDisplay },
+              { icon: <Clock className="h-3.5 w-3.5" />, label: 'Ώρα', value: test.timeRange || '—' },
+              { icon: <BookOpen className="h-3.5 w-3.5" />, label: 'Τμήμα', value: test.classTitle },
               { icon: <Tag className="h-3.5 w-3.5" />, label: 'Μάθημα', value: test.subjectName },
-            ].map(({ icon, label, value }) => (
+            ]).map(({ icon, label, value }) => (
               <div key={label} className={`rounded-xl border p-3 ${isDark ? 'border-slate-700/50 bg-slate-900/40' : 'border-slate-200 bg-slate-50'}`}>
                 <div className={`mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                   <span style={{ color: 'var(--color-accent)', opacity: 0.7 }}>{icon}</span>
@@ -297,7 +309,7 @@ export default function TestResultsPage() {
           <div>
             <h2 className="text-xs font-semibold" style={{ color: 'var(--ch-text)' }}>Καταχώρηση βαθμών</h2>
             <p className="text-[11px]" style={{ color: 'var(--ch-text-muted)' }}>
-              Μετακίνησε μαθητές στα δεξιά και συμπλήρωσε τους βαθμούς τους.
+              {isPrivateTest ? 'Συμπλήρωσε τον βαθμό για κάθε μαθητή του διαγωνίσματος.' : 'Μετακίνησε μαθητές στα δεξιά και συμπλήρωσε τους βαθμούς τους.'}
             </p>
           </div>
         </div>
@@ -315,6 +327,46 @@ export default function TestResultsPage() {
               </div>
             )}
 
+            {isPrivateTest ? (
+              <div className={colCls}>
+                <div className={colHeaderCls}>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Μαθητές διαγωνίσματος</span>
+                    {allAssignedStudents.length > 0 && (
+                      <span className="rounded-full px-1.5 py-px text-[10px] tabular-nums"
+                        style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', color: 'var(--color-accent)' }}>
+                        {allAssignedStudents.length}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className={dividerCls}>
+                  {allAssignedStudents.length === 0
+                    ? <p className={`px-4 py-5 text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Δεν έχουν ανατεθεί μαθητές σε αυτό το διαγώνισμα. Επεξεργαστείτε το από τη σελίδα «Διαγωνίσματα».</p>
+                    : allAssignedStudents.map((s) => {
+                      const info = gradeByStudent[s.id] ?? { grade: '' };
+                      const subjectName = info.subjectId ? subjectNameById.get(info.subjectId) : null;
+                      return (
+                        <div key={s.id} className={`flex items-center gap-3 px-4 py-2.5 ${isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-slate-100/60'}`}>
+                          <div className="min-w-0 flex-1">
+                            <p className={`truncate text-[13px] ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{s.full_name}</p>
+                            {subjectName && <p className={`truncate text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{subjectName}</p>}
+                          </div>
+                          <input type="text" inputMode="decimal" placeholder="π.χ. 18"
+                            value={info.grade}
+                            onChange={(e) => setGradeByStudent((prev) => ({
+                              ...prev,
+                              [s.id]: { grade: e.target.value, existingResultId: prev[s.id]?.existingResultId, subjectId: prev[s.id]?.subjectId },
+                            }))}
+                            className={gradeInputCls}
+                            disabled={saving}
+                          />
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            ) : (
             <div className="grid gap-4 lg:grid-cols-2">
               {/* Left: all students */}
               <div className={colCls}>
@@ -393,6 +445,7 @@ export default function TestResultsPage() {
                 </div>
               </div>
             </div>
+            )}
 
             {/* Save bar */}
             <div className={`flex items-center justify-between rounded-xl border px-4 py-3 ${isDark ? 'border-slate-700/50 bg-slate-900/40' : 'border-slate-200 bg-slate-50'}`}>

@@ -9,7 +9,7 @@ import TestFormModal from '../components/tests/TestFormModal';
 import TestDeleteModal from '../components/tests/TestDeleteModal';
 import type {
   AddTestForm, ClassRow, ClassSubjectRow, DeleteTarget,
-  EditTestForm, LevelRow, SubjectRow, TestRow,
+  EditTestForm, LevelRow, StudentAssignment, StudentRow, SubjectRow, TestRow,
 } from '../components/tests/types';
 import {
   formatDateDisplay, formatTimeDisplay, parseDateDisplayToISO,
@@ -41,14 +41,16 @@ export default function TestsPage() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const schoolId = profile?.school_id ?? null;
-  const usesLevels = profile?.account_type === 'idiaiterou';
+  const isPrivateLessons = profile?.account_type === 'idiaiterou';
   const navigate = useNavigate();
 
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [levels, setLevels] = useState<LevelRow[]>([]);
   const [subjects, setSubjects] = useState<SubjectRow[]>([]);
   const [classSubjects, setClassSubjects] = useState<ClassSubjectRow[]>([]);
+  const [students, setStudents] = useState<StudentRow[]>([]);
   const [tests, setTests] = useState<TestRow[]>([]);
+  const [testAssignments, setTestAssignments] = useState<Record<string, StudentAssignment[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -82,37 +84,64 @@ export default function TestsPage() {
           { data: levelData, error: levelErr },
           { data: subjData, error: subjErr },
           { data: classSubjectData, error: classSubjErr },
+          { data: studentsData, error: studentsErr },
           { data: testsData, error: testsErr },
         ] = await Promise.all([
           supabase.from('classes').select('id, school_id, title, subject_id').eq('school_id', schoolId).order('title', { ascending: true }),
           supabase.from('levels').select('id, school_id, name').eq('school_id', schoolId).order('name', { ascending: true }),
           supabase.from('subjects').select('id, school_id, name, level_id').eq('school_id', schoolId).order('name', { ascending: true }),
           supabase.from('class_subjects').select('class_id, subject_id, school_id').eq('school_id', schoolId),
+          supabase.from('students').select('id, school_id, full_name').eq('school_id', schoolId).order('full_name', { ascending: true }),
           supabase.from('tests').select('id, school_id, class_id, level_id, subject_id, test_date, start_time, end_time, title, description').eq('school_id', schoolId).order('test_date', { ascending: true }).order('start_time', { ascending: true }),
         ]);
-        if (classErr) throw classErr; if (levelErr) throw levelErr; if (subjErr) throw subjErr; if (classSubjErr) throw classSubjErr; if (testsErr) throw testsErr;
+        if (classErr) throw classErr; if (levelErr) throw levelErr; if (subjErr) throw subjErr; if (classSubjErr) throw classSubjErr; if (studentsErr) throw studentsErr; if (testsErr) throw testsErr;
         setClasses((classData ?? []) as ClassRow[]);
         setLevels((levelData ?? []) as LevelRow[]);
         setSubjects((subjData ?? []) as SubjectRow[]);
         setClassSubjects((classSubjectData ?? []) as ClassSubjectRow[]);
-        setTests((testsData ?? []) as TestRow[]);
+        setStudents((studentsData ?? []) as StudentRow[]);
+        const testsList = (testsData ?? []) as TestRow[];
+        setTests(testsList);
+
+        if (isPrivateLessons && testsList.length > 0) {
+          const { data: resultsData, error: resultsErr } = await supabase
+            .from('test_results')
+            .select('test_id, student_id, subject_id')
+            .in('test_id', testsList.map((t) => t.id));
+          if (resultsErr) throw resultsErr;
+          const map: Record<string, StudentAssignment[]> = {};
+          (resultsData ?? []).forEach((r: any) => {
+            const arr = map[r.test_id] ?? (map[r.test_id] = []);
+            arr.push({ studentId: r.student_id, subjectId: r.subject_id ?? null });
+          });
+          setTestAssignments(map);
+        } else {
+          setTestAssignments({});
+        }
       } catch (err) { console.error(err); setError('Αποτυχία φόρτωσης διαγωνισμάτων.'); }
       finally { setLoading(false); }
     };
     load();
-  }, [schoolId]);
+  }, [schoolId, isPrivateLessons]);
 
   const subjectById = useMemo(() => { const m = new Map<string, SubjectRow>(); subjects.forEach((s) => m.set(s.id, s)); return m; }, [subjects]);
   const classById = useMemo(() => { const m = new Map<string, ClassRow>(); classes.forEach((c) => m.set(c.id, c)); return m; }, [classes]);
   const levelById = useMemo(() => { const m = new Map<string, LevelRow>(); levels.forEach((l) => m.set(l.id, l)); return m; }, [levels]);
+  const studentById = useMemo(() => { const m = new Map<string, StudentRow>(); students.forEach((s) => m.set(s.id, s)); return m; }, [students]);
 
   const testsWithDisplay = useMemo(() => tests.map((t) => {
+    const assignments = testAssignments[t.id] ?? [];
+    const timeRange = t.start_time && t.end_time ? `${formatTimeDisplay(t.start_time)} – ${formatTimeDisplay(t.end_time)}` : '';
+    if (isPrivateLessons && assignments.length > 0) {
+      const studentNames = assignments.map((a) => studentById.get(a.studentId)?.full_name ?? 'Άγνωστος').join(', ');
+      const subjectNames = Array.from(new Set(assignments.map((a) => (a.subjectId ? subjectById.get(a.subjectId)?.name : null)).filter(Boolean) as string[]));
+      return { ...t, classTitle: studentNames || '—', subjectName: subjectNames.length > 1 ? 'Πολλαπλά' : (subjectNames[0] ?? '—'), dateDisplay: formatDateDisplay(t.test_date), timeRange };
+    }
     const cls = t.class_id ? classById.get(t.class_id) : undefined;
     const level = t.level_id ? levelById.get(t.level_id) : undefined;
-    const subj = subjectById.get(t.subject_id);
-    const timeRange = t.start_time && t.end_time ? `${formatTimeDisplay(t.start_time)} – ${formatTimeDisplay(t.end_time)}` : '';
+    const subj = t.subject_id ? subjectById.get(t.subject_id) : undefined;
     return { ...t, classTitle: cls?.title ?? level?.name ?? '—', subjectName: subj?.name ?? '—', dateDisplay: formatDateDisplay(t.test_date), timeRange };
-  }), [tests, classById, levelById, subjectById]);
+  }), [tests, classById, levelById, subjectById, isPrivateLessons, testAssignments, studentById]);
 
   const filteredTests = useMemo(() => {
     const q = searchTerm.trim().toLowerCase(); if (!q) return testsWithDisplay;
@@ -132,7 +161,10 @@ export default function TestsPage() {
   // ── Create via edge function ──────────────────────────────────────────────
   const handleSubmit = async (form: AddTestForm) => {
     if (!schoolId) { setError('Το προφίλ σας δεν είναι συνδεδεμένο με σχολείο.'); return; }
-    if (usesLevels ? !form.levelId : !form.classId) { setError(usesLevels ? 'Επιλέξτε επίπεδο.' : 'Επιλέξτε τμήμα.'); return; }
+    if (isPrivateLessons) {
+      if (form.studentAssignments.length === 0) { setError('Επιλέξτε τουλάχιστον έναν μαθητή.'); return; }
+      if (form.studentAssignments.some((a) => !a.subjectId)) { setError('Επιλέξτε μάθημα για κάθε μαθητή.'); return; }
+    } else if (!form.classId) { setError('Επιλέξτε τμήμα.'); return; }
     if (!form.date) { setError('Επιλέξτε ημερομηνία.'); return; }
     const testDateISO = parseDateDisplayToISO(form.date);
     if (!testDateISO) { setError('Μη έγκυρη ημερομηνία.'); return; }
@@ -140,16 +172,23 @@ export default function TestsPage() {
     setSaving(true); setError(null);
     try {
       const data = await callEdgeFunction('tests-create', {
-        class_id: usesLevels ? null : form.classId,
-        level_id: usesLevels ? form.levelId : null,
-        subject_id: form.subjectId,
+        class_id: isPrivateLessons ? null : form.classId,
+        level_id: null,
+        subject_id: isPrivateLessons ? null : form.subjectId,
         test_date: testDateISO,
         start_time: form.startTime,
         end_time: form.endTime,
         title: form.title || null,
         description: null,
+        student_assignments: isPrivateLessons
+          ? form.studentAssignments.map((a) => ({ student_id: a.studentId, subject_id: a.subjectId }))
+          : null,
       });
-      setTests((prev) => [...prev, data.item as TestRow]);
+      const item = data.item as TestRow & { test_results?: { test_id: string; student_id: string; subject_id: string | null }[] };
+      setTests((prev) => [...prev, item]);
+      if (isPrivateLessons && item.test_results) {
+        setTestAssignments((prev) => ({ ...prev, [item.id]: item.test_results!.map((r) => ({ studentId: r.student_id, subjectId: r.subject_id ?? null })) }));
+      }
       setModalOpen(false);
     } catch (err) {
       console.error(err);
@@ -163,7 +202,11 @@ export default function TestsPage() {
   const openEditModal = (testId: string) => {
     const t = tests.find((tt) => tt.id === testId); if (!t) return;
     setError(null);
-    setEditForm({ id: t.id, classId: t.class_id, levelId: t.level_id ?? null, subjectId: t.subject_id ?? null, date: formatDateDisplay(t.test_date), startTime: t.start_time?.slice(0, 5) ?? '', endTime: t.end_time?.slice(0, 5) ?? '', title: t.title ?? '' });
+    setEditForm({
+      id: t.id, classId: t.class_id, levelId: t.level_id ?? null, subjectId: t.subject_id ?? null,
+      date: formatDateDisplay(t.test_date), startTime: t.start_time?.slice(0, 5) ?? '', endTime: t.end_time?.slice(0, 5) ?? '',
+      title: t.title ?? '', studentAssignments: isPrivateLessons ? (testAssignments[t.id] ?? []) : [],
+    });
     setEditModalOpen(true);
   };
   const closeEditModal = () => { if (savingEdit) return; setEditModalOpen(false); setEditForm(null); };
@@ -171,7 +214,10 @@ export default function TestsPage() {
   // ── Update via edge function ──────────────────────────────────────────────
   const handleEditSubmit = async (form: AddTestForm) => {
     if (!schoolId || !editForm) return;
-    if (usesLevels ? !form.levelId : !form.classId) { setError(usesLevels ? 'Επιλέξτε επίπεδο.' : 'Επιλέξτε τμήμα.'); return; }
+    if (isPrivateLessons) {
+      if (form.studentAssignments.length === 0) { setError('Επιλέξτε τουλάχιστον έναν μαθητή.'); return; }
+      if (form.studentAssignments.some((a) => !a.subjectId)) { setError('Επιλέξτε μάθημα για κάθε μαθητή.'); return; }
+    } else if (!form.classId) { setError('Επιλέξτε τμήμα.'); return; }
     const testDateISO = parseDateDisplayToISO(form.date);
     if (!testDateISO) { setError('Μη έγκυρη ημερομηνία.'); return; }
     if (!form.startTime || !form.endTime) { setError('Συμπληρώστε ώρες.'); return; }
@@ -179,15 +225,22 @@ export default function TestsPage() {
     try {
       const data = await callEdgeFunction('tests-update', {
         test_id: editForm.id,
-        class_id: usesLevels ? null : form.classId,
-        level_id: usesLevels ? form.levelId : null,
-        subject_id: form.subjectId,
+        class_id: isPrivateLessons ? null : form.classId,
+        level_id: null,
+        subject_id: isPrivateLessons ? null : form.subjectId,
         test_date: testDateISO,
         start_time: form.startTime,
         end_time: form.endTime,
         title: form.title || null,
+        student_assignments: isPrivateLessons
+          ? form.studentAssignments.map((a) => ({ student_id: a.studentId, subject_id: a.subjectId }))
+          : null,
       });
-      setTests((prev) => prev.map((t) => (t.id === editForm.id ? (data.item as TestRow) : t)));
+      const item = data.item as TestRow & { test_results?: { test_id: string; student_id: string; subject_id: string | null }[] };
+      setTests((prev) => prev.map((t) => (t.id === editForm.id ? item : t)));
+      if (isPrivateLessons && item.test_results) {
+        setTestAssignments((prev) => ({ ...prev, [item.id]: item.test_results!.map((r) => ({ studentId: r.student_id, subjectId: r.subject_id ?? null })) }));
+      }
       closeEditModal();
     } catch (err) {
       console.error(err);
@@ -199,11 +252,8 @@ export default function TestsPage() {
 
   // Delete handlers
   const openDeleteModal = (testId: string) => {
-    const t = tests.find((tt) => tt.id === testId); if (!t) return;
-    const cls = t.class_id ? classById.get(t.class_id) : undefined;
-    const level = t.level_id ? levelById.get(t.level_id) : undefined;
-    const subj = subjectById.get(t.subject_id);
-    setDeleteTarget({ id: t.id, dateDisplay: formatDateDisplay(t.test_date), timeRange: t.start_time && t.end_time ? `${formatTimeDisplay(t.start_time)} – ${formatTimeDisplay(t.end_time)}` : '', classTitle: cls?.title ?? level?.name ?? '—', subjectName: subj?.name ?? '—' });
+    const t = testsWithDisplay.find((tt) => tt.id === testId); if (!t) return;
+    setDeleteTarget({ id: t.id, dateDisplay: t.dateDisplay, timeRange: t.timeRange, classTitle: t.classTitle, subjectName: t.subjectName });
   };
 
   // ── Delete via edge function ──────────────────────────────────────────────
@@ -213,6 +263,7 @@ export default function TestsPage() {
     try {
       await callEdgeFunction('tests-delete', { test_id: deleteTarget.id });
       setTests((prev) => prev.filter((t) => t.id !== deleteTarget.id));
+      setTestAssignments((prev) => { const { [deleteTarget.id]: _removed, ...rest } = prev; return rest; });
       setDeleteTarget(null);
     } catch (err) {
       console.error(err);
@@ -263,7 +314,7 @@ export default function TestsPage() {
           </div>
           <div>
             <h1 className={`text-base font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Διαγωνίσματα</h1>
-            <p className={`mt-0.5 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{usesLevels ? 'Καταχώρησε διαγωνίσματα ανά επίπεδο και μάθημα.' : 'Καταχώρησε διαγωνίσματα ανά τμήμα και μάθημα.'}</p>
+            <p className={`mt-0.5 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{isPrivateLessons ? 'Καταχώρησε διαγωνίσματα ανά μαθητή και μάθημα.' : 'Καταχώρησε διαγωνίσματα ανά τμήμα και μάθημα.'}</p>
             {schoolId && (
               <div className="mt-2 flex items-center gap-2 flex-wrap">
                 <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] ${isDark ? 'border-slate-700/60 bg-slate-800/50 text-slate-300' : 'border-slate-200 bg-slate-100 text-slate-600'}`}>
@@ -333,7 +384,7 @@ export default function TestsPage() {
                   {[
                     { icon: <Calendar className="h-3 w-3" />, label: 'ΗΜΕΡΟΜΗΝΙΑ' },
                     { icon: <Clock className="h-3 w-3" />, label: 'ΩΡΑ' },
-                    { icon: <BookOpen className="h-3 w-3" />, label: usesLevels ? 'ΕΠΙΠΕΔΟ' : 'ΤΜΗΜΑ' },
+                    { icon: <BookOpen className="h-3 w-3" />, label: isPrivateLessons ? 'ΜΑΘΗΤΕΣ' : 'ΤΜΗΜΑ' },
                     { icon: <Tag className="h-3 w-3" />, label: 'ΜΑΘΗΜΑ' },
                     { icon: <ClipboardList className="h-3 w-3" />, label: 'ΤΙΤΛΟΣ' },
                   ].map(({ icon, label }) => (
@@ -399,10 +450,10 @@ export default function TestsPage() {
         mode="add"
         editTestData={null}
         classes={classes}
-        levels={levels}
         subjects={subjects}
         classSubjects={classSubjects}
-        usesLevels={usesLevels}
+        students={students}
+        isPrivateLessons={isPrivateLessons}
         error={error}
         saving={saving}
         onClose={closeModal}
@@ -414,10 +465,10 @@ export default function TestsPage() {
         mode="edit"
         editTestData={editForm}
         classes={classes}
-        levels={levels}
         subjects={subjects}
         classSubjects={classSubjects}
-        usesLevels={usesLevels}
+        students={students}
+        isPrivateLessons={isPrivateLessons}
         error={error}
         saving={savingEdit}
         onClose={closeEditModal}

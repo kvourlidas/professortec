@@ -55,7 +55,9 @@
       "Bash(npx eslint *)",
       "Bash(git push *)",
       "Bash(git pull *)",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "Bash(xargs grep -l \"test_results\\\\|student_test_grades\\\\|CREATE TABLE.*tests\")",
+      "Bash(node -e ' *)"
     ]
   }
 }

@@ -1,6 +1,7 @@
 // src/components/dashboard/DashboardCalendarSection.tsx
 
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -54,7 +55,7 @@ type SubjectRow = { id: string; school_id: string; name: string; level_id: strin
 type ClassSubjectRow = { class_id: string; subject_id: string; school_id?: string | null };
 type SubjectTutorLinkRow = { subject_id: string; tutor_id: string; school_id?: string | null };
 type TestRow = {
-  id: string; school_id: string; class_id: string | null; level_id: string | null; subject_id: string;
+  id: string; school_id: string; class_id: string | null; level_id: string | null; subject_id: string | null;
   test_date: string; start_time: string | null; end_time: string | null;
   title: string | null; description: string | null; active_during_holiday: boolean | null;
 };
@@ -127,6 +128,7 @@ type DashboardCalendarSectionProps = { schoolId: string | null };
 export default function DashboardCalendarSection({ schoolId }: DashboardCalendarSectionProps) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const navigate = useNavigate();
 
   // Dynamic classes based on theme
   const inputCls = `h-9 w-full rounded-lg border px-3 text-sm outline-none transition disabled:opacity-60 ${
@@ -169,6 +171,8 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
   const [testModal, setTestModal] = useState<TestModalState | null>(null);
   const [savingTest, setSavingTest] = useState(false);
   const [testError, setTestError] = useState<string | null>(null);
+  const [testModalAssignments, setTestModalAssignments] = useState<{ studentId: string; studentName: string; subjectName: string | null }[]>([]);
+  const [testModalAssignmentsLoading, setTestModalAssignmentsLoading] = useState(false);
 
   /* -------- Holidays helpers -------- */
   const holidayDateSet = useMemo(() => new Set(holidays.map((h) => h.date)), [holidays]);
@@ -417,7 +421,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
       const isInactive = isHoliday && !activeDuringHoliday;
       const cls = t.class_id ? classMap.get(t.class_id) : undefined;
       const level = t.level_id ? levelMap.get(t.level_id) : undefined;
-      const subj = subjectById.get(t.subject_id);
+      const subj = t.subject_id ? subjectById.get(t.subject_id) : undefined;
       const baseStart = t.start_time ?? '09:00'; const baseEnd = t.end_time ?? '10:00';
       const [sH, sM] = baseStart.split(':').map(Number); const [eH, eM] = baseEnd.split(':').map(Number);
       const start = new Date(dateObj); start.setHours(sH, sM, 0, 0);
@@ -638,7 +642,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
   };
 
   /* -------- Click handling (unchanged) -------- */
-  const openTestModalFromEvent = (event: any) => {
+  const openTestModalFromEvent = async (event: any) => {
     const testId = event.extendedProps['testId'] as string | null | undefined;
     if (!testId || !event.start || !event.end) return;
     const testRow = tests.find((t) => t.id === testId) ?? null;
@@ -651,6 +655,17 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     const end24 = `${pad2(event.end.getHours())}:${pad2(event.end.getMinutes())}`;
     setTestError(null);
     setTestModal({ testId, classId, levelId, subjectId, date: formatDateDisplay(dateIso), startTime: start24, endTime: end24, title: testRow?.title ?? '', activeDuringHoliday: isHoliday ? !!testRow?.active_during_holiday : false });
+    setTestModalAssignments([]);
+    if (!classId && !levelId) {
+      setTestModalAssignmentsLoading(true);
+      const { data } = await supabase.from('test_results').select('student_id, subject_id').eq('test_id', testId);
+      setTestModalAssignments((data ?? []).map((r: any) => ({
+        studentId: r.student_id,
+        studentName: studentById.get(r.student_id)?.full_name ?? 'Άγνωστος',
+        subjectName: r.subject_id ? subjectById.get(r.subject_id)?.name ?? null : null,
+      })));
+      setTestModalAssignmentsLoading(false);
+    }
     setShowDeleteConfirm(false); setEventModal(null);
   };
 
@@ -775,9 +790,9 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
   const handleTestModalSave = async () => {
     if (!testModal) return;
     const { testId, classId, levelId, subjectId, date, startTime, endTime, title, activeDuringHoliday } = testModal;
-    if (!classId && !levelId) { setTestError('Επιλέξτε τμήμα.'); return; }
+    const isPrivateTest = !classId && !levelId;
     const subjectOptions = levelId ? subjects.filter((s) => s.level_id === levelId) : classId ? getSubjectsForClass(classId) : [];
-    if (subjectOptions.length > 0 && !subjectId) { setTestError('Επιλέξτε μάθημα.'); return; }
+    if (!isPrivateTest && subjectOptions.length > 0 && !subjectId) { setTestError('Επιλέξτε μάθημα.'); return; }
     if (!date) { setTestError('Επιλέξτε ημερομηνία διαγωνίσματος.'); return; }
     const testDateISO = parseDateDisplayToISO(date);
     if (!testDateISO) { setTestError('Μη έγκυρη ημερομηνία (π.χ. 12/05/2025).'); return; }
@@ -793,7 +808,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     finally { setSavingTest(false); }
   };
 
-  const handleTestModalClose = () => { if (savingTest) return; setTestModal(null); setTestError(null); setShowDeleteConfirm(false); };
+  const handleTestModalClose = () => { if (savingTest) return; setTestModal(null); setTestError(null); setShowDeleteConfirm(false); setTestModalAssignments([]); };
 
   const handleTestDelete = async () => {
     if (!testModal) return;
@@ -1107,28 +1122,52 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
               <div className="space-y-4 px-6 pb-2">
                 {testError && <div className={errorBannerCls}><span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />{testError}</div>}
 
-                {testModal.levelId !== null ? (
-                  <FormField label="Επίπεδο" icon={<GraduationCap className="h-3 w-3" />}>
-                    <select value={testModal.levelId ?? ''} onChange={handleTestFieldChange('levelId')} className={selectCls}>
-                      <option value="">Επιλέξτε επίπεδο</option>
-                      {levels.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-                    </select>
+                {!testModal.classId && !testModal.levelId ? (
+                  <FormField label="Μαθητές" icon={<GraduationCap className="h-3 w-3" />}>
+                    <div className={`flex min-h-9 w-full flex-col justify-center gap-1 rounded-lg border px-3 py-2 ${isDark ? 'border-slate-700/70 bg-slate-900/60' : 'border-slate-200 bg-white'}`}>
+                      {testModalAssignmentsLoading ? (
+                        <span className="text-xs opacity-70">Φόρτωση...</span>
+                      ) : testModalAssignments.length === 0 ? (
+                        <span className="text-xs opacity-70">—</span>
+                      ) : (
+                        testModalAssignments.map((a) => (
+                          <span key={a.studentId} className="text-xs">
+                            {a.studentName}{a.subjectName ? ` · ${a.subjectName}` : ''}
+                          </span>
+                        ))
+                      )}
+                    </div>
+                    <button type="button" onClick={() => navigate('/program/tests')}
+                      className="mt-1.5 text-[11px] underline underline-offset-2" style={{ color: 'var(--color-accent)' }}>
+                      Επεξεργασία μαθητών από τη σελίδα «Διαγωνίσματα»
+                    </button>
                   </FormField>
                 ) : (
-                  <FormField label="Τμήμα" icon={<GraduationCap className="h-3 w-3" />}>
-                    <select value={testModal.classId ?? ''} onChange={handleTestFieldChange('classId')} className={selectCls}>
-                      <option value="">Επιλέξτε τμήμα</option>
-                      {classes.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
-                    </select>
-                  </FormField>
-                )}
+                  <>
+                    {testModal.levelId !== null ? (
+                      <FormField label="Επίπεδο" icon={<GraduationCap className="h-3 w-3" />}>
+                        <select value={testModal.levelId ?? ''} onChange={handleTestFieldChange('levelId')} className={selectCls}>
+                          <option value="">Επιλέξτε επίπεδο</option>
+                          {levels.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                        </select>
+                      </FormField>
+                    ) : (
+                      <FormField label="Τμήμα" icon={<GraduationCap className="h-3 w-3" />}>
+                        <select value={testModal.classId ?? ''} onChange={handleTestFieldChange('classId')} className={selectCls}>
+                          <option value="">Επιλέξτε τμήμα</option>
+                          {classes.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+                        </select>
+                      </FormField>
+                    )}
 
-                <FormField label="Μάθημα" icon={<Layers className="h-3 w-3" />}>
-                  <select value={testModal.subjectId ?? ''} onChange={handleTestFieldChange('subjectId')} className={selectCls} disabled={(!testModal.classId && !testModal.levelId) || testSubjectOptions.length === 0}>
-                    <option value="">{testSubjectOptions.length === 0 ? 'Δεν υπάρχουν μαθήματα' : 'Επιλέξτε μάθημα'}</option>
-                    {testSubjectOptions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                  </select>
-                </FormField>
+                    <FormField label="Μάθημα" icon={<Layers className="h-3 w-3" />}>
+                      <select value={testModal.subjectId ?? ''} onChange={handleTestFieldChange('subjectId')} className={selectCls} disabled={(!testModal.classId && !testModal.levelId) || testSubjectOptions.length === 0}>
+                        <option value="">{testSubjectOptions.length === 0 ? 'Δεν υπάρχουν μαθήματα' : 'Επιλέξτε μάθημα'}</option>
+                        {testSubjectOptions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                      </select>
+                    </FormField>
+                  </>
+                )}
 
                 <FormField label="Ημερομηνία" icon={<CalendarDays className="h-3 w-3" />}>
                   <AppDatePicker value={testModal.date} onChange={(v) => setTestModal((p) => (p ? { ...p, date: v } : p))} placeholder="dd/mm/yyyy" />
