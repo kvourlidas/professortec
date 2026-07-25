@@ -7,53 +7,53 @@
 
 
 @layer base {
-  /* ─── DARK MODE (black & grey throughout) ─── */
+  /* ─── DARK MODE (navy blue theme) ─── */
   :root,
   .dark {
-    --color-background: #0a0a0a;
-    --color-surface: #18181b;
-    --color-primary: #3f3f46;
-    --color-primary-hover: #52525b;
-    --color-primary-active: #27272a;
-    --color-primary-soft: color-mix(in srgb, var(--color-primary) 30%, var(--color-background));
+    --color-background: #0F1117;
+    --color-surface: #161A23;
+    --color-primary: #3B82F6;
+    --color-primary-hover: #60A5FA;
+    --color-primary-active: #2563EB;
+    --color-primary-soft: color-mix(in srgb, var(--color-primary) 25%, var(--color-background));
     --color-accent: var(--color-primary);
     --color-accent-hover: var(--color-primary-hover);
     --color-accent-active: var(--color-primary-active);
-    --color-butter: #27272a;
-    --color-butter-hover: #3f3f46;
+    --color-butter: #1A2234;
+    --color-butter-hover: #1E2A3F;
     --color-on-accent: #ffffff;
-    --color-input-bg: #27272a;
+    --color-input-bg: #1C2130;
 
     --color-button-bg: var(--color-accent);
     --color-button-text: var(--color-on-accent);
 
-    --color-text-main: #f4f4f5;
-    --color-text-td: #f4f4f5;
-    --color-text-muted: #a1a1aa;
+    --color-text-main: #E5E7EB;
+    --color-text-td: #E5E7EB;
+    --color-text-muted: #9CA3AF;
 
-    --color-sidebar: #18181b;
-    --color-sidebar-muted: #111113;
-    --color-sidebar-border: rgba(255,255,255,0.10);
+    --color-sidebar: #161A23;
+    --color-sidebar-muted: #0D1018;
+    --color-sidebar-border: #2A2F3A;
 
-    --color-header-bg: rgba(10, 10, 10, 0.92);
-    --color-sidebar-bg: var(--color-primary);
-    --color-border: rgba(255,255,255,0.10);
-    --color-border-soft: rgba(255,255,255,0.06);
+    --color-header-bg: rgba(15, 17, 23, 0.93);
+    --color-sidebar-bg: #0D1018;
+    --color-border: #2A2F3A;
+    --color-border-soft: rgba(42, 47, 58, 0.55);
 
-    /* Card header (dark mode = blue accent, white text) */
-    --ch-bg: var(--color-accent);
-    --ch-text: var(--color-on-accent);
-    --ch-text-muted: color-mix(in srgb, var(--color-on-accent) 65%, transparent);
-    --ch-icon-bg: color-mix(in srgb, var(--color-on-accent) 10%, transparent);
-    --ch-icon-border: color-mix(in srgb, var(--color-on-accent) 16%, transparent);
-    --ch-icon: var(--color-on-accent);
-    --ch-btn-bg: color-mix(in srgb, var(--color-on-accent) 9%, transparent);
-    --ch-btn-border: color-mix(in srgb, var(--color-on-accent) 16%, transparent);
-    --ch-btn-text: var(--color-on-accent);
-    --ch-divider: color-mix(in srgb, var(--color-on-accent) 12%, transparent);
+    /* Card header (dark mode = dark surface, subtle blue accent on icon) */
+    --ch-bg: #1A2035;
+    --ch-text: #E5E7EB;
+    --ch-text-muted: #9CA3AF;
+    --ch-icon-bg: rgba(59, 130, 246, 0.14);
+    --ch-icon-border: rgba(59, 130, 246, 0.22);
+    --ch-icon: #60A5FA;
+    --ch-btn-bg: rgba(255, 255, 255, 0.07);
+    --ch-btn-border: rgba(255, 255, 255, 0.12);
+    --ch-btn-text: #E5E7EB;
+    --ch-divider: #2A2F3A;
 
     /* FullCalendar */
-    --fc-border-color: rgba(255, 255, 255, 0.10);
+    --fc-border-color: #2A2F3A;
     --fc-page-bg-color: var(--color-sidebar);
     --fc-neutral-bg-color: var(--color-sidebar);
     --fc-neutral-text-color: var(--color-text-main);

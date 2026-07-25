@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
-import { Search, School, Pencil, Trash2, GraduationCap, BookOpen, GripVertical } from 'lucide-react';
+import { Search, School, Pencil, Trash2, GraduationCap, BookOpen, GripVertical, UserPlus } from 'lucide-react';
 import type { ClassRow, SubjectRow } from './types';
 
 export type StudentRow = { id: string; full_name: string | null };
@@ -17,14 +17,6 @@ interface ClassesGridProps {
   onViewStudents: (target: { id: string; title: string }) => void;
 }
 
-function initials(name: string | null): string {
-  if (!name) return '?';
-  return name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('');
-}
-
-const AVATAR_COLOR_LIGHT = { bg: 'bg-blue-100', text: 'text-blue-700' };
-const AVATAR_COLOR_DARK  = { bg: 'bg-amber-900/50', text: 'text-amber-300' };
-function avatarColor(dark: boolean) { return dark ? AVATAR_COLOR_DARK : AVATAR_COLOR_LIGHT; }
 
 /* ── Single card ── */
 function ClassCard({
@@ -133,28 +125,23 @@ function ClassCard({
               Μαθητές {students.length > 0 && `(${students.length})`}
             </span>
             <button type="button" onClick={() => onViewStudents({ id: cls.id, title: cls.title })}
-              className={`text-[11px] font-semibold rounded-md border px-2 py-0.5 transition-opacity hover:opacity-60 ${
-                isDark ? 'text-amber-400 border-amber-400/40' : 'text-blue-500 border-blue-300'}`}>
-              Διαχείριση →
+              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition active:scale-95"
+              style={{ background: 'var(--color-accent)', color: 'var(--ch-icon)' }}>
+              <UserPlus className="h-3 w-3" />
+              Προσθήκη Μαθητών
             </button>
           </div>
           {students.length === 0 ? (
             <p className={`text-xs italic ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>Δεν υπάρχουν μαθητές ακόμα</p>
           ) : (
             <ul className="flex flex-col gap-1.5">
-              {students.map((st) => {
-                const color = avatarColor(isDark);
-                return (
-                  <li key={st.id} className="flex items-center gap-2">
-                    <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold ${color.bg} ${color.text}`}>
-                      {initials(st.full_name)}
-                    </div>
-                    <span className={`text-xs truncate ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                      {st.full_name ?? 'Χωρίς όνομα'}
-                    </span>
-                  </li>
-                );
-              })}
+              {students.map((st) => (
+                <li key={st.id} className="flex items-center gap-2">
+                  <span className={`text-xs truncate ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                    {st.full_name ?? 'Χωρίς όνομα'}
+                  </span>
+                </li>
+              ))}
             </ul>
           )}
         </div>

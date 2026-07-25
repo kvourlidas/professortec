@@ -25,6 +25,7 @@ import { formatDateToGreek, normalizeText, displayToIso } from '../components/tu
 import {
   Users, Search, UserPlus, ChevronLeft, ChevronRight,
   User, Phone, Mail, Calendar, Hash, CreditCard, FileText,
+  Copy, Check,
 } from 'lucide-react';
 
 // ── Storage keys ─────────────────────────────────────────────────────────────
@@ -253,6 +254,18 @@ export default function TutorsPage() {
     [visibleColumns],
   );
 
+  // ── Copy button ──────────────────────────────────────────────────────────
+  const CopyBtn = ({ text }: { text: string }) => {
+    const [copied, setCopied] = useState(false);
+    return (
+      <button type="button" title="Αντιγραφή"
+        onClick={e => { e.stopPropagation(); navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); }); }}
+        className={`ml-1.5 shrink-0 rounded p-0.5 transition-colors ${isDark ? 'text-slate-600 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}>
+        {copied ? <Check className="h-3 w-3 text-green-400" /> : <Copy className="h-3 w-3" />}
+      </button>
+    );
+  };
+
   // ── Cell renderer ────────────────────────────────────────────────────────
   const renderCell = (key: TutorColumnKey, t: TutorRow) => {
     const empty = <span className={isDark ? 'text-slate-600' : 'text-slate-400'}>—</span>;
@@ -270,10 +283,12 @@ export default function TutorsPage() {
       case 'phone':
         return t.phone ? <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{t.phone}</span> : empty;
       case 'email':
-        return t.email ? <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{t.email}</span> : empty;
+        return t.email
+          ? <span className="inline-flex items-center"><span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{t.email}</span><CopyBtn text={t.email} /></span>
+          : empty;
       case 'iban':
         return t.iban
-          ? <span className={`font-mono text-[11px] tabular-nums ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t.iban}</span>
+          ? <span className="inline-flex items-center"><span className={`font-mono text-[11px] tabular-nums ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t.iban}</span><CopyBtn text={t.iban} /></span>
           : empty;
       case 'notes':
         return t.notes

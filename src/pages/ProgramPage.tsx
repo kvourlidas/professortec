@@ -368,7 +368,7 @@ export default function ProgramPage() {
           <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Φόρτωση προγράμματος…</p>
         </div>
       ) : (
-        <div className="flex flex-col gap-4 lg:flex-row">
+        <div className="flex flex-col gap-4">
           <ProgramClassesPanel
             classes={classes}
             filteredClasses={filteredClasses}

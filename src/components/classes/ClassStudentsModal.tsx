@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../auth';
 import { useTheme } from '../../context/ThemeContext';
-import { ArrowRight, ArrowLeft, Loader2, Search, Users, X, GraduationCap, UserCheck, UserMinus } from 'lucide-react';
+import { Loader2, Search, Users, X, GraduationCap, UserCheck, UserMinus, ArrowRight, ArrowLeft } from 'lucide-react';
 
 type ClassStudentsModalProps = {
   open: boolean; onClose: () => void; classId: string | null; classTitle?: string;
@@ -23,11 +23,14 @@ export default function ClassStudentsModal({ open, onClose, classId, classTitle 
   const [searchLeft, setSearchLeft] = useState('');
   const [searchRight, setSearchRight] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
+  const [selectedLeft, setSelectedLeft] = useState<Set<string>>(new Set());
+  const [selectedRight, setSelectedRight] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!open || !classId || !schoolId) return;
     const load = async () => {
       setLoading(true); setLocalError(null);
+      setSelectedLeft(new Set()); setSelectedRight(new Set());
       try {
         const { data: studentsData, error: studentsErr } = await supabase.from('students').select('id, school_id, full_name').eq('school_id', schoolId).order('full_name', { ascending: true });
         if (studentsErr) throw studentsErr;
@@ -46,9 +49,37 @@ export default function ClassStudentsModal({ open, onClose, classId, classTitle 
   const availableStudents = useMemo(() => allStudents.filter((s) => !assignedIds.has(s.id) && (s.full_name ?? '').toLowerCase().includes(searchLeft.toLowerCase())), [allStudents, assignedIds, searchLeft]);
   const assignedStudents = useMemo(() => allStudents.filter((s) => assignedIds.has(s.id)).filter((s) => (s.full_name ?? '').toLowerCase().includes(searchRight.toLowerCase())), [allStudents, assignedIds, searchRight]);
 
-  const handleAddLocal = (id: string) => { if (saving) return; setAssignedIds((prev) => { const n = new Set(prev); n.add(id); return n; }); };
-  const handleRemoveLocal = (id: string) => { if (saving) return; setAssignedIds((prev) => { const n = new Set(prev); n.delete(id); return n; }); };
-  const handleCancel = () => { setAssignedIds(new Set(initialAssignedIds)); onClose(); };
+  // Selection helpers
+  const visibleLeftSelected = availableStudents.filter(s => selectedLeft.has(s.id));
+  const visibleRightSelected = assignedStudents.filter(s => selectedRight.has(s.id));
+  const allLeftChecked = availableStudents.length > 0 && availableStudents.every(s => selectedLeft.has(s.id));
+  const someLeftChecked = availableStudents.some(s => selectedLeft.has(s.id)) && !allLeftChecked;
+  const allRightChecked = assignedStudents.length > 0 && assignedStudents.every(s => selectedRight.has(s.id));
+  const someRightChecked = assignedStudents.some(s => selectedRight.has(s.id)) && !allRightChecked;
+
+  const toggleLeft = (id: string) => setSelectedLeft(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleRight = (id: string) => setSelectedRight(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleAllLeft = () => {
+    if (allLeftChecked) setSelectedLeft(new Set());
+    else setSelectedLeft(new Set(availableStudents.map(s => s.id)));
+  };
+  const toggleAllRight = () => {
+    if (allRightChecked) setSelectedRight(new Set());
+    else setSelectedRight(new Set(assignedStudents.map(s => s.id)));
+  };
+
+  const moveToAssigned = () => {
+    if (saving || visibleLeftSelected.length === 0) return;
+    setAssignedIds(prev => { const n = new Set(prev); visibleLeftSelected.forEach(s => n.add(s.id)); return n; });
+    setSelectedLeft(new Set());
+  };
+  const moveToAvailable = () => {
+    if (saving || visibleRightSelected.length === 0) return;
+    setAssignedIds(prev => { const n = new Set(prev); visibleRightSelected.forEach(s => n.delete(s.id)); return n; });
+    setSelectedRight(new Set());
+  };
+
+  const handleCancel = () => { setAssignedIds(new Set(initialAssignedIds)); setSelectedLeft(new Set()); setSelectedRight(new Set()); onClose(); };
 
   const handleSave = async () => {
     if (!schoolId || !classId) { onClose(); return; }
@@ -70,25 +101,21 @@ export default function ClassStudentsModal({ open, onClose, classId, classTitle 
     [...assignedIds].filter((id) => !initialAssignedIds.has(id)).length +
     [...initialAssignedIds].filter((id) => !assignedIds.has(id)).length;
 
-  // Style helpers
   const modalBg = isDark ? 'border-slate-700/60 bg-[#252920]' : 'border-slate-200 bg-white';
   const panelCls = `overflow-hidden rounded-xl border ${isDark ? 'border-slate-700/60 bg-slate-900/40' : 'border-slate-200 bg-slate-50'}`;
-  const panelHeaderCls = `flex items-center justify-between border-b px-3.5 py-2.5 ${isDark ? 'border-slate-700/60 bg-slate-900/30' : 'border-slate-200 bg-slate-100/80'}`;
-  const searchInputCls = `h-7 w-32 rounded-lg border pl-6 pr-2 text-[11px] outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/20 focus:border-[color:var(--color-accent)] ${isDark ? 'border-slate-700/60 bg-slate-800/60 text-slate-200 placeholder-slate-500' : 'border-slate-200 bg-white text-slate-700 placeholder-slate-400'}`;
-  const listItemCls = `group flex items-center justify-between rounded-lg px-2.5 py-2 transition ${isDark ? 'hover:bg-slate-800/50' : 'hover:bg-slate-100'}`;
+  const panelHeaderCls = `border-b px-3.5 py-2.5 ${isDark ? 'border-slate-700/60 bg-slate-900/30' : 'border-slate-200 bg-slate-100/80'}`;
+  const searchInputCls = `h-7 w-28 rounded-lg border pl-6 pr-2 text-[11px] outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/20 focus:border-[color:var(--color-accent)] ${isDark ? 'border-slate-700/60 bg-slate-800/60 text-slate-200 placeholder-slate-500' : 'border-slate-200 bg-white text-slate-700 placeholder-slate-400'}`;
   const listDivideCls = `divide-y p-1 ${isDark ? 'divide-slate-800/50' : 'divide-slate-100'}`;
   const footerCls = `mt-3 flex items-center justify-between gap-3 border-t px-6 py-4 ${isDark ? 'border-slate-800/70 bg-slate-900/20' : 'border-slate-100 bg-slate-50/50'}`;
   const cancelBtnCls = `btn border px-4 py-1.5 disabled:opacity-50 ${isDark ? 'border-slate-600/60 bg-slate-800/50 text-slate-200 hover:bg-slate-700/60' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'}`;
-  const scrollStyle: React.CSSProperties = {
-    scrollbarWidth: 'thin',
-    scrollbarColor: isDark
-      ? 'rgba(71,85,105,0.35) transparent'
-      : 'rgba(203,213,225,0.7) transparent',
-  };
+  const scrollStyle: React.CSSProperties = { scrollbarWidth: 'thin', scrollbarColor: isDark ? 'rgba(71,85,105,0.35) transparent' : 'rgba(203,213,225,0.7) transparent' };
+  const checkboxStyle: React.CSSProperties = { accentColor: 'var(--color-accent)', cursor: 'pointer' };
+  const rowCls = `flex items-center gap-2.5 rounded-lg px-2.5 py-2 transition cursor-pointer select-none ${isDark ? 'hover:bg-slate-800/50' : 'hover:bg-slate-100'}`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className={`relative w-full max-w-3xl overflow-hidden rounded-2xl border shadow-2xl ${modalBg}`}>
+
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
           <div className="flex items-center gap-3">
@@ -139,19 +166,44 @@ export default function ClassStudentsModal({ open, onClose, classId, classTitle 
             {/* Left panel — available */}
             <div className={panelCls}>
               <div className={panelHeaderCls}>
-                <div className="flex items-center gap-1.5">
-                  <UserMinus className={`h-3.5 w-3.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
-                  <h3 className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>ΔΙΑΘΕΣΙΜΟΙ</h3>
-                  <span className={`rounded-full border px-1.5 py-0.5 text-[10px] ${isDark ? 'border-slate-700 bg-slate-800 text-slate-400' : 'border-slate-200 bg-white text-slate-500'}`}>
-                    {availableStudents.length}
-                  </span>
+                {/* Row 1: title + search */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <UserMinus className={`h-3.5 w-3.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+                    <h3 className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>ΔΙΑΘΕΣΙΜΟΙ</h3>
+                    <span className={`rounded-full border px-1.5 py-0.5 text-[10px] ${isDark ? 'border-slate-700 bg-slate-800 text-slate-400' : 'border-slate-200 bg-white text-slate-500'}`}>
+                      {availableStudents.length}
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-500" />
+                    <input className={searchInputCls} placeholder="Αναζήτηση..." value={searchLeft} onChange={(e) => setSearchLeft(e.target.value)} disabled={saving} />
+                  </div>
                 </div>
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-500" />
-                  <input className={searchInputCls} placeholder="Αναζήτηση..." value={searchLeft} onChange={(e) => setSearchLeft(e.target.value)} disabled={saving} />
+                {/* Row 2: select-all + move button */}
+                <div className="mt-2 flex items-center justify-between">
+                  <label className={`flex items-center gap-1.5 text-[11px] cursor-pointer ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    <input
+                      type="checkbox"
+                      className="h-3.5 w-3.5 rounded"
+                      style={checkboxStyle}
+                      checked={allLeftChecked}
+                      ref={el => { if (el) el.indeterminate = someLeftChecked; }}
+                      onChange={toggleAllLeft}
+                      disabled={saving || availableStudents.length === 0}
+                    />
+                    Επιλογή όλων
+                  </label>
+                  <button type="button" onClick={moveToAssigned}
+                    disabled={saving || visibleLeftSelected.length === 0}
+                    className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition disabled:opacity-30 active:scale-95"
+                    style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', color: 'var(--color-accent)', border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>
+                    {visibleLeftSelected.length > 0 ? `Προσθήκη (${visibleLeftSelected.length})` : 'Προσθήκη'}
+                    <ArrowRight className="h-3 w-3" />
+                  </button>
                 </div>
               </div>
-              <div className="max-h-72 overflow-y-auto" style={scrollStyle}>
+              <div className="max-h-64 overflow-y-auto" style={scrollStyle}>
                 {availableStudents.length === 0 ? (
                   <div className="flex flex-col items-center justify-center gap-2 py-10">
                     <Users className={`h-5 w-5 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />
@@ -160,14 +212,19 @@ export default function ClassStudentsModal({ open, onClose, classId, classTitle 
                 ) : (
                   <ul className={listDivideCls}>
                     {availableStudents.map((s) => (
-                      <li key={s.id} className={listItemCls}>
-                        <span className={`text-xs transition-colors ${isDark ? 'text-slate-300 group-hover:text-slate-100' : 'text-slate-600 group-hover:text-slate-800'}`}>
+                      <li key={s.id} className={rowCls} onClick={() => !saving && toggleLeft(s.id)}>
+                        <input
+                          type="checkbox"
+                          className="h-3.5 w-3.5 shrink-0 rounded"
+                          style={checkboxStyle}
+                          checked={selectedLeft.has(s.id)}
+                          onChange={() => toggleLeft(s.id)}
+                          onClick={e => e.stopPropagation()}
+                          disabled={saving}
+                        />
+                        <span className={`text-xs ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
                           {s.full_name ?? 'Χωρίς όνομα'}
                         </span>
-                        <button type="button" onClick={() => handleAddLocal(s.id)} disabled={saving}
-                          className="inline-flex h-6 w-6 items-center justify-center rounded-lg border border-emerald-500/50 bg-emerald-500/10 text-emerald-500 transition hover:border-emerald-400 hover:bg-emerald-500/20 disabled:opacity-40">
-                          <ArrowRight className="h-3 w-3" />
-                        </button>
                       </li>
                     ))}
                   </ul>
@@ -178,20 +235,45 @@ export default function ClassStudentsModal({ open, onClose, classId, classTitle 
             {/* Right panel — assigned */}
             <div className={panelCls}>
               <div className={panelHeaderCls}>
-                <div className="flex items-center gap-1.5">
-                  <UserCheck className="h-3.5 w-3.5" style={{ color: 'var(--color-accent)' }} />
-                  <h3 className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--color-accent)' }}>ΣΤΟ ΤΜΗΜΑ</h3>
-                  <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
-                    style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', color: 'var(--color-accent)', border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>
-                    {assignedStudents.length}
-                  </span>
+                {/* Row 1: title + search */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <UserCheck className="h-3.5 w-3.5" style={{ color: 'var(--color-accent)' }} />
+                    <h3 className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--color-accent)' }}>ΣΤΟ ΤΜΗΜΑ</h3>
+                    <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+                      style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', color: 'var(--color-accent)', border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>
+                      {assignedStudents.length}
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-500" />
+                    <input className={searchInputCls} placeholder="Αναζήτηση..." value={searchRight} onChange={(e) => setSearchRight(e.target.value)} disabled={saving} />
+                  </div>
                 </div>
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-500" />
-                  <input className={searchInputCls} placeholder="Αναζήτηση..." value={searchRight} onChange={(e) => setSearchRight(e.target.value)} disabled={saving} />
+                {/* Row 2: move button + select-all */}
+                <div className="mt-2 flex items-center justify-between">
+                  <button type="button" onClick={moveToAvailable}
+                    disabled={saving || visibleRightSelected.length === 0}
+                    className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition disabled:opacity-30 active:scale-95"
+                    style={{ background: isDark ? 'rgba(239,68,68,0.12)' : 'rgba(239,68,68,0.08)', color: isDark ? '#f87171' : '#dc2626', border: `1px solid ${isDark ? 'rgba(239,68,68,0.25)' : 'rgba(239,68,68,0.20)'}` }}>
+                    <ArrowLeft className="h-3 w-3" />
+                    {visibleRightSelected.length > 0 ? `Αφαίρεση (${visibleRightSelected.length})` : 'Αφαίρεση'}
+                  </button>
+                  <label className={`flex items-center gap-1.5 text-[11px] cursor-pointer ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    <input
+                      type="checkbox"
+                      className="h-3.5 w-3.5 rounded"
+                      style={checkboxStyle}
+                      checked={allRightChecked}
+                      ref={el => { if (el) el.indeterminate = someRightChecked; }}
+                      onChange={toggleAllRight}
+                      disabled={saving || assignedStudents.length === 0}
+                    />
+                    Επιλογή όλων
+                  </label>
                 </div>
               </div>
-              <div className="max-h-72 overflow-y-auto" style={scrollStyle}>
+              <div className="max-h-64 overflow-y-auto" style={scrollStyle}>
                 {assignedStudents.length === 0 ? (
                   <div className="flex flex-col items-center justify-center gap-2 py-10">
                     <UserCheck className={`h-5 w-5 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />
@@ -200,12 +282,17 @@ export default function ClassStudentsModal({ open, onClose, classId, classTitle 
                 ) : (
                   <ul className={listDivideCls}>
                     {assignedStudents.map((s) => (
-                      <li key={s.id} className={`${listItemCls} gap-2.5`}>
-                        <button type="button" onClick={() => handleRemoveLocal(s.id)} disabled={saving}
-                          className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-red-500/40 bg-red-500/10 text-red-400 transition hover:border-red-400 hover:bg-red-500/20 disabled:opacity-40">
-                          <ArrowLeft className="h-3 w-3" />
-                        </button>
-                        <span className={`text-xs transition-colors ${isDark ? 'text-slate-300 group-hover:text-slate-100' : 'text-slate-600 group-hover:text-slate-800'}`}>
+                      <li key={s.id} className={rowCls} onClick={() => !saving && toggleRight(s.id)}>
+                        <input
+                          type="checkbox"
+                          className="h-3.5 w-3.5 shrink-0 rounded"
+                          style={checkboxStyle}
+                          checked={selectedRight.has(s.id)}
+                          onChange={() => toggleRight(s.id)}
+                          onClick={e => e.stopPropagation()}
+                          disabled={saving}
+                        />
+                        <span className={`text-xs ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
                           {s.full_name ?? 'Χωρίς όνομα'}
                         </span>
                       </li>

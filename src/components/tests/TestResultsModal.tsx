@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowRight, ArrowLeft, Loader2, Search, Users, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Loader2, Search, Users, X } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../context/ThemeContext';
 import type { GradeInfo, StudentRow, TestResultRow, TestResultsModalState } from './types';
@@ -23,16 +23,19 @@ export default function TestResultsModal({ resultsModal, schoolId, onClose }: Te
   const [gradeByStudent, setGradeByStudent] = useState<Record<string, GradeInfo>>({});
   const [searchLeft, setSearchLeft] = useState('');
   const [searchRight, setSearchRight] = useState('');
+  const [selectedLeft, setSelectedLeft] = useState<Set<string>>(new Set());
+  const [selectedRight, setSelectedRight] = useState<Set<string>>(new Set());
 
   const resetState = () => {
     setError(null); setLoading(false); setAllStudents([]); setAssignedIds(new Set());
     setInitialAssignedIds(new Set()); setGradeByStudent({}); setSearchLeft(''); setSearchRight('');
+    setSelectedLeft(new Set()); setSelectedRight(new Set());
   };
 
   useEffect(() => {
     if (!resultsModal || !schoolId) { resetState(); return; }
     const fetchData = async () => {
-      setError(null); setLoading(true); setAllStudents([]); setAssignedIds(new Set()); setInitialAssignedIds(new Set()); setGradeByStudent({}); setSearchLeft(''); setSearchRight('');
+      setError(null); setLoading(true); setAllStudents([]); setAssignedIds(new Set()); setInitialAssignedIds(new Set()); setGradeByStudent({}); setSearchLeft(''); setSearchRight(''); setSelectedLeft(new Set()); setSelectedRight(new Set());
       try {
         const { data: studentsData, error: studentsErr } = await supabase.from('students').select('id, school_id, full_name').eq('school_id', schoolId).order('full_name', { ascending: true });
         if (studentsErr) throw studentsErr;
@@ -95,6 +98,36 @@ export default function TestResultsModal({ resultsModal, schoolId, onClose }: Te
     allStudents.filter((s) => assignedIds.has(s.id) && (s.full_name ?? '').toLowerCase().includes(searchRight.toLowerCase())),
     [allStudents, assignedIds, searchRight]);
 
+  // Selection helpers
+  const visibleLeftSelected = availableStudents.filter(s => selectedLeft.has(s.id));
+  const visibleRightSelected = assignedStudents.filter(s => selectedRight.has(s.id));
+  const allLeftChecked = availableStudents.length > 0 && availableStudents.every(s => selectedLeft.has(s.id));
+  const someLeftChecked = availableStudents.some(s => selectedLeft.has(s.id)) && !allLeftChecked;
+  const allRightChecked = assignedStudents.length > 0 && assignedStudents.every(s => selectedRight.has(s.id));
+  const someRightChecked = assignedStudents.some(s => selectedRight.has(s.id)) && !allRightChecked;
+
+  const toggleLeft = (id: string) => setSelectedLeft(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleRight = (id: string) => setSelectedRight(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleAllLeft = () => {
+    if (allLeftChecked) setSelectedLeft(new Set());
+    else setSelectedLeft(new Set(availableStudents.map(s => s.id)));
+  };
+  const toggleAllRight = () => {
+    if (allRightChecked) setSelectedRight(new Set());
+    else setSelectedRight(new Set(assignedStudents.map(s => s.id)));
+  };
+
+  const moveToAssigned = () => {
+    if (saving || visibleLeftSelected.length === 0) return;
+    setAssignedIds(prev => { const n = new Set(prev); visibleLeftSelected.forEach(s => n.add(s.id)); return n; });
+    setSelectedLeft(new Set());
+  };
+  const moveToAvailable = () => {
+    if (saving || visibleRightSelected.length === 0) return;
+    setAssignedIds(prev => { const n = new Set(prev); visibleRightSelected.forEach(s => n.delete(s.id)); return n; });
+    setSelectedRight(new Set());
+  };
+
   if (!resultsModal) return null;
 
   // ── Styles ──
@@ -105,24 +138,24 @@ export default function TestResultsModal({ resultsModal, schoolId, onClose }: Te
     ? 'flex justify-end gap-2.5 border-t border-slate-800/70 bg-slate-900/20 px-6 py-4 mt-3'
     : 'flex justify-end gap-2.5 border-t border-slate-200 bg-slate-50 px-6 py-4 mt-3';
   const cancelBtnCls = 'btn border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-slate-200 hover:bg-slate-700/60 disabled:opacity-50';
-  const resultsColCls = isDark
+  const colCls = isDark
     ? 'overflow-hidden rounded-xl border border-slate-700/50 bg-slate-900/30'
     : 'overflow-hidden rounded-xl border border-slate-200 bg-slate-50';
-  const resultsColHeaderCls = isDark
-    ? 'flex items-center justify-between border-b border-slate-800/70 px-3 py-2.5'
-    : 'flex items-center justify-between border-b border-slate-200 bg-slate-100 px-3 py-2.5';
-  const resultsSearchBoxCls = isDark
+  const colHeaderCls = isDark
+    ? 'border-b border-slate-800/70 px-3 py-2.5'
+    : 'border-b border-slate-200 bg-slate-100 px-3 py-2.5';
+  const searchBoxCls = isDark
     ? 'flex items-center gap-1.5 rounded-lg border border-slate-700/60 bg-slate-900/60 px-2 py-1'
     : 'flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-1';
-  const resultsSearchInputCls = isDark
+  const searchInputCls = isDark
     ? 'w-24 bg-transparent text-[11px] text-slate-100 outline-none placeholder:text-slate-600'
     : 'w-24 bg-transparent text-[11px] text-slate-700 outline-none placeholder:text-slate-400';
-  const resultsDivideCls = isDark ? 'divide-y divide-slate-800/50' : 'divide-y divide-slate-100';
-  const resultsRowHoverCls = isDark ? 'flex items-center justify-between px-3 py-2 hover:bg-white/[0.02]' : 'flex items-center justify-between px-3 py-2 hover:bg-slate-100/60';
-  const resultsRowHoverAssignedCls = isDark ? 'flex items-center gap-2 px-3 py-2 hover:bg-white/[0.02]' : 'flex items-center gap-2 px-3 py-2 hover:bg-slate-100/60';
+  const divideCls = isDark ? 'divide-y divide-slate-800/50' : 'divide-y divide-slate-100';
+  const rowCls = `flex items-center gap-2.5 px-3 py-2 transition cursor-pointer select-none ${isDark ? 'hover:bg-white/[0.03]' : 'hover:bg-slate-100/60'}`;
   const gradeInputCls = isDark
     ? 'h-7 w-20 shrink-0 rounded-lg border border-slate-700/70 bg-slate-900/60 px-2 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)]'
     : 'h-7 w-20 shrink-0 rounded-lg border border-slate-300 bg-white px-2 text-xs text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)]';
+  const checkboxStyle: React.CSSProperties = { accentColor: 'var(--color-accent)', cursor: 'pointer' };
 
   const subtitle = `${resultsModal.subjectName} · ${resultsModal.classTitle}${resultsModal.dateDisplay ? ` · ${resultsModal.dateDisplay}` : ''}${resultsModal.timeRange ? ` · ${resultsModal.timeRange}` : ''}`;
 
@@ -166,57 +199,133 @@ export default function TestResultsModal({ resultsModal, schoolId, onClose }: Te
             </p>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
+
               {/* Left: available */}
-              <div className={resultsColCls}>
-                <div className={resultsColHeaderCls}>
-                  <span className={`text-xs font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Όλοι οι μαθητές</span>
-                  <div className={resultsSearchBoxCls}>
-                    <Search className={`h-3 w-3 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-                    <input className={resultsSearchInputCls} placeholder="Αναζήτηση..." value={searchLeft} onChange={(e) => setSearchLeft(e.target.value)} disabled={saving} />
+              <div className={colCls}>
+                <div className={colHeaderCls}>
+                  {/* Row 1: title + search */}
+                  <div className="flex items-center justify-between">
+                    <span className={`text-xs font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                      Όλοι οι μαθητές
+                      {availableStudents.length > 0 && (
+                        <span className="ml-1.5 rounded-full px-1.5 py-0.5 text-[10px]"
+                          style={{ background: isDark ? 'rgba(148,163,184,0.12)' : 'rgba(100,116,139,0.10)', color: isDark ? '#94a3b8' : '#64748b' }}>
+                          {availableStudents.length}
+                        </span>
+                      )}
+                    </span>
+                    <div className={searchBoxCls}>
+                      <Search className={`h-3 w-3 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+                      <input className={searchInputCls} placeholder="Αναζήτηση..." value={searchLeft} onChange={(e) => setSearchLeft(e.target.value)} disabled={saving} />
+                    </div>
+                  </div>
+                  {/* Row 2: select-all + move button */}
+                  <div className="mt-2 flex items-center justify-between">
+                    <label className={`flex items-center gap-1.5 text-[11px] cursor-pointer ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      <input
+                        type="checkbox"
+                        className="h-3.5 w-3.5 rounded"
+                        style={checkboxStyle}
+                        checked={allLeftChecked}
+                        ref={el => { if (el) el.indeterminate = someLeftChecked; }}
+                        onChange={toggleAllLeft}
+                        disabled={saving || availableStudents.length === 0}
+                      />
+                      Επιλογή όλων
+                    </label>
+                    <button type="button" onClick={moveToAssigned}
+                      disabled={saving || visibleLeftSelected.length === 0}
+                      className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition disabled:opacity-30 active:scale-95"
+                      style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', color: 'var(--color-accent)', border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>
+                      {visibleLeftSelected.length > 0 ? `Προσθήκη (${visibleLeftSelected.length})` : 'Προσθήκη'}
+                      <ArrowRight className="h-3 w-3" />
+                    </button>
                   </div>
                 </div>
-                <div className="max-h-72 overflow-y-auto">
+                <div className={`max-h-72 overflow-y-auto ${divideCls}`}>
                   {availableStudents.length === 0
                     ? <p className={`px-3 py-4 text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Δεν υπάρχουν διαθέσιμοι μαθητές.</p>
-                    : <div className={resultsDivideCls}>{availableStudents.map((s) => (
-                      <div key={s.id} className={resultsRowHoverCls}>
-                        <span className={`text-xs ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{s.full_name ?? 'Χωρίς όνομα'}</span>
-                        <button type="button" onClick={() => setAssignedIds((prev) => { const n = new Set(prev); n.add(s.id); return n; })} disabled={saving}
-                          className="inline-flex h-6 w-6 items-center justify-center rounded-lg border border-emerald-500/40 bg-emerald-500/10 text-emerald-400 transition hover:bg-emerald-500/20 disabled:opacity-60">
-                          <ArrowRight size={13} />
-                        </button>
+                    : availableStudents.map((s) => (
+                      <div key={s.id} className={rowCls} onClick={() => !saving && toggleLeft(s.id)}>
+                        <input
+                          type="checkbox"
+                          className="h-3.5 w-3.5 shrink-0 rounded"
+                          style={checkboxStyle}
+                          checked={selectedLeft.has(s.id)}
+                          onChange={() => toggleLeft(s.id)}
+                          onClick={e => e.stopPropagation()}
+                          disabled={saving}
+                        />
+                        <span className={`truncate text-xs ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{s.full_name ?? 'Χωρίς όνομα'}</span>
                       </div>
-                    ))}</div>}
+                    ))}
                 </div>
               </div>
 
-              {/* Right: assigned */}
-              <div className={resultsColCls}>
-                <div className={resultsColHeaderCls}>
-                  <span className={`text-xs font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Μαθητές που έγραψαν</span>
-                  <div className={resultsSearchBoxCls}>
-                    <Search className={`h-3 w-3 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-                    <input className={resultsSearchInputCls} placeholder="Αναζήτηση..." value={searchRight} onChange={(e) => setSearchRight(e.target.value)} disabled={saving} />
+              {/* Right: assigned with grade inputs */}
+              <div className={colCls}>
+                <div className={colHeaderCls}>
+                  {/* Row 1: title + search */}
+                  <div className="flex items-center justify-between">
+                    <span className={`text-xs font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                      Μαθητές που έγραψαν
+                      {assignedIds.size > 0 && (
+                        <span className="ml-1.5 rounded-full px-1.5 py-0.5 text-[10px]"
+                          style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', color: 'var(--color-accent)' }}>
+                          {assignedIds.size}
+                        </span>
+                      )}
+                    </span>
+                    <div className={searchBoxCls}>
+                      <Search className={`h-3 w-3 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+                      <input className={searchInputCls} placeholder="Αναζήτηση..." value={searchRight} onChange={(e) => setSearchRight(e.target.value)} disabled={saving} />
+                    </div>
+                  </div>
+                  {/* Row 2: move button + select-all */}
+                  <div className="mt-2 flex items-center justify-between">
+                    <button type="button" onClick={moveToAvailable}
+                      disabled={saving || visibleRightSelected.length === 0}
+                      className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition disabled:opacity-30 active:scale-95"
+                      style={{ background: isDark ? 'rgba(239,68,68,0.12)' : 'rgba(239,68,68,0.08)', color: isDark ? '#f87171' : '#dc2626', border: `1px solid ${isDark ? 'rgba(239,68,68,0.25)' : 'rgba(239,68,68,0.20)'}` }}>
+                      <ArrowLeft className="h-3 w-3" />
+                      {visibleRightSelected.length > 0 ? `Αφαίρεση (${visibleRightSelected.length})` : 'Αφαίρεση'}
+                    </button>
+                    <label className={`flex items-center gap-1.5 text-[11px] cursor-pointer ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      <input
+                        type="checkbox"
+                        className="h-3.5 w-3.5 rounded"
+                        style={checkboxStyle}
+                        checked={allRightChecked}
+                        ref={el => { if (el) el.indeterminate = someRightChecked; }}
+                        onChange={toggleAllRight}
+                        disabled={saving || assignedStudents.length === 0}
+                      />
+                      Επιλογή όλων
+                    </label>
                   </div>
                 </div>
-                <div className="max-h-72 overflow-y-auto">
+                <div className={`max-h-72 overflow-y-auto ${divideCls}`}>
                   {assignedStudents.length === 0
                     ? <p className={`px-3 py-4 text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Δεν έχουν επιλεγεί μαθητές.</p>
-                    : <div className={resultsDivideCls}>{assignedStudents.map((s) => {
+                    : assignedStudents.map((s) => {
                       const info = gradeByStudent[s.id] ?? { grade: '' };
                       return (
-                        <div key={s.id} className={resultsRowHoverAssignedCls}>
-                          <button type="button" onClick={() => setAssignedIds((prev) => { const n = new Set(prev); n.delete(s.id); return n; })} disabled={saving}
-                            className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border border-red-500/40 bg-red-500/10 text-red-400 transition hover:bg-red-500/20 disabled:opacity-60">
-                            <ArrowLeft size={13} />
-                          </button>
-                          <span className={`flex-1 text-xs truncate ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{s.full_name ?? 'Χωρίς όνομα'}</span>
+                        <div key={s.id} className={`flex items-center gap-2 px-3 py-2 transition ${isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-slate-100/60'}`}>
+                          <input
+                            type="checkbox"
+                            className="h-3.5 w-3.5 shrink-0 rounded"
+                            style={checkboxStyle}
+                            checked={selectedRight.has(s.id)}
+                            onChange={() => toggleRight(s.id)}
+                            disabled={saving}
+                          />
+                          <span className={`flex-1 truncate text-xs ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{s.full_name ?? 'Χωρίς όνομα'}</span>
                           <input type="text" inputMode="decimal" placeholder="π.χ. 18.5" value={info.grade}
                             onChange={(e) => setGradeByStudent((prev) => ({ ...prev, [s.id]: { grade: e.target.value, existingResultId: prev[s.id]?.existingResultId } }))}
                             className={gradeInputCls} disabled={saving} />
                         </div>
                       );
-                    })}</div>}
+                    })}
                 </div>
               </div>
             </div>

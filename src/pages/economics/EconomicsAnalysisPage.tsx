@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../auth';
 import { useTheme } from '../../context/ThemeContext';
-import { TrendingUp, TrendingDown, Wallet, Loader2 } from 'lucide-react';
+import { Wallet, Loader2, Banknote, CreditCard, Landmark } from 'lucide-react';
 import ConfirmActionModal from '../../components/ui/ConfirmActionModal';
 
 import type { Mode, TxRow, ExtraExpenseRow } from '../../components/economics/types';
@@ -13,7 +13,8 @@ import {
   buildSeriesForPeriod, getCurrentPeriod, hasAll, hasAny,
 } from '../../components/economics/utils';
 import { PAGE_SIZE, STUDENT_INCOME_TABLE, EXTRA_EXPENSES_TABLE } from '../../components/economics/constants';
-import { SparkArea } from '../../components/economics/analysis/SparkArea';
+import { MultiSeriesChart } from '../../components/economics/analysis/MultiSeriesChart';
+import type { SeriesId } from '../../components/economics/analysis/MultiSeriesChart';
 import { IncomeExpenseDonut } from '../../components/economics/analysis/IncomeExpenseDonut';
 import { EconomicsFilterBar } from '../../components/economics/analysis/EconomicsFilterBar';
 import { EconomicsExtraExpenseForm } from '../../components/economics/analysis/EconomicsExtraExpenseForm';
@@ -44,8 +45,8 @@ export default function EconomicsAnalysisPage() {
   const { year: currentYear, month: currentMonth } = getCurrentPeriod();
 
   const sparkCardCls = isDark
-    ? 'overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 p-5 shadow-xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]'
-    : 'overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-md';
+    ? 'overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 p-3 shadow-xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]'
+    : 'overflow-hidden rounded-2xl border border-slate-200 bg-white p-3 shadow-md';
 
   const incomeAmountCls = isDark ? 'text-emerald-300' : 'text-emerald-600';
   const expenseAmountCls = isDark ? 'text-rose-300' : 'text-rose-600';
@@ -75,6 +76,16 @@ export default function EconomicsAnalysisPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState<ExtraExpenseRow | null>(null);
   const [cancelConfirmRow, setCancelConfirmRow] = useState<TxRow | null>(null);
+  const [outstandingBalance, setOutstandingBalance] = useState(0);
+  const [chartActive, setChartActive] = useState<Set<SeriesId>>(new Set(['income', 'expense', 'owed']));
+
+  const toggleChart = (id: SeriesId) => {
+    setChartActive(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) { if (next.size === 1) return prev; next.delete(id); } else { next.add(id); }
+      return next;
+    });
+  };
 
   function getBounds() {
     if (mode === 'month') return { start: startOfMonthISO(year, month), end: endOfMonthISO(year, month) };
@@ -94,7 +105,7 @@ export default function EconomicsAnalysisPage() {
   async function safeStudentIncomes(start: string, end: string) {
     let res: any = await supabase
       .from(STUDENT_INCOME_TABLE)
-      .select('id, school_id, amount, paid_on, notes, created_at, cancelled_at, subscription_id, student_subscriptions(student_id, students(full_name))')
+      .select('id, school_id, amount, paid_on, notes, created_at, cancelled_at, subscription_id, payment_method, student_subscriptions(student_id, students(full_name))')
       .eq('school_id', schoolId!)
       .gte('paid_on', start)
       .lte('paid_on', end)
@@ -103,7 +114,7 @@ export default function EconomicsAnalysisPage() {
     if (res.error && hasAny(res.error, 'relationship', 'foreign key', 'schema cache')) {
       res = await supabase
         .from(STUDENT_INCOME_TABLE)
-        .select('id, school_id, amount, paid_on, notes, created_at, cancelled_at, subscription_id')
+        .select('id, school_id, amount, paid_on, notes, created_at, cancelled_at, subscription_id, payment_method')
         .eq('school_id', schoolId!)
         .gte('paid_on', start)
         .lte('paid_on', end)
@@ -118,26 +129,58 @@ export default function EconomicsAnalysisPage() {
     return res as { data: ExtraExpenseRow[] | null; error: any };
   }
 
+  async function safeExtraChargePayments(start: string, end: string) {
+    return supabase
+      .from('student_extra_charge_payments')
+      .select('id, school_id, student_id, amount, created_at, cancelled_at, payment_method, students(full_name)')
+      .eq('school_id', schoolId!)
+      .gte('created_at', startOfDayTs(start))
+      .lte('created_at', endOfDayTs(end))
+      .order('created_at', { ascending: false })
+      .limit(800);
+  }
+
   async function loadForBounds(start: string, end: string) {
     if (!schoolId) return [];
-    const [expRes, tutorRes, studentRes] = await Promise.all([safeExtraExpenses(start, end), safeTutorPayments(start, end), safeStudentIncomes(start, end)]);
+    const [expRes, tutorRes, studentRes, extraChargeRes] = await Promise.all([safeExtraExpenses(start, end), safeTutorPayments(start, end), safeStudentIncomes(start, end), safeExtraChargePayments(start, end)]);
     if (expRes.error) throw expRes.error;
     if (tutorRes.error) throw tutorRes.error;
     if (studentRes.error) throw studentRes.error;
     const expRows = (expRes.data ?? []) as ExtraExpenseRow[];
     const mappedExtra: TxRow[] = expRows.map(r => ({ id: r.id, kind: 'expense', source: 'extra_expense', date: (r.occurred_on ?? r.created_at?.slice(0, 10) ?? isoToday()).slice(0, 10), ts: r.created_at ?? '', amount: Number(r.amount) || 0, label: r.name, category: r.name, notes: r.notes ?? null }));
     const mappedTutor: TxRow[] = (tutorRes.data ?? []).map((p: any) => ({ id: p.id, kind: 'expense', source: 'tutor_payment', date: (p.paid_on ?? p.created_at ?? isoToday()).slice(0, 10), ts: p.paid_on ?? p.created_at ?? '', amount: Number(p.net_total) || 0, label: `Πληρωμή Καθηγητή: ${p?.tutors?.full_name ?? 'Καθηγητής'}`, category: 'Καθηγητές', notes: p.notes ?? null }));
-    const mappedStudent: TxRow[] = ((studentRes.data as any[] | null) ?? []).map((p: any) => ({ id: p.id, kind: 'income', source: 'student_subscription', date: (p.paid_on ?? p.created_at ?? isoToday()).slice(0, 10), ts: p.paid_on ?? p.created_at ?? '', amount: Number(p.amount) || 0, label: `Συνδρομή: ${p?.student_subscriptions?.students?.full_name ?? 'Μαθητής'}`, notes: p.notes ?? null, cancelled: !!p.cancelled_at }));
-    return [...mappedStudent, ...mappedTutor, ...mappedExtra].sort((a, b) => {
+    const mappedStudent: TxRow[] = ((studentRes.data as any[] | null) ?? []).map((p: any) => ({ id: p.id, kind: 'income', source: 'student_subscription', date: (p.paid_on ?? p.created_at ?? isoToday()).slice(0, 10), ts: p.paid_on ?? p.created_at ?? '', amount: Number(p.amount) || 0, label: `Συνδρομή: ${p?.student_subscriptions?.students?.full_name ?? 'Μαθητής'}`, notes: p.notes ?? null, cancelled: !!p.cancelled_at, payment_method: p.payment_method ?? null }));
+    const mappedExtraCharges: TxRow[] = ((extraChargeRes.data as any[] | null) ?? []).map((p: any) => ({ id: p.id, kind: 'income', source: 'extra_charge', date: (p.created_at ?? isoToday()).slice(0, 10), ts: p.created_at ?? '', amount: Number(p.amount) || 0, label: `Πρόσθετη χρέωση: ${p?.students?.full_name ?? 'Μαθητής'}`, notes: null, cancelled: !!p.cancelled_at, payment_method: p.payment_method ?? null }));
+    return [...mappedStudent, ...mappedExtraCharges, ...mappedTutor, ...mappedExtra].sort((a, b) => {
       if (a.date !== b.date) return a.date < b.date ? 1 : -1;
       return a.ts < b.ts ? 1 : -1;
     });
   }
 
+  async function loadOutstandingBalance() {
+    if (!schoolId) return;
+    const { data } = await supabase
+      .from('student_subscriptions_with_totals')
+      .select('balance')
+      .eq('school_id', schoolId)
+      .eq('status', 'active');
+    const total = (data ?? []).reduce((sum: number, row: any) => {
+      const b = Number(row.balance ?? 0);
+      return sum + (b > 0 ? b : 0);
+    }, 0);
+    setOutstandingBalance(total);
+  }
+
   async function loadAll() {
     if (!schoolId) return;
     setLoading(true); setError(null);
-    try { setTxRows(await loadForBounds(bounds.start, bounds.end)); }
+    try {
+      const [rows] = await Promise.all([
+        loadForBounds(bounds.start, bounds.end),
+        loadOutstandingBalance(),
+      ]);
+      setTxRows(rows);
+    }
     catch (e: any) { setError(e?.message ?? 'Κάτι πήγε στραβά.'); }
     finally { setLoading(false); }
   }
@@ -156,12 +199,23 @@ export default function EconomicsAnalysisPage() {
     return Array.from(map.entries()).map(([category, amount]) => ({ category, amount })).sort((a, b) => b.amount - a.amount);
   }, [txRows]);
 
+  const visibleTxRows = useMemo(() => txRows.filter(r => !r.cancelled), [txRows]);
+
+  const collectionByMethod = useMemo(() => {
+    const result = { cash: 0, card: 0, bank_transfer: 0 };
+    visibleTxRows.filter(r => r.kind === 'income').forEach(r => {
+      const m = r.payment_method;
+      if (m === 'cash' || m === 'card' || m === 'bank_transfer') result[m] += r.amount;
+      else result.cash += r.amount;
+    });
+    return result;
+  }, [visibleTxRows]);
   const catTotalPages = useMemo(() => Math.max(1, Math.ceil(expenseByCategory.length / PAGE_SIZE)), [expenseByCategory.length]);
-  const txTotalPages = useMemo(() => Math.max(1, Math.ceil(txRows.length / PAGE_SIZE)), [txRows.length]);
+  const txTotalPages = useMemo(() => Math.max(1, Math.ceil(visibleTxRows.length / PAGE_SIZE)), [visibleTxRows.length]);
   useEffect(() => setCatPage(p => Math.min(p, catTotalPages)), [catTotalPages]);
   useEffect(() => setTxPage(p => Math.min(p, txTotalPages)), [txTotalPages]);
   const catPageRows = useMemo(() => { const s = (catPage - 1) * PAGE_SIZE; return expenseByCategory.slice(s, s + PAGE_SIZE); }, [expenseByCategory, catPage]);
-  const txPageRows = useMemo(() => { const s = (txPage - 1) * PAGE_SIZE; return txRows.slice(s, s + PAGE_SIZE); }, [txRows, txPage]);
+  const txPageRows = useMemo(() => { const s = (txPage - 1) * PAGE_SIZE; return visibleTxRows.slice(s, s + PAGE_SIZE); }, [visibleTxRows, txPage]);
 
   // ── Add extra expense via edge function ───────────────────────────────────
   async function addExtraExpense() {
@@ -222,6 +276,8 @@ export default function EconomicsAnalysisPage() {
         await callEdgeFunction('tutorspayments-delete', { payment_id: row.id });
       } else if (row.source === 'extra_expense') {
         await callEdgeFunction('economicsanalysis-delete', { expense_id: row.id });
+      } else if (row.source === 'extra_charge') {
+        await supabase.from('student_extra_charge_payments').update({ cancelled_at: new Date().toISOString() }).eq('id', row.id);
       }
     } catch (e: any) {
       setError(e?.message ?? 'Αποτυχία ακύρωσης.');
@@ -276,35 +332,77 @@ export default function EconomicsAnalysisPage() {
 
       {/* Top grid */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-        <div className="space-y-4 lg:col-span-8">
-
-          {/* Income card */}
+        <div className="flex flex-col gap-4 lg:col-span-8">
+          {/* Combined chart card */}
           <div className={sparkCardCls}>
-            <div className="mb-1 flex items-center gap-2">
-              <TrendingUp className={`h-3.5 w-3.5 ${isDark ? 'text-emerald-400' : 'text-emerald-500'}`}/>
-              <span className={`text-[10px] font-semibold uppercase tracking-widest ${isDark ? 'text-emerald-500' : 'text-emerald-600'}`}>Έσοδα</span>
+            {/* Stat strip */}
+            <div className={`mb-3 flex flex-wrap items-center gap-5 border-b pb-3 ${isDark ? 'border-slate-800/60' : 'border-slate-100'}`}>
+              <div>
+                <p className={`mb-0.5 text-[10px] font-semibold uppercase tracking-widest ${isDark ? 'text-emerald-500' : 'text-emerald-600'}`}>Έσοδα</p>
+                <p className={`text-2xl font-bold tracking-tight ${incomeAmountCls}`}>{money(incomeTotal)}</p>
+              </div>
+              <div className={`h-8 w-px ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`} />
+              <div>
+                <p className={`mb-0.5 text-[10px] font-semibold uppercase tracking-widest ${isDark ? 'text-rose-500' : 'text-rose-600'}`}>Έξοδα</p>
+                <p className={`text-2xl font-bold tracking-tight ${expenseAmountCls}`}>{money(expenseTotal)}</p>
+              </div>
+              <div className={`h-8 w-px ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`} />
+              <div>
+                <p className={`mb-0.5 text-[10px] font-semibold uppercase tracking-widest ${isDark ? 'text-amber-500' : 'text-amber-600'}`}>Οφειλές</p>
+                <p className={`text-2xl font-bold tracking-tight ${isDark ? 'text-amber-300' : 'text-amber-600'}`}>{money(outstandingBalance)}</p>
+              </div>
+
+              {/* Segmented series toggle — top right */}
+              <div className="ml-auto">
+                <div className={`flex items-center divide-x overflow-hidden rounded-lg border text-[10px] font-semibold ${isDark ? 'divide-slate-700 border-slate-700' : 'divide-slate-200 border-slate-200'}`}>
+                  {(['income', 'expense', 'owed'] as SeriesId[]).map(id => {
+                    const on = chartActive.has(id);
+                    const dotColor   = { income: '#10b981', expense: '#f43f5e', owed: '#f59e0b' }[id];
+                    const activeBg   = { income: isDark ? 'rgba(16,185,129,0.15)' : 'rgba(16,185,129,0.10)', expense: isDark ? 'rgba(244,63,94,0.15)' : 'rgba(244,63,94,0.08)', owed: isDark ? 'rgba(245,158,11,0.15)' : 'rgba(245,158,11,0.10)' }[id];
+                    const activeColor = { income: isDark ? '#34d399' : '#059669', expense: isDark ? '#fb7185' : '#e11d48', owed: isDark ? '#fbbf24' : '#d97706' }[id];
+                    const label      = { income: 'Έσοδα', expense: 'Έξοδα', owed: 'Οφειλές' }[id];
+                    return (
+                      <button key={id} type="button" onClick={() => toggleChart(id)}
+                        className="flex items-center gap-1.5 px-3 py-2 transition-colors"
+                        style={on
+                          ? { background: activeBg, color: activeColor }
+                          : { background: 'transparent', color: isDark ? '#475569' : '#94a3b8' }}>
+                        <span className="h-1.5 w-1.5 rounded-full transition-colors" style={{ backgroundColor: on ? dotColor : (isDark ? '#334155' : '#cbd5e1') }} />
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
-            <div className={`text-3xl font-bold tracking-tight ${incomeAmountCls}`}>{money(incomeTotal)}</div>
-            <div className="mt-4">
-              <SparkArea id="spark-income" isDark={isDark} points={incomeSeries}
-                stroke={isDark ? 'rgba(52,211,153,0.95)' : 'rgba(16,185,129,0.90)'}
-                fillTop={isDark ? 'rgba(52,211,153,0.18)' : 'rgba(16,185,129,0.12)'}
-                fillBottom="rgba(52,211,153,0.00)"/>
-            </div>
+            <MultiSeriesChart
+              incomeSeries={incomeSeries}
+              expenseSeries={expenseSeries}
+              owedValue={outstandingBalance}
+              isDark={isDark}
+              active={chartActive}
+            />
           </div>
 
-          {/* Expense card */}
-          <div className={sparkCardCls}>
-            <div className="mb-1 flex items-center gap-2">
-              <TrendingDown className={`h-3.5 w-3.5 ${isDark ? 'text-rose-400' : 'text-rose-500'}`}/>
-              <span className={`text-[10px] font-semibold uppercase tracking-widest ${isDark ? 'text-rose-500' : 'text-rose-600'}`}>Έξοδα</span>
-            </div>
-            <div className={`text-3xl font-bold tracking-tight ${expenseAmountCls}`}>{money(expenseTotal)}</div>
-            <div className="mt-4">
-              <SparkArea id="spark-expense" isDark={isDark} points={expenseSeries}
-                stroke={isDark ? 'rgba(251,113,133,0.95)' : 'rgba(244,63,94,0.85)'}
-                fillTop={isDark ? 'rgba(251,113,133,0.18)' : 'rgba(244,63,94,0.10)'}
-                fillBottom="rgba(251,113,133,0.00)"/>
+          {/* Collection by payment method */}
+          <div className={`${sparkCardCls} flex flex-1 flex-col`}>
+            <p className={`mb-3 text-[10px] font-semibold uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Είσπραξη ανά τρόπο πληρωμής</p>
+            <div className={`flex flex-1 divide-x ${isDark ? 'divide-slate-800' : 'divide-slate-100'}`}>
+              {([
+                { key: 'cash',          label: 'Μετρητά',  Icon: Banknote,   accent: isDark ? '#34d399' : '#059669', bg: isDark ? 'rgba(16,185,129,0.10)' : 'rgba(16,185,129,0.07)' },
+                { key: 'card',          label: 'Κάρτα',    Icon: CreditCard, accent: isDark ? '#818cf8' : '#4f46e5', bg: isDark ? 'rgba(99,102,241,0.10)'  : 'rgba(99,102,241,0.07)'  },
+                { key: 'bank_transfer', label: 'Τράπεζα',  Icon: Landmark,   accent: isDark ? '#fbbf24' : '#d97706', bg: isDark ? 'rgba(245,158,11,0.10)'  : 'rgba(245,158,11,0.07)'  },
+              ] as const).map(({ key, label, Icon, accent, bg }) => (
+                <div key={key} className="flex flex-1 flex-col items-center justify-center gap-3 px-4 py-5">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: bg }}>
+                    <Icon className="h-5 w-5" style={{ color: accent }} />
+                  </span>
+                  <div className="text-center">
+                    <p className={`mb-1 text-[10px] font-semibold uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{label}</p>
+                    <p className={`text-2xl font-bold tracking-tight ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{money(collectionByMethod[key])}</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -319,7 +417,7 @@ export default function EconomicsAnalysisPage() {
             </div>
             <div className={`text-3xl font-bold tracking-tight ${netTotal >= 0 ? (isDark ? 'text-slate-100' : 'text-slate-800') : (isDark ? 'text-rose-400' : 'text-rose-600')}`}>{money(netTotal)}</div>
             <div className={`mt-5 border-t pt-4 ${isDark ? 'border-slate-800/60' : 'border-slate-200'}`}>
-              <IncomeExpenseDonut income={incomeTotal} expense={expenseTotal} isDark={isDark}/>
+              <IncomeExpenseDonut income={incomeTotal} expense={expenseTotal} owed={outstandingBalance} isDark={isDark}/>
             </div>
           </div>
 
@@ -348,7 +446,7 @@ export default function EconomicsAnalysisPage() {
         />
 
         <EconomicsTransactionsCard
-          txRows={txRows}
+          txRows={visibleTxRows}
           txPageRows={txPageRows}
           txPage={txPage}
           txTotalPages={txTotalPages}

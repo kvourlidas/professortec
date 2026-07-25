@@ -46,7 +46,7 @@ export default function StudentCreateModal({ schoolId, levels, onCreated, onClos
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
-  const [specialNotes, setSpecialNotes] = useState('');
+
   const [levelId, setLevelId] = useState('');
   const [password, setPassword] = useState('');
 
@@ -92,7 +92,7 @@ export default function StudentCreateModal({ schoolId, levels, onCreated, onClos
       date_of_birth: displayToIso(dateOfBirth) || null,
       phone: phoneTrimmed || null,
       email: emailTrimmed || null,
-      special_notes: specialNotes.trim() || null,
+
       level_id: levelId || null,
       father_name: fatherName.trim() || null,
       father_date_of_birth: displayToIso(fatherDob) || null,
@@ -208,9 +208,7 @@ export default function StudentCreateModal({ schoolId, levels, onCreated, onClos
                 <FormField label="Email" icon={<Mail className="h-3 w-3" />} isDark={isDark}>
                   <input type="email" className={inputCls} placeholder="π.χ. student@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
                 </FormField>
-                <FormField label="Ειδικες σημειωσεις" icon={<FileText className="h-3 w-3" />} isDark={isDark}>
-                  <input className={inputCls} placeholder="π.χ. αλλεργίες / παρατηρήσεις" value={specialNotes} onChange={(e) => setSpecialNotes(e.target.value)} />
-                </FormField>
+
                 <FormField
                   label="Κωδικος"
                   icon={<Lock className="h-3 w-3" />}

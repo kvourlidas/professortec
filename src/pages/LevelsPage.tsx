@@ -174,10 +174,6 @@ export default function LevelsPage() {
   const emptyTitleCls = isDark ? 'text-sm font-medium text-slate-200' : 'text-sm font-medium text-slate-700';
   const emptySubCls = isDark ? 'mt-1 text-xs text-slate-500' : 'mt-1 text-xs text-slate-400';
 
-  const levelBadgeCls = isDark
-    ? 'inline-flex items-center rounded-full border border-slate-600/50 bg-slate-800/60 px-2.5 py-0.5 text-[11px] font-medium text-slate-200 group-hover:text-white transition-colors'
-    : 'inline-flex items-center rounded-full border border-slate-300 bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium text-slate-700 group-hover:text-slate-900 transition-colors';
-
   return (
     <div className="space-y-6 px-1">
 
@@ -312,7 +308,7 @@ export default function LevelsPage() {
                 {pagedLevels.map((lvl) => (
                   <tr key={lvl.id} className={trHoverCls}>
                     <td className="px-5 py-3.5">
-                      <span className={levelBadgeCls}>{lvl.name}</span>
+                      <span className={`text-xs font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{lvl.name}</span>
                     </td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center justify-end gap-1.5">

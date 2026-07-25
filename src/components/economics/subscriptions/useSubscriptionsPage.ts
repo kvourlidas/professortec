@@ -119,6 +119,7 @@ export function useSubscriptionsPage() {
   // ── Payment modal ──────────────────────────────────────────────────────────
   const [paymentModal,  setPaymentModal]  = useState<{ row: StudentViewRow; allStudentPayments: PaymentRow[] } | null>(null);
   const [paymentInput,  setPaymentInput]  = useState('');
+  const [paymentNote,   setPaymentNote]   = useState('');
   const [payingLoading, setPayingLoading] = useState(false);
   const [cancellingPaymentId, setCancellingPaymentId] = useState<string | null>(null);
 
@@ -359,8 +360,9 @@ export function useSubscriptionsPage() {
         subscription_id: paymentModal.row.sub.id,
         amount: Number(amount.toFixed(2)),
         payment_method: method,
+        notes: paymentNote.trim() || null,
       });
-      setPaymentInput(''); setInfo('Καταχωρήθηκε πληρωμή.');
+      setPaymentInput(''); setPaymentNote(''); setInfo('Καταχωρήθηκε πληρωμή.');
       await load();
       setPaymentModal(null);
     } catch (err: any) { setError(err.message ?? 'Αποτυχία καταχώρησης πληρωμής.'); }
@@ -594,6 +596,7 @@ export function useSubscriptionsPage() {
 
     // payment modal
     paymentModal, setPaymentModal, paymentInput, setPaymentInput,
+    paymentNote, setPaymentNote,
     payingLoading, pmPaid, pmBilled, pmBalance, pmHistoryTotal,
     openPaymentModal, submitPayment,
     cancellingPaymentId, cancelSubscriptionPayment,

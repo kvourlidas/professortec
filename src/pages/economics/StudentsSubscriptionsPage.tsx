@@ -188,16 +188,11 @@ export default function StudentsSubscriptionsPage() {
           row={p.paymentModal?.row ?? null}
           paymentInput={p.paymentInput}
           payingLoading={p.payingLoading}
-          pmPaid={p.pmPaid}
-          pmBilled={p.pmBilled}
-          pmBalance={p.pmBalance}
-          pmHistoryTotal={p.pmHistoryTotal}
+          note={p.paymentNote}
           isDark={p.isDark}
-          cancellingPaymentId={p.cancellingPaymentId}
-          allStudentPayments={p.paymentModal?.allStudentPayments}
           onInputChange={p.setPaymentInput}
+          onNoteChange={p.setPaymentNote}
           onSubmit={p.submitPayment}
-          onCancelPayment={p.cancelSubscriptionPayment}
           onClose={() => p.setPaymentModal(null)}
         />
 

@@ -43,6 +43,8 @@ export default function TestResultsPage() {
   const [gradeByStudent, setGradeByStudent] = useState<Record<string, GradeInfo>>({});
   const [searchLeft, setSearchLeft] = useState('');
   const [searchRight, setSearchRight] = useState('');
+  const [selectedLeft, setSelectedLeft] = useState<Set<string>>(new Set());
+  const [selectedRight, setSelectedRight] = useState<Set<string>>(new Set());
 
   // A test created via the idiaitera per-student flow has no class/level — subject lives per assignment instead.
   const isPrivateTest = !!test && !test.class_id && !test.level_id;
@@ -186,6 +188,35 @@ export default function TestResultsPage() {
     allStudents.filter((s) => assignedIds.has(s.id)),
     [allStudents, assignedIds]);
 
+  // Selection helpers
+  const visibleLeftSelected = availableStudents.filter(s => selectedLeft.has(s.id));
+  const visibleRightSelected = assignedStudents.filter(s => selectedRight.has(s.id));
+  const allLeftChecked = availableStudents.length > 0 && availableStudents.every(s => selectedLeft.has(s.id));
+  const someLeftChecked = availableStudents.some(s => selectedLeft.has(s.id)) && !allLeftChecked;
+  const allRightChecked = assignedStudents.length > 0 && assignedStudents.every(s => selectedRight.has(s.id));
+  const someRightChecked = assignedStudents.some(s => selectedRight.has(s.id)) && !allRightChecked;
+
+  const toggleLeft = (id: string) => setSelectedLeft(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleRight = (id: string) => setSelectedRight(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleAllLeft = () => {
+    if (allLeftChecked) setSelectedLeft(new Set());
+    else setSelectedLeft(new Set(availableStudents.map(s => s.id)));
+  };
+  const toggleAllRight = () => {
+    if (allRightChecked) setSelectedRight(new Set());
+    else setSelectedRight(new Set(assignedStudents.map(s => s.id)));
+  };
+  const moveToAssigned = () => {
+    if (saving || visibleLeftSelected.length === 0) return;
+    setAssignedIds(prev => { const n = new Set(prev); visibleLeftSelected.forEach(s => n.add(s.id)); return n; });
+    setSelectedLeft(new Set());
+  };
+  const moveToAvailable = () => {
+    if (saving || visibleRightSelected.length === 0) return;
+    setAssignedIds(prev => { const n = new Set(prev); visibleRightSelected.forEach(s => n.delete(s.id)); return n; });
+    setSelectedRight(new Set());
+  };
+
   // ── Style helpers ──
   const cardCls = `overflow-hidden rounded-2xl border shadow-sm ${
     isDark ? 'border-slate-700/50 bg-slate-950/40' : 'border-slate-200 bg-white'
@@ -195,9 +226,11 @@ export default function TestResultsPage() {
     isDark ? 'border-slate-700/50 bg-slate-900/30' : 'border-slate-200 bg-slate-50'
   }`;
 
-  const colHeaderCls = `flex items-center justify-between border-b px-4 py-3 ${
+  const colHeaderCls = `border-b px-4 py-3 ${
     isDark ? 'border-slate-800/70' : 'border-slate-200 bg-slate-100'
   }`;
+  const checkboxStyle: React.CSSProperties = { accentColor: 'var(--color-accent)', cursor: 'pointer' };
+  const rowCls = `flex items-center gap-2.5 px-4 py-2.5 transition cursor-pointer select-none ${isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-slate-100/60'}`;
 
   const searchBoxCls = `flex items-center gap-1.5 rounded-lg border px-2 py-1 ${
     isDark ? 'border-slate-700/60 bg-slate-900/60' : 'border-slate-200 bg-white'
@@ -371,29 +404,57 @@ export default function TestResultsPage() {
               {/* Left: all students */}
               <div className={colCls}>
                 <div className={colHeaderCls}>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Όλοι οι μαθητές</span>
-                    <span className={`rounded-full px-1.5 py-px text-[10px] tabular-nums ${isDark ? 'bg-slate-800 text-slate-500' : 'bg-slate-200 text-slate-500'}`}>
-                      {allStudents.length - assignedIds.size}
+                  <div className="flex items-center justify-between">
+                    <span className={`text-xs font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                      Όλοι οι μαθητές
+                      {availableStudents.length > 0 && (
+                        <span className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] tabular-nums ${isDark ? 'bg-slate-800 text-slate-500' : 'bg-slate-200 text-slate-500'}`}>
+                          {availableStudents.length}
+                        </span>
+                      )}
                     </span>
+                    <div className={searchBoxCls}>
+                      <Search className={`h-3 w-3 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+                      <input className={searchInputCls} placeholder="Αναζήτηση..." value={searchLeft} onChange={(e) => setSearchLeft(e.target.value)} disabled={saving} />
+                    </div>
                   </div>
-                  <div className={searchBoxCls}>
-                    <Search className={`h-3 w-3 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-                    <input className={searchInputCls} placeholder="Αναζήτηση..." value={searchLeft} onChange={(e) => setSearchLeft(e.target.value)} disabled={saving} />
+                  <div className="mt-2 flex items-center justify-between">
+                    <label className={`flex items-center gap-1.5 text-[11px] cursor-pointer ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      <input
+                        type="checkbox"
+                        className="h-3.5 w-3.5 rounded"
+                        style={checkboxStyle}
+                        checked={allLeftChecked}
+                        ref={el => { if (el) el.indeterminate = someLeftChecked; }}
+                        onChange={toggleAllLeft}
+                        disabled={saving || availableStudents.length === 0}
+                      />
+                      Επιλογή όλων
+                    </label>
+                    <button type="button" onClick={moveToAssigned}
+                      disabled={saving || visibleLeftSelected.length === 0}
+                      className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition disabled:opacity-30 active:scale-95"
+                      style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', color: 'var(--color-accent)', border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>
+                      {visibleLeftSelected.length > 0 ? `Προσθήκη (${visibleLeftSelected.length})` : 'Προσθήκη'}
+                      <ArrowRight className="h-3 w-3" />
+                    </button>
                   </div>
                 </div>
                 <div className={`flex-1 overflow-y-auto ${dividerCls}`} style={{ maxHeight: 320 }}>
                   {availableStudents.length === 0
                     ? <p className={`px-4 py-5 text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Δεν υπάρχουν διαθέσιμοι μαθητές.</p>
                     : availableStudents.map((s) => (
-                      <div key={s.id} className={`flex items-center justify-between px-4 py-2.5 ${isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-slate-100/60'}`}>
-                        <span className={`truncate text-[13px] ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{s.full_name}</span>
-                        <button type="button"
-                          onClick={() => setAssignedIds((prev) => { const n = new Set(prev); n.add(s.id); return n; })}
+                      <div key={s.id} className={rowCls} onClick={() => !saving && toggleLeft(s.id)}>
+                        <input
+                          type="checkbox"
+                          className="h-3.5 w-3.5 shrink-0 rounded"
+                          style={checkboxStyle}
+                          checked={selectedLeft.has(s.id)}
+                          onChange={() => toggleLeft(s.id)}
+                          onClick={e => e.stopPropagation()}
                           disabled={saving}
-                          className="ml-2 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-emerald-500/40 bg-emerald-500/10 text-emerald-400 transition hover:bg-emerald-500/20 disabled:opacity-60">
-                          <ArrowRight size={13} />
-                        </button>
+                        />
+                        <span className={`truncate text-[13px] ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{s.full_name}</span>
                       </div>
                     ))}
                 </div>
@@ -402,18 +463,41 @@ export default function TestResultsPage() {
               {/* Right: assigned with grades */}
               <div className={colCls}>
                 <div className={colHeaderCls}>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Έγραψαν</span>
-                    {assignedIds.size > 0 && (
-                      <span className="rounded-full px-1.5 py-px text-[10px] tabular-nums"
-                        style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', color: 'var(--color-accent)' }}>
-                        {assignedIds.size}
-                      </span>
-                    )}
+                  <div className="flex items-center justify-between">
+                    <span className={`text-xs font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                      Έγραψαν
+                      {assignedIds.size > 0 && (
+                        <span className="ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] tabular-nums"
+                          style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', color: 'var(--color-accent)' }}>
+                          {assignedIds.size}
+                        </span>
+                      )}
+                    </span>
+                    <div className={searchBoxCls}>
+                      <Search className={`h-3 w-3 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+                      <input className={searchInputCls} placeholder="Αναζήτηση..." value={searchRight} onChange={(e) => setSearchRight(e.target.value)} disabled={saving} />
+                    </div>
                   </div>
-                  <div className={searchBoxCls}>
-                    <Search className={`h-3 w-3 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-                    <input className={searchInputCls} placeholder="Αναζήτηση..." value={searchRight} onChange={(e) => setSearchRight(e.target.value)} disabled={saving} />
+                  <div className="mt-2 flex items-center justify-between">
+                    <button type="button" onClick={moveToAvailable}
+                      disabled={saving || visibleRightSelected.length === 0}
+                      className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition disabled:opacity-30 active:scale-95"
+                      style={{ background: isDark ? 'rgba(239,68,68,0.12)' : 'rgba(239,68,68,0.08)', color: isDark ? '#f87171' : '#dc2626', border: `1px solid ${isDark ? 'rgba(239,68,68,0.25)' : 'rgba(239,68,68,0.20)'}` }}>
+                      <ArrowLeft className="h-3 w-3" />
+                      {visibleRightSelected.length > 0 ? `Αφαίρεση (${visibleRightSelected.length})` : 'Αφαίρεση'}
+                    </button>
+                    <label className={`flex items-center gap-1.5 text-[11px] cursor-pointer ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      <input
+                        type="checkbox"
+                        className="h-3.5 w-3.5 rounded"
+                        style={checkboxStyle}
+                        checked={allRightChecked}
+                        ref={el => { if (el) el.indeterminate = someRightChecked; }}
+                        onChange={toggleAllRight}
+                        disabled={saving || assignedStudents.length === 0}
+                      />
+                      Επιλογή όλων
+                    </label>
                   </div>
                 </div>
                 <div className={`flex-1 overflow-y-auto ${dividerCls}`} style={{ maxHeight: 320 }}>
@@ -422,13 +506,15 @@ export default function TestResultsPage() {
                     : assignedStudents.map((s) => {
                       const info = gradeByStudent[s.id] ?? { grade: '' };
                       return (
-                        <div key={s.id} className={`flex items-center gap-3 px-4 py-2.5 ${isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-slate-100/60'}`}>
-                          <button type="button"
-                            onClick={() => setAssignedIds((prev) => { const n = new Set(prev); n.delete(s.id); return n; })}
+                        <div key={s.id} className={`flex items-center gap-2 px-4 py-2.5 ${isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-slate-100/60'}`}>
+                          <input
+                            type="checkbox"
+                            className="h-3.5 w-3.5 shrink-0 rounded"
+                            style={checkboxStyle}
+                            checked={selectedRight.has(s.id)}
+                            onChange={() => toggleRight(s.id)}
                             disabled={saving}
-                            className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-red-500/40 bg-red-500/10 text-red-400 transition hover:bg-red-500/20 disabled:opacity-60">
-                            <ArrowRight size={13} className="rotate-180" />
-                          </button>
+                          />
                           <span className={`flex-1 truncate text-[13px] ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{s.full_name}</span>
                           <input type="text" inputMode="decimal" placeholder="π.χ. 18"
                             value={info.grade}

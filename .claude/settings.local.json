@@ -68,7 +68,8 @@
       "Read(//c//**)",
       "Bash(npx --no-install chromium-cli --version)",
       "Bash(lsof -ti:5173 -sTCP:LISTEN)",
-      "Bash(xargs -r kill)"
+      "Bash(xargs -r kill)",
+      "Bash(netstat -ano)"
     ]
   }
 }

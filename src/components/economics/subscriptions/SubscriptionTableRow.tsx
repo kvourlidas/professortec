@@ -116,9 +116,10 @@ export function SubscriptionTableRow({ row, isDark, packageById, onPayment, onRe
             </button>
           )}
           <button type="button" onClick={() => onPayment(row)}
-            className="flex h-8 w-8 items-center justify-center rounded-lg border transition border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:shadow-[0_0_10px_rgba(52,211,153,0.45)]"
-            title="Πληρωμή / Ιστορικό">
+            className="flex h-8 items-center justify-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition active:scale-95"
+            style={{ background: '#059669', border: '1px solid #047857', color: '#ffffff' }}>
             <HandCoins className="h-3.5 w-3.5" />
+            Πληρωμή
           </button>
           <button type="button" onClick={() => onDelete(row)}
             className={`flex h-8 w-8 items-center justify-center rounded-lg border transition hover:border-red-500/40 hover:bg-red-950/30 hover:text-red-400 ${isDark ? 'border-slate-700/60 bg-slate-900/30 text-slate-500' : 'border-slate-200 bg-white text-slate-400'}`}

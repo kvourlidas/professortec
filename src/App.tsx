@@ -17,6 +17,7 @@ const TestsPage = lazy(() => import('./pages/TestsPage'));
 const TestResultsPage = lazy(() => import('./pages/TestResultsPage'));
 const GradesPage = lazy(() => import('./pages/GradesPage'));
 const SchoolInfoPage = lazy(() => import('./pages/SchoolInfoPage'));
+const TutorInfoPage = lazy(() => import('./pages/TutorInfoPage'));
 
 const EconomicsAnalysisPage = lazy(() => import('./pages/economics/EconomicsAnalysisPage'));
 const PackageSubscriptionsPage = lazy(() => import('./pages/economics/PackageSubscriptionsPage'));
@@ -93,6 +94,7 @@ export default function App() {
         <Route path={p('/program')} element={<ProtectedRoute><FrontistirioOnly><ProgramPage /></FrontistirioOnly></ProtectedRoute>} />
         <Route path={p('/program/events')} element={<ProtectedRoute><FrontistirioOnly><EventsPage /></FrontistirioOnly></ProtectedRoute>} />
         <Route path={p('/school-info')} element={<ProtectedRoute><FrontistirioOnly><SchoolInfoPage /></FrontistirioOnly></ProtectedRoute>} />
+        <Route path={p('/tutor-info')} element={<ProtectedRoute><TutorInfoPage /></ProtectedRoute>} />
         <Route path={p('/economics/package-subscriptions')} element={<ProtectedRoute><FrontistirioOnly><PackageSubscriptionsPage /></FrontistirioOnly></ProtectedRoute>} />
         <Route path={p('/economics/student-subscriptions')} element={<ProtectedRoute><FrontistirioOnly><StudentsSubscriptionsPage /></FrontistirioOnly></ProtectedRoute>} />
         <Route path={p('/economics/tutors-payments')} element={<ProtectedRoute><FrontistirioOnly><TutorsPaymentsPage /></FrontistirioOnly></ProtectedRoute>} />

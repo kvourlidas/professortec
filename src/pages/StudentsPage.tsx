@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Users, Search, UserPlus, ChevronLeft, ChevronRight,
   User, Phone, Mail, Calendar, FileText, Layers,
-  Loader2, Eye, Trash2,
+  Loader2, Eye, Trash2, Copy, Check,
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient.ts';
 import { useAuth } from '../auth.tsx';
@@ -279,6 +279,18 @@ export default function StudentsPage() {
     [visibleColumns],
   );
 
+  // ── Copy button ──────────────────────────────────────────────────────────
+  const CopyBtn = ({ text }: { text: string }) => {
+    const [copied, setCopied] = useState(false);
+    return (
+      <button type="button" title="Αντιγραφή"
+        onClick={e => { e.stopPropagation(); navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); }); }}
+        className={`ml-1.5 shrink-0 rounded p-0.5 transition-colors ${isDark ? 'text-slate-600 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}>
+        {copied ? <Check className="h-3 w-3 text-green-400" /> : <Copy className="h-3 w-3" />}
+      </button>
+    );
+  };
+
   // ── Cell renderer ────────────────────────────────────────────────────────
   const renderCell = (key: ColumnKey, s: StudentRow) => {
     const empty = <span className={isDark ? 'text-slate-600' : 'text-slate-400'}>—</span>;
@@ -293,16 +305,16 @@ export default function StudentsPage() {
       }
       case 'date_of_birth': return s.date_of_birth ? <span className={`tabular-nums ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{formatDateToGreek(s.date_of_birth)}</span> : empty;
       case 'phone': return s.phone ? <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{s.phone}</span> : empty;
-      case 'email': return s.email ? <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{s.email}</span> : empty;
+      case 'email': return s.email ? <span className="inline-flex items-center"><span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{s.email}</span><CopyBtn text={s.email} /></span> : empty;
       case 'special_notes': return s.special_notes?.trim() ? <span className={`truncate block text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{s.special_notes}</span> : empty;
       case 'father_name': return s.father_name ? <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{s.father_name}</span> : empty;
       case 'father_date_of_birth': return s.father_date_of_birth ? <span className={`tabular-nums ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{formatDateToGreek(s.father_date_of_birth)}</span> : empty;
       case 'father_phone': return s.father_phone ? <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{s.father_phone}</span> : empty;
-      case 'father_email': return s.father_email ? <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{s.father_email}</span> : empty;
+      case 'father_email': return s.father_email ? <span className="inline-flex items-center"><span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{s.father_email}</span><CopyBtn text={s.father_email} /></span> : empty;
       case 'mother_name': return s.mother_name ? <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{s.mother_name}</span> : empty;
       case 'mother_date_of_birth': return s.mother_date_of_birth ? <span className={`tabular-nums ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{formatDateToGreek(s.mother_date_of_birth)}</span> : empty;
       case 'mother_phone': return s.mother_phone ? <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{s.mother_phone}</span> : empty;
-      case 'mother_email': return s.mother_email ? <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{s.mother_email}</span> : empty;
+      case 'mother_email': return s.mother_email ? <span className="inline-flex items-center"><span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{s.mother_email}</span><CopyBtn text={s.mother_email} /></span> : empty;
       case 'created_at': return s.created_at ? <span className={`tabular-nums ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{formatDateToGreek(s.created_at.slice(0, 10))}</span> : empty;
       default: return empty;
     }
