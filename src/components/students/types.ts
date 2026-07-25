@@ -28,14 +28,18 @@ export type SubscriptionRow = {
   package_name: string;
   price: number;
   currency: string;
-  status: 'active' | 'completed' | 'canceled';
+  status: 'active' | 'completed' | 'canceled' | 'renewed';
   starts_on: string | null;
   ends_on: string | null;
   created_at: string | null;
   balance?: number | null;
   paid_amount?: number | null;
   charge_amount?: number | null;
+  discount_pct?: number | null;
   discount_reason?: string | null;
+  notes?: string | null;
+  plan_id?: string | null;
+  period_month?: string | null;
 };
 
 export type ClassEnrollment = {

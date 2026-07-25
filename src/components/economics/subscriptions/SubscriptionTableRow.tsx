@@ -1,7 +1,7 @@
 import { AlertCircle, CalendarDays, CheckCircle2, HandCoins, RefreshCw, Tag, Trash2, XCircle } from 'lucide-react';
 import { CURRENCY_SYMBOL, typeColors } from './constants';
 import { TypeIcon } from './TypeIcon';
-import { money, packageTypeFromName, periodSummary } from './utils';
+import { money, packageTypeFromName, periodSummary, resolvePackageType } from './utils';
 import type { PackageRow, StudentViewRow } from './types';
 
 interface Props {
@@ -26,6 +26,9 @@ export function SubscriptionTableRow({ row, isDark, packageById, onPayment, onRe
   const dispPrice  = Number(sub.price ?? billed);
   const effectiveEndsOn = sub.ends_on ?? (isCustom ? (pkg?.ends_on ?? null) : null);
   const isExpired  = effectiveEndsOn ? new Date(effectiveEndsOn) < new Date() : false;
+  // Monthly plans auto-charge every month, so manual renewal is retired for them.
+  const resolvedType = pkg ? resolvePackageType(pkg) : pkgType;
+  const canRenew   = resolvedType !== 'monthly';
 
   const paidCls    = paid > 0 ? (isDark ? 'text-emerald-400' : 'text-emerald-600') : (isDark ? 'text-slate-400' : 'text-slate-400');
   const balanceCls = balance > 0 ? (isDark ? 'text-amber-400' : 'text-amber-600') : (isDark ? 'text-emerald-400' : 'text-emerald-600');
@@ -105,7 +108,7 @@ export function SubscriptionTableRow({ row, isDark, packageById, onPayment, onRe
       {/* Actions */}
       <td className="px-4 py-3 align-middle">
         <div className="flex items-center justify-end gap-1.5">
-          {isExpired && (
+          {isExpired && canRenew && (
             <button type="button" onClick={() => onRenew(row)}
               className={`flex h-8 w-8 items-center justify-center rounded-lg border transition active:scale-95 hover:shadow-[0_0_10px_rgba(56,189,248,0.45)] ${isDark ? 'border-sky-500/40 bg-sky-500/10 text-sky-400 hover:bg-sky-500/20' : 'border-sky-300 bg-sky-50 text-sky-600 hover:bg-sky-100'}`}
               title="Ανανέωση συνδρομής">

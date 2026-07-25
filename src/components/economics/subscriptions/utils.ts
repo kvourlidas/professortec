@@ -56,6 +56,24 @@ export function monthKeyToRange(monthKey: string): { startISO: string; endISO: s
   const end = new Date(y, m, 0);
   return { startISO: `${y}-${pad2(m)}-01`, endISO: `${y}-${pad2(m)}-${pad2(end.getDate())}` };
 }
+
+// Inclusive list of 'YYYY-MM' keys between two month keys (also 'YYYY-MM').
+export function monthKeyList(startKey: string, endKey: string): string[] {
+  const [ysStr, msStr] = (startKey ?? '').split('-');
+  const [yeStr, meStr] = (endKey ?? '').split('-');
+  const ys = Number(ysStr), ms = Number(msStr), ye = Number(yeStr), me = Number(meStr);
+  if (!ys || !ms || !ye || !me) return [];
+  const keys: string[] = [];
+  let y = ys, m = ms;
+  let guard = 0;
+  while ((y < ye || (y === ye && m <= me)) && guard < 240) {
+    keys.push(`${y}-${pad2(m)}`);
+    m += 1;
+    if (m > 12) { m = 1; y += 1; }
+    guard += 1;
+  }
+  return keys;
+}
 export function formatDateTime(iso: string | null | undefined): string {
   const v = (iso ?? '').trim();
   if (!v) return '—';

@@ -4,7 +4,7 @@ import AppDatePicker from '../../ui/AppDatePicker';
 import { typeColors } from './constants';
 import { CURRENCY_SYMBOL } from './constants';
 import { resolvePackageType, money, typeLabel } from './utils';
-import type { PackageRow, PeriodMode, StudentRow } from './types';
+import type { DiscountScope, PackageRow, StudentRow } from './types';
 
 interface Props {
   open: boolean;
@@ -35,12 +35,20 @@ interface Props {
   discountReason: string;
   setDiscountReason: (v: string) => void;
   assignFinalPrice: number;
-  assignPeriodMode: PeriodMode;
-  setAssignPeriodMode: (m: PeriodMode) => void;
   assignMonthNum: string;
   setAssignMonthNum: (v: string) => void;
   assignYear: string;
   setAssignYear: (v: string) => void;
+  assignEndMonthNum: string;
+  setAssignEndMonthNum: (v: string) => void;
+  assignEndYear: string;
+  setAssignEndYear: (v: string) => void;
+  discountScope: DiscountScope;
+  setDiscountScope: (v: DiscountScope) => void;
+  discountMonths: string[];
+  toggleDiscountMonth: (key: string) => void;
+  planMonthKeys: string[];
+  planTotalPreview: number;
   assignStartsOn: string;
   setAssignStartsOn: (v: string) => void;
   assignEndsOn: string;
@@ -58,7 +66,9 @@ export function AssignRenewModal({
   selPackage, packages, packageQ, setPackageQ, packageDrop, setPackageDrop, onPackageSelect,
   customPrice, setCustomPrice: _setCustomPrice, discountPct, setDiscountPct, discountMode, setDiscountMode,
   discountReason, setDiscountReason,
-  assignPeriodMode, setAssignPeriodMode, assignMonthNum, setAssignMonthNum, assignYear, setAssignYear,
+  assignMonthNum, setAssignMonthNum, assignYear, setAssignYear,
+  assignEndMonthNum, setAssignEndMonthNum, assignEndYear, setAssignEndYear,
+  discountScope, setDiscountScope, discountMonths, toggleDiscountMonth, planMonthKeys, planTotalPreview,
   assignStartsOn, setAssignStartsOn, assignEndsOn, setAssignEndsOn,
   monthOptions, yearOptions, assignPeriodDisplay,
   onClose, onSubmit,
@@ -121,15 +131,6 @@ export function AssignRenewModal({
   const cancelCls = isDark
     ? 'rounded-lg border border-slate-700/60 px-4 py-2 text-xs font-medium text-slate-400 transition hover:border-slate-600 hover:text-slate-200'
     : 'rounded-lg border border-slate-200 px-4 py-2 text-xs font-medium text-slate-500 transition hover:border-slate-300 hover:text-slate-700';
-
-  const periodToggleCls = (active: boolean) => [
-    'flex-1 rounded-md border px-3 py-1.5 text-[11px] font-semibold transition',
-    active
-      ? `border-transparent ${isDark ? 'text-black' : 'text-white'}`
-      : isDark
-        ? 'border-slate-700/60 text-slate-500 hover:border-slate-600 hover:text-slate-300'
-        : 'border-slate-200 text-slate-400 hover:border-slate-300 hover:text-slate-600',
-  ].join(' ');
 
   const discountTabCls = (active: boolean) => [
     'px-2.5 py-1 text-[10px] font-semibold rounded transition',
@@ -348,14 +349,62 @@ export function AssignRenewModal({
                       />
                     </div>
                   )}
+                  {isMonthly && !isCustom && discountPct.trim() !== '' && Number(discountPct.replace(',', '.')) > 0 && (
+                    <div className={`border-t px-3 py-2 ${isDark ? 'border-slate-700/50' : 'border-slate-200'}`}>
+                      <div className="mb-2 flex items-center justify-between">
+                        <span className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Εφαρμογή έκπτωσης</span>
+                        <div className={`flex rounded p-0.5 ${isDark ? 'bg-slate-900/60' : 'bg-slate-200/60'}`}>
+                          <button type="button" className={discountTabCls(discountScope === 'range')}
+                            onClick={() => setDiscountScope('range')}>Όλο το διάστημα</button>
+                          <button type="button" className={discountTabCls(discountScope === 'months')}
+                            onClick={() => setDiscountScope('months')}>Συγκεκριμένοι μήνες</button>
+                        </div>
+                      </div>
+                      {discountScope === 'months' && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {planMonthKeys.length === 0 ? (
+                            <span className={`text-[11px] ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>Επίλεξε πρώτα την περίοδο.</span>
+                          ) : planMonthKeys.map(key => {
+                            const [y, m] = key.split('-');
+                            const label = `${monthOptions.find(o => o.value === m)?.label.slice(0, 3) ?? m} ${y}`;
+                            const checked = discountMonths.includes(key);
+                            return (
+                              <label key={key}
+                                className={`flex cursor-pointer items-center gap-1.5 rounded-md border px-2 py-1 text-[10px] font-medium transition ${
+                                  checked
+                                    ? (isDark ? 'border-transparent text-black' : 'border-transparent text-white')
+                                    : (isDark ? 'border-slate-700/60 text-slate-400 hover:border-slate-600' : 'border-slate-200 text-slate-500 hover:border-slate-300')
+                                }`}
+                                style={checked ? { background: isDark ? accentVar : '#2563eb' } : {}}>
+                                <input type="checkbox" className="hidden" checked={checked} onChange={() => toggleDiscountMonth(key)} />
+                                {label}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-2 flex items-center justify-between">
-                  <span className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Τελική τιμή</span>
+                  <span className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                    {isMonthly && !isCustom ? 'Μηνιαία τιμή' : 'Τελική τιμή'}
+                  </span>
                   <span className="text-sm font-bold tabular-nums" style={{ color: accentVar }}>
                     {selPackage ? `${money(localFinalPrice)} ${CURRENCY_SYMBOL}` : '—'}
                   </span>
                 </div>
+                {isMonthly && !isCustom && planMonthKeys.length > 0 && (
+                  <div className={`mt-1 flex items-center justify-between border-t pt-1.5 ${isDark ? 'border-slate-800/60' : 'border-slate-100'}`}>
+                    <span className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                      Σύνολο περιόδου ({planMonthKeys.length} {planMonthKeys.length === 1 ? 'μήνας' : 'μήνες'})
+                    </span>
+                    <span className={`text-xs font-semibold tabular-nums ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                      {money(planTotalPreview)} {CURRENCY_SYMBOL}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Period */}
@@ -372,19 +421,11 @@ export function AssignRenewModal({
                       </div>
                     )}
 
-                    {/* Monthly */}
+                    {/* Monthly — start/end month; the plan auto-charges every month in between */}
                     {isMonthly && !isCustom && (
                       <div className="space-y-2">
-                        <div className="flex gap-1.5">
-                          {(['month', 'range'] as PeriodMode[]).map(m => (
-                            <button key={m} type="button" onClick={() => setAssignPeriodMode(m)}
-                              className={periodToggleCls(assignPeriodMode === m)}
-                              style={assignPeriodMode === m ? { background: isDark ? accentVar : '#2563eb' } : {}}>
-                              {m === 'month' ? 'Ανά μήνα' : 'Εύρος ημ/νιών'}
-                            </button>
-                          ))}
-                        </div>
-                        {assignPeriodMode === 'month' ? (
+                        <div>
+                          <span className={`mb-1 block text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Μήνας έναρξης</span>
                           <div className="flex gap-2">
                             <select value={assignMonthNum} onChange={e => setAssignMonthNum(e.target.value)} className={`flex-1 ${inputCls}`}>
                               {monthOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -393,12 +434,18 @@ export function AssignRenewModal({
                               {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
                             </select>
                           </div>
-                        ) : (
-                          <div className="flex flex-col gap-2">
-                            <AppDatePicker value={assignStartsOn} onChange={setAssignStartsOn} />
-                            <AppDatePicker value={assignEndsOn} onChange={setAssignEndsOn} />
+                        </div>
+                        <div>
+                          <span className={`mb-1 block text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Μήνας λήξης</span>
+                          <div className="flex gap-2">
+                            <select value={assignEndMonthNum} onChange={e => setAssignEndMonthNum(e.target.value)} className={`flex-1 ${inputCls}`}>
+                              {monthOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                            </select>
+                            <select value={assignEndYear} onChange={e => setAssignEndYear(e.target.value)} className={`w-20 ${inputCls}`}>
+                              {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
+                            </select>
                           </div>
-                        )}
+                        </div>
                       </div>
                     )}
 

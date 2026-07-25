@@ -593,7 +593,7 @@ export default function StudentCardPage() {
         supabase.from('students').select(STUDENT_SELECT).eq('id', id).eq('school_id', schoolId).maybeSingle(),
         supabase.from('levels').select('id, school_id, name, created_at').eq('school_id', schoolId).order('name'),
         supabase.from('student_subscriptions_with_totals')
-          .select('id, school_id, student_id, package_id, package_name, price, currency, status, starts_on, ends_on, created_at, balance, paid_amount, charge_amount')
+          .select('id, school_id, student_id, package_id, package_name, price, currency, status, starts_on, ends_on, created_at, balance, paid_amount, charge_amount, notes, plan_id, period_month, discount_pct')
           .eq('student_id', id).eq('school_id', schoolId).order('created_at', { ascending: false }),
         supabase.from('class_students').select('class_id').eq('student_id', id).eq('school_id', schoolId),
         supabase.from('programs').select('id').eq('school_id', schoolId).order('created_at', { ascending: true }).limit(1).maybeSingle(),
@@ -723,7 +723,7 @@ export default function StudentCardPage() {
     if (!id || !schoolId) return { subs: [], pays: [] };
     const { data: subData } = await supabase
       .from('student_subscriptions_with_totals')
-      .select('id, school_id, student_id, package_id, package_name, price, currency, status, starts_on, ends_on, created_at, balance, paid_amount, charge_amount')
+      .select('id, school_id, student_id, package_id, package_name, price, currency, status, starts_on, ends_on, created_at, balance, paid_amount, charge_amount, notes, plan_id, period_month, discount_pct')
       .eq('student_id', id).eq('school_id', schoolId).order('created_at', { ascending: false });
     const subs = (subData ?? []) as SubscriptionRow[];
     let pays: PaymentRow[] = [];
@@ -1212,6 +1212,9 @@ export default function StudentCardPage() {
                           {statusBadge(sub.status)}
                           <div className="flex flex-col gap-0.5">
                             <span className={`text-xs font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{sub.package_name}</span>
+                            {sub.notes && (
+                              <span className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{sub.notes}</span>
+                            )}
                             {sub.discount_reason && (
                               <span className={`flex items-center gap-1 text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                                 <Tag className="h-2.5 w-2.5 shrink-0" />

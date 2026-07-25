@@ -6,12 +6,18 @@ import {
   insertStudentSubscriptionPayment,
   getSubscriptionPaymentByIdAndSchoolId,
   cancelSubscriptionPaymentById,
+  insertStudentSubscriptionPlan,
+  getActivePlanForStudent,
+  getSubscriptionPlanByIdAndSchoolId,
+  cancelSubscriptionPlanById,
 } from "../repositories/studentSubscriptionRepo.ts";
 import type {
   CreateStudentSubscriptionInput,
   DeleteStudentSubscriptionInput,
   CreateStudentSubscriptionPaymentInput,
   CancelStudentSubscriptionPaymentInput,
+  CreateStudentSubscriptionPlanInput,
+  CancelStudentSubscriptionPlanInput,
 } from "../types/studentSubscription.ts";
 
 export async function createStudentSubscriptionService(
@@ -65,5 +71,38 @@ export async function cancelStudentSubscriptionPaymentService(
 ) {
   await getSubscriptionPaymentByIdAndSchoolId(supabase, input.payment_id, schoolId);
   await cancelSubscriptionPaymentById(supabase, input.payment_id);
+  return { success: true };
+}
+
+export async function createStudentSubscriptionPlanService(
+  supabase: any,
+  schoolId: string,
+  input: CreateStudentSubscriptionPlanInput
+) {
+  const existing = await getActivePlanForStudent(supabase, schoolId, input.student_id);
+  if (existing.length > 0) {
+    throw new Error("Ο μαθητής έχει ήδη ενεργό πρόγραμμα συνδρομής. Δεν επιτρέπεται προσθήκη δεύτερου ενεργού προγράμματος.");
+  }
+
+  const plan = await insertStudentSubscriptionPlan(supabase, schoolId, input);
+
+  // Generate the currently-due month(s) immediately so the first charge
+  // shows up right away instead of waiting for the next page load.
+  const { data: generation, error } = await supabase.rpc("generate_due_subscription_charges", {
+    p_school_id: schoolId,
+    p_plan_id: plan.id,
+  });
+  if (error) throw new Error(error.message ?? "Failed to generate initial subscription charge");
+
+  return { plan, generation };
+}
+
+export async function cancelStudentSubscriptionPlanService(
+  supabase: any,
+  schoolId: string,
+  input: CancelStudentSubscriptionPlanInput
+) {
+  await getSubscriptionPlanByIdAndSchoolId(supabase, input.plan_id, schoolId);
+  await cancelSubscriptionPlanById(supabase, input.plan_id);
   return { success: true };
 }

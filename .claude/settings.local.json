@@ -61,7 +61,14 @@
       "Bash(npx vite *)",
       "Bash(xargs grep -l \"FunctionsHttpError\")",
       "Bash(grep -n \"^export default function\\\\|^function \\\\|^const.*=.*=>\\\\s*{$\\\\|^export function\" src/components/dashboard/DashboardCalendarSection.tsx)",
-      "mcp__claude_ai_Supabase__get_publishable_keys"
+      "mcp__claude_ai_Supabase__get_publishable_keys",
+      "mcp__claude_ai_Supabase__list_migrations",
+      "Bash(supabase --version)",
+      "Bash(echo \"EXIT_CODE=$?\")",
+      "Read(//c//**)",
+      "Bash(npx --no-install chromium-cli --version)",
+      "Bash(lsof -ti:5173 -sTCP:LISTEN)",
+      "Bash(xargs -r kill)"
     ]
   }
 }

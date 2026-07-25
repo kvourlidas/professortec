@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../auth';
 import { useTheme } from '../../../context/ThemeContext';
-import type { PeriodMode, PackageRow, PaymentRow, StudentRow, StudentViewRow, SubscriptionRow } from './types';
+import type { DiscountScope, PackageRow, PaymentRow, StudentRow, StudentViewRow, SubscriptionRow } from './types';
 import {
-  isoToDisplayDate, monthKeyToRange, pad2, parseMoney, resolvePackageType, round2, todayLocalISODate,
+  isoToDisplayDate, monthKeyList, monthKeyToRange, pad2, parseMoney, resolvePackageType, round2, todayLocalISODate,
 } from './utils';
 
 const PAGE_SIZE = 15;
@@ -153,9 +153,12 @@ export function useSubscriptionsPage() {
   const [packageDrop,      setPackageDrop]      = useState(false);
   const [assignStartsOn,   setAssignStartsOn]   = useState('');
   const [assignEndsOn,     setAssignEndsOn]     = useState('');
-  const [assignPeriodMode, setAssignPeriodMode] = useState<PeriodMode>('month');
   const [assignMonthNum,   setAssignMonthNum]   = useState(pad2(new Date().getMonth() + 1));
   const [assignYear,       setAssignYear]       = useState(String(new Date().getFullYear()));
+  const [assignEndMonthNum, setAssignEndMonthNum] = useState(pad2(new Date().getMonth() + 1));
+  const [assignEndYear,     setAssignEndYear]     = useState(String(new Date().getFullYear()));
+  const [discountScope,     setDiscountScope]     = useState<DiscountScope>('range');
+  const [discountMonths,    setDiscountMonths]    = useState<string[]>([]);
 
   // ── Derived ────────────────────────────────────────────────────────────────
   useEffect(() => { setPage(1); setExpiredPage(1); }, [search, payFilter]);
@@ -193,6 +196,28 @@ export function useSubscriptionsPage() {
       return round2(Math.max(0, base - disc));
     }
   }, [selPackage, customPrice, discountPct, discountMode]);
+
+  // ── Multi-month plan preview (monthly, non-custom packages) ────────────────
+  const planMonthKeys = useMemo(() => {
+    return monthKeyList(`${assignYear}-${assignMonthNum}`, `${assignEndYear}-${assignEndMonthNum}`);
+  }, [assignYear, assignMonthNum, assignEndYear, assignEndMonthNum]);
+
+  useEffect(() => {
+    setDiscountMonths(prev => prev.filter(k => planMonthKeys.includes(k)));
+  }, [planMonthKeys]);
+
+  const toggleDiscountMonth = (key: string) => {
+    setDiscountMonths(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
+  };
+
+  const planTotalPreview = useMemo(() => {
+    const base = customPrice.trim() ? parseMoney(customPrice) : Number(selPackage?.price ?? 0);
+    const hasDiscount = parseMoney(discountPct) > 0;
+    return round2(planMonthKeys.reduce((sum, key) => {
+      const discounted = hasDiscount && (discountScope === 'range' || discountMonths.includes(key));
+      return sum + (discounted ? assignFinalPrice : base);
+    }, 0));
+  }, [planMonthKeys, customPrice, selPackage, discountPct, discountScope, discountMonths, assignFinalPrice]);
 
   const showingFrom        = totalCount === 0       ? 0 : (page - 1) * PAGE_SIZE + 1;
   const showingTo          = Math.min(page * PAGE_SIZE, totalCount);
@@ -390,7 +415,9 @@ export function useSubscriptionsPage() {
   const resetModal = () => {
     setSelPackage(null); setCustomPrice(''); setDiscountPct(''); setDiscountMode('pct'); setDiscountReason(''); setPackageQ('');
     setAssignStartsOn(isoToDisplayDate(todayLocalISODate())); setAssignEndsOn('');
-    setAssignPeriodMode('month'); setAssignMonthNum(pad2(new Date().getMonth() + 1)); setAssignYear(String(new Date().getFullYear()));
+    setAssignMonthNum(pad2(new Date().getMonth() + 1)); setAssignYear(String(new Date().getFullYear()));
+    setAssignEndMonthNum(pad2(new Date().getMonth() + 1)); setAssignEndYear(String(new Date().getFullYear()));
+    setDiscountScope('range'); setDiscountMonths([]);
     setAssignError(null); setRenewFromSubId(null);
   };
 
@@ -404,19 +431,22 @@ export function useSubscriptionsPage() {
     const pkg = row.sub?.package_id ? packageById.get(row.sub.package_id) ?? null : null;
     setSelPackage(pkg); setCustomPrice(''); setDiscountPct(''); setDiscountReason(''); setPackageQ('');
     setAssignStartsOn(isoToDisplayDate(todayLocalISODate())); setAssignEndsOn('');
-    setAssignPeriodMode('month'); setAssignMonthNum(pad2(new Date().getMonth() + 1)); setAssignYear(String(new Date().getFullYear()));
+    setAssignMonthNum(pad2(new Date().getMonth() + 1)); setAssignYear(String(new Date().getFullYear()));
+    setAssignEndMonthNum(pad2(new Date().getMonth() + 1)); setAssignEndYear(String(new Date().getFullYear()));
+    setDiscountScope('range'); setDiscountMonths([]);
     setAssignError(null); setAssignOpen(true);
   };
 
   const handlePackageSelect = (pkg: PackageRow) => {
     setSelPackage(pkg); setPackageDrop(false); setPackageQ(''); setCustomPrice(''); setDiscountPct('');
+    setDiscountScope('range'); setDiscountMonths([]);
     const pt = resolvePackageType(pkg);
     if (pt === 'yearly') {
       setAssignStartsOn(pkg.starts_on ? isoToDisplayDate(pkg.starts_on) : '');
       setAssignEndsOn(pkg.ends_on ? isoToDisplayDate(pkg.ends_on) : '');
-      setAssignPeriodMode('range');
     } else if (pt === 'monthly') {
-      setAssignPeriodMode('month');
+      setAssignMonthNum(pad2(new Date().getMonth() + 1)); setAssignYear(String(new Date().getFullYear()));
+      setAssignEndMonthNum(pad2(new Date().getMonth() + 1)); setAssignEndYear(String(new Date().getFullYear()));
     }
   };
 
@@ -427,14 +457,65 @@ export function useSubscriptionsPage() {
     const pkg = selPackage;
     const pt = resolvePackageType(pkg);
     const yearly = pt === 'yearly', monthly = pt === 'monthly';
+
+    // Multi-month plan flow: monthly, non-custom packages. Auto-charges each
+    // month as it starts — no manual renewal needed.
+    if (monthly && !pkg.is_custom) {
+      const startKey = `${assignYear}-${assignMonthNum}`;
+      const endKey = `${assignEndYear}-${assignEndMonthNum}`;
+      if (endKey < startKey) { setAssignError('Ο μήνας λήξης δεν μπορεί να είναι πριν τον μήνα έναρξης.'); return; }
+      const disc = parseMoney(discountPct);
+      const hasDiscount = disc > 0;
+      if (hasDiscount && discountScope === 'months' && discountMonths.length === 0) {
+        setAssignError('Επίλεξε τουλάχιστον έναν μήνα για την έκπτωση, ή άλλαξε σε «Όλο το διάστημα».');
+        return;
+      }
+      if (!isRenew) {
+        const { data: existingActivePlan } = await supabase
+          .from('student_subscription_plans')
+          .select('id')
+          .eq('school_id', schoolId)
+          .eq('student_id', selStudent.id)
+          .eq('status', 'active')
+          .limit(1);
+        if (existingActivePlan && existingActivePlan.length > 0) {
+          setAssignError('Ο μαθητής έχει ήδη ενεργό πρόγραμμα συνδρομής. Δεν επιτρέπεται προσθήκη δεύτερου ενεργού προγράμματος.');
+          return;
+        }
+      }
+
+      setSaving(true); setAssignError(null);
+      try {
+        await callEdgeFunction('student-subscription-plan-create', {
+          student_id: selStudent.id,
+          package_id: pkg.id,
+          package_name: pkg.name,
+          monthly_price: customPrice.trim() ? parseMoney(customPrice) : Number(pkg.price ?? 0),
+          currency: pkg.currency ?? 'EUR',
+          start_month: startKey,
+          end_month: endKey,
+          discount_mode: hasDiscount ? discountMode : 'none',
+          discount_value: hasDiscount ? disc : 0,
+          discount_scope: discountScope,
+          discount_months: hasDiscount ? discountMonths : [],
+          discount_reason: hasDiscount ? (discountReason.trim() || null) : null,
+        });
+        setAssignOpen(false); setInfo('Δημιουργήθηκε το πρόγραμμα συνδρομής.'); await load();
+      } catch (err: any) { setAssignError(err.message ?? 'Αποτυχία αποθήκευσης.'); }
+      setSaving(false);
+      return;
+    }
+
+    // Legacy single-period flow: yearly packages, and any custom package.
     let startsISO: string | null = null, endsISO: string | null = null;
     if (yearly) {
       startsISO = pkg.starts_on ?? null; endsISO = pkg.ends_on ?? null;
       if (!startsISO || !endsISO) { setAssignError('Το ετήσιο πακέτο δεν έχει ορισμένο διάστημα. Συμπλήρωσέ το πρώτα στη σελίδα Πακέτων.'); return; }
     } else if (monthly) {
-      if (assignPeriodMode === 'range') {
-        const s = displayToISODate(assignStartsOn), e = displayToISODate(assignEndsOn);
-        if (!s || !e) { setAssignError('Βάλε έγκυρη έναρξη και λήξη.'); return; }
+      // pkg.is_custom here — prefer the explicit date range from the picker,
+      // fall back to the month/year selects.
+      const s = displayToISODate(assignStartsOn), e = displayToISODate(assignEndsOn);
+      if (s && e) {
         startsISO = s; endsISO = e;
       } else {
         const range = monthKeyToRange(`${assignYear}-${assignMonthNum}`);
@@ -483,8 +564,15 @@ export function useSubscriptionsPage() {
       if (s && e) return `${s} – ${e}`; return null;
     }
     if (pt === 'monthly') {
-      if (assignPeriodMode === 'range' && assignStartsOn && assignEndsOn) return `${assignStartsOn} – ${assignEndsOn}`;
-      if (assignPeriodMode === 'month' && assignMonthNum && assignYear) return `${monthLabel(assignMonthNum)} ${assignYear}`;
+      if (selPackage.is_custom) {
+        if (assignStartsOn && assignEndsOn) return `${assignStartsOn} – ${assignEndsOn}`;
+        return null;
+      }
+      if (assignMonthNum && assignYear && assignEndMonthNum && assignEndYear) {
+        const startLabel = `${monthLabel(assignMonthNum)} ${assignYear}`;
+        const endLabel = `${monthLabel(assignEndMonthNum)} ${assignEndYear}`;
+        return startLabel === endLabel ? startLabel : `${startLabel} – ${endLabel}`;
+      }
     }
     return null;
   };
@@ -521,8 +609,10 @@ export function useSubscriptionsPage() {
     studentQ, setStudentQ, packageQ, setPackageQ,
     studentDrop, setStudentDrop, packageDrop, setPackageDrop,
     assignStartsOn, setAssignStartsOn, assignEndsOn, setAssignEndsOn,
-    assignPeriodMode, setAssignPeriodMode,
     assignMonthNum, setAssignMonthNum, assignYear, setAssignYear,
+    assignEndMonthNum, setAssignEndMonthNum, assignEndYear, setAssignEndYear,
+    discountScope, setDiscountScope, discountMonths, toggleDiscountMonth,
+    planMonthKeys, planTotalPreview,
     monthOptions, yearOptions, monthLabel, assignFinalPrice,
     filtStudents, filtPackages,
     openAssign, openRenew, handlePackageSelect, submitAssign, assignPeriodDisplay,

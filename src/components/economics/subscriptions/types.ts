@@ -1,5 +1,6 @@
-export type PeriodMode = 'range' | 'month';
 export type PackageType = 'monthly' | 'yearly';
+export type DiscountMode = 'none' | 'pct' | 'amount';
+export type DiscountScope = 'range' | 'months';
 export type PackageRow = {
   id: string;
   school_id: string;
@@ -44,7 +45,11 @@ export type SubscriptionRow = {
   charge_amount?: number | null;
   paid_amount?: number | null;
   balance?: number | null;
+  discount_pct?: number | null;
   discount_reason?: string | null;
+  notes?: string | null;
+  plan_id?: string | null;
+  period_month?: string | null;
 };
 export type StudentViewRow = {
   student_id: string;
