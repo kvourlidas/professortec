@@ -643,7 +643,7 @@ export default function StudentCardPage() {
     const slotById = new Map(scheduleSlots.map(s => [s.id, s]));
     const entries: LessonHistoryEntry[] = [];
     accruedCharges.forEach(c => entries.push({ kind: 'charge', date: c.date, amount: c.amount, label: slotById.get(c.programItemId)?.class_title ?? 'Μάθημα' }));
-    lessonPayments.filter(p => !p.cancelled_at).forEach(p => entries.push({ kind: 'payment', date: p.created_at.slice(0, 10), amount: Number(p.amount), label: 'Πληρωμή', payment: p }));
+    lessonPayments.filter(p => !p.cancelled_at).forEach(p => entries.push({ kind: 'payment', date: p.created_at.slice(0, 10), amount: Number(p.amount), label: p.note?.trim() || 'Πληρωμή', payment: p }));
     extraCharges.filter(c => !c.cancelled_at).forEach(c => entries.push({ kind: 'extra_charge', date: c.created_at.slice(0, 10), amount: Number(c.amount), label: c.description, chargeId: c.id }));
     extraChargePayments.filter(p => !p.cancelled_at).forEach(p => {
       const chargeLabel = extraCharges.find(c => c.id === p.charge_id)?.description ?? 'Πρόσθετη χρέωση';

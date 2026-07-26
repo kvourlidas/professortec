@@ -1,6 +1,6 @@
 export type Mode = 'month' | 'year' | 'range';
 export type TxKind = 'income' | 'expense';
-export type TxSource = 'student_subscription' | 'tutor_payment' | 'extra_expense' | 'extra_charge';
+export type TxSource = 'student_subscription' | 'tutor_payment' | 'extra_expense' | 'extra_charge' | 'private_lesson_payment';
 
 export type TxRow = {
   id: string;

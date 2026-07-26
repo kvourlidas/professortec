@@ -73,7 +73,9 @@
       "Bash(python -c ' *)",
       "Bash(grep \"\\\\.ts$\")",
       "Bash(sed -i \"s/bg-\\\\[#252920\\\\]/bg-slate-900/g; s/'#252920'/'#1e293b'/g\" src/pages/student-app/StudentMessagesPage.tsx)",
-      "Bash(sed -i \"s/bg-\\\\[#252920\\\\]/bg-slate-900/g\" src/components/economics/subscriptions/AssignRenewModal.tsx)"
+      "Bash(sed -i \"s/bg-\\\\[#252920\\\\]/bg-slate-900/g\" src/components/economics/subscriptions/AssignRenewModal.tsx)",
+      "Bash(grep -E \"\\\\.ts$\")",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\KOSTAS\\\\Desktop\\\\Projects\\\\ProfessorTec\\\\web-app\\\\src\" -Name \"*nav*\")"
     ]
   }
 }

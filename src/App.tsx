@@ -27,6 +27,7 @@ const TutorsPaymentsPage = lazy(() => import('./pages/economics/TutorsPaymentsPa
 const StudentFeedbackPage = lazy(() => import('./pages/student-app/StudentFeedbackPage'));
 const StudentMessagesPage = lazy(() => import('./pages/student-app/StudentMessagesPage'));
 const SendNotificationsPage = lazy(() => import('./pages/student-app/SendNotificationsPage'));
+const HelpSupportPage = lazy(() => import('./pages/HelpSupportPage'));
 
 import { useAuth } from './auth';
 import Layout from './components/Layout';
@@ -112,6 +113,8 @@ export default function App() {
         <Route path={p('/student-app/feedback')} element={<ProtectedRoute><StudentFeedbackPage /></ProtectedRoute>} />
         <Route path={p('/student-app/messages')} element={<ProtectedRoute><StudentMessagesPage /></ProtectedRoute>} />
         <Route path={p('/student-app/notifications')} element={<ProtectedRoute><SendNotificationsPage /></ProtectedRoute>} />
+
+        <Route path={p('/help')} element={<ProtectedRoute><HelpSupportPage /></ProtectedRoute>} />
 
         <Route path="*" element={<Navigate to={p('/dashboard')} replace />} />
       </Routes>

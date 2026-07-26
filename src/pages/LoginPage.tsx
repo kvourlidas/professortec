@@ -15,17 +15,46 @@ import logoDark from '../assets/edra-primary-transparent-dark(PNG).png';
 import logoLight from '../assets/edra-primary-transparent-light(PNG)(1).png';
 
 type Mode = 'login' | 'signup';
-type SignupStep = 1 | 2 | 3;
+type SignupStep = 1 | 2 | 3 | 4;
+type PlanId = 'free' | 'monthly' | 'yearly';
+
+type Plan = {
+  id: PlanId;
+  name: string;
+  price: string;
+  period?: string;
+  label: string;
+  crossedPrice?: string;
+  monthlyEquiv?: string;
+  highlighted?: boolean;
+};
+
+const FRONTISTIRIO_PLANS: Plan[] = [
+  { id: 'free', name: 'Δωρεάν', price: '€0', label: '1 μήνας δωρεάν' },
+  { id: 'monthly', name: 'Μηνιαίο', price: '€29', period: '/μήνα', label: 'Χωρίς δέσμευση' },
+  { id: 'yearly', name: 'Ετήσιο', price: '€290', period: '/έτος', label: '2 μήνες δωρεάν', crossedPrice: '€348', monthlyEquiv: '~€24,17/μήνα', highlighted: true },
+];
+
+const IDIAITEROU_PLANS: Plan[] = [
+  { id: 'free', name: 'Δωρεάν', price: '€0', label: '1 μήνας δωρεάν' },
+  { id: 'monthly', name: 'Μηνιαίο', price: '€20', period: '/μήνα', label: 'Χωρίς δέσμευση' },
+  { id: 'yearly', name: 'Ετήσιο', price: '€216', period: '/έτος', label: 'Μία πληρωμή τον χρόνο', monthlyEquiv: '€18/μήνα' },
+];
 
 async function saveSchoolInfo(userId: string, info: { name: string; address: string; phone: string; email: string }) {
-  const { data: prof } = await supabase.from('profiles').select('school_id').eq('user_id', userId).maybeSingle();
-  if (!prof?.school_id) return;
+  let schoolId: string | null = null;
+  for (let i = 0; i < 6 && !schoolId; i++) {
+    if (i > 0) await new Promise(r => setTimeout(r, 1000));
+    const { data: prof } = await supabase.from('profiles').select('school_id').eq('user_id', userId).maybeSingle();
+    schoolId = prof?.school_id ?? null;
+  }
+  if (!schoolId) return;
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token;
   if (!token) return;
   await supabase.functions.invoke('schoolinfo-update', {
     body: {
-      school_id: prof.school_id,
+      school_id: schoolId,
       name: info.name.trim(),
       address: info.address.trim() || null,
       phone: info.phone.trim() || null,
@@ -66,6 +95,9 @@ export default function LoginPage() {
   const [infoPhone, setInfoPhone] = useState('');
   const [infoEmail, setInfoEmail] = useState('');
 
+  // signup – step 4
+  const [selectedPlan, setSelectedPlan] = useState<PlanId | null>(null);
+
   const [signupStep, setSignupStep] = useState<SignupStep>(1);
   const [stepError, setStepError] = useState<string | null>(null);
   const [confirmEmail, setConfirmEmail] = useState(false);
@@ -79,7 +111,7 @@ export default function LoginPage() {
     clearAuthError();
     setStepError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [email, pw, signupEmail, signupPw, signupPwConfirm, infoName, accountType, mode]);
+  }, [email, pw, signupEmail, signupPw, signupPwConfirm, infoName, accountType, mode, selectedPlan]);
 
   const onLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -99,14 +131,17 @@ export default function LoginPage() {
       if (!signupEmail.trim()) { setStepError('Το email είναι υποχρεωτικό.'); return; }
       if (signupPw.length < 6) { setStepError('Ο κωδικός πρέπει να έχει τουλάχιστον 6 χαρακτήρες.'); return; }
       if (signupPw !== signupPwConfirm) { setStepError('Οι κωδικοί δεν ταιριάζουν.'); return; }
+      setInfoEmail(prev => prev || signupEmail.trim());
       setSignupStep(3);
+    } else if (signupStep === 3) {
+      if (!infoName.trim()) { setStepError('Το όνομα είναι υποχρεωτικό.'); return; }
+      setSignupStep(4);
     }
   };
 
-  const onSignup = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const onSignup = async () => {
     if (!accountType) return;
-    if (!infoName.trim()) { setStepError('Το όνομα είναι υποχρεωτικό.'); return; }
+    if (!selectedPlan) { setStepError('Επίλεξε πλάνο συνδρομής.'); return; }
     clearAuthError();
     setStepError(null);
     setPending(true);
@@ -152,6 +187,7 @@ export default function LoginPage() {
   }`;
 
   const isFrontistirio = accountType === 'frontistirio';
+  const plans = isFrontistirio ? FRONTISTIRIO_PLANS : IDIAITEROU_PLANS;
 
   return (
     <div
@@ -326,7 +362,7 @@ export default function LoginPage() {
 
                     {/* Step 3 — School / personal info */}
                     {signupStep === 3 && (
-                      <form onSubmit={onSignup} className="space-y-4">
+                      <form onSubmit={e => { e.preventDefault(); goNext(); }} className="space-y-4">
                         <div className="space-y-1">
                           <h1 className="text-base font-bold tracking-tight text-[color:var(--color-text-main)]">
                             {isFrontistirio ? 'Στοιχεία σχολείου' : 'Στοιχεία σας'}
@@ -352,16 +388,10 @@ export default function LoginPage() {
                           <input type="text" value={infoAddress} onChange={e => setInfoAddress(e.target.value)} placeholder="π.χ. Λεωφόρος Αθηνών 42" className={inputCls} />
                         </Field>
 
-                        <div className="grid grid-cols-2 gap-3">
-                          <Field label="Τηλέφωνο" isDark={isDark}>
-                            <Phone className={`absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 pointer-events-none ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-                            <input type="tel" value={infoPhone} onChange={e => setInfoPhone(e.target.value)} placeholder="210 123 4567" className={inputCls} />
-                          </Field>
-                          <Field label="Email" isDark={isDark}>
-                            <Mail className={`absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 pointer-events-none ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-                            <input type="email" value={infoEmail} onChange={e => setInfoEmail(e.target.value)} placeholder="info@school.gr" className={inputCls} />
-                          </Field>
-                        </div>
+                        <Field label="Τηλέφωνο" isDark={isDark}>
+                          <Phone className={`absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 pointer-events-none ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+                          <input type="tel" value={infoPhone} onChange={e => setInfoPhone(e.target.value)} placeholder="210 123 4567" className={inputCls} />
+                        </Field>
 
                         <div className="flex gap-2 pt-1">
                           <button
@@ -373,13 +403,50 @@ export default function LoginPage() {
                           </button>
                           <button
                             type="submit"
-                            disabled={pending}
+                            className="btn-primary flex-1 h-10 flex items-center justify-center gap-2 rounded-lg text-sm font-medium tracking-wide transition-all duration-150 active:scale-[0.98]"
+                          >
+                            Επόμενο
+                          </button>
+                        </div>
+                      </form>
+                    )}
+
+                    {/* Step 4 — Plan selection */}
+                    {signupStep === 4 && (
+                      <div className="space-y-4">
+                        <div className="space-y-1">
+                          <h1 className="text-base font-bold tracking-tight text-[color:var(--color-text-main)]">Επιλογή πλάνου</h1>
+                          <p className="text-xs text-[color:var(--color-text-muted)]">Επίλεξε το πλάνο που σου ταιριάζει καλύτερα.</p>
+                        </div>
+                        <div className="space-y-2.5 pt-1">
+                          {plans.map(plan => (
+                            <PlanCard
+                              key={plan.id}
+                              isDark={isDark}
+                              plan={plan}
+                              selected={selectedPlan === plan.id}
+                              onClick={() => setSelectedPlan(plan.id)}
+                            />
+                          ))}
+                        </div>
+                        <div className="flex gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => setSignupStep(3)}
+                            className={`flex h-10 items-center justify-center rounded-lg border px-4 text-sm transition active:scale-[0.98] ${isDark ? 'border-white/10 text-slate-400 hover:text-slate-200 hover:border-white/20' : 'border-slate-200 text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
+                          >
+                            <ArrowLeft className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={onSignup}
+                            disabled={!selectedPlan || pending}
                             className="btn-primary flex-1 h-10 flex items-center justify-center gap-2 rounded-lg text-sm font-medium tracking-wide transition-all duration-150 active:scale-[0.98] disabled:opacity-60"
                           >
                             {pending ? <><Loader2 className="h-4 w-4 animate-spin" />Εγγραφή…</> : 'Εγγραφή'}
                           </button>
                         </div>
-                      </form>
+                      </div>
                     )}
                   </>
                 )}
@@ -404,7 +471,7 @@ export default function LoginPage() {
 /* ── helpers ── */
 
 function StepIndicator({ step, isDark }: { step: SignupStep; isDark: boolean }) {
-  const steps = ['Τύπος', 'Λογαριασμός', 'Στοιχεία'];
+  const steps = ['Τύπος', 'Λογαριασμός', 'Στοιχεία', 'Πλάνο'];
   return (
     <div className="flex items-center justify-center mb-6">
       {steps.map((label, i) => {
@@ -429,8 +496,8 @@ function StepIndicator({ step, isDark }: { step: SignupStep; isDark: boolean }) 
                 {label}
               </span>
             </div>
-            {i < 2 && (
-              <div className={`h-px w-8 mb-4 mx-2 flex-shrink-0 transition-all duration-200 ${
+            {i < steps.length - 1 && (
+              <div className={`h-px w-6 mb-4 mx-1 flex-shrink-0 transition-all duration-200 ${
                 done ? 'bg-[color:var(--color-accent)]' : isDark ? 'bg-white/[0.08]' : 'bg-slate-200'
               }`} />
             )}
@@ -493,6 +560,103 @@ function AccountTypeCard({
       <span className={selected ? 'text-[color:var(--color-accent)]' : ''}>{icon}</span>
       <span className="text-xs font-bold leading-tight">{title}</span>
       <span className="text-[10px] leading-tight opacity-60">{sub}</span>
+    </button>
+  );
+}
+
+function PlanCard({
+  isDark, plan, selected, onClick,
+}: {
+  isDark: boolean; plan: Plan; selected: boolean; onClick: () => void;
+}) {
+  const isHighlighted = !!plan.highlighted;
+
+  // Per-plan left-panel colour + selected ring
+  const stripe = plan.id === 'free'
+    ? { bg: 'bg-emerald-500', selectedShadow: '0 0 0 2.5px #10b981, 0 4px 16px rgba(16,185,129,0.25)' }
+    : plan.id === 'monthly'
+      ? { bg: 'bg-sky-500', selectedShadow: '0 0 0 2.5px #0ea5e9, 0 4px 16px rgba(14,165,233,0.25)' }
+      : { bg: '', selectedShadow: '' }; // yearly handled via style
+
+  const highlightedSelected: React.CSSProperties = {
+    boxShadow: '0 0 0 2.5px var(--color-accent), 0 4px 20px color-mix(in srgb, var(--color-accent) 35%, transparent)',
+  };
+  const highlightedIdle: React.CSSProperties = {
+    boxShadow: '0 0 0 1.5px color-mix(in srgb, var(--color-accent) 45%, transparent), 0 2px 10px color-mix(in srgb, var(--color-accent) 15%, transparent)',
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="relative w-full flex overflow-hidden rounded-2xl text-left transition-all duration-200 active:scale-[0.99]"
+      style={
+        isHighlighted
+          ? selected ? highlightedSelected : highlightedIdle
+          : selected
+            ? { boxShadow: stripe.selectedShadow }
+            : { boxShadow: isDark ? '0 0 0 1px rgba(255,255,255,0.08)' : '0 0 0 1px rgba(0,0,0,0.08)' }
+      }
+    >
+      {/* ── Left colour strip ── */}
+      <div
+        className={`flex w-[90px] shrink-0 flex-col items-center justify-center gap-0.5 px-2 py-4 ${isHighlighted ? '' : stripe.bg}`}
+        style={isHighlighted ? { background: 'linear-gradient(160deg, var(--color-accent) 0%, color-mix(in srgb, var(--color-accent) 70%, #312e81) 100%)' } : undefined}
+      >
+        {isHighlighted && (
+          <span className="text-[8px] font-bold uppercase tracking-widest text-white/60 text-center leading-none mb-1">
+            ★ best value
+          </span>
+        )}
+        <span className="text-[11px] font-extrabold uppercase tracking-wide text-white text-center leading-tight">
+          {plan.name}
+        </span>
+        {selected && (
+          <span className="mt-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-white/30">
+            <Check className="h-2.5 w-2.5 text-white" />
+          </span>
+        )}
+      </div>
+
+      {/* ── Right content ── */}
+      <div
+        className={`flex flex-1 items-center justify-between px-4 py-3.5 ${
+          isHighlighted
+            ? isDark ? 'bg-[color:var(--color-accent)]/10' : 'bg-[color:var(--color-accent)]/6'
+            : isDark ? 'bg-white/[0.03]' : 'bg-white/75'
+        }`}
+      >
+        <div className="flex flex-col gap-0.5 min-w-0 pr-2">
+          <span className={`text-[11px] font-medium leading-tight ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            {plan.label}
+          </span>
+          {plan.monthlyEquiv && (
+            <span className={`text-[10px] ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
+              {plan.monthlyEquiv}
+            </span>
+          )}
+        </div>
+
+        <div className="flex flex-col items-end shrink-0">
+          <div className="flex items-baseline gap-1.5">
+            {plan.crossedPrice && (
+              <span className={`text-xs line-through ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
+                {plan.crossedPrice}
+              </span>
+            )}
+            <span className={`text-2xl font-extrabold tabular-nums ${
+              isHighlighted ? 'text-[color:var(--color-accent)]' : isDark ? 'text-slate-100' : 'text-slate-800'
+            }`}>
+              {plan.price}
+            </span>
+          </div>
+          {plan.period && (
+            <span className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+              {plan.period}
+            </span>
+          )}
+        </div>
+      </div>
     </button>
   );
 }

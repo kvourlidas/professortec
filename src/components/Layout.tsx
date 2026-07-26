@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { navItems, idiaiterouNavItems, type NavItem } from '../_nav';
-import { Menu, LogOut, ChevronRight, Building2, User } from 'lucide-react';
+import { Menu, LogOut, ChevronRight, Building2, User, HelpCircle } from 'lucide-react';
 import logoLight from '../assets/edra-primary-transparent-light(PNG)(1).png';
 import logoDark from '../assets/edra-primary-transparent-dark(PNG).png';
 import { useTheme } from '../context/ThemeContext';
@@ -300,6 +300,38 @@ export default function Layout({ children }: LayoutProps) {
               : renderLink(item as NavLinkItem)
           )}
         </nav>
+
+        {/* Help & Support — pinned above school/tutor info */}
+        <div
+          className="border-t px-2 py-2"
+          style={{ borderColor: sbBorderColor }}
+        >
+          <NavLink
+            to="/help"
+            className={() =>
+              [
+                'group flex items-center rounded-xl px-3 py-1.5 text-[12px] font-medium transition-all duration-150',
+                location.pathname === '/help'
+                  ? `${sbActiveBg} ${sbActiveText} shadow-sm shadow-black/10`
+                  : `${sbTextMuted} ${sbHoverBg} ${sbHoverText}`,
+              ].join(' ')
+            }
+          >
+            <span className={`flex items-center justify-center ${sidebarCollapsed ? 'mx-auto' : 'mr-2'}`}>
+              <HelpCircle
+                className={`h-3.5 w-3.5 transition-colors ${
+                  location.pathname === '/help'
+                    ? sbIconActive
+                    : `${sbIconInactive} ${sbIconHover}`
+                }`}
+              />
+            </span>
+            {!sidebarCollapsed && <span className="truncate">Βοήθεια & Υποστήριξη</span>}
+            {location.pathname === '/help' && !sidebarCollapsed && (
+              <span className="ml-auto h-1.5 w-1.5 rounded-full" style={{ backgroundColor: sbDotColor }} />
+            )}
+          </NavLink>
+        </div>
 
         {/* School Info — pinned above user card (frontistirio only) */}
         {!isIdiaiterou && (
