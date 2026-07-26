@@ -69,7 +69,11 @@
       "Bash(npx --no-install chromium-cli --version)",
       "Bash(lsof -ti:5173 -sTCP:LISTEN)",
       "Bash(xargs -r kill)",
-      "Bash(netstat -ano)"
+      "Bash(netstat -ano)",
+      "Bash(python -c ' *)",
+      "Bash(grep \"\\\\.ts$\")",
+      "Bash(sed -i \"s/bg-\\\\[#252920\\\\]/bg-slate-900/g; s/'#252920'/'#1e293b'/g\" src/pages/student-app/StudentMessagesPage.tsx)",
+      "Bash(sed -i \"s/bg-\\\\[#252920\\\\]/bg-slate-900/g\" src/components/economics/subscriptions/AssignRenewModal.tsx)"
     ]
   }
 }

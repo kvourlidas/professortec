@@ -43,7 +43,7 @@ serve(async (req) => {
 
     // Verify student belongs to this school
     const { data: student, error: stuErr } = await supabase
-      .from("students").select("id").eq("id", student_id).eq("school_id", schoolId).maybeSingle();
+      .from("students").select("id").eq("id", student_id).eq("school_id", schoolId).is("deleted_at", null).maybeSingle();
     if (stuErr || !student) throw new AppError("Student not found or not accessible", 403, "FORBIDDEN");
 
     // Find or create a default program for this school

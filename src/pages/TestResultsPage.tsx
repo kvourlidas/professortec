@@ -106,7 +106,7 @@ export default function TestResultsPage() {
           { data: studentsData, error: studentsErr },
           { data: resultsData, error: resultsErr },
         ] = await Promise.all([
-          supabase.from('students').select('id, school_id, full_name').eq('school_id', schoolId).order('full_name', { ascending: true }),
+          supabase.from('students').select('id, school_id, full_name').eq('school_id', schoolId).is('deleted_at', null).order('full_name', { ascending: true }),
           supabase.from('test_results').select('id, test_id, student_id, subject_id, grade').eq('test_id', testId),
         ]);
         if (studentsErr) throw studentsErr;

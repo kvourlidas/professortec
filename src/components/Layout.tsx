@@ -26,12 +26,11 @@ type LayoutProps = {
   children: ReactNode;
 };
 
-const APP_NAME = 'Tutor Admin';
 
 export default function Layout({ children }: LayoutProps) {
   const { user, profile, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const [schoolName, setSchoolName] = useState<string | null>(null);
+  const [_schoolName, setSchoolName] = useState<string | null>(null);
   const sidebarCollapsed = false;
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openGroup, setOpenGroup] = useState<string | null>('Μαθήματα');

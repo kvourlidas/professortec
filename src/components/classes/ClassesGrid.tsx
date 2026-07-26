@@ -125,8 +125,12 @@ function ClassCard({
               Μαθητές {students.length > 0 && `(${students.length})`}
             </span>
             <button type="button" onClick={() => onViewStudents({ id: cls.id, title: cls.title })}
-              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition active:scale-95"
-              style={{ background: 'var(--color-accent)', color: 'var(--ch-icon)' }}>
+              className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition active:scale-95 ${
+                isDark
+                  ? 'border border-[color:var(--color-accent)]/40 bg-[color:var(--color-accent)]/10 text-[color:var(--color-accent)] hover:bg-[color:var(--color-accent)]/20'
+                  : 'border border-transparent text-white hover:brightness-110'
+              }`}
+              style={isDark ? {} : { background: 'var(--color-accent)' }}>
               <UserPlus className="h-3 w-3" />
               Προσθήκη Μαθητών
             </button>

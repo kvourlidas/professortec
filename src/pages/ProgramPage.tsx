@@ -116,7 +116,7 @@ export default function ProgramPage() {
           supabase.from('classes').select('id, school_id, title, subject, subject_id, tutor_id').eq('school_id', schoolId).order('title', { ascending: true }),
           supabase.from('subjects').select('id, school_id, name, level_id').eq('school_id', schoolId).order('name', { ascending: true }),
           supabase.from('levels').select('id, school_id, name').eq('school_id', schoolId).order('name', { ascending: true }),
-          supabase.from('tutors').select('id, school_id, full_name').eq('school_id', schoolId).order('full_name', { ascending: true }),
+          supabase.from('tutors').select('id, school_id, full_name').eq('school_id', schoolId).is('deleted_at', null).order('full_name', { ascending: true }),
           supabase.from('program_items').select('*').eq('program_id', activeProgram.id).order('day_of_week', { ascending: true }).order('position', { ascending: true }),
         ]);
 

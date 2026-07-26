@@ -7,7 +7,7 @@ import {
   Users, BookOpen, UserCheck, AlertCircle, ChevronLeft, ChevronRight,
   GraduationCap, TrendingUp, Wallet, Receipt, BarChart3, HandCoins,
   Banknote, CreditCard, Landmark, Tag, Ban, Plus, Trash2,
-  Copy, Check,
+  Copy, Check, Award,
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient.ts';
 import { useAuth } from '../auth.tsx';
@@ -37,13 +37,34 @@ const MONTH_NAMES = [
 ];
 
 const CLASS_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316'];
-const PAYMENTS_PER_PAGE = 5;
 const UNIFIED_HISTORY_PER_PAGE = 10;
 
 const DAY_LABEL: Record<string, string> = {
   monday: 'Δευτέρα', tuesday: 'Τρίτη', wednesday: 'Τετάρτη',
   thursday: 'Πέμπτη', friday: 'Παρασκευή', saturday: 'Σάββατο', sunday: 'Κυριακή',
 };
+
+type TrimesterGradeRow = { id: string; student_id: string; school_year: string; trimester: 1 | 2 | 3; grade: number | null };
+type TrimesterInputs = { 1: string; 2: string; 3: string };
+
+function getCurrentSchoolYear(): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  return now.getMonth() >= 8 ? `${y}-${y + 1}` : `${y - 1}-${y}`;
+}
+function getSchoolYearOptions(schoolCreatedAt: string | null): string[] {
+  const cur = getCurrentSchoolYear();
+  const curStart = Number(cur.split('-')[0]);
+  let firstStart = curStart;
+  if (schoolCreatedAt) {
+    const d = new Date(schoolCreatedAt);
+    const y = d.getFullYear();
+    firstStart = d.getMonth() >= 8 ? y : y - 1;
+  }
+  const years: string[] = [];
+  for (let y = curStart; y >= firstStart; y--) years.push(`${y}-${y + 1}`);
+  return years;
+}
 
 type PaymentRow = { id: string; subscription_id: string; amount: number; created_at: string | null; payment_method?: string | null; cancelled_at?: string | null; notes?: string | null };
 
@@ -88,12 +109,7 @@ function fmt12(t: string | null): string {
   return `${h12}:${String(m).padStart(2, '0')} ${period}`;
 }
 
-function fmtDateTime(iso: string | null): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString('el-GR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
+
 
 function fmtDateLong(iso: string): string {
   const d = new Date(iso + 'T12:00:00');
@@ -509,6 +525,12 @@ export default function StudentCardPage() {
   const [holidayDates, setHolidayDates] = useState<Set<string>>(new Set());
   const [grades, setGrades] = useState<StudentGradeRow[]>([]);
   const [gradesLoading, setGradesLoading] = useState(false);
+  const [schoolCreatedAt, setSchoolCreatedAt] = useState<string | null>(null);
+  const [_trimesterGrades, setTrimesterGrades] = useState<TrimesterGradeRow[]>([]);
+  const [trimesterYear, setTrimesterYear] = useState(getCurrentSchoolYear());
+  const [trimesterInputs, setTrimesterInputs] = useState<TrimesterInputs>({ 1: '', 2: '', 3: '' });
+  const [trimesterDirty, setTrimesterDirty] = useState(false);
+  const [trimesterSaving, setTrimesterSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -521,7 +543,7 @@ export default function StudentCardPage() {
   const [paymentInput, setPaymentInput] = useState('');
   const [payingLoading, setPayingLoading] = useState(false);
   const [payingError, setPayingError] = useState<string | null>(null);
-  const [cancellingPaymentId, setCancellingPaymentId] = useState<string | null>(null);
+  const [_cancellingPaymentId, setCancellingPaymentId] = useState<string | null>(null);
 
   const [editingStudent, setEditingStudent] = useState(false);
   const [savingStudent, setSavingStudent] = useState(false);
@@ -564,7 +586,7 @@ export default function StudentCardPage() {
   const [lessonPaymentNote, setLessonPaymentNote] = useState('');
   const [lessonPaymentSaving, setLessonPaymentSaving] = useState(false);
   const [lessonPaymentError, setLessonPaymentError] = useState<string | null>(null);
-  const [cancellingLessonPaymentId, setCancellingLessonPaymentId] = useState<string | null>(null);
+  const [_cancellingLessonPaymentId, setCancellingLessonPaymentId] = useState<string | null>(null);
   const [lessonHistoryPage, setLessonHistoryPage] = useState(0);
 
   // extra charges (all account types)
@@ -576,12 +598,8 @@ export default function StudentCardPage() {
   const [newChargeNotes, setNewChargeNotes] = useState('');
   const [addChargeSaving, setAddChargeSaving] = useState(false);
   const [addChargeError, setAddChargeError] = useState<string | null>(null);
-  const [payingExtraChargeId, setPayingExtraChargeId] = useState<string | null>(null);
-  const [extraPayAmount, setExtraPayAmount] = useState('');
-  const [extraPayMethod, setExtraPayMethod] = useState<'cash' | 'card' | 'bank_transfer'>('cash');
-  const [extraPaySaving, setExtraPaySaving] = useState(false);
-  const [cancellingExtraChargeId, setCancellingExtraChargeId] = useState<string | null>(null);
-  const [cancellingExtraPaymentId, setCancellingExtraPaymentId] = useState<string | null>(null);
+  const [_cancellingExtraChargeId, setCancellingExtraChargeId] = useState<string | null>(null);
+  const [_cancellingExtraPaymentId, setCancellingExtraPaymentId] = useState<string | null>(null);
 
   const [histContextMenu, setHistContextMenu] = useState<{ x: number; y: number; entry: UnifiedHistoryEntry } | null>(null);
   const [confirmCancelEntry, setConfirmCancelEntry] = useState<UnifiedHistoryEntry | null>(null);
@@ -598,9 +616,6 @@ export default function StudentCardPage() {
   const isIdiaiterou = profile?.account_type === 'idiaiterou';
 
   const activeSub = useMemo(() => subscriptions.find(s => s.status === 'active') ?? null, [subscriptions]);
-  const totalCharged = useMemo(() => subscriptions.reduce((a, s) => a + Number(s.charge_amount ?? s.price ?? 0), 0), [subscriptions]);
-  // Use view-computed paid_amount so totalPaid stays consistent with totalBalance (both from the same DB view)
-  const totalPaid = useMemo(() => subscriptions.reduce((a, s) => a + Number((s as any).paid_amount ?? 0), 0), [subscriptions]);
   const totalBalance = useMemo(() => subscriptions.reduce((a, s) => a + Math.max(0, Number(s.balance ?? 0)), 0), [subscriptions]);
   const hasBalanceData = activeSub && activeSub.balance != null;
   const owes = hasBalanceData && totalBalance > 0;
@@ -685,7 +700,7 @@ export default function StudentCardPage() {
       setLoading(true);
       await supabase.rpc('run_subscription_expiry', { p_school_id: schoolId });
       const [stuRes, lvlRes, subRes, csRes, progRes] = await Promise.all([
-        supabase.from('students').select(STUDENT_SELECT).eq('id', id).eq('school_id', schoolId).maybeSingle(),
+        supabase.from('students').select(STUDENT_SELECT).eq('id', id).eq('school_id', schoolId).is('deleted_at', null).maybeSingle(),
         supabase.from('levels').select('id, school_id, name, created_at').eq('school_id', schoolId).order('name'),
         supabase.from('student_subscriptions_with_totals')
           .select('id, school_id, student_id, package_id, package_name, price, currency, status, starts_on, ends_on, created_at, balance, paid_amount, charge_amount, notes, plan_id, period_month, discount_pct')
@@ -827,10 +842,57 @@ export default function StudentCardPage() {
         setExtraChargePayments((ecpData ?? []) as ExtraChargePaymentRow[]);
       }
 
+      const { data: schoolData } = await supabase
+        .from('schools').select('created_at').eq('id', schoolId).maybeSingle();
+      if (schoolData?.created_at) setSchoolCreatedAt(schoolData.created_at);
+
       setLoading(false);
     };
     load();
   }, [id, schoolId]);
+
+  useEffect(() => {
+    if (!id || !schoolId) return;
+    const loadTrimester = async () => {
+      const { data } = await supabase
+        .from('student_trimester_grades')
+        .select('id, student_id, school_year, trimester, grade')
+        .eq('school_id', schoolId)
+        .eq('student_id', id)
+        .eq('school_year', trimesterYear);
+      const rows = (data ?? []) as TrimesterGradeRow[];
+      setTrimesterGrades(rows);
+      const inputs: TrimesterInputs = { 1: '', 2: '', 3: '' };
+      rows.forEach(g => { inputs[g.trimester] = g.grade !== null ? String(g.grade) : ''; });
+      setTrimesterInputs(inputs);
+      setTrimesterDirty(false);
+    };
+    loadTrimester();
+  }, [id, schoolId, trimesterYear]);
+
+  const saveTrimesterGrades = async () => {
+    if (!schoolId || !id) return;
+    setTrimesterSaving(true);
+    try {
+      const upserts = ([1, 2, 3] as const).map(t => {
+        const raw = trimesterInputs[t].replace(',', '.');
+        const gradeVal = raw === '' ? null : parseFloat(raw);
+        return {
+          school_id: schoolId,
+          student_id: id,
+          school_year: trimesterYear,
+          trimester: t,
+          grade: raw === '' || isNaN(gradeVal as number) ? null : gradeVal,
+          updated_at: new Date().toISOString(),
+        };
+      });
+      await supabase.from('student_trimester_grades').upsert(upserts, { onConflict: 'school_id,student_id,school_year,trimester' });
+      setTrimesterDirty(false);
+    } catch (err) {
+      console.error('Error saving trimester grades', err);
+    }
+    setTrimesterSaving(false);
+  };
 
   const reloadSubsAndPayments = async (): Promise<{ subs: SubscriptionRow[]; pays: PaymentRow[] }> => {
     if (!id || !schoolId) return { subs: [], pays: [] };
@@ -889,26 +951,7 @@ export default function StudentCardPage() {
       });
       if (res.error) throw new Error(res.error.message ?? 'Error');
       // Reload from DB — refreshes subscriptions (view-computed balance/paid) and payments
-      const { subs, pays } = await reloadSubsAndPayments();
-      // Sync open modal with the freshly loaded view data so all stats match
-      setPaymentModal(prev => {
-        if (!prev) return null;
-        const subId = prev.row.sub.id;
-        const freshSub = subs.find(s => s.id === subId);
-        const freshPays = pays.filter(p => p.subscription_id === subId);
-        const allStudentPayments = [...pays].sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''));
-        return {
-          ...prev,
-          row: {
-            ...prev.row,
-            sub: freshSub ?? prev.row.sub,
-            payments: freshPays as any,
-            paid: Number((freshSub as any)?.paid_amount ?? 0),
-            balance: Number(freshSub?.balance ?? prev.row.balance),
-          },
-          allStudentPayments,
-        };
-      });
+      await reloadSubsAndPayments();
     } catch (err: any) {
       console.error('Cancel payment error:', err?.message);
     } finally {
@@ -993,21 +1036,6 @@ export default function StudentCardPage() {
     setAddChargeSaving(false);
     if (error) { setAddChargeError('Αποτυχία καταχώρησης χρέωσης.'); return; }
     setAddChargeOpen(false); setNewChargeDesc(''); setNewChargeAmount(''); setNewChargeNotes('');
-    await reloadExtraCharges();
-  };
-
-  const payExtraCharge = async (chargeId: string) => {
-    if (!schoolId || !id) return;
-    const amt = Number(extraPayAmount.replace(',', '.'));
-    if (!extraPayAmount.trim() || Number.isNaN(amt) || amt <= 0) return;
-    setExtraPaySaving(true);
-    const { error } = await supabase.from('student_extra_charge_payments').insert({
-      school_id: schoolId, student_id: id, charge_id: chargeId,
-      amount: Number(amt.toFixed(2)), payment_method: extraPayMethod,
-    });
-    setExtraPaySaving(false);
-    if (error) return;
-    setExtraPayAmount(''); setPayingExtraChargeId(null);
     await reloadExtraCharges();
   };
 
@@ -1477,7 +1505,7 @@ export default function StudentCardPage() {
                               onContextMenu={(e) => { e.preventDefault(); setHistContextMenu({ x: e.clientX, y: e.clientY, entry }); }}
                               className={`select-none cursor-context-menu flex items-center justify-between px-3 py-2 ${isDark ? 'bg-slate-950/20' : 'bg-white'}`}>
                               <div className="flex items-center gap-2 min-w-0">
-                                <span className={`shrink-0 h-1.5 w-1.5 rounded-full ${isCharge ? (isDark ? 'bg-sky-400' : 'bg-sky-500') : (isDark ? 'bg-emerald-400' : 'bg-emerald-500')}`} />
+                                <span className={`shrink-0 h-1.5 w-1.5 rounded-full ${isCharge ? (isDark ? 'bg-amber-400' : 'bg-amber-500') : (isDark ? 'bg-emerald-400' : 'bg-emerald-500')}`} />
                                 <span className={`shrink-0 text-[11px] tabular-nums ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{entry.date ? formatDateToGreek(entry.date) : '—'}</span>
                                 {label && <span className={`truncate text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>· {label}</span>}
                               </div>
@@ -1485,7 +1513,7 @@ export default function StudentCardPage() {
                                 {entry.kind === 'payment' && method === 'card' && <span className={`flex items-center gap-1 text-[11px] font-medium ${isDark ? 'text-sky-400' : 'text-sky-600'}`}><CreditCard className="h-3 w-3" />Κάρτα</span>}
                                 {entry.kind === 'payment' && method === 'cash' && <span className={`flex items-center gap-1 text-[11px] font-medium ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}><Banknote className="h-3 w-3" />Μετρητά</span>}
                                 {entry.kind === 'payment' && method === 'bank_transfer' && <span className={`flex items-center gap-1 text-[11px] font-medium ${isDark ? 'text-violet-400' : 'text-violet-600'}`}><Landmark className="h-3 w-3" />Τράπεζα</span>}
-                                <span className={`text-xs font-semibold tabular-nums ${isCharge ? (isDark ? 'text-sky-300' : 'text-sky-700') : (isDark ? 'text-emerald-300' : 'text-emerald-700')}`}>
+                                <span className={`text-xs font-semibold tabular-nums ${isCharge ? (isDark ? 'text-amber-400' : 'text-amber-600') : (isDark ? 'text-emerald-300' : 'text-emerald-700')}`}>
                                   {isCharge ? '−' : '+'}{entry.amount.toFixed(2)}€
                                 </span>
                               </div>
@@ -1560,7 +1588,7 @@ export default function StudentCardPage() {
                               onContextMenu={(e) => { e.preventDefault(); setLessonContextMenu({ x: e.clientX, y: e.clientY, entry }); }}
                               className={`select-none cursor-context-menu flex items-center justify-between px-3 py-2 ${isDark ? 'bg-slate-950/20' : 'bg-white'}`}>
                               <div className="flex items-center gap-2 min-w-0">
-                                <span className={`shrink-0 h-1.5 w-1.5 rounded-full ${isCharge ? (isDark ? 'bg-sky-400' : 'bg-sky-500') : (isDark ? 'bg-emerald-400' : 'bg-emerald-500')}`} />
+                                <span className={`shrink-0 h-1.5 w-1.5 rounded-full ${isCharge ? (isDark ? 'bg-amber-400' : 'bg-amber-500') : (isDark ? 'bg-emerald-400' : 'bg-emerald-500')}`} />
                                 <span className={`shrink-0 text-[11px] tabular-nums ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{formatDateToGreek(entry.date)}</span>
                                 <span className={`truncate text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>· {entry.label}</span>
                               </div>
@@ -1568,7 +1596,7 @@ export default function StudentCardPage() {
                                 {method === 'card' && <span className={`flex items-center gap-1 text-[11px] font-medium ${isDark ? 'text-sky-400' : 'text-sky-600'}`}><CreditCard className="h-3 w-3" />Κάρτα</span>}
                                 {method === 'cash' && <span className={`flex items-center gap-1 text-[11px] font-medium ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}><Banknote className="h-3 w-3" />Μετρητά</span>}
                                 {method === 'bank_transfer' && <span className={`flex items-center gap-1 text-[11px] font-medium ${isDark ? 'text-violet-400' : 'text-violet-600'}`}><Landmark className="h-3 w-3" />Τράπεζα</span>}
-                                <span className={`text-xs font-semibold tabular-nums ${isCharge ? (isDark ? 'text-sky-300' : 'text-sky-700') : (isDark ? 'text-emerald-300' : 'text-emerald-700')}`}>
+                                <span className={`text-xs font-semibold tabular-nums ${isCharge ? (isDark ? 'text-amber-400' : 'text-amber-600') : (isDark ? 'text-emerald-300' : 'text-emerald-700')}`}>
                                   {isCharge ? '−' : '+'}{entry.amount.toFixed(2)}€
                                 </span>
                               </div>
@@ -1644,6 +1672,74 @@ export default function StudentCardPage() {
               <p className={`mt-2 text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Δεν έχει οριστεί ωράριο. Πάτησε «Προσθήκη» για να ορίσεις.</p>
             )}
           </DashCard>
+
+          {/* ── Trimester Grades (frontistiria only) ── */}
+          {!isIdiaiterou && <DashCard title="Γενικοί Βαθμοί Τριμήνου" icon={<Award className="h-3.5 w-3.5" />} isDark={isDark}>
+            {/* Year selector */}
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <select
+                value={trimesterYear}
+                onChange={e => setTrimesterYear(e.target.value)}
+                disabled={trimesterSaving}
+                className={`h-7 rounded-lg border px-2 text-xs outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 focus:border-[color:var(--color-accent)] ${isDark ? 'border-slate-700/70 bg-slate-900/60 text-slate-200' : 'border-slate-200 bg-slate-50 text-slate-700'}`}
+              >
+                {getSchoolYearOptions(schoolCreatedAt).map(y => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+              {trimesterDirty && (
+                <button
+                  type="button"
+                  onClick={saveTrimesterGrades}
+                  disabled={trimesterSaving}
+                  className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition disabled:opacity-50 active:scale-95"
+                  style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', color: 'var(--color-accent)', border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)' }}
+                >
+                  {trimesterSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                  Αποθήκευση
+                </button>
+              )}
+            </div>
+            {/* 3 trimester boxes */}
+            <div className="grid grid-cols-3 gap-2">
+              {([1, 2, 3] as const).map(t => (
+                <div key={t} className={`flex flex-col items-center gap-2 rounded-xl border p-3 ${isDark ? 'border-slate-700/60 bg-slate-900/40' : 'border-slate-200 bg-slate-50'}`}>
+                  <p className={`text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t}ο Τρίμηνο</p>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={trimesterInputs[t]}
+                    onChange={e => {
+                      const v = e.target.value.replace(',', '.');
+                      setTrimesterInputs(prev => ({ ...prev, [t]: v }));
+                      setTrimesterDirty(true);
+                    }}
+                    disabled={trimesterSaving}
+                    placeholder="—"
+                    className={`h-9 w-full rounded-lg border text-center text-sm font-bold outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 focus:border-[color:var(--color-accent)] disabled:opacity-50 ${isDark ? 'border-slate-700/70 bg-slate-800/60 text-slate-100 placeholder-slate-600' : 'border-slate-200 bg-white text-slate-800 placeholder-slate-300'}`}
+                    style={trimesterInputs[t] ? { color: 'var(--color-accent)' } : undefined}
+                  />
+                </div>
+              ))}
+            </div>
+            {/* Average */}
+            {(() => {
+              const vals = ([1, 2, 3] as const)
+                .map(t => { const v = trimesterInputs[t].replace(',', '.'); const n = parseFloat(v); return v !== '' && !isNaN(n) ? n : null; })
+                .filter((v): v is number => v !== null);
+              if (vals.length === 0) return null;
+              const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+              return (
+                <div className={`mt-3 flex items-center justify-between rounded-xl border px-3 py-2 ${isDark ? 'border-slate-700/60 bg-slate-900/40' : 'border-slate-200 bg-slate-50'}`}>
+                  <div>
+                    <p className={`text-[11px] font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Μέσος όρος τριμήνων</p>
+                    <p className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Βασισμένος σε {vals.length} {vals.length === 1 ? 'τρίμηνο' : 'τρίμηνα'}</p>
+                  </div>
+                  <span className="text-xl font-bold" style={{ color: 'var(--color-accent)' }}>{avg.toFixed(1)}</span>
+                </div>
+              );
+            })()}
+          </DashCard>}
 
           {/* ── Grades ── */}
           <DashCard title="Βαθμοι" icon={<BarChart3 className="h-3.5 w-3.5" />} isDark={isDark}>

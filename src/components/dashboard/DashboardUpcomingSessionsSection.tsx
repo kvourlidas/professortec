@@ -91,11 +91,11 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
       try {
         const [{ data: cd }, { data: td }, { data: sd }, { data: std }, { data: hd }, { data: stud }, { data: lvd }] = await Promise.all([
           supabase.from('classes').select('id, title, subject, subject_id, tutor_id').eq('school_id', schoolId),
-          supabase.from('tutors').select('id, full_name').eq('school_id', schoolId),
+          supabase.from('tutors').select('id, full_name').eq('school_id', schoolId).is('deleted_at', null),
           supabase.from('subjects').select('id, name').eq('school_id', schoolId),
           supabase.from('subject_tutors').select('subject_id, tutor_id').eq('school_id', schoolId),
           supabase.from('school_holidays').select('date').eq('school_id', schoolId),
-          supabase.from('students').select('id, full_name').eq('school_id', schoolId),
+          supabase.from('students').select('id, full_name').eq('school_id', schoolId).is('deleted_at', null),
           supabase.from('levels').select('id, name').eq('school_id', schoolId),
         ]);
         setClasses((cd ?? []) as ClassRow[]);

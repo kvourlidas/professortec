@@ -66,7 +66,7 @@ export default function DashboardMetricsSection({ schoolId }: Props) {
     const load = async () => {
       setSubs((p) => ({ ...p, loading: true, error: null }));
       try {
-        const totalRes = await supabase.from('students').select('id', { count: 'exact', head: true }).eq('school_id', schoolId);
+        const totalRes = await supabase.from('students').select('id', { count: 'exact', head: true }).eq('school_id', schoolId).is('deleted_at', null);
         const totalStudents = totalRes.count ?? 0;
         const activeRes = await supabase.from('v_active_students_with_subscription').select('student_id', { count: 'exact', head: true }).eq('school_id', schoolId);
         const activeWithSub = activeRes.count ?? 0;

@@ -118,6 +118,7 @@ export default function TutorsPaymentsPage() {
   const [baseGross, setBaseGross] = useState(0);
   const [baseNet, setBaseNet] = useState(0);
   const [paymentDesc, setPaymentDesc] = useState('');
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; payment: TutorPaymentRow } | null>(null);
 
   // Bonus form
   const [bonusKind, setBonusKind] = useState<'percent' | 'amount'>('percent');
@@ -170,7 +171,7 @@ export default function TutorsPaymentsPage() {
     setLoading(true); setError(null);
     try {
       const [tutorsRes, profilesRes] = await Promise.all([
-        supabase.from('tutors').select('id,school_id,full_name').eq('school_id', schoolId).order('full_name', { ascending: true }),
+        supabase.from('tutors').select('id,school_id,full_name').eq('school_id', schoolId).is('deleted_at', null).order('full_name', { ascending: true }),
         supabase.from('tutor_payment_profiles').select('*').eq('school_id', schoolId),
       ]);
       if (tutorsRes.error) throw tutorsRes.error;
@@ -190,7 +191,7 @@ export default function TutorsPaymentsPage() {
     try {
       const { data, error } = await supabase.from('tutor_payments').select('*').eq('school_id', schoolId).eq('tutor_id', tutorId).order('created_at', { ascending: false }).limit(120);
       if (error) throw error;
-      setPayments((data ?? []) as TutorPaymentRow[]); setHistoryPage(0);
+      setPayments(((data ?? []) as TutorPaymentRow[]).filter(p => p.status !== 'canceled')); setHistoryPage(0);
     } catch (e: any) { setError(e?.message ?? 'Κάτι πήγε στραβά.'); }
   }
 
@@ -274,15 +275,13 @@ export default function TutorsPaymentsPage() {
     if (!selectedTutorId || !deletingPayment) return;
     const paymentId = deletingPayment.id;
     setBusy(true); setError(null);
-    // Optimistically mark as cancelled so the row stays visible immediately
-    setPayments(prev => prev.map(p => p.id === paymentId ? { ...p, status: 'canceled' as const } : p));
+    const removed = payments.find(p => p.id === paymentId);
+    setPayments(prev => prev.filter(p => p.id !== paymentId));
     closeDeletePayment();
     try {
       await callEdgeFunction('tutorspayments-delete', { payment_id: paymentId });
-      loadTutorDetails(selectedTutorId).catch(() => {});
     } catch (e: any) {
-      // Revert optimistic update on failure
-      setPayments(prev => prev.map(p => p.id === paymentId ? { ...p, status: 'paid' as const } : p));
+      if (removed) setPayments(prev => [removed, ...prev].sort((a, b) => (b.paid_on ?? b.created_at) > (a.paid_on ?? a.created_at) ? 1 : -1));
       setError(e?.message ?? 'Αποτυχία ακύρωσης.');
     }
     finally { setBusy(false); }
@@ -606,19 +605,20 @@ export default function TutorsPaymentsPage() {
                   <History className="h-3.5 w-3.5" style={{ color: 'var(--ch-icon)' }} />
                 </div>
                 <span className="text-sm font-bold" style={{ color: 'var(--ch-text)' }}>Ιστορικό Πληρωμών</span>
-                {payments.length > 0 && (
-                  <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${isDark ? 'border-slate-700/60 bg-slate-800/60 text-slate-400' : 'border-slate-200 bg-slate-100 text-slate-500'}`}>
-                    {payments.length}
-                  </span>
-                )}
               </div>
               {payments.length > PAGE_SIZE && (
                 <div className="flex items-center gap-1.5">
-                  <button type="button" onClick={() => setHistoryPage(p => Math.max(0, p - 1))} disabled={historyPage === 0} className={paginationBtnCls}><ChevronLeft className="h-3.5 w-3.5" /></button>
-                  <span className={`min-w-[52px] text-center text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                    <span className={`font-bold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{historyPage + 1}</span> / {totalPages}
+                  <button type="button" onClick={() => setHistoryPage(p => Math.max(0, p - 1))} disabled={historyPage === 0}
+                    className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/30 bg-white/15 text-white transition hover:bg-white/25 disabled:opacity-30">
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                  </button>
+                  <span className="min-w-[44px] text-center text-xs font-semibold text-white/90">
+                    {historyPage + 1} / {totalPages}
                   </span>
-                  <button type="button" onClick={() => setHistoryPage(p => Math.min(totalPages - 1, p + 1))} disabled={historyPage >= totalPages - 1} className={paginationBtnCls}><ChevronRight className="h-3.5 w-3.5" /></button>
+                  <button type="button" onClick={() => setHistoryPage(p => Math.min(totalPages - 1, p + 1))} disabled={historyPage >= totalPages - 1}
+                    className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/30 bg-white/15 text-white transition hover:bg-white/25 disabled:opacity-30">
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
                 </div>
               )}
             </div>
@@ -655,73 +655,49 @@ export default function TutorsPaymentsPage() {
                   <div className="col-span-2">Καθαρά</div>
                   <div className="col-span-2">Μικτά</div>
                   <div className="col-span-2">Μπόνους</div>
-                  <div className="col-span-2">Κατάσταση</div>
-                  <div className="col-span-2 text-right">Ενέργειες</div>
+                  <div className="col-span-3">Κατάσταση</div>
+                  <div className="col-span-1" />
                 </div>
 
                 {/* Rows */}
                 <div>
-                  {pagePayments.map((p, i) => {
-                    const isCancelled = p.status === 'canceled';
-                    const mutedText = isDark ? 'text-slate-500' : 'text-slate-400';
-                    return (
+                  {pagePayments.map((p, i) => (
                       <div key={p.id}
-                        className={`history-row relative grid grid-cols-12 items-center px-5 py-3 text-xs transition-colors ${
+                        className={`history-row grid grid-cols-12 items-center px-5 py-3 text-xs transition-colors cursor-default select-none ${
                           i > 0 ? (isDark ? 'border-t border-slate-800/40' : 'border-t border-slate-100') : ''
-                        } ${isCancelled
-                            ? (isDark ? 'bg-red-950/10' : 'bg-red-50/40')
-                            : (isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-slate-50/60')
-                        }`}
-                        style={{ animationDelay: `${i * 25}ms` }}>
+                        } ${isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-slate-50/60'}`}
+                        style={{ animationDelay: `${i * 25}ms` }}
+                        onContextMenu={e => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, payment: p }); }}>
 
-                        {/* Strike-through line for cancelled rows */}
-                        {isCancelled && (
-                          <div className="pointer-events-none absolute inset-x-0 top-1/2 h-[1.5px] -translate-y-1/2"
-                            style={{ background: 'rgba(239,68,68,0.5)' }} />
-                        )}
-
-                        <div className={`col-span-2 tabular-nums text-[11px] ${isCancelled ? mutedText : (isDark ? 'text-slate-400' : 'text-slate-500')}`}>
+                        <div className={`col-span-2 tabular-nums text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                           {isoDateFromTs(p.paid_on ?? p.created_at)}
                         </div>
-                        <div className={`col-span-2 font-semibold tabular-nums ${isCancelled ? mutedText : (isDark ? 'text-slate-100' : 'text-slate-800')}`}>
+                        <div className={`col-span-2 font-semibold tabular-nums ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
                           {money(p.net_total)} {CURRENCY_SYMBOL}
                         </div>
-                        <div className={`col-span-2 tabular-nums ${isCancelled ? mutedText : (isDark ? 'text-slate-300' : 'text-slate-600')}`}>
+                        <div className={`col-span-2 tabular-nums ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
                           {money(p.gross_total)} {CURRENCY_SYMBOL}
                         </div>
-                        <div className={`col-span-2 tabular-nums`}>
+                        <div className="col-span-2 tabular-nums">
                           {Number(p.bonus_total) > 0
-                            ? <span className={`font-semibold ${isCancelled ? mutedText : ''}`} style={isCancelled ? {} : { color: 'var(--color-accent)' }}>+{money(p.bonus_total)} {CURRENCY_SYMBOL}</span>
+                            ? <span className="font-semibold" style={{ color: 'var(--color-accent)' }}>+{money(p.bonus_total)} {CURRENCY_SYMBOL}</span>
                             : <span className={isDark ? 'text-slate-700' : 'text-slate-300'}>—</span>
                           }
                         </div>
-                        <div className="col-span-2">
-                          {isCancelled ? (
-                            <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${isDark ? 'border-red-900/50 bg-red-950/30 text-red-400/70' : 'border-red-200 bg-red-50 text-red-400'}`}>
-                              <Ban className="h-2.5 w-2.5" />
-                              Ακυρώθηκε
-                            </span>
-                          ) : (
-                            <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${isDark ? 'border-emerald-700/40 bg-emerald-950/40 text-emerald-400' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}`}>
-                              <span className={`h-1.5 w-1.5 rounded-full ${isDark ? 'bg-emerald-400' : 'bg-emerald-500'}`} />
-                              Πληρώθηκε
-                            </span>
-                          )}
+                        <div className="col-span-3">
+                          <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${isDark ? 'border-emerald-700/40 bg-emerald-950/40 text-emerald-400' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}`}>
+                            <span className={`h-1.5 w-1.5 rounded-full ${isDark ? 'bg-emerald-400' : 'bg-emerald-500'}`} />
+                            Πληρώθηκε
+                          </span>
                         </div>
-                        <div className="col-span-2 flex justify-end gap-1.5">
-                          <button type="button" onClick={() => openEditPayment(p)} disabled={busy || isCancelled}
+                        <div className="col-span-1 flex justify-end">
+                          <button type="button" onClick={() => openEditPayment(p)} disabled={busy}
                             className={`flex h-7 w-7 items-center justify-center rounded-lg border transition-all hover:scale-105 active:scale-95 disabled:opacity-30 ${isDark ? 'border-blue-800/50 bg-blue-950/40 text-blue-400 hover:bg-blue-950/70' : 'border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100'}`}>
                             <Pencil className="h-3 w-3" />
                           </button>
-                          <button type="button" onClick={() => askDeletePayment(p)} disabled={busy || isCancelled}
-                            title="Ακύρωση πληρωμής"
-                            className={`flex h-7 w-7 items-center justify-center rounded-lg border transition-all hover:scale-105 active:scale-95 disabled:opacity-30 ${isDark ? 'border-amber-800/50 bg-amber-950/40 text-amber-400 hover:bg-amber-950/70' : 'border-amber-200 bg-amber-50 text-amber-600 hover:bg-amber-100'}`}>
-                            <Ban className="h-3 w-3" />
-                          </button>
                         </div>
                       </div>
-                    );
-                  })}
+                  ))}
                 </div>
 
                 {/* Bottom pagination */}
@@ -741,6 +717,26 @@ export default function TutorsPaymentsPage() {
                 )}
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Right-click context menu */}
+      {contextMenu && (
+        <div className="fixed inset-0 z-40" onClick={() => setContextMenu(null)} onContextMenu={e => { e.preventDefault(); setContextMenu(null); }}>
+          <div
+            className={`absolute z-50 min-w-[170px] overflow-hidden rounded-xl border shadow-2xl ${isDark ? 'border-white/10 bg-slate-900/95' : 'border-slate-200 bg-white/95'}`}
+            style={{ left: contextMenu.x, top: contextMenu.y, backdropFilter: 'blur(16px)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => { askDeletePayment(contextMenu.payment); setContextMenu(null); }}
+              className={`flex w-full items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium transition-colors ${isDark ? 'text-red-400 hover:bg-red-950/40' : 'text-red-600 hover:bg-red-50'}`}
+            >
+              <Ban className="h-3.5 w-3.5" />
+              Ακύρωση πληρωμής
+            </button>
           </div>
         </div>
       )}

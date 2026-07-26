@@ -90,7 +90,7 @@ export default function SubjectsPage() {
     const load = async () => {
       try {
         const [{ data: tutorsData, error: tutorsErr }, { data: linksData, error: linksErr }] = await Promise.all([
-          supabase.from('tutors').select('id, school_id, full_name').eq('school_id', schoolId).order('full_name', { ascending: true }),
+          supabase.from('tutors').select('id, school_id, full_name').eq('school_id', schoolId).is('deleted_at', null).order('full_name', { ascending: true }),
           supabase.from('subject_tutors').select('subject_id, tutor_id').eq('school_id', schoolId),
         ]);
         if (tutorsErr) throw tutorsErr;

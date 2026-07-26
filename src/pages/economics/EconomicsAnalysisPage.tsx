@@ -97,9 +97,9 @@ export default function EconomicsAnalysisPage() {
   useEffect(() => { setCatPage(1); setTxPage(1); }, [schoolId, mode, month, year, rangeStart, rangeEnd]);
 
   async function safeTutorPayments(start: string, end: string) {
-    let res: any = await supabase.from('tutor_payments').select('id,school_id,tutor_id,net_total,paid_on,notes,created_at,status,tutors(full_name)').eq('school_id', schoolId!).eq('status', 'paid').gte('paid_on', start).lte('paid_on', end).order('paid_on', { ascending: false }).limit(500);
-    if (res.error && (hasAny(res.error, 'relationship') || hasAny(res.error, 'foreign key'))) res = await supabase.from('tutor_payments').select('id,school_id,tutor_id,net_total,paid_on,notes,created_at,status').eq('school_id', schoolId!).eq('status', 'paid').gte('paid_on', start).lte('paid_on', end).order('paid_on', { ascending: false }).limit(500);
-    if (res.error && hasAll(res.error, 'paid_on', 'does not exist')) res = await supabase.from('tutor_payments').select('id,school_id,tutor_id,net_total,notes,created_at,status').eq('school_id', schoolId!).eq('status', 'paid').gte('created_at', startOfDayTs(start)).lte('created_at', endOfDayTs(end)).order('created_at', { ascending: false }).limit(500);
+    let res: any = await supabase.from('tutor_payments').select('id,school_id,tutor_id,net_total,paid_on,notes,created_at,status,tutors(full_name)').eq('school_id', schoolId!).neq('status', 'canceled').gte('paid_on', start).lte('paid_on', end).order('paid_on', { ascending: false }).limit(500);
+    if (res.error && (hasAny(res.error, 'relationship') || hasAny(res.error, 'foreign key'))) res = await supabase.from('tutor_payments').select('id,school_id,tutor_id,net_total,paid_on,notes,created_at,status').eq('school_id', schoolId!).neq('status', 'canceled').gte('paid_on', start).lte('paid_on', end).order('paid_on', { ascending: false }).limit(500);
+    if (res.error && hasAll(res.error, 'paid_on', 'does not exist')) res = await supabase.from('tutor_payments').select('id,school_id,tutor_id,net_total,notes,created_at,status').eq('school_id', schoolId!).neq('status', 'canceled').gte('created_at', startOfDayTs(start)).lte('created_at', endOfDayTs(end)).order('created_at', { ascending: false }).limit(500);
     return res;
   }
   async function safeStudentIncomes(start: string, end: string) {

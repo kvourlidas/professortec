@@ -186,7 +186,7 @@ export default function StudentsPage() {
     if (opts?.silent) setRefreshing(true); else setLoading(students.length === 0);
     setError(null);
     try {
-      const res = await withTimeout(supabase.from('students').select(STUDENT_SELECT).eq('school_id', schoolId).order('full_name', { ascending: true }), FETCH_TIMEOUT_MS);
+      const res = await withTimeout(supabase.from('students').select(STUDENT_SELECT).eq('school_id', schoolId).is('deleted_at', null).order('full_name', { ascending: true }), FETCH_TIMEOUT_MS);
       if (reqId !== studentsReqRef.current) return;
       const dbError = (res as any).error; const data = (res as any).data as StudentRow[] | null;
       if (dbError) { console.error(dbError); setError('Αποτυχία φόρτωσης μαθητών.'); return; }
@@ -335,7 +335,7 @@ export default function StudentsPage() {
   const theadRowCls = 'border-b';
   const tbodyDivideCls = `divide-y ${isDark ? 'divide-slate-800/50' : 'divide-slate-100'}`;
   const trHoverCls = `group transition-colors ${isDark ? 'hover:bg-white/[0.025]' : 'hover:bg-slate-50'}`;
-  const modalBg = isDark ? 'border-slate-700/60 bg-[#252920]' : 'border-slate-200 bg-white';
+  const modalBg = isDark ? 'border-slate-700/60 bg-slate-900' : 'border-slate-200 bg-white';
   const cancelBtnCls = `btn border px-4 py-1.5 disabled:opacity-50 ${isDark ? 'border-slate-600/60 bg-slate-800/50 text-slate-200 hover:bg-slate-700/60' : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'}`;
   const paginationBtnCls = `inline-flex h-7 w-7 items-center justify-center rounded-lg border transition disabled:cursor-not-allowed disabled:opacity-30 ${isDark ? 'border-slate-700/60 bg-slate-900/30 text-slate-400 hover:border-slate-600 hover:bg-slate-800/50 hover:text-slate-200' : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-700'}`;
   const paginationFooterCls = `flex items-center justify-between gap-3 border-t px-5 py-3 ${isDark ? 'border-slate-800/70 bg-slate-900/20' : 'border-slate-100 bg-slate-50/50'}`;

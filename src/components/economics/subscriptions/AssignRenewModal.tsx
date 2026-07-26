@@ -111,7 +111,7 @@ export function AssignRenewModal({
     : 'flex w-full items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-left text-xs transition hover:border-slate-300';
 
   const dropPanelCls = isDark
-    ? 'absolute left-0 right-0 top-[calc(100%+3px)] z-[200] rounded-xl border border-slate-700/60 bg-[#252920] shadow-2xl'
+    ? 'absolute left-0 right-0 top-[calc(100%+3px)] z-[200] rounded-xl border border-slate-700/60 bg-slate-900 shadow-2xl'
     : 'absolute left-0 right-0 top-[calc(100%+3px)] z-[200] rounded-xl border border-slate-200 bg-white shadow-xl';
 
   const dropSearchInputCls = isDark

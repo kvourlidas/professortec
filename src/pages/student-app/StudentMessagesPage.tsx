@@ -152,7 +152,7 @@ export default function StudentMessagesPage() {
   const loadStudents = async () => {
     setLoadingStudents(true);
     try {
-      const { data, error } = await supabase.from('students').select('id, full_name').order('full_name', { ascending: true });
+      const { data, error } = await supabase.from('students').select('id, full_name').is('deleted_at', null).order('full_name', { ascending: true });
       if (error) throw error;
       setStudents((data ?? []) as StudentRow[]);
     } catch (e) { console.error('loadStudents error:', e); }
@@ -280,14 +280,14 @@ export default function StudentMessagesPage() {
 
   return (
     <div
-      className={`flex overflow-hidden ${isDark ? 'bg-[#252920]' : 'bg-white'}`}
+      className={`flex overflow-hidden ${isDark ? 'bg-slate-900' : 'bg-white'}`}
       style={{ margin: '-24px -16px', height: 'calc(100vh - 0px)', maxHeight: '100vh' }}
     >
         {/* ── Sidebar ─────────────────────────────────────────────────── */}
         <div className={[
           'flex w-64 shrink-0 flex-col border-r',
           divider,
-          isDark ? 'bg-[#252920]' : 'bg-slate-50',
+          isDark ? 'bg-slate-900' : 'bg-slate-50',
         ].join(' ')}>
 
           <div className={`border-b px-4 py-3 ${divider}`}>
@@ -443,7 +443,7 @@ export default function StudentMessagesPage() {
                               {isLastInRun ? (
                                 <div
                                   className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold"
-                                  style={{ background: isDark ? '#252920' : '#e2e8f0', color: isDark ? '#94a3b8' : '#64748b' }}
+                                  style={{ background: isDark ? '#1e293b' : '#e2e8f0', color: isDark ? '#94a3b8' : '#64748b' }}
                                 >
                                   {(activeStudent?.full_name?.trim()?.[0] ?? 'Μ').toUpperCase()}
                                 </div>
@@ -463,7 +463,7 @@ export default function StudentMessagesPage() {
                                 mine
                                   ? 'rounded-br-sm'
                                   : isDark
-                                  ? 'rounded-bl-sm bg-[#252920] text-slate-200'
+                                  ? 'rounded-bl-sm bg-slate-900 text-slate-200'
                                   : 'rounded-bl-sm bg-slate-100 text-slate-700',
                               ].join(' ')}
                               style={mine ? { background: 'var(--color-accent)', color: isDark ? '#000' : '#fff' } : {}}
@@ -477,7 +477,7 @@ export default function StudentMessagesPage() {
                               {isLastInRun ? (
                                 <div
                                   className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold"
-                                  style={{ background: isDark ? '#252920' : '#e2e8f0', color: 'var(--color-accent)' }}
+                                  style={{ background: isDark ? '#1e293b' : '#e2e8f0', color: 'var(--color-accent)' }}
                                 >
                                   {(schoolName?.trim()?.[0] ?? 'Σ').toUpperCase()}
                                 </div>
@@ -505,7 +505,7 @@ export default function StudentMessagesPage() {
                 className={[
                   'flex-1 resize-none rounded-xl px-3.5 py-2.5 text-[13px] leading-relaxed outline-none transition disabled:cursor-not-allowed disabled:opacity-30',
                   isDark
-                    ? 'bg-[#252920] text-slate-100 placeholder-slate-500 focus:ring-1 focus:ring-[color:var(--color-accent)]/20'
+                    ? 'bg-slate-900 text-slate-100 placeholder-slate-500 focus:ring-1 focus:ring-[color:var(--color-accent)]/20'
                     : 'border border-slate-200 bg-slate-50 text-slate-800 placeholder-slate-400 focus:ring-1 focus:ring-[color:var(--color-accent)]/20',
                 ].join(' ')}
                 onKeyDown={(e) => {
@@ -520,7 +520,7 @@ export default function StudentMessagesPage() {
                   <div
                     className={[
                       'absolute bottom-full right-0 mb-2 z-50 rounded-xl p-2 shadow-xl overflow-y-auto',
-                      isDark ? 'bg-[#252920] border border-slate-700/50' : 'bg-white border border-slate-200',
+                      isDark ? 'bg-slate-900 border border-slate-700/50' : 'bg-white border border-slate-200',
                     ].join(' ')}
                     style={{ width: 292, maxHeight: 260, overflowX: 'hidden', display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 2 }}
                   >

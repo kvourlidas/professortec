@@ -80,7 +80,8 @@ export default function StudentFeedbackPage() {
           const studRes = await supabase
             .from('students')
             .select('id, full_name')
-            .in('id', studentIds);
+            .in('id', studentIds)
+            .is('deleted_at', null);
           if (!studRes.error) {
             (studRes.data ?? []).forEach((s: any) => studentNames.set(s.id, s.full_name ?? '—'));
           }

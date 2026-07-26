@@ -47,10 +47,10 @@ const GradesPage = () => {
   // ── Load lists ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!profile?.school_id) return;
-    supabase.from('students').select('id, school_id, full_name, email').eq('school_id', profile.school_id).order('full_name', { ascending: true })
+    supabase.from('students').select('id, school_id, full_name, email').eq('school_id', profile.school_id).is('deleted_at', null).order('full_name', { ascending: true })
       .then(({ data, error }) => { if (!error) setStudents(data ?? []); });
     if (isPrivateLessons) return;
-    supabase.from('tutors').select('id, school_id, full_name, email').eq('school_id', profile.school_id).order('full_name', { ascending: true })
+    supabase.from('tutors').select('id, school_id, full_name, email').eq('school_id', profile.school_id).is('deleted_at', null).order('full_name', { ascending: true })
       .then(({ data, error }) => { if (!error) setTutors(data ?? []); });
   }, [profile?.school_id, isPrivateLessons]);
 

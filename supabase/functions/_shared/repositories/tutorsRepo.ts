@@ -90,7 +90,7 @@ export async function deleteTutorById(
 ) {
   const { error } = await supabase
     .from("tutors")
-    .delete()
+    .update({ deleted_at: new Date().toISOString() })
     .eq("id", tutorId);
 
   if (error) {

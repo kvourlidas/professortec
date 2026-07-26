@@ -1,8 +1,6 @@
 // src/pages/DashboardPage.tsx
 import { useAuth } from '../auth.tsx';
 import { useTheme } from '../context/ThemeContext.tsx';
-import DashboardMetricsSection from '../components/dashboard/DashboardMetricsSection.tsx';
-import DashboardMonthlyTestsAvgGradesSection from '../components/dashboard/DashboardMonthlyTestsAvgGradesSection.tsx';
 import DashboardNotesSection from '../components/dashboard/DashboardNotesSection.tsx';
 import DashboardCalendarSection from '../components/dashboard/DashboardCalendarSection.tsx';
 import DashboardUpcomingSessionsSection from '../components/dashboard/DashboardUpcomingSessionsSection.tsx';

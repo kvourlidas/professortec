@@ -30,7 +30,7 @@ serve(async (req) => {
     if (fetchErr || !item) throw new AppError("Slot not found", 404, "NOT_FOUND");
 
     const { data: student, error: stuErr } = await supabase
-      .from("students").select("id").eq("id", item.student_id).eq("school_id", schoolId).maybeSingle();
+      .from("students").select("id").eq("id", item.student_id).eq("school_id", schoolId).is("deleted_at", null).maybeSingle();
     if (stuErr || !student) throw new AppError("Not authorized to delete this slot", 403, "FORBIDDEN");
 
     const { error: delErr } = await supabase.from("program_items").delete().eq("id", program_item_id);

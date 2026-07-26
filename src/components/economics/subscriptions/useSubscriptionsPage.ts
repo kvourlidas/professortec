@@ -247,6 +247,7 @@ export function useSubscriptionsPage() {
       .from('students')
       .select('id,school_id,full_name')
       .eq('school_id', schoolId)
+      .is('deleted_at', null)
       .order('full_name', { ascending: true });
     setAllStudents((data ?? []) as StudentRow[]);
   };
@@ -259,6 +260,7 @@ export function useSubscriptionsPage() {
       .from('students')
       .select('id')
       .eq('school_id', schoolId)
+      .is('deleted_at', null)
       .ilike('full_name', `%${sq}%`);
     return (ms ?? []).map((s: any) => s.id);
   };

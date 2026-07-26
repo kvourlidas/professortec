@@ -42,6 +42,7 @@ export default function SendNotificationsPage() {
         .from('students')
         .select('id, full_name')
         .eq('school_id', schoolId)
+        .is('deleted_at', null)
         .order('full_name', { ascending: true });
       if (!error && data) setStudents(data as StudentOption[]);
       setStudentsLoading(false);

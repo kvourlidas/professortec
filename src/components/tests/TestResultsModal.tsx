@@ -37,7 +37,7 @@ export default function TestResultsModal({ resultsModal, schoolId, onClose }: Te
     const fetchData = async () => {
       setError(null); setLoading(true); setAllStudents([]); setAssignedIds(new Set()); setInitialAssignedIds(new Set()); setGradeByStudent({}); setSearchLeft(''); setSearchRight(''); setSelectedLeft(new Set()); setSelectedRight(new Set());
       try {
-        const { data: studentsData, error: studentsErr } = await supabase.from('students').select('id, school_id, full_name').eq('school_id', schoolId).order('full_name', { ascending: true });
+        const { data: studentsData, error: studentsErr } = await supabase.from('students').select('id, school_id, full_name').eq('school_id', schoolId).is('deleted_at', null).order('full_name', { ascending: true });
         if (studentsErr) throw studentsErr;
         const studentsList = (studentsData ?? []) as StudentRow[];
         setAllStudents(studentsList);

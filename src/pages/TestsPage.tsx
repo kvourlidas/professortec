@@ -103,7 +103,7 @@ export default function TestsPage() {
           supabase.from('levels').select('id, school_id, name').eq('school_id', schoolId).order('name', { ascending: true }),
           supabase.from('subjects').select('id, school_id, name, level_id').eq('school_id', schoolId).order('name', { ascending: true }),
           supabase.from('class_subjects').select('class_id, subject_id, school_id').eq('school_id', schoolId),
-          supabase.from('students').select('id, school_id, full_name').eq('school_id', schoolId).order('full_name', { ascending: true }),
+          supabase.from('students').select('id, school_id, full_name').eq('school_id', schoolId).is('deleted_at', null).order('full_name', { ascending: true }),
           supabase.from('tests').select('id, school_id, class_id, level_id, subject_id, test_date, start_time, end_time, title, description').eq('school_id', schoolId).order('test_date', { ascending: true }).order('start_time', { ascending: true }),
         ]);
         if (classErr) throw classErr; if (levelErr) throw levelErr; if (subjErr) throw subjErr; if (classSubjErr) throw classSubjErr; if (studentsErr) throw studentsErr; if (testsErr) throw testsErr;

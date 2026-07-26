@@ -20,7 +20,7 @@ export default function TutorDeleteModal({
 
   if (!deleteTarget) return null;
 
-  const modalBg = isDark ? 'border-slate-700/60 bg-[#252920]' : 'border-slate-200 bg-white';
+  const modalBg = isDark ? 'border-slate-700/60 bg-slate-900' : 'border-slate-200 bg-white';
   const cancelBtnCls = `btn border px-4 py-1.5 disabled:opacity-50 ${isDark ? 'border-slate-600/60 bg-slate-800/50 text-slate-200 hover:bg-slate-700/60' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'}`;
 
   return (

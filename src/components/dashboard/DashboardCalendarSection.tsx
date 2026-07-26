@@ -251,13 +251,13 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
 
   useEffect(() => {
     if (!schoolId) { setTutors([]); return; }
-    supabase.from('tutors').select('id, full_name').eq('school_id', schoolId).order('full_name', { ascending: true })
+    supabase.from('tutors').select('id, full_name').eq('school_id', schoolId).is('deleted_at', null).order('full_name', { ascending: true })
       .then(({ data, error }) => { if (error) { console.error(error); setTutors([]); } else { setTutors((data ?? []) as TutorRow[]); } });
   }, [schoolId]);
 
   useEffect(() => {
     if (!schoolId) { setStudents([]); return; }
-    supabase.from('students').select('id, full_name').eq('school_id', schoolId).order('full_name', { ascending: true })
+    supabase.from('students').select('id, full_name').eq('school_id', schoolId).is('deleted_at', null).order('full_name', { ascending: true })
       .then(({ data, error }) => { if (error) { console.error(error); setStudents([]); } else { setStudents((data ?? []) as StudentRow[]); } });
   }, [schoolId]);
 
@@ -864,16 +864,6 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
   };
 
   const handleTestModalClose = () => { if (savingTest) return; setTestModal(null); setTestError(null); setShowDeleteConfirm(false); setTestModalAssignments([]); };
-
-  const handleTestDelete = async () => {
-    if (!testModal) return;
-    try {
-      setTestError(null);
-      await callEdgeFunction('tests-delete', { test_id: testModal.testId });
-      setTests((prev) => prev.filter((t) => t.id !== testModal.testId));
-      setTestModal(null); setShowDeleteConfirm(false);
-    } catch (err) { console.error(err); setTestError('Αποτυχία διαγραφής διαγωνίσματος. Προσπαθήστε ξανά.'); setShowDeleteConfirm(false); }
-  };
 
   const handleEventModalClose = () => { setEventModal(null); setEventError(null); setShowDeleteConfirm(false); };
   const handleProgramAskDeleteForDay = () => setShowDeleteConfirm(true);

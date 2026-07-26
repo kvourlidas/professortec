@@ -148,7 +148,7 @@ export default function TutorsPage() {
     const load = async () => {
       setLoading(true); setError(null);
       const { data, error } = await supabase
-        .from('tutors').select(TUTOR_SELECT).eq('school_id', schoolId).order('full_name', { ascending: true });
+        .from('tutors').select(TUTOR_SELECT).eq('school_id', schoolId).is('deleted_at', null).order('full_name', { ascending: true });
       if (error) { console.error(error); setError('Αποτυχία φόρτωσης καθηγητών.'); }
       else { setTutors((data ?? []) as TutorRow[]); }
       setLoading(false);

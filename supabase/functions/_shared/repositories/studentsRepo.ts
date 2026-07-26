@@ -122,7 +122,7 @@ export async function deleteStudentById(
 ) {
   const { error } = await supabase
     .from("students")
-    .delete()
+    .update({ deleted_at: new Date().toISOString() })
     .eq("id", studentId);
 
   if (error) {

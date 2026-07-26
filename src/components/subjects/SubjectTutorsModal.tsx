@@ -41,7 +41,7 @@ export default function SubjectTutorsModal({
       setLoading(true); setLocalError(null);
       try {
         const { data: tutorsData, error: tutorsErr } = await supabase
-          .from('tutors').select('id, school_id, full_name').eq('school_id', schoolId).order('full_name', { ascending: true });
+          .from('tutors').select('id, school_id, full_name').eq('school_id', schoolId).is('deleted_at', null).order('full_name', { ascending: true });
         if (tutorsErr) throw tutorsErr;
         setAllTutors((tutorsData ?? []) as TutorRow[]);
 

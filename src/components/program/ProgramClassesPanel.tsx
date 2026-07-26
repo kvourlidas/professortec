@@ -24,6 +24,10 @@ const PICKER_STYLE = `
     to   { opacity: 1; transform: translateY(0) scale(1); }
   }
   .day-picker-animate { animation: pickerFadeIn 0.14s cubic-bezier(0.16,1,0.3,1) forwards; }
+  .classes-scroll::-webkit-scrollbar { width: 4px; }
+  .classes-scroll::-webkit-scrollbar-track { background: transparent; }
+  .classes-scroll::-webkit-scrollbar-thumb { border-radius: 9999px; background: rgba(148,163,184,0.35); }
+  .classes-scroll::-webkit-scrollbar-thumb:hover { background: rgba(148,163,184,0.6); }
 `;
 
 function DayPicker({ classId, isDark, onAddSlot }: {
@@ -94,34 +98,59 @@ export default function ProgramClassesPanel({
   subjectById, levelNameById, tutorNameById,
   isDark, dragClassId: _dragClassId, onDragStart, onDragEnd, onAddSlot,
 }: ProgramClassesPanelProps) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
 
   return (
-    <div className={`overflow-hidden rounded-2xl border shadow-sm backdrop-blur-md transition-all duration-300 ${
-      isDark
-        ? 'border-slate-700/50 bg-slate-950/40 ring-1 ring-inset ring-white/[0.04]'
-        : 'border-slate-200 bg-white'
-    }`}>
+    <div
+      className={`overflow-hidden rounded-2xl border backdrop-blur-md transition-all duration-300 ${
+        open
+          ? isDark
+            ? 'bg-slate-950/40 shadow-sm ring-1 ring-inset ring-white/[0.04]'
+            : 'bg-white shadow-sm'
+          : isDark
+            ? 'bg-slate-900/30'
+            : 'bg-slate-50/80'
+      }`}
+      style={{ borderColor: open ? undefined : 'var(--color-accent)' }}
+    >
       <style>{PICKER_STYLE}</style>
 
       {/* Header — always visible, click to toggle */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:brightness-[1.04]"
-        style={{ background: 'var(--ch-bg)', borderBottom: open ? '1px solid var(--ch-divider)' : 'none' }}
+        className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-all ${
+          open
+            ? 'hover:brightness-[1.04]'
+            : isDark
+              ? 'hover:bg-slate-800/60'
+              : 'hover:bg-slate-50'
+        }`}
+        style={
+          open
+            ? { background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }
+            : {}
+        }
       >
-        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg"
-          style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
-          <BookOpen className="h-3 w-3" style={{ color: 'var(--ch-icon)' }} />
+        <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg transition-all ${
+          open
+            ? ''
+            : isDark ? 'bg-slate-800 border border-slate-700' : 'bg-slate-100 border border-slate-200'
+        }`}
+          style={open ? { background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' } : {}}>
+          <BookOpen className={`h-3 w-3 transition-colors ${
+            open ? '' : isDark ? 'text-slate-400' : 'text-slate-500'
+          }`} style={open ? { color: 'var(--ch-icon)' } : {}} />
         </div>
 
         <div className="flex-1 min-w-0">
-          <span className="text-xs font-semibold" style={{ color: 'var(--ch-text)' }}>
+          <span className={`text-xs font-semibold transition-colors ${
+            open ? '' : isDark ? 'text-slate-300' : 'text-slate-600'
+          }`} style={open ? { color: 'var(--ch-text)' } : {}}>
             Διαθέσιμα τμήματα
           </span>
-          <span className="ml-2 text-[10px]" style={{ color: 'var(--ch-text-muted)' }}>
-            Σύρετε ή επιλέξτε μέρα για προσθήκη
+          <span className={`ml-2 text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+            {open ? 'Σύρετε ή επιλέξτε μέρα για προσθήκη' : 'Κλικ για ανάπτυξη'}
           </span>
         </div>
 
@@ -129,81 +158,87 @@ export default function ProgramClassesPanel({
           {filteredClasses.length} / {classes.length}
         </span>
 
-        <ChevronDown className={`h-4 w-4 shrink-0 transition-transform duration-300 ${open ? 'rotate-180' : ''}`}
-          style={{ color: 'var(--ch-text-muted)' }} />
+        <ChevronDown className={`h-4 w-4 shrink-0 transition-transform duration-300 ${open ? 'rotate-180' : ''} ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
       </button>
 
-      {/* Expandable body */}
-      {open && (
-        <div className="p-4">
-          {/* Search */}
-          <div className="relative mb-4">
-            <Search className={`pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-            <input
-              className={`h-8 w-full rounded-xl border pl-9 pr-3 text-xs outline-none transition sm:w-64 ${
-                isDark
-                  ? 'border-slate-700/70 bg-slate-900/60 text-slate-100 placeholder-slate-500 focus:border-[color:var(--color-accent)]/60 focus:ring-1 focus:ring-[color:var(--color-accent)]/20'
-                  : 'border-slate-200 bg-slate-50 text-slate-800 placeholder-slate-400 focus:border-[color:var(--color-accent)]/60 focus:ring-1 focus:ring-[color:var(--color-accent)]/20'
-              }`}
-              placeholder="Αναζήτηση τμήματος…"
-              value={classSearch}
-              onChange={(e) => onSearchChange(e.target.value)}
-            />
-          </div>
-
-          {/* Class grid */}
-          {classes.length === 0 ? (
-            <p className={`py-6 text-center text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-              Δεν υπάρχουν ακόμη τμήματα.
-            </p>
-          ) : filteredClasses.length === 0 ? (
-            <p className={`py-6 text-center text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-              Δεν βρέθηκαν τμήματα.
-            </p>
-          ) : (
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-              {filteredClasses.map((cls) => {
-                const subj = cls.subject_id ? subjectById.get(cls.subject_id) : null;
-                const levelName = subj?.level_id ? (levelNameById.get(subj.level_id) ?? '') : '';
-                const tutorName = cls.tutor_id ? (tutorNameById.get(cls.tutor_id) ?? '') : '';
-                const metaParts = [cls.subject, levelName, tutorName].filter(Boolean);
-
-                return (
-                  <div
-                    key={cls.id}
-                    draggable
-                    onDragStart={() => onDragStart(cls.id)}
-                    onDragEnd={() => onDragEnd(cls.id)}
-                    className={`group flex flex-col gap-2 rounded-xl border p-3 cursor-grab active:cursor-grabbing transition-all hover:shadow-sm active:scale-[0.97] ${
-                      isDark
-                        ? 'border-slate-700/50 bg-slate-900/50 hover:border-slate-600/70 hover:bg-slate-800/60'
-                        : 'border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white'
-                    }`}
-                  >
-                    {/* Top row: grip + title */}
-                    <div className="flex items-start gap-1.5 min-w-0">
-                      <GripVertical className={`mt-0.5 h-3 w-3 shrink-0 ${isDark ? 'text-slate-600' : 'text-slate-300'}`} />
-                      <span className={`text-xs font-semibold leading-tight truncate ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
-                        {cls.title || 'Τμήμα'}
-                      </span>
-                    </div>
-
-                    {/* Meta */}
-                    {metaParts.length > 0 && (
-                      <span className={`text-[10px] leading-tight truncate ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                        {metaParts.join(' · ')}
-                      </span>
-                    )}
-
-                    {/* Day picker */}
-                    <DayPicker classId={cls.id} isDark={isDark} onAddSlot={onAddSlot} />
-                  </div>
-                );
-              })}
+      {/* Expandable body — smooth grid animation */}
+      <div
+        className="overflow-hidden transition-all duration-300 ease-in-out"
+        style={{ display: 'grid', gridTemplateRows: open ? '1fr' : '0fr' }}
+      >
+        <div className="min-h-0">
+          <div className="p-4">
+            {/* Search */}
+            <div className="relative mb-4">
+              <Search className={`pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+              <input
+                className={`h-8 w-full rounded-xl border pl-9 pr-3 text-xs outline-none transition sm:w-64 ${
+                  isDark
+                    ? 'border-slate-700/70 bg-slate-900/60 text-slate-100 placeholder-slate-500 focus:border-[color:var(--color-accent)]/60 focus:ring-1 focus:ring-[color:var(--color-accent)]/20'
+                    : 'border-slate-200 bg-slate-50 text-slate-800 placeholder-slate-400 focus:border-[color:var(--color-accent)]/60 focus:ring-1 focus:ring-[color:var(--color-accent)]/20'
+                }`}
+                placeholder="Αναζήτηση τμήματος…"
+                value={classSearch}
+                onChange={(e) => onSearchChange(e.target.value)}
+              />
             </div>
-          )}
+
+            {/* Class grid */}
+            {classes.length === 0 ? (
+              <p className={`py-6 text-center text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                Δεν υπάρχουν ακόμη τμήματα.
+              </p>
+            ) : filteredClasses.length === 0 ? (
+              <p className={`py-6 text-center text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                Δεν βρέθηκαν τμήματα.
+              </p>
+            ) : (
+              <div className="classes-scroll max-h-[298px] overflow-y-auto pr-1">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                {filteredClasses.map((cls) => {
+                  const subj = cls.subject_id ? subjectById.get(cls.subject_id) : null;
+                  const levelName = subj?.level_id ? (levelNameById.get(subj.level_id) ?? '') : '';
+                  const tutorName = cls.tutor_id ? (tutorNameById.get(cls.tutor_id) ?? '') : '';
+                  const metaParts = [cls.subject, levelName, tutorName].filter(Boolean);
+
+                  return (
+                    <div
+                      key={cls.id}
+                      draggable
+                      onDragStart={() => onDragStart(cls.id)}
+                      onDragEnd={() => onDragEnd(cls.id)}
+                      className={`group flex flex-col gap-2 rounded-xl border p-3 cursor-grab active:cursor-grabbing transition-all hover:shadow-sm active:scale-[0.97] ${
+                        isDark
+                          ? 'border-slate-700/50 bg-slate-900/50 hover:border-slate-600/70 hover:bg-slate-800/60'
+                          : 'border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white'
+                      }`}
+                    >
+                      {/* Top row: grip + title */}
+                      <div className="flex items-start gap-1.5 min-w-0">
+                        <GripVertical className={`mt-0.5 h-3 w-3 shrink-0 ${isDark ? 'text-slate-600' : 'text-slate-300'}`} />
+                        <span className={`text-xs font-semibold leading-tight truncate ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                          {cls.title || 'Τμήμα'}
+                        </span>
+                      </div>
+
+                      {/* Meta */}
+                      {metaParts.length > 0 && (
+                        <span className={`text-[10px] leading-tight truncate ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                          {metaParts.join(' · ')}
+                        </span>
+                      )}
+
+                      {/* Day picker */}
+                      <DayPicker classId={cls.id} isDark={isDark} onAddSlot={onAddSlot} />
+                    </div>
+                  );
+                })}
+              </div>
+              </div>
+            )}
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

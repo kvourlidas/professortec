@@ -45,7 +45,7 @@ export default function ClassFormModal({ open, mode, editingClass, subjects, lev
   const isCreate = mode === 'create';
 
   // Style helpers
-  const modalBg = isDark ? 'border-slate-700/60 bg-[#252920]' : 'border-slate-200 bg-white';
+  const modalBg = isDark ? 'border-slate-700/60 bg-slate-900' : 'border-slate-200 bg-white';
   const labelCls = `flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`;
   const inputCls = `h-9 w-full rounded-lg border px-3 text-sm outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 focus:border-[color:var(--color-accent)] ${isDark ? 'border-slate-700/70 bg-slate-900/60 text-slate-100 placeholder-slate-500' : 'border-slate-200 bg-slate-50 text-slate-800 placeholder-slate-400'}`;
   const selectCls = `h-9 w-full rounded-lg border px-3 text-sm outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 focus:border-[color:var(--color-accent)] ${isDark ? 'border-slate-700/70 bg-slate-900/60 text-slate-100' : 'border-slate-200 bg-slate-50 text-slate-800'}`;
@@ -91,7 +91,7 @@ export default function ClassFormModal({ open, mode, editingClass, subjects, lev
 
         {/* Form */}
         <form onSubmit={handleSubmit}>
-          <div className="space-y-4 px-6 pb-6">
+          <div className="space-y-4 px-6 pt-4 pb-6">
 
             {/* Title */}
             <div className="space-y-1.5">

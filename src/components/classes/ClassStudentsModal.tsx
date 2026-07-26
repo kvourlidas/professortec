@@ -32,7 +32,7 @@ export default function ClassStudentsModal({ open, onClose, classId, classTitle 
       setLoading(true); setLocalError(null);
       setSelectedLeft(new Set()); setSelectedRight(new Set());
       try {
-        const { data: studentsData, error: studentsErr } = await supabase.from('students').select('id, school_id, full_name').eq('school_id', schoolId).order('full_name', { ascending: true });
+        const { data: studentsData, error: studentsErr } = await supabase.from('students').select('id, school_id, full_name').eq('school_id', schoolId).is('deleted_at', null).order('full_name', { ascending: true });
         if (studentsErr) throw studentsErr;
         const students = (studentsData ?? []) as StudentRow[];
         setAllStudents(students);
@@ -101,7 +101,7 @@ export default function ClassStudentsModal({ open, onClose, classId, classTitle 
     [...assignedIds].filter((id) => !initialAssignedIds.has(id)).length +
     [...initialAssignedIds].filter((id) => !assignedIds.has(id)).length;
 
-  const modalBg = isDark ? 'border-slate-700/60 bg-[#252920]' : 'border-slate-200 bg-white';
+  const modalBg = isDark ? 'border-slate-700/60 bg-slate-900' : 'border-slate-200 bg-white';
   const panelCls = `overflow-hidden rounded-xl border ${isDark ? 'border-slate-700/60 bg-slate-900/40' : 'border-slate-200 bg-slate-50'}`;
   const panelHeaderCls = `border-b px-3.5 py-2.5 ${isDark ? 'border-slate-700/60 bg-slate-900/30' : 'border-slate-200 bg-slate-100/80'}`;
   const searchInputCls = `h-7 w-28 rounded-lg border pl-6 pr-2 text-[11px] outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/20 focus:border-[color:var(--color-accent)] ${isDark ? 'border-slate-700/60 bg-slate-800/60 text-slate-200 placeholder-slate-500' : 'border-slate-200 bg-white text-slate-700 placeholder-slate-400'}`;
@@ -161,7 +161,7 @@ export default function ClassStudentsModal({ open, onClose, classId, classTitle 
             <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Φόρτωση μαθητών...</p>
           </div>
         ) : (
-          <div className="grid gap-3 px-6 pb-2 md:grid-cols-2">
+          <div className="grid gap-3 px-6 pt-4 pb-2 md:grid-cols-2">
 
             {/* Left panel — available */}
             <div className={panelCls}>

@@ -52,6 +52,7 @@ serve(async (req) => {
       .from("students")
       .select("id, auth_user_id, expo_push_token")
       .eq("school_id", schoolId)
+      .is("deleted_at", null)
       .not("auth_user_id", "is", null);
 
     if (!isSendAll) {
