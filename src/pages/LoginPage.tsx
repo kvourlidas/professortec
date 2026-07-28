@@ -9,7 +9,7 @@ import { supabase } from '../lib/supabaseClient';
 import {
   Loader2, Mail, Lock, AlertCircle, Eye, EyeOff,
   User, Building2, GraduationCap, CheckCircle2, Check,
-  MapPin, Phone, ArrowLeft,
+  MapPin, Phone, ArrowLeft, Gift, CalendarDays, Sparkles,
 } from 'lucide-react';
 import logoDark from '../assets/edra-primary-transparent-dark(PNG).png';
 import logoLight from '../assets/edra-primary-transparent-light(PNG)(1).png';
@@ -30,15 +30,15 @@ type Plan = {
 };
 
 const FRONTISTIRIO_PLANS: Plan[] = [
-  { id: 'free', name: 'Δωρεάν', price: '€0', label: '1 μήνας δωρεάν' },
+  { id: 'free', name: 'Δωρεάν', price: '€0', label: '1 μήνας δωρεάν δοκιμή' },
   { id: 'monthly', name: 'Μηνιαίο', price: '€29', period: '/μήνα', label: 'Χωρίς δέσμευση' },
-  { id: 'yearly', name: 'Ετήσιο', price: '€290', period: '/έτος', label: '2 μήνες δωρεάν', crossedPrice: '€348', monthlyEquiv: '~€24,17/μήνα', highlighted: true },
+  { id: 'yearly', name: 'Ετήσιο', price: '€290', period: '/έτος', label: '2 μήνες δωρεάν', crossedPrice: '€348', highlighted: true },
 ];
 
 const IDIAITEROU_PLANS: Plan[] = [
-  { id: 'free', name: 'Δωρεάν', price: '€0', label: '1 μήνας δωρεάν' },
+  { id: 'free', name: 'Δωρεάν', price: '€0', label: '1 μήνας δωρεάν δοκιμή' },
   { id: 'monthly', name: 'Μηνιαίο', price: '€20', period: '/μήνα', label: 'Χωρίς δέσμευση' },
-  { id: 'yearly', name: 'Ετήσιο', price: '€216', period: '/έτος', label: 'Μία πληρωμή τον χρόνο', monthlyEquiv: '€18/μήνα' },
+  { id: 'yearly', name: 'Ετήσιο', price: '€216', period: '/έτος', label: 'Μία πληρωμή τον χρόνο' },
 ];
 
 async function saveSchoolInfo(userId: string, info: { name: string; address: string; phone: string; email: string }) {
@@ -219,7 +219,12 @@ export default function LoginPage() {
           draggable={false}
         />
 
-        <div className="w-full max-w-[440px] overflow-hidden rounded-2xl" style={cardStyle}>
+        <div
+          className={`w-full overflow-hidden rounded-2xl transition-[max-width] duration-300 ease-out ${
+            mode === 'signup' && signupStep === 4 ? 'max-w-[760px]' : 'max-w-[440px]'
+          }`}
+          style={cardStyle}
+        >
 
           {/* Tab switcher */}
           <div className="flex border-b" style={{ background: 'var(--ch-bg)', borderColor: 'var(--ch-divider)' }}>
@@ -418,9 +423,9 @@ export default function LoginPage() {
                           <h1 className="text-base font-bold tracking-tight text-[color:var(--color-text-main)]">Επιλογή πλάνου</h1>
                           <p className="text-xs text-[color:var(--color-text-muted)]">Επίλεξε το πλάνο που σου ταιριάζει καλύτερα.</p>
                         </div>
-                        <div className="space-y-2.5 pt-1">
+                        <div className="grid grid-cols-3 gap-3 items-stretch pt-3">
                           {plans.map(plan => (
-                            <PlanCard
+                            <PricingCard
                               key={plan.id}
                               isDark={isDark}
                               plan={plan}
@@ -473,33 +478,45 @@ export default function LoginPage() {
 function StepIndicator({ step, isDark }: { step: SignupStep; isDark: boolean }) {
   const steps = ['Τύπος', 'Λογαριασμός', 'Στοιχεία', 'Πλάνο'];
   return (
-    <div className="flex items-center justify-center mb-6">
+    <div className="flex items-start justify-center mb-7">
       {steps.map((label, i) => {
         const n = (i + 1) as SignupStep;
         const active = n === step;
         const done = n < step;
         return (
-          <Fragment key={n}>
-            <div className="flex flex-col items-center gap-1">
-              <div className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all duration-200 ${
-                done
-                  ? 'bg-[color:var(--color-accent)] text-white'
-                  : active
-                    ? 'bg-[color:var(--color-accent)] text-white ring-4 ring-[color:var(--color-accent)]/20'
-                    : isDark ? 'bg-white/[0.08] text-slate-500' : 'bg-slate-100 text-slate-400'
-              }`}>
+          <Fragment key={label}>
+            <div className="flex flex-col items-center gap-2">
+              <div
+                className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-all duration-300 ${
+                  done || active ? 'text-white' : isDark ? 'text-slate-500' : 'text-slate-400'
+                }`}
+                style={{
+                  background: done || active
+                    ? 'var(--color-accent)'
+                    : isDark ? 'rgba(255,255,255,0.06)' : 'rgb(241 245 249)',
+                  boxShadow: active
+                    ? '0 0 0 5px color-mix(in srgb, var(--color-accent) 16%, transparent), 0 4px 14px color-mix(in srgb, var(--color-accent) 35%, transparent)'
+                    : 'none',
+                }}
+              >
                 {done ? <Check className="h-3.5 w-3.5" /> : n}
               </div>
-              <span className={`text-[9px] font-semibold uppercase tracking-wide whitespace-nowrap ${
+              <span className={`text-[9px] font-bold uppercase tracking-wide whitespace-nowrap transition-colors duration-300 ${
                 active ? 'text-[color:var(--color-accent)]' : isDark ? 'text-slate-600' : 'text-slate-400'
               }`}>
                 {label}
               </span>
             </div>
             {i < steps.length - 1 && (
-              <div className={`h-px w-6 mb-4 mx-1 flex-shrink-0 transition-all duration-200 ${
-                done ? 'bg-[color:var(--color-accent)]' : isDark ? 'bg-white/[0.08]' : 'bg-slate-200'
-              }`} />
+              <div
+                className="mt-[15px] h-[2px] w-8 flex-shrink-0 overflow-hidden rounded-full mx-1"
+                style={{ background: isDark ? 'rgba(255,255,255,0.08)' : 'rgb(226 232 240)' }}
+              >
+                <div
+                  className="h-full rounded-full transition-all duration-500 ease-out"
+                  style={{ width: done ? '100%' : '0%', background: 'var(--color-accent)' }}
+                />
+              </div>
             )}
           </Fragment>
         );
@@ -564,99 +581,85 @@ function AccountTypeCard({
   );
 }
 
-function PlanCard({
+function PricingCard({
   isDark, plan, selected, onClick,
 }: {
   isDark: boolean; plan: Plan; selected: boolean; onClick: () => void;
 }) {
   const isHighlighted = !!plan.highlighted;
-
-  // Per-plan left-panel colour + selected ring
-  const stripe = plan.id === 'free'
-    ? { bg: 'bg-emerald-500', selectedShadow: '0 0 0 2.5px #10b981, 0 4px 16px rgba(16,185,129,0.25)' }
-    : plan.id === 'monthly'
-      ? { bg: 'bg-sky-500', selectedShadow: '0 0 0 2.5px #0ea5e9, 0 4px 16px rgba(14,165,233,0.25)' }
-      : { bg: '', selectedShadow: '' }; // yearly handled via style
-
-  const highlightedSelected: React.CSSProperties = {
-    boxShadow: '0 0 0 2.5px var(--color-accent), 0 4px 20px color-mix(in srgb, var(--color-accent) 35%, transparent)',
-  };
-  const highlightedIdle: React.CSSProperties = {
-    boxShadow: '0 0 0 1.5px color-mix(in srgb, var(--color-accent) 45%, transparent), 0 2px 10px color-mix(in srgb, var(--color-accent) 15%, transparent)',
-  };
+  const Icon = plan.id === 'free' ? Gift : plan.id === 'monthly' ? CalendarDays : Sparkles;
+  const accent = plan.id === 'free' ? '#10b981' : plan.id === 'monthly' ? '#0ea5e9' : 'var(--color-accent)';
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className="relative w-full flex overflow-hidden rounded-2xl text-left transition-all duration-200 active:scale-[0.99]"
-      style={
-        isHighlighted
-          ? selected ? highlightedSelected : highlightedIdle
-          : selected
-            ? { boxShadow: stripe.selectedShadow }
-            : { boxShadow: isDark ? '0 0 0 1px rgba(255,255,255,0.08)' : '0 0 0 1px rgba(0,0,0,0.08)' }
-      }
+      className={`relative flex h-full flex-col rounded-2xl p-4 text-left transition-all duration-200 active:scale-[0.98] ${
+        isDark ? 'bg-white/[0.03]' : 'bg-white/80'
+      }`}
+      style={{
+        boxShadow: selected
+          ? `0 0 0 2.5px ${accent}, 0 8px 24px color-mix(in srgb, ${accent} 30%, transparent)`
+          : isHighlighted
+            ? '0 0 0 1.5px color-mix(in srgb, var(--color-accent) 40%, transparent), 0 2px 10px color-mix(in srgb, var(--color-accent) 12%, transparent)'
+            : isDark ? '0 0 0 1px rgba(255,255,255,0.08)' : '0 0 0 1px rgba(0,0,0,0.08)',
+      }}
     >
-      {/* ── Left colour strip ── */}
-      <div
-        className={`flex w-[90px] shrink-0 flex-col items-center justify-center gap-0.5 px-2 py-4 ${isHighlighted ? '' : stripe.bg}`}
-        style={isHighlighted ? { background: 'linear-gradient(160deg, var(--color-accent) 0%, color-mix(in srgb, var(--color-accent) 70%, #312e81) 100%)' } : undefined}
-      >
-        {isHighlighted && (
-          <span className="text-[8px] font-bold uppercase tracking-widest text-white/60 text-center leading-none mb-1">
-            ★ best value
-          </span>
-        )}
-        <span className="text-[11px] font-extrabold uppercase tracking-wide text-white text-center leading-tight">
-          {plan.name}
+      {isHighlighted && (
+        <span
+          className="absolute -top-2.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-white shadow-sm"
+          style={{ background: 'var(--color-accent)' }}
+        >
+          ★ Best value
         </span>
-        {selected && (
-          <span className="mt-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-white/30">
-            <Check className="h-2.5 w-2.5 text-white" />
+      )}
+      {selected && (
+        <span
+          className="absolute top-3 right-3 flex h-5 w-5 items-center justify-center rounded-full text-white"
+          style={{ background: accent }}
+        >
+          <Check className="h-3 w-3" />
+        </span>
+      )}
+
+      <div
+        className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl"
+        style={{ background: `color-mix(in srgb, ${accent} 15%, transparent)`, color: accent }}
+      >
+        <Icon className="h-4.5 w-4.5" />
+      </div>
+
+      <span className={`mb-2 text-sm font-bold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+        {plan.name}
+      </span>
+
+      <div className="mb-0.5 flex flex-wrap items-baseline gap-1.5">
+        {plan.crossedPrice && (
+          <span className={`text-xs line-through ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
+            {plan.crossedPrice}
+          </span>
+        )}
+        <span className={`text-3xl font-extrabold tabular-nums ${
+          isHighlighted ? 'text-[color:var(--color-accent)]' : isDark ? 'text-slate-100' : 'text-slate-800'
+        }`}>
+          {plan.price}
+        </span>
+        {plan.period && (
+          <span className={`text-[11px] font-medium ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+            {plan.period}
           </span>
         )}
       </div>
 
-      {/* ── Right content ── */}
-      <div
-        className={`flex flex-1 items-center justify-between px-4 py-3.5 ${
-          isHighlighted
-            ? isDark ? 'bg-[color:var(--color-accent)]/10' : 'bg-[color:var(--color-accent)]/6'
-            : isDark ? 'bg-white/[0.03]' : 'bg-white/75'
-        }`}
-      >
-        <div className="flex flex-col gap-0.5 min-w-0 pr-2">
-          <span className={`text-[11px] font-medium leading-tight ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-            {plan.label}
-          </span>
-          {plan.monthlyEquiv && (
-            <span className={`text-[10px] ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
-              {plan.monthlyEquiv}
-            </span>
-          )}
-        </div>
+      {plan.monthlyEquiv && (
+        <span className={`mb-2 text-[10px] ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
+          {plan.monthlyEquiv}
+        </span>
+      )}
 
-        <div className="flex flex-col items-end shrink-0">
-          <div className="flex items-baseline gap-1.5">
-            {plan.crossedPrice && (
-              <span className={`text-xs line-through ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
-                {plan.crossedPrice}
-              </span>
-            )}
-            <span className={`text-2xl font-extrabold tabular-nums ${
-              isHighlighted ? 'text-[color:var(--color-accent)]' : isDark ? 'text-slate-100' : 'text-slate-800'
-            }`}>
-              {plan.price}
-            </span>
-          </div>
-          {plan.period && (
-            <span className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-              {plan.period}
-            </span>
-          )}
-        </div>
-      </div>
+      <span className={`mt-auto pt-3 text-[11px] font-medium leading-snug ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+        {plan.label}
+      </span>
     </button>
   );
 }
