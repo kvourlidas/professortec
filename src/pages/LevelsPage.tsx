@@ -315,7 +315,7 @@ export default function LevelsPage() {
                         <button
                           type="button"
                           onClick={() => openEditModal(lvl.id)}
-                          className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-blue-500/40 bg-blue-500/10 text-blue-400 transition hover:border-blue-400/60 hover:bg-blue-500/20 hover:text-blue-300"
+                          className={`inline-flex h-7 w-7 items-center justify-center rounded-lg border transition ${isDark ? 'border-slate-700/60 bg-slate-900/30 text-slate-500 hover:border-blue-500/40 hover:bg-blue-500/10 hover:text-blue-400' : 'border-slate-200 bg-white text-slate-400 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-500'}`}
                           title="Επεξεργασία"
                         >
                           <Pencil className="h-3.5 w-3.5" />
@@ -323,7 +323,7 @@ export default function LevelsPage() {
                         <button
                           type="button"
                           onClick={() => askDeleteLevel(lvl)}
-                          className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-red-500/40 bg-red-500/10 text-red-400 transition hover:border-red-400/60 hover:bg-red-500/20 hover:text-red-300"
+                          className={`inline-flex h-7 w-7 items-center justify-center rounded-lg border transition ${isDark ? 'border-slate-700/60 bg-slate-900/30 text-slate-500 hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-400' : 'border-slate-200 bg-white text-slate-400 hover:border-red-300 hover:bg-red-50 hover:text-red-500'}`}
                           title="Διαγραφή"
                         >
                           <Trash2 className="h-3.5 w-3.5" />

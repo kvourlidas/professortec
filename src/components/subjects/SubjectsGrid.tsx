@@ -139,8 +139,8 @@ export default function SubjectsGrid({
               onClick={() => onEditSubject(subj)}
               className={`flex h-6 w-6 items-center justify-center rounded-md border transition hover:scale-105 active:scale-95 ${
                 isDark
-                  ? 'border-slate-700/60 text-blue-400 hover:bg-blue-900/30 hover:border-blue-700/50'
-                  : 'border-slate-200 text-blue-500 hover:bg-blue-50 hover:border-blue-200'
+                  ? 'border-slate-700/60 text-slate-500 hover:bg-blue-900/30 hover:border-blue-700/50 hover:text-blue-400'
+                  : 'border-slate-200 text-slate-400 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-500'
               }`}
             >
               <Pencil className="h-2.5 w-2.5" />
@@ -152,8 +152,8 @@ export default function SubjectsGrid({
               onClick={() => onDeleteSubject(subj)}
               className={`flex h-6 w-6 items-center justify-center rounded-md border transition hover:scale-105 active:scale-95 ${
                 isDark
-                  ? 'border-slate-700/60 text-red-400 hover:bg-red-900/30 hover:border-red-700/50'
-                  : 'border-slate-200 text-red-500 hover:bg-red-50 hover:border-red-200'
+                  ? 'border-slate-700/60 text-slate-500 hover:bg-red-900/30 hover:border-red-700/50 hover:text-red-400'
+                  : 'border-slate-200 text-slate-400 hover:bg-red-50 hover:border-red-200 hover:text-red-500'
               }`}
             >
               <Trash2 className="h-2.5 w-2.5" />

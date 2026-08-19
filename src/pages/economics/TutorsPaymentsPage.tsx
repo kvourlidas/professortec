@@ -692,7 +692,7 @@ export default function TutorsPaymentsPage() {
                         </div>
                         <div className="col-span-1 flex justify-end">
                           <button type="button" onClick={() => openEditPayment(p)} disabled={busy}
-                            className={`flex h-7 w-7 items-center justify-center rounded-lg border transition-all hover:scale-105 active:scale-95 disabled:opacity-30 ${isDark ? 'border-blue-800/50 bg-blue-950/40 text-blue-400 hover:bg-blue-950/70' : 'border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100'}`}>
+                            className={`flex h-7 w-7 items-center justify-center rounded-lg border transition-all hover:scale-105 active:scale-95 disabled:opacity-30 ${isDark ? 'border-slate-700/60 bg-slate-900/30 text-slate-500 hover:border-blue-800/50 hover:bg-blue-950/40 hover:text-blue-400' : 'border-slate-200 bg-white text-slate-400 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600'}`}>
                             <Pencil className="h-3 w-3" />
                           </button>
                         </div>

@@ -7,7 +7,7 @@ export type TestRow = {
   test_date: string; start_time: string | null; end_time: string | null;
   title: string | null; description: string | null;
 };
-export type StudentAssignment = { studentId: string; subjectId: string | null };
+export type StudentAssignment = { studentId: string; subjectId: string | null; chargeAmount?: string };
 export type AddTestForm = {
   classId: string | null; levelId: string | null; subjectId: string | null; date: string;
   startTime: string; endTime: string; title: string; studentAssignments: StudentAssignment[];

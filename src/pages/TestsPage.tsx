@@ -170,6 +170,41 @@ export default function TestsPage() {
   const openModal = () => { setError(null); setModalOpen(true); };
   const closeModal = () => { if (saving) return; setModalOpen(false); };
 
+  // ── Reconcile per-student test charges against student_extra_charges ──────
+  // Charges are tagged via notes: `test:<testId>` so we can find them again without a schema change.
+  // Students removed from the assignment list entirely are left untouched — cancelling a charge is a
+  // deliberate, separate action (done via the student's card), not an automatic side effect of editing a test.
+  const persistTestCharges = async (testId: string, assignments: StudentAssignment[], testTitle: string | null) => {
+    if (!schoolId) return;
+    const { data: existingData } = await supabase
+      .from('student_extra_charges')
+      .select('id, student_id, amount')
+      .eq('school_id', schoolId)
+      .eq('notes', `test:${testId}`)
+      .is('cancelled_at', null);
+    const existingByStudent = new Map<string, { id: string; amount: number }>();
+    (existingData ?? []).forEach((row: any) => existingByStudent.set(row.student_id, { id: row.id, amount: Number(row.amount) }));
+
+    const description = testTitle?.trim() ? `Διαγώνισμα: ${testTitle.trim()}` : 'Διαγώνισμα';
+
+    for (const a of assignments) {
+      const trimmed = (a.chargeAmount ?? '').trim();
+      const existing = existingByStudent.get(a.studentId);
+      if (!trimmed) {
+        if (existing) await supabase.from('student_extra_charges').update({ cancelled_at: new Date().toISOString() }).eq('id', existing.id);
+        continue;
+      }
+      const amt = Number(trimmed.replace(',', '.'));
+      if (Number.isNaN(amt) || amt <= 0) continue;
+      const rounded = Number(amt.toFixed(2));
+      if (existing) {
+        if (existing.amount !== rounded) await supabase.from('student_extra_charges').update({ amount: rounded }).eq('id', existing.id);
+      } else {
+        await supabase.from('student_extra_charges').insert({ school_id: schoolId, student_id: a.studentId, description, amount: rounded, notes: `test:${testId}` });
+      }
+    }
+  };
+
   // ── Create via edge function ──────────────────────────────────────────────
   const handleSubmit = async (form: AddTestForm) => {
     if (!schoolId) { setError('Το προφίλ σας δεν είναι συνδεδεμένο με σχολείο.'); return; }
@@ -201,6 +236,9 @@ export default function TestsPage() {
       if (isPrivateLessons && item.test_results) {
         setTestAssignments((prev) => ({ ...prev, [item.id]: item.test_results!.map((r) => ({ studentId: r.student_id, subjectId: r.subject_id ?? null })) }));
       }
+      if (isPrivateLessons) {
+        await persistTestCharges(item.id, form.studentAssignments, item.title);
+      }
       setModalOpen(false);
     } catch (err) {
       console.error(err);
@@ -211,16 +249,28 @@ export default function TestsPage() {
   };
 
   // Edit handlers
-  const openEditModal = (testId: string) => {
+  const openEditModal = async (testId: string) => {
     const t = tests.find((tt) => tt.id === testId); if (!t) return;
     setError(null);
     const assignments = isPrivateLessons ? (testAssignments[t.id] ?? []) : [];
     const commonSubjectId = t.subject_id ?? assignments.find((a) => a.subjectId)?.subjectId ?? null;
+
+    const chargeByStudent = new Map<string, string>();
+    if (isPrivateLessons && assignments.length > 0 && schoolId) {
+      const { data } = await supabase
+        .from('student_extra_charges')
+        .select('student_id, amount')
+        .eq('school_id', schoolId)
+        .eq('notes', `test:${t.id}`)
+        .is('cancelled_at', null);
+      (data ?? []).forEach((row: any) => chargeByStudent.set(row.student_id, String(row.amount)));
+    }
+
     setEditForm({
       id: t.id, classId: t.class_id, levelId: t.level_id ?? null, subjectId: commonSubjectId,
       date: formatDateDisplay(t.test_date), startTime: t.start_time?.slice(0, 5) ?? '', endTime: t.end_time?.slice(0, 5) ?? '',
       title: t.title ?? '',
-      studentAssignments: isPrivateLessons ? assignments.map((a) => ({ ...a, subjectId: commonSubjectId })) : [],
+      studentAssignments: isPrivateLessons ? assignments.map((a) => ({ ...a, subjectId: commonSubjectId, chargeAmount: chargeByStudent.get(a.studentId) ?? '' })) : [],
     });
     setEditModalOpen(true);
   };
@@ -255,6 +305,9 @@ export default function TestsPage() {
       setTests((prev) => prev.map((t) => (t.id === editForm.id ? item : t)));
       if (isPrivateLessons && item.test_results) {
         setTestAssignments((prev) => ({ ...prev, [item.id]: item.test_results!.map((r) => ({ studentId: r.student_id, subjectId: r.subject_id ?? null })) }));
+      }
+      if (isPrivateLessons) {
+        await persistTestCharges(item.id, form.studentAssignments, item.title);
       }
       closeEditModal();
     } catch (err) {
@@ -425,7 +478,7 @@ export default function TestsPage() {
                     <td className="px-5 py-3.5">
                       <div className="flex items-center justify-end gap-1.5">
                         <button type="button" onClick={() => navigate(`/program/tests/${t.id}/results`)}
-                          className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-2.5 text-[11px] font-medium text-emerald-400 transition hover:border-emerald-400/60 hover:bg-emerald-500/20 hover:text-emerald-300"
+                          className={`inline-flex h-7 items-center gap-1.5 rounded-lg border px-2.5 text-[11px] font-medium transition ${isDark ? 'border-slate-700/60 bg-slate-900/30 text-slate-500 hover:border-emerald-500/40 hover:bg-emerald-500/10 hover:text-emerald-400' : 'border-slate-200 bg-white text-slate-400 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-500'}`}
                           title="Βαθμοί μαθητών">
                           <Users className="h-3.5 w-3.5" />Βαθμοί
                         </button>

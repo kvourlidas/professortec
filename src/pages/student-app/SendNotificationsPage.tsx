@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Bell } from 'lucide-react';
+import { Bell, History } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../auth';
 import { useTheme } from '../../context/ThemeContext';
@@ -64,6 +64,7 @@ export default function SendNotificationsPage() {
   }, [schoolId]);
 
   // ── History state ────────────────────────────────────────────────────────
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [historyItems, setHistoryItems] = useState<NotificationRow[]>([]);
@@ -180,40 +181,61 @@ export default function SendNotificationsPage() {
             </p>
           </div>
         </div>
+
+        <button
+          type="button"
+          onClick={() => setHistoryOpen(true)}
+          className={`inline-flex shrink-0 items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-semibold transition ${
+            isDark
+              ? 'border-slate-700/60 bg-slate-900/30 text-slate-400 hover:border-[color:var(--color-accent)]/40 hover:bg-[color:var(--color-accent)]/10 hover:text-[color:var(--color-accent)]'
+              : 'border-slate-200 bg-white text-slate-500 hover:border-[color:var(--color-accent)]/40 hover:bg-[color:var(--color-accent)]/10 hover:text-[color:var(--color-accent)]'
+          }`}
+        >
+          <History className="h-3.5 w-3.5" />
+          Ιστορικό
+          {historyItems.length > 0 && (
+            <span
+              className="rounded-full px-1.5 py-0.5 text-[10px] font-bold"
+              style={{ background: 'color-mix(in srgb, var(--color-accent) 20%, transparent)', color: 'var(--color-accent)' }}
+            >
+              {historyItems.length}
+            </span>
+          )}
+        </button>
       </div>
 
-      {/* 2-column grid */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <NotificationSendForm
-          title={title}
-          onTitleChange={setTitle}
-          body={body}
-          onBodyChange={setBody}
-          recipientMode={recipientMode}
-          onRecipientModeChange={setRecipientMode}
-          selectedStudentIds={selectedStudentIds}
-          onSelectedStudentIdsChange={setSelectedStudentIds}
-          selectedClassIds={selectedClassIds}
-          onSelectedClassIdsChange={setSelectedClassIds}
-          students={students}
-          classes={classes}
-          studentsLoading={studentsLoading}
-          classesLoading={classesLoading}
-          loadingSend={loadingSend}
-          errorMsg={errorMsg}
-          resultMsg={resultMsg}
-          onSend={send}
-          isDark={isDark}
-        />
+      {/* Send form */}
+      <NotificationSendForm
+        title={title}
+        onTitleChange={setTitle}
+        body={body}
+        onBodyChange={setBody}
+        recipientMode={recipientMode}
+        onRecipientModeChange={setRecipientMode}
+        selectedStudentIds={selectedStudentIds}
+        onSelectedStudentIdsChange={setSelectedStudentIds}
+        selectedClassIds={selectedClassIds}
+        onSelectedClassIdsChange={setSelectedClassIds}
+        students={students}
+        classes={classes}
+        studentsLoading={studentsLoading}
+        classesLoading={classesLoading}
+        loadingSend={loadingSend}
+        errorMsg={errorMsg}
+        resultMsg={resultMsg}
+        onSend={send}
+        isDark={isDark}
+      />
 
-        <NotificationHistory
-          historyLoading={historyLoading}
-          historyError={historyError}
-          historyItems={historyItems}
-          onRefresh={loadHistory}
-          isDark={isDark}
-        />
-      </div>
+      <NotificationHistory
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        historyLoading={historyLoading}
+        historyError={historyError}
+        historyItems={historyItems}
+        onRefresh={loadHistory}
+        isDark={isDark}
+      />
     </div>
   );
 }

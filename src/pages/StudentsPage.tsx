@@ -485,7 +485,7 @@ export default function StudentsPage() {
                           <Eye className="h-3.5 w-3.5" />
                         </button>
                         <button type="button" onClick={() => { setError(null); setDeleteTarget(s); }}
-                          className={`inline-flex h-7 w-7 items-center justify-center rounded-lg border transition ${isDark ? 'border-rose-500/30 bg-rose-500/15 text-rose-400 hover:border-rose-400/50 hover:bg-rose-500/25' : 'border-rose-200 bg-rose-100 text-rose-500 hover:border-rose-300 hover:bg-rose-200'}`}
+                          className={`inline-flex h-7 w-7 items-center justify-center rounded-lg border transition ${isDark ? 'border-slate-700/60 bg-slate-900/30 text-slate-500 hover:border-rose-500/40 hover:bg-rose-500/15 hover:text-rose-400' : 'border-slate-200 bg-white text-slate-400 hover:border-rose-300 hover:bg-rose-100 hover:text-rose-500'}`}
                           title="Διαγραφή">
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>

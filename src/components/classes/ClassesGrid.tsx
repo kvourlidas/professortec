@@ -87,14 +87,14 @@ function ClassCard({
           <div className="flex items-center gap-1 shrink-0">
             <button type="button" onClick={() => onEditClass(cls)} title="Επεξεργασία"
               className={`flex h-7 w-7 items-center justify-center rounded-lg border transition hover:scale-105 active:scale-95 ${
-                isDark ? 'border-slate-700/60 text-blue-400 hover:bg-blue-900/30 hover:border-blue-700/50'
-                       : 'border-slate-200 text-blue-500 hover:bg-blue-50 hover:border-blue-200'}`}>
+                isDark ? 'border-slate-700/60 text-slate-500 hover:bg-blue-900/30 hover:border-blue-700/50 hover:text-blue-400'
+                       : 'border-slate-200 text-slate-400 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-500'}`}>
               <Pencil className="h-3 w-3" />
             </button>
             <button type="button" onClick={() => onDeleteClass({ id: cls.id, title: cls.title })} title="Διαγραφή"
               className={`flex h-7 w-7 items-center justify-center rounded-lg border transition hover:scale-105 active:scale-95 ${
-                isDark ? 'border-slate-700/60 text-red-400 hover:bg-red-900/30 hover:border-red-700/50'
-                       : 'border-slate-200 text-red-500 hover:bg-red-50 hover:border-red-200'}`}>
+                isDark ? 'border-slate-700/60 text-slate-500 hover:bg-red-900/30 hover:border-red-700/50 hover:text-red-400'
+                       : 'border-slate-200 text-slate-400 hover:bg-red-50 hover:border-red-200 hover:text-red-500'}`}>
               <Trash2 className="h-3 w-3" />
             </button>
           </div>

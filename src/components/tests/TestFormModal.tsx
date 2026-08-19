@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
-import { X, ClipboardList, BookOpen, Tag, Calendar, Loader2, Users, Search, Plus } from 'lucide-react';
+import { X, ClipboardList, BookOpen, Tag, Calendar, Loader2, Users, Search, Plus, Euro } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import AppDatePicker from '../ui/AppDatePicker';
 import TimePicker from '../ui/TimePicker';
@@ -115,10 +115,16 @@ export default function TestFormModal({
     }));
   };
   const addStudentAssignment = (studentId: string) => {
-    setForm((prev) => ({ ...prev, studentAssignments: [...prev.studentAssignments, { studentId, subjectId: prev.subjectId }] }));
+    setForm((prev) => ({ ...prev, studentAssignments: [...prev.studentAssignments, { studentId, subjectId: prev.subjectId, chargeAmount: '' }] }));
   };
   const handleRemoveStudent = (studentId: string) => {
     setForm((prev) => ({ ...prev, studentAssignments: prev.studentAssignments.filter((a) => a.studentId !== studentId) }));
+  };
+  const handleChargeAmountChange = (studentId: string, value: string) => {
+    setForm((prev) => ({
+      ...prev,
+      studentAssignments: prev.studentAssignments.map((a) => (a.studentId === studentId ? { ...a, chargeAmount: value } : a)),
+    }));
   };
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -141,6 +147,9 @@ export default function TestFormModal({
     ? 'flex flex-col gap-2 rounded-xl border border-slate-700/60 bg-slate-900/40 px-3 py-2.5 sm:flex-row sm:items-center sm:gap-2.5'
     : 'flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 sm:flex-row sm:items-center sm:gap-2.5';
   const removeBtnCls = 'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-red-500/40 bg-red-500/10 text-red-400 transition hover:bg-red-500/20';
+  const chargeInputCls = isDark
+    ? 'h-7 w-20 shrink-0 rounded-lg border border-slate-700/70 bg-slate-900/60 px-2 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)]'
+    : 'h-7 w-20 shrink-0 rounded-lg border border-slate-300 bg-white px-2 text-xs text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)]';
   const studentDropPanelCls = isDark
     ? 'relative z-20 mt-1.5 overflow-hidden rounded-xl border border-slate-700/60 bg-slate-900 shadow-2xl'
     : 'relative z-20 mt-1.5 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl';
@@ -198,6 +207,18 @@ export default function TestFormModal({
                             <span className={`flex-1 truncate text-xs font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
                               {studentById.get(a.studentId)?.full_name ?? 'Άγνωστος'}
                             </span>
+                            <div className="flex shrink-0 items-center gap-1.5">
+                              <Euro className={`h-3 w-3 shrink-0 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                placeholder="Χρέωση"
+                                value={a.chargeAmount ?? ''}
+                                onChange={(e) => handleChargeAmountChange(a.studentId, e.target.value)}
+                                className={chargeInputCls}
+                                title="Χρέωση διαγωνίσματος για τον μαθητή"
+                              />
+                            </div>
                             <button type="button" onClick={() => handleRemoveStudent(a.studentId)} className={removeBtnCls}>
                               <X className="h-3.5 w-3.5" />
                             </button>

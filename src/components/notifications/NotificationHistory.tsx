@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Bell, History, RefreshCw, ChevronLeft, ChevronRight, Users, GraduationCap, Globe, X } from 'lucide-react';
 import type { NotificationRow } from './types';
 import { formatDt } from './utils';
 
 interface NotificationHistoryProps {
+  open: boolean;
+  onClose: () => void;
   historyLoading: boolean;
   historyError: string | null;
   historyItems: NotificationRow[];
@@ -11,7 +13,7 @@ interface NotificationHistoryProps {
   isDark: boolean;
 }
 
-const PAGE_SIZE = 4;
+const PAGE_SIZE = 6;
 
 // ── Recipients modal ──────────────────────────────────────────────────────────
 function RecipientsModal({
@@ -140,10 +142,17 @@ function RecipientBadge({ n, isDark, onClick }: { n: NotificationRow; isDark: bo
 
 // ── Main component ────────────────────────────────────────────────────────────
 export function NotificationHistory({
-  historyLoading, historyError, historyItems, onRefresh, isDark,
+  open, onClose, historyLoading, historyError, historyItems, onRefresh, isDark,
 }: NotificationHistoryProps) {
   const [page, setPage] = useState(1);
   const [modalItem, setModalItem] = useState<NotificationRow | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
 
   // ✅ Sort newest first
   const sorted = [...historyItems].sort(
@@ -155,8 +164,8 @@ export function NotificationHistory({
   const paged = sorted.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   const cardCls = isDark
-    ? 'flex flex-col overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-2xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]'
-    : 'flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md';
+    ? 'flex h-full flex-col border-l border-slate-700/50 bg-slate-950 shadow-2xl'
+    : 'flex h-full flex-col border-l border-slate-200 bg-white shadow-2xl';
 
   const refreshBtnCls = isDark
     ? 'inline-flex items-center gap-1.5 rounded-lg border border-slate-700/60 bg-slate-800/50 px-2.5 py-1.5 text-[11px] font-medium text-slate-300 transition hover:border-slate-600 hover:bg-slate-700/60'
@@ -184,6 +193,20 @@ export function NotificationHistory({
 
   return (
     <>
+      {/* Overlay */}
+      <div
+        onClick={onClose}
+        className={`fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ${
+          open ? 'opacity-100' : 'pointer-events-none opacity-0'
+        }`}
+      />
+
+      {/* Slide-in drawer */}
+      <div
+        className={`fixed inset-y-0 right-0 z-50 w-full max-w-md transform transition-transform duration-300 ease-out ${
+          open ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
       <div className={cardCls}>
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between gap-3 px-5 py-3" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
@@ -201,10 +224,20 @@ export function NotificationHistory({
               </p>
             </div>
           </div>
-          <button type="button" onClick={() => { onRefresh(); setPage(1); }} className={refreshBtnCls}>
-            <RefreshCw className="h-3 w-3" />
-            Ανανέωση
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button type="button" onClick={() => { onRefresh(); setPage(1); }} className={refreshBtnCls}>
+              <RefreshCw className="h-3 w-3" />
+              Ανανέωση
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition"
+              style={{ background: 'var(--ch-btn-bg)', border: '1px solid var(--ch-btn-border)', color: 'var(--ch-btn-text)' }}
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
 
         {/* Error */}
@@ -215,7 +248,7 @@ export function NotificationHistory({
         )}
 
         {/* Body */}
-        <div className="flex-1 p-5">
+        <div className="flex-1 overflow-y-auto p-5">
           {historyLoading ? (
             <div className="space-y-2">
               {[...Array(PAGE_SIZE)].map((_, i) => (
@@ -279,6 +312,7 @@ export function NotificationHistory({
             </div>
           </div>
         )}
+      </div>
       </div>
 
       {/* Modal */}

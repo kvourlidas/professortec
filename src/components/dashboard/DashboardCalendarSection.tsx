@@ -23,7 +23,7 @@ import EventFormModal, {
   type EventFormState,
   type SchoolEventForEdit,
 } from '../events/EventFormModal';
-import { CalendarDays, Clock, BookOpen, GraduationCap, X, Loader2, Layers, Euro } from 'lucide-react';
+import { CalendarDays, Clock, BookOpen, GraduationCap, X, Loader2, Layers, Euro, Ban, ArrowLeftRight, Check } from 'lucide-react';
 
 /* ------------ Types (unchanged) ------------ */
 
@@ -113,6 +113,7 @@ function parseDateDisplayToISO(display: string): string | null {
 const WEEKDAY_TO_INDEX: Record<string, number> = {
   sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6,
 };
+const INDEX_TO_WEEKDAY = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
 function getNextDateForDow(from: Date, dow: number): Date {
   const d = new Date(from);
@@ -140,15 +141,15 @@ function FormField({ label, icon, children }: { label: string; icon?: React.Reac
 }
 
 /* -------- Shared modal shell -------- */
-function ModalShell({ title, subtitle, icon, onClose, children }: {
+function ModalShell({ title, subtitle, icon, onClose, children, maxWidthClass = 'max-w-md' }: {
   title: string; subtitle?: string; icon?: React.ReactNode;
-  onClose: () => void; children: React.ReactNode;
+  onClose: () => void; children: React.ReactNode; maxWidthClass?: string;
 }) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className={`relative w-full max-w-md overflow-hidden rounded-2xl border shadow-2xl ${
+      <div className={`relative w-full ${maxWidthClass} overflow-hidden rounded-2xl border shadow-2xl ${
         isDark ? 'border-slate-700/60 bg-[#1f2d3d]' : 'border-slate-200 bg-white'
       }`}>
         <div className="flex items-center justify-between px-6 py-4" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
@@ -226,8 +227,13 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
   const [testModal, setTestModal] = useState<TestModalState | null>(null);
   const [savingTest, setSavingTest] = useState(false);
   const [testError, setTestError] = useState<string | null>(null);
-  const [testModalAssignments, setTestModalAssignments] = useState<{ studentId: string; studentName: string; subjectName: string | null }[]>([]);
+  const [testModalAssignments, setTestModalAssignments] = useState<{ studentId: string; studentName: string; subjectName: string | null; chargeAmount: string; existingChargeId?: string; existingAmount?: number }[]>([]);
   const [testModalAssignmentsLoading, setTestModalAssignmentsLoading] = useState(false);
+  const [chargingTestStudentIds, setChargingTestStudentIds] = useState<Set<string>>(new Set());
+  const [cancellingTestChargeIds, setCancellingTestChargeIds] = useState<Set<string>>(new Set());
+  const [convertingSessionToTest, setConvertingSessionToTest] = useState(false);
+  const [convertingTestToSession, setConvertingTestToSession] = useState(false);
+  const [showConvertTestConfirm, setShowConvertTestConfirm] = useState(false);
 
   /* -------- Holidays helpers -------- */
   const holidayDateSet = useMemo(() => new Set(holidays.map((h) => h.date)), [holidays]);
@@ -713,12 +719,25 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     setTestModalAssignments([]);
     if (!classId && !levelId) {
       setTestModalAssignmentsLoading(true);
-      const { data } = await supabase.from('test_results').select('student_id, subject_id').eq('test_id', testId);
-      setTestModalAssignments((data ?? []).map((r: any) => ({
-        studentId: r.student_id,
-        studentName: studentById.get(r.student_id)?.full_name ?? 'Άγνωστος',
-        subjectName: r.subject_id ? subjectById.get(r.subject_id)?.name ?? null : null,
-      })));
+      const [{ data }, { data: chargesData }] = await Promise.all([
+        supabase.from('test_results').select('student_id, subject_id').eq('test_id', testId),
+        schoolId
+          ? supabase.from('student_extra_charges').select('id, student_id, amount').eq('school_id', schoolId).eq('notes', `test:${testId}`).is('cancelled_at', null)
+          : Promise.resolve({ data: [] as any[] }),
+      ]);
+      const chargeByStudent = new Map<string, { id: string; amount: number }>();
+      (chargesData ?? []).forEach((row: any) => chargeByStudent.set(row.student_id, { id: row.id, amount: Number(row.amount) }));
+      setTestModalAssignments((data ?? []).map((r: any) => {
+        const charge = chargeByStudent.get(r.student_id);
+        return {
+          studentId: r.student_id,
+          studentName: studentById.get(r.student_id)?.full_name ?? 'Άγνωστος',
+          subjectName: r.subject_id ? subjectById.get(r.subject_id)?.name ?? null : null,
+          chargeAmount: charge ? String(charge.amount) : '',
+          existingChargeId: charge?.id,
+          existingAmount: charge?.amount,
+        };
+      }));
       setTestModalAssignmentsLoading(false);
     }
     setShowDeleteConfirm(false); setEventModal(null);
@@ -728,7 +747,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     const { event } = arg;
     const kind = event.extendedProps['kind'] as 'program' | 'schoolEvent' | 'test' | undefined;
     if (!event.start || !event.end) return;
-    setEventModal(null); setTestModal(null); setShowDeleteConfirm(false); setEventError(null); setTestError(null);
+    setEventModal(null); setTestModal(null); setShowDeleteConfirm(false); setEventError(null); setTestError(null); setShowConvertTestConfirm(false);
     if (kind === 'schoolEvent') { const eventId = event.extendedProps['eventId'] as string | undefined; if (eventId) openEditSchoolEventModal(eventId); return; }
     if (kind === 'test') { openTestModalFromEvent(event); return; }
     if (kind === 'program') {
@@ -827,6 +846,36 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     } catch (err) { console.error(err); setEventError('Αποτυχία διαγραφής. Προσπαθήστε ξανά.'); }
   };
 
+  // Idiaitera only: cancel this day's regular session occurrence and create a standalone test in its place.
+  const handleConvertSessionToTest = async () => {
+    if (!eventModal || !eventModal.studentId) return;
+    const { programItemId, originalDateStr, startTime, endTime, subjectId, studentId } = eventModal;
+    if (!subjectId) { setEventError('Επιλέξτε μάθημα πριν τη μετατροπή σε διαγώνισμα.'); return; }
+    setConvertingSessionToTest(true); setEventError(null);
+    try {
+      const overrideResult = await callEdgeFunction('program-item-override-upsert', { program_item_id: programItemId, override_date: originalDateStr, start_time: null, end_time: null, is_deleted: true, is_inactive: false, holiday_active_override: false, charge_amount: null });
+      setOverrides((prev) => {
+        const existing = prev.find((o) => o.program_item_id === programItemId && o.override_date === originalDateStr);
+        const upserted = overrideResult.item as ProgramItemOverrideRow;
+        if (existing) return prev.map((o) => (o.id === existing.id ? upserted : o));
+        return [...prev, upserted];
+      });
+      const testResult = await callEdgeFunction('tests-create', {
+        class_id: null, level_id: null, subject_id: subjectId,
+        test_date: originalDateStr, start_time: `${startTime}:00`, end_time: `${endTime}:00`,
+        title: null, description: null,
+        student_assignments: [{ student_id: studentId, subject_id: subjectId }],
+      });
+      setTests((prev) => [...prev, testResult.item as TestRow]);
+      setEventModal(null); setShowDeleteConfirm(false);
+    } catch (err) {
+      console.error(err);
+      setEventError('Αποτυχία μετατροπής σε διαγώνισμα.');
+    } finally {
+      setConvertingSessionToTest(false);
+    }
+  };
+
   const handleDatesSet = (arg: DatesSetArg) => { setCalendarView(arg.view.type); setViewRange({ start: arg.start, end: arg.end }); };
 
   /* -------- Test modal handlers (unchanged) -------- */
@@ -863,7 +912,80 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     finally { setSavingTest(false); }
   };
 
-  const handleTestModalClose = () => { if (savingTest) return; setTestModal(null); setTestError(null); setShowDeleteConfirm(false); setTestModalAssignments([]); };
+  const handleTestModalClose = () => { if (savingTest) return; setTestModal(null); setTestError(null); setShowDeleteConfirm(false); setTestModalAssignments([]); setShowConvertTestConfirm(false); };
+
+  // Per-student test charges, tagged via notes: `test:<testId>` on student_extra_charges (same ledger used on the student card).
+  const updateTestModalChargeAmount = (studentId: string, value: string) => {
+    setTestModalAssignments((prev) => prev.map((a) => (a.studentId === studentId ? { ...a, chargeAmount: value } : a)));
+  };
+
+  const chargeTestModalStudent = async (studentId: string) => {
+    if (!schoolId || !testModal) return;
+    const a = testModalAssignments.find((x) => x.studentId === studentId);
+    const amt = Number((a?.chargeAmount ?? '').trim().replace(',', '.'));
+    if (!a?.chargeAmount?.trim() || Number.isNaN(amt) || amt <= 0) { setTestError('Μη έγκυρο ποσό χρέωσης.'); return; }
+    setTestError(null);
+    setChargingTestStudentIds((prev) => new Set(prev).add(studentId));
+    try {
+      const description = testModal.title?.trim() ? `Διαγώνισμα: ${testModal.title.trim()}` : 'Διαγώνισμα';
+      const { data, error } = await supabase.from('student_extra_charges').insert({
+        school_id: schoolId, student_id: studentId, description, amount: Number(amt.toFixed(2)), notes: `test:${testModal.testId}`,
+      }).select('id, amount').single();
+      if (error || !data) throw error ?? new Error('insert failed');
+      setTestModalAssignments((prev) => prev.map((x) => (x.studentId === studentId ? { ...x, chargeAmount: String(data.amount), existingChargeId: data.id, existingAmount: Number(data.amount) } : x)));
+    } catch (err) {
+      console.error(err);
+      setTestError('Αποτυχία χρέωσης.');
+    } finally {
+      setChargingTestStudentIds((prev) => { const n = new Set(prev); n.delete(studentId); return n; });
+    }
+  };
+
+  const cancelTestModalCharge = async (studentId: string) => {
+    const a = testModalAssignments.find((x) => x.studentId === studentId);
+    if (!a?.existingChargeId) return;
+    setCancellingTestChargeIds((prev) => new Set(prev).add(studentId));
+    try {
+      const { error } = await supabase.from('student_extra_charges').update({ cancelled_at: new Date().toISOString() }).eq('id', a.existingChargeId);
+      if (error) throw error;
+      setTestModalAssignments((prev) => prev.map((x) => (x.studentId === studentId ? { ...x, chargeAmount: '', existingChargeId: undefined, existingAmount: undefined } : x)));
+    } catch (err) {
+      console.error(err);
+      setTestError('Αποτυχία ακύρωσης χρέωσης.');
+    } finally {
+      setCancellingTestChargeIds((prev) => { const n = new Set(prev); n.delete(studentId); return n; });
+    }
+  };
+
+  // Idiaitera only: restore the matching weekly session occurrence and delete the test.
+  // Grades cascade-delete with the test; any charges already made stay on the student's ledger untouched.
+  const handleConvertTestToSession = async () => {
+    if (!testModal || !testConvertTarget) return;
+    const testDateISO = parseDateDisplayToISO(testModal.date);
+    if (!testDateISO) return;
+    setConvertingTestToSession(true); setTestError(null);
+    try {
+      const overrideResult = await callEdgeFunction('program-item-override-upsert', {
+        program_item_id: testConvertTarget.id, override_date: testDateISO,
+        start_time: `${testModal.startTime}:00`, end_time: `${testModal.endTime}:00`,
+        is_deleted: false, is_inactive: false, holiday_active_override: false, charge_amount: null,
+      });
+      setOverrides((prev) => {
+        const existing = prev.find((o) => o.program_item_id === testConvertTarget.id && o.override_date === testDateISO);
+        const upserted = overrideResult.item as ProgramItemOverrideRow;
+        if (existing) return prev.map((o) => (o.id === existing.id ? upserted : o));
+        return [...prev, upserted];
+      });
+      await callEdgeFunction('tests-delete', { test_id: testModal.testId });
+      setTests((prev) => prev.filter((t) => t.id !== testModal.testId));
+      setTestModal(null); setTestModalAssignments([]); setShowConvertTestConfirm(false);
+    } catch (err) {
+      console.error(err);
+      setTestError('Αποτυχία μετατροπής σε μάθημα.');
+    } finally {
+      setConvertingTestToSession(false);
+    }
+  };
 
   const handleEventModalClose = () => { setEventModal(null); setEventError(null); setShowDeleteConfirm(false); };
   const handleProgramAskDeleteForDay = () => setShowDeleteConfirm(true);
@@ -886,6 +1008,19 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
   const programModalHolidayName = useMemo(() => { if (!eventModal) return null; const iso = parseDateDisplayToISO(eventModal.date); if (!iso) return null; return holidayNameByDate.get(iso) ?? null; }, [eventModal, holidayNameByDate]);
   const testModalIsHoliday = useMemo(() => { if (!testModal) return false; const iso = parseDateDisplayToISO(testModal.date); if (!iso) return false; return holidayDateSet.has(iso); }, [testModal, holidayDateSet]);
   const testModalHolidayName = useMemo(() => { if (!testModal) return null; const iso = parseDateDisplayToISO(testModal.date); if (!iso) return null; return holidayNameByDate.get(iso) ?? null; }, [testModal, holidayNameByDate]);
+
+  // A private test can only convert back into a regular session when it has exactly one student
+  // (a session slot always belongs to a single student) and a matching weekly recurring slot exists
+  // for that student on that weekday — otherwise there's no session to revert to.
+  const testConvertTarget = useMemo(() => {
+    if (!testModal || testModal.classId || testModal.levelId) return null;
+    if (testModalAssignments.length !== 1) return null;
+    const iso = parseDateDisplayToISO(testModal.date);
+    if (!iso) return null;
+    const dow = INDEX_TO_WEEKDAY[new Date(`${iso}T00:00:00`).getDay()];
+    const studentId = testModalAssignments[0].studentId;
+    return programItems.find((pi) => pi.student_id === studentId && pi.day_of_week === dow) ?? null;
+  }, [testModal, testModalAssignments, programItems]);
 
   const studentById = useMemo(() => { const m = new Map<string, StudentRow>(); students.forEach((s) => m.set(s.id, s)); return m; }, [students]);
 
@@ -1006,7 +1141,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
 
           {/* Program edit modal */}
           {eventModal && !showDeleteConfirm && (
-            <ModalShell title="Επεξεργασία μαθήματος" icon={<BookOpen className="h-4 w-4" style={{ color: 'var(--ch-icon)' }} />} onClose={handleEventModalClose}>
+            <ModalShell title="Επεξεργασία μαθήματος" icon={<BookOpen className="h-4 w-4" style={{ color: 'var(--ch-icon)' }} />} onClose={handleEventModalClose} maxWidthClass="max-w-2xl">
               <div className="space-y-4 px-6 pb-2">
                 {eventError && <div className={errorBannerCls}><span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />{eventError}</div>}
 
@@ -1071,17 +1206,24 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
                 )}
               </div>
 
-              <div className={modalFooterCls}>
-                <button type="button" onClick={handleProgramAskDeleteForDay}
-                  className="btn bg-red-600/80 px-3 py-1.5 font-semibold text-white hover:bg-red-600 active:scale-[0.97]">
-                  Ακύρωση για αυτή τη μέρα
-                </button>
-                <div className="flex gap-2.5">
-                  <button type="button" onClick={handleEventModalSave}
-                    className="btn-primary gap-1.5 px-4 py-1.5 font-semibold shadow-sm hover:brightness-110 active:scale-[0.97]">
-                    Ενημέρωση
+              <div className={`${modalFooterCls} flex-wrap`}>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={handleProgramAskDeleteForDay}
+                    className="btn gap-1.5 bg-red-600/80 px-4 py-1.5 font-semibold text-white hover:bg-red-600 active:scale-[0.97]">
+                    <Ban className="h-3.5 w-3.5" />Ακύρωση για αυτή τη μέρα
                   </button>
+                  {eventModal.studentId && (
+                    <button type="button" onClick={handleConvertSessionToTest} disabled={convertingSessionToTest}
+                      title="Ακυρώνει το μάθημα αυτής της ημέρας και δημιουργεί διαγώνισμα στη θέση του"
+                      className="btn-ghost gap-1.5 px-4 py-1.5 font-semibold">
+                      {convertingSessionToTest ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Μετατροπή…</> : <><ArrowLeftRight className="h-3.5 w-3.5" />Μετατροπή σε διαγώνισμα</>}
+                    </button>
+                  )}
                 </div>
+                <button type="button" onClick={handleEventModalSave}
+                  className="btn-primary gap-1.5 px-4 py-1.5 font-semibold shadow-sm active:scale-[0.97]">
+                  <Check className="h-3.5 w-3.5" />Ενημέρωση
+                </button>
               </div>
             </ModalShell>
           )}
@@ -1101,10 +1243,12 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
                 <div className="p-6">
                   <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Θέλετε σίγουρα να ακυρώσετε το μάθημα μόνο για τη συγκεκριμένη ημερομηνία;</p>
                   <div className="mt-5 flex justify-end gap-2.5">
-                    <button type="button" onClick={handleProgramCancelDeleteConfirm} className={cancelBtnCls}>Όχι</button>
+                    <button type="button" onClick={handleProgramCancelDeleteConfirm} className={`${cancelBtnCls} gap-1.5`}>
+                      <X className="h-3.5 w-3.5" />Όχι
+                    </button>
                     <button type="button" onClick={handleEventModalDeleteForDay}
-                      className="btn bg-red-600 px-4 py-1.5 font-semibold text-white shadow-sm hover:bg-red-500 active:scale-[0.97]">
-                      Ναι, ακύρωση
+                      className="btn gap-1.5 bg-red-600 px-4 py-1.5 font-semibold text-white shadow-sm hover:bg-red-500 active:scale-[0.97]">
+                      <Ban className="h-3.5 w-3.5" />Ναι, ακύρωση
                     </button>
                   </div>
                 </div>
@@ -1116,23 +1260,57 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
           {testModal && (
             <ModalShell title="Επεξεργασία διαγωνίσματος"
               icon={<span className="text-[10px] font-bold" style={{ color: 'var(--ch-icon)' }}>✎</span>}
-              onClose={handleTestModalClose}>
+              onClose={handleTestModalClose} maxWidthClass="max-w-2xl">
               <div className="space-y-4 px-6 pb-2">
                 {testError && <div className={errorBannerCls}><span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />{testError}</div>}
 
                 {!testModal.classId && !testModal.levelId ? (
                   <FormField label="Μαθητές" icon={<GraduationCap className="h-3 w-3" />}>
-                    <div className={`flex min-h-9 w-full flex-col justify-center gap-1 rounded-lg border px-3 py-2 ${isDark ? 'border-slate-700/70 bg-slate-900/60' : 'border-slate-200 bg-white'}`}>
+                    <div className={`flex w-full flex-col gap-1.5 rounded-lg border px-3 py-2 ${isDark ? 'border-slate-700/70 bg-slate-900/60' : 'border-slate-200 bg-white'}`}>
                       {testModalAssignmentsLoading ? (
                         <span className="text-xs opacity-70">Φόρτωση...</span>
                       ) : testModalAssignments.length === 0 ? (
                         <span className="text-xs opacity-70">—</span>
                       ) : (
-                        testModalAssignments.map((a) => (
-                          <span key={a.studentId} className="text-xs">
-                            {a.studentName}{a.subjectName ? ` · ${a.subjectName}` : ''}
-                          </span>
-                        ))
+                        testModalAssignments.map((a) => {
+                          const isCharged = !!a.existingChargeId;
+                          const isCharging = chargingTestStudentIds.has(a.studentId);
+                          const isCancellingCharge = cancellingTestChargeIds.has(a.studentId);
+                          return (
+                            <div key={a.studentId} className="flex items-center gap-2 py-0.5">
+                              <span className="min-w-0 flex-1 truncate text-xs">
+                                {a.studentName}{a.subjectName ? ` · ${a.subjectName}` : ''}
+                              </span>
+                              {isCharged ? (
+                                <div className="flex shrink-0 items-center gap-1">
+                                  <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums"
+                                    style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', color: 'var(--color-accent)' }}>
+                                    <Euro className="h-2.5 w-2.5" />{a.existingAmount?.toFixed(2)}
+                                  </span>
+                                  <button type="button" onClick={() => cancelTestModalCharge(a.studentId)} disabled={isCancellingCharge}
+                                    title="Ακύρωση χρέωσης"
+                                    className={`flex h-6 w-6 items-center justify-center rounded-md border transition disabled:opacity-40 ${isDark ? 'border-slate-700/60 bg-slate-900/30 text-slate-500 hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-400' : 'border-slate-200 bg-white text-slate-400 hover:border-red-300 hover:bg-red-50 hover:text-red-500'}`}>
+                                    {isCancellingCharge ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <X className="h-3 w-3" />}
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex shrink-0 items-center gap-1">
+                                  <input type="text" inputMode="decimal" placeholder="π.χ. 15"
+                                    value={a.chargeAmount}
+                                    onChange={(e) => updateTestModalChargeAmount(a.studentId, e.target.value)}
+                                    className={`h-6 w-14 rounded-md border px-1.5 text-[11px] outline-none transition ${isDark ? 'border-slate-700/70 bg-slate-900/60 text-slate-100 placeholder-slate-500 focus:border-[color:var(--color-accent)]' : 'border-slate-300 bg-white text-slate-800 placeholder-slate-400 focus:border-[color:var(--color-accent)]'}`}
+                                    disabled={isCharging}
+                                  />
+                                  <button type="button" onClick={() => chargeTestModalStudent(a.studentId)} disabled={isCharging || !a.chargeAmount.trim()}
+                                    title="Χρέωση διαγωνίσματος"
+                                    className={`flex h-6 w-6 items-center justify-center rounded-md border transition disabled:opacity-40 ${isDark ? 'border-slate-700/60 bg-slate-900/30 text-slate-500 hover:border-[color:var(--color-accent)]/40 hover:bg-[color:var(--color-accent)]/10 hover:text-[color:var(--color-accent)]' : 'border-slate-200 bg-white text-slate-400 hover:border-[color:var(--color-accent)]/40 hover:bg-[color:var(--color-accent)]/10 hover:text-[color:var(--color-accent)]'}`}>
+                                    {isCharging ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Euro className="h-3 w-3" />}
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })
                       )}
                     </div>
                     <button type="button" onClick={() => navigate('/program/tests')}
@@ -1195,17 +1373,56 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
                 )}
               </div>
 
-              <div className={modalFooterCls}>
-                <button type="button" onClick={handleTestCancelForDay} disabled={savingTest}
-                  className="rounded-lg bg-red-600/80 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-red-600 active:scale-[0.97] disabled:opacity-50">
-                  Ακύρωση για αυτή τη μέρα
-                </button>
+              <div className={`${modalFooterCls} flex-wrap`}>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={handleTestCancelForDay} disabled={savingTest}
+                    className="btn gap-1.5 bg-red-600/80 px-4 py-1.5 font-semibold text-white hover:bg-red-600 active:scale-[0.97] disabled:opacity-50">
+                    <Ban className="h-3.5 w-3.5" />Ακύρωση για αυτή τη μέρα
+                  </button>
+                  {!testModal.classId && !testModal.levelId && (
+                    <button type="button" onClick={() => setShowConvertTestConfirm(true)} disabled={savingTest || !testConvertTarget}
+                      title={testConvertTarget ? 'Διαγράφει το διαγώνισμα και επαναφέρει το τακτικό μάθημα αυτής της ημέρας' : 'Δεν βρέθηκε τακτικό μάθημα αυτού του μαθητή σε αυτή την ημέρα της εβδομάδας'}
+                      className="btn-ghost gap-1.5 px-4 py-1.5 font-semibold">
+                      <ArrowLeftRight className="h-3.5 w-3.5" />Μετατροπή σε μάθημα
+                    </button>
+                  )}
+                </div>
                 <button type="button" onClick={handleTestModalSave} disabled={savingTest}
-                  className="btn-primary gap-1.5 px-3 py-1.5 font-semibold shadow-sm hover:brightness-110 active:scale-[0.97] disabled:opacity-60">
-                  {savingTest ? <><Loader2 className="h-3 w-3 animate-spin" />Αποθήκευση…</> : 'Ενημέρωση'}
+                  className="btn-primary gap-1.5 px-4 py-1.5 font-semibold shadow-sm active:scale-[0.97]">
+                  {savingTest ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Αποθήκευση…</> : <><Check className="h-3.5 w-3.5" />Ενημέρωση</>}
                 </button>
               </div>
             </ModalShell>
+          )}
+
+          {/* Convert test → session confirm */}
+          {testModal && showConvertTestConfirm && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+              <div className={`relative w-full max-w-sm overflow-hidden rounded-2xl border shadow-2xl ${
+                isDark ? 'border-slate-700/60 bg-[#1f2d3d]' : 'border-slate-200 bg-white'
+              }`}>
+                <div className="px-6 py-4" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
+                  <div className="mb-1 flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/15 ring-1 ring-red-500/30">
+                    <BookOpen className="h-5 w-5 text-red-400" />
+                  </div>
+                  <h3 className="text-sm font-semibold" style={{ color: 'var(--ch-text)' }}>Μετατροπή σε μάθημα</h3>
+                </div>
+                <div className="p-6">
+                  <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Το διαγώνισμα θα διαγραφεί μαζί με τυχόν βαθμούς του. Τυχόν χρεώσεις που έχουν ήδη γίνει θα παραμείνουν στον λογαριασμό του μαθητή. Το τακτικό μάθημα αυτής της ημέρας θα επανέλθει.
+                  </p>
+                  <div className="mt-5 flex justify-end gap-2.5">
+                    <button type="button" onClick={() => setShowConvertTestConfirm(false)} disabled={convertingTestToSession} className={`${cancelBtnCls} gap-1.5 disabled:opacity-50`}>
+                      <X className="h-3.5 w-3.5" />Ακύρωση
+                    </button>
+                    <button type="button" onClick={handleConvertTestToSession} disabled={convertingTestToSession}
+                      className="btn gap-1.5 bg-red-600 px-4 py-1.5 font-semibold text-white shadow-sm hover:bg-red-500 active:scale-[0.97] disabled:opacity-60">
+                      {convertingTestToSession ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Μετατροπή…</> : <><ArrowLeftRight className="h-3.5 w-3.5" />Ναι, μετατροπή</>}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
         </>
       )}
