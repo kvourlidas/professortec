@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useAuth } from '../auth';
 import { useTheme } from '../context/ThemeContext';
-import { HelpCircle, Mail, User, MessageSquare, ChevronDown, Send, CheckCircle2 } from 'lucide-react';
+import { supabase } from '../lib/supabaseClient';
+import { HelpCircle, Mail, Phone, User, MessageSquare, ChevronDown, Send, CheckCircle2 } from 'lucide-react';
 
 const CATEGORIES = [
   'Τεχνικό πρόβλημα',
@@ -13,15 +14,30 @@ const CATEGORIES = [
 ];
 
 export default function HelpSupportPage() {
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const schoolId = profile?.school_id ?? null;
 
-  const [name, setName] = useState(profile?.full_name ?? '');
-  const [email, setEmail] = useState('');
+  const [contactPhone, setContactPhone] = useState<string | null>(null);
+  const [contactEmail, setContactEmail] = useState<string | null>(null);
   const [category, setCategory] = useState('');
   const [message, setMessage] = useState('');
   const [submitted, setSubmitted] = useState(false);
+
+  useEffect(() => {
+    if (!schoolId) return;
+    const load = async () => {
+      const { data, error } = await supabase
+        .from('schools').select('phone, email').eq('id', schoolId).maybeSingle();
+      if (!error && data) { setContactPhone(data.phone ?? null); setContactEmail(data.email ?? null); }
+    };
+    load();
+  }, [schoolId]);
+
+  const name = profile?.full_name ?? '';
+  const email = contactEmail || user?.email || '';
+  const phone = contactPhone || '';
 
   const cardCls = isDark
     ? 'overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-2xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]'
@@ -32,6 +48,8 @@ export default function HelpSupportPage() {
     : 'h-10 w-full rounded-xl border border-slate-300 bg-slate-50 px-3 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:bg-white focus:ring-1 focus:ring-[color:var(--color-accent)]/30';
 
   const labelCls = `block mb-1.5 text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`;
+
+  const emptyValueCls = isDark ? 'text-slate-600 italic' : 'text-slate-400 italic';
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -113,35 +131,35 @@ export default function HelpSupportPage() {
         <div className="px-12 py-14 lg:col-span-3">
           <form onSubmit={onSubmit} className="space-y-5">
 
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
               <div>
                 <label className={labelCls}>
                   <User className="inline h-3 w-3 mr-1 opacity-60" />
                   Όνομα
                 </label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  placeholder="Το όνομά σας"
-                  className={inputCls}
-                  required
-                />
+                <p className={`text-sm font-medium ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+                  {name || <span className={emptyValueCls}>—</span>}
+                </p>
               </div>
 
               <div>
                 <label className={labelCls}>
                   <Mail className="inline h-3 w-3 mr-1 opacity-60" />
-                  Email επικοινωνίας
+                  Email
                 </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  placeholder="email@example.gr"
-                  className={inputCls}
-                  required
-                />
+                <p className={`text-sm font-medium ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+                  {email || <span className={emptyValueCls}>—</span>}
+                </p>
+              </div>
+
+              <div>
+                <label className={labelCls}>
+                  <Phone className="inline h-3 w-3 mr-1 opacity-60" />
+                  Τηλέφωνο
+                </label>
+                <p className={`text-sm font-medium ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+                  {phone || <span className={emptyValueCls}>—</span>}
+                </p>
               </div>
             </div>
 

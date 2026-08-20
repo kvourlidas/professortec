@@ -33,6 +33,7 @@ const HelpSupportPage = lazy(() => import('./pages/HelpSupportPage'));
 import { useAuth } from './auth';
 import Layout from './components/Layout';
 import { ThemeProvider } from './context/ThemeContext';
+import { ToastProvider } from './context/ToastContext';
 
 function RouteFallback() {
   return (
@@ -77,6 +78,7 @@ function FrontistirioOnly({ children }: { children: ReactElement }) {
 export default function App() {
   return (
     <ThemeProvider>
+      <ToastProvider>
       <Suspense fallback={<RouteFallback />}>
       <Routes>
         <Route path={p('/login')} element={<LoginPage />} />
@@ -121,6 +123,7 @@ export default function App() {
         <Route path="*" element={<Navigate to={p('/dashboard')} replace />} />
       </Routes>
       </Suspense>
+      </ToastProvider>
     </ThemeProvider>
   );
 }

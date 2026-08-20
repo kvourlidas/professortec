@@ -12,6 +12,7 @@ import {
 import { supabase } from '../lib/supabaseClient.ts';
 import { useAuth } from '../auth.tsx';
 import { useTheme } from '../context/ThemeContext.tsx';
+import { useToast } from '../context/ToastContext.tsx';
 import DatePickerField from '../components/ui/AppDatePicker.tsx';
 import type { StudentRow, LevelRow, SubscriptionRow, ClassEnrollment, ProgramSlot } from '../components/students/types.ts';
 import { STUDENT_SELECT, formatDateToGreek, formatMonthRangeGreek, isoToDisplay, displayToIso } from '../components/students/types.ts';
@@ -514,6 +515,7 @@ export default function StudentCardPage() {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const { theme } = useTheme();
+  const { showToast } = useToast();
   const isDark = theme === 'dark';
   const schoolId = profile?.school_id ?? null;
 
@@ -554,7 +556,6 @@ export default function StudentCardPage() {
 
   const [editingNotes, setEditingNotes] = useState(false);
   const [savingNotes, setSavingNotes] = useState(false);
-  const [studentSuccess, setStudentSuccess] = useState(false);
   const [fullName, setFullName] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [phone, setPhone] = useState('');
@@ -566,7 +567,6 @@ export default function StudentCardPage() {
   const [editingParents, setEditingParents] = useState(false);
   const [savingParents, setSavingParents] = useState(false);
   const [parentsError, setParentsError] = useState<string | null>(null);
-  const [parentsSuccess, setParentsSuccess] = useState(false);
   const [fatherName, setFatherName] = useState('');
   const [fatherDob, setFatherDob] = useState('');
   const [fatherPhone, setFatherPhone] = useState('');
@@ -1149,8 +1149,7 @@ export default function StudentCardPage() {
 
     setSavingStudent(false);
     setEditingStudent(false);
-    setStudentSuccess(true);
-    setTimeout(() => setStudentSuccess(false), 3000);
+    showToast('Στοιχεία μαθητή αποθηκεύτηκαν.');
   };
 
   const saveNotes = async () => {
@@ -1220,8 +1219,7 @@ export default function StudentCardPage() {
     setStudent(data.item as StudentRow);
     setSavingParents(false);
     setEditingParents(false);
-    setParentsSuccess(true);
-    setTimeout(() => setParentsSuccess(false), 3000);
+    showToast('Στοιχεία γονέων αποθηκεύτηκαν.');
   };
 
   const handleSlotCreated = async (_item: any) => {
@@ -1308,9 +1306,6 @@ export default function StudentCardPage() {
             : <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${isDark ? 'border-emerald-500/40 bg-emerald-950/30 text-emerald-300' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}`}><CheckCircle2 className="h-2.5 w-2.5" />Εξοφλημένος</span>
         )}
       </div>
-
-      {studentSuccess && <div className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs ${isDark ? 'border-emerald-500/40 bg-emerald-950/30 text-emerald-300' : 'border-emerald-300 bg-emerald-50 text-emerald-700'}`}><CheckCircle2 className="h-3 w-3 shrink-0" />Στοιχεία μαθητή αποθηκεύτηκαν.</div>}
-      {parentsSuccess && <div className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs ${isDark ? 'border-emerald-500/40 bg-emerald-950/30 text-emerald-300' : 'border-emerald-300 bg-emerald-50 text-emerald-700'}`}><CheckCircle2 className="h-3 w-3 shrink-0" />Στοιχεία γονέων αποθηκεύτηκαν.</div>}
 
       {/* ── Grid ── */}
       <div className="grid gap-4 lg:grid-cols-2">

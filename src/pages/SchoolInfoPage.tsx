@@ -4,7 +4,8 @@ import type { ChangeEvent, FormEvent } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
 import { useTheme } from '../context/ThemeContext';
-import { Building2, MapPin, Phone, Mail, Loader2, CheckCircle2, Pencil, X } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
+import { Building2, MapPin, Phone, Mail, Loader2, Pencil, X } from 'lucide-react';
 import type { SchoolForm, SchoolRow } from '../components/school-info/types';
 import { emptyForm } from '../components/school-info/types';
 
@@ -35,7 +36,7 @@ export default function SchoolInfoPage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const { showToast } = useToast();
 
   // ── Styles ──
   const cardCls = isDark
@@ -81,7 +82,6 @@ export default function SchoolInfoPage() {
 
   const handleChange = (field: keyof SchoolForm) => (e: ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
-    setSuccess(false);
   };
 
   // ── Update via edge function ──────────────────────────────────────────────
@@ -89,7 +89,7 @@ export default function SchoolInfoPage() {
     e.preventDefault();
     if (!schoolId) return;
     if (!form.name.trim()) { setError('Το όνομα σχολείου είναι υποχρεωτικό.'); return; }
-    setSaving(true); setError(null); setSuccess(false);
+    setSaving(true); setError(null);
     try {
       await callEdgeFunction('schoolinfo-update', {
         school_id: schoolId,
@@ -100,8 +100,7 @@ export default function SchoolInfoPage() {
       });
       setSaved(form);
       setEditing(false);
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
+      showToast('Οι αλλαγές αποθηκεύτηκαν με επιτυχία.');
     } catch (err: any) {
       console.error(err);
       setError('Αποτυχία αποθήκευσης. Δοκιμάστε ξανά.');
@@ -120,20 +119,7 @@ export default function SchoolInfoPage() {
     <div className="space-y-6 px-1">
 
       {/* ── Header ── */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <div
-            className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
-            style={{ background: 'var(--color-accent)' }}
-          >
-            <Building2 className="h-4 w-4" style={{ color: 'var(--ch-icon)' }} />
-          </div>
-          <div>
-            <h1 className={`text-base font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>
-              Πληροφορίες Σχολείου
-            </h1>
-          </div>
-        </div>
+      <div className="flex items-start justify-end gap-3">
         {!loading && !editing && (
           <button
             type="button"
@@ -155,12 +141,6 @@ export default function SchoolInfoPage() {
         <div className="flex items-start gap-3 rounded-xl border border-red-500/40 bg-red-950/40 px-4 py-3 text-xs text-red-200 backdrop-blur">
           <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-red-400" />
           {error}
-        </div>
-      )}
-      {success && (
-        <div className="flex items-center gap-2.5 rounded-xl border border-emerald-500/40 bg-emerald-950/30 px-4 py-3 text-xs text-emerald-300 backdrop-blur">
-          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
-          Οι αλλαγές αποθηκεύτηκαν με επιτυχία.
         </div>
       )}
 

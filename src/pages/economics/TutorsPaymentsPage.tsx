@@ -311,17 +311,6 @@ export default function TutorsPaymentsPage() {
   return (
     <div className="space-y-5 px-1 pb-10">
 
-      {/* ── Page header ── */}
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-lg"
-          style={{ background: 'var(--color-accent)' }}>
-          <HandCoins className="h-5 w-5" style={{ color: 'var(--ch-icon)' }} />
-        </div>
-        <div>
-          <h1 className={`text-[15px] font-bold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Πληρωμές Καθηγητών</h1>
-        </div>
-      </div>
-
       {/* ── Error banner ── */}
       {error && (
         <div className={`flex items-start gap-3 rounded-xl border px-4 py-3 text-xs ${isDark ? 'border-red-500/30 bg-red-950/40 text-red-300' : 'border-red-200 bg-red-50 text-red-600'}`}>

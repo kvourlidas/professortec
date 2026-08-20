@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../auth';
 import { useTheme } from '../../context/ThemeContext';
+import { useToast } from '../../context/ToastContext';
 import {
   Loader2, Plus, Save, Trash2, Package,
   CalendarDays, Repeat, CheckCircle2, XCircle, ChevronDown, X, Pencil,
@@ -137,11 +138,11 @@ export default function PackageSubscriptionsPage() {
   const { theme }   = useTheme();
   const isDark      = theme === 'dark';
   const schoolId    = profile?.school_id ?? null;
+  const { showToast } = useToast();
 
   const [loading,  setLoading]  = useState(true);
   const [saving,   setSaving]   = useState(false);
   const [error,    setError]    = useState<string | null>(null);
-  const [info,     setInfo]     = useState<string | null>(null);
   const [initial,  setInitial]  = useState<FormRow[] | null>(null);
   const [rows,     setRows]     = useState<FormRow[] | null>(null);
   const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set());
@@ -194,7 +195,7 @@ export default function PackageSubscriptionsPage() {
 
   const load = async () => {
     if (!schoolId) { setLoading(false); setError('Δεν βρέθηκε school_id στο προφίλ.'); return; }
-    setLoading(true); setError(null); setInfo(null);
+    setLoading(true); setError(null);
     const { data, error } = await supabase
       .from('packages')
       .select('id,school_id,name,price,currency,is_active,sort_order,package_type,starts_on,ends_on,avatar_color,is_custom')
@@ -232,7 +233,7 @@ export default function PackageSubscriptionsPage() {
 
   const saveAll = async () => {
     if (!schoolId || !rows) return;
-    setSaving(true); setError(null); setInfo(null);
+    setSaving(true); setError(null);
 
     const packages = rows.map(r => {
       const pn = Number((r.price ?? '0').trim().replace(',', '.').replace(/[^0-9.]/g, ''));
@@ -254,7 +255,7 @@ export default function PackageSubscriptionsPage() {
 
     try {
       await callEdgeFunction('packagesubscriptions-update', { packages });
-      setInfo('Αποθηκεύτηκε!');
+      showToast('Αποθηκεύτηκε!');
       await load();
     } catch (err: any) {
       setError(err?.message ?? 'Αποτυχία αποθήκευσης.');
@@ -263,7 +264,7 @@ export default function PackageSubscriptionsPage() {
     }
   };
 
-  const resetChanges = () => { if (!initial) return; setRows(initial); setError(null); setInfo(null); };
+  const resetChanges = () => { if (!initial) return; setRows(initial); setError(null); };
 
   const openAdd = () => {
     setNewName(''); setNewPrice(''); setNewActive(true);
@@ -297,7 +298,7 @@ export default function PackageSubscriptionsPage() {
         avatar_color: newAvatarColor,
         is_custom: true,
       });
-      setAddOpen(false); setInfo('Το πακέτο προστέθηκε.');
+      setAddOpen(false); showToast('Το πακέτο προστέθηκε.');
       await load();
     } catch (err: any) {
       setAddError(err?.message ?? 'Αποτυχία προσθήκης πακέτου.');
@@ -307,15 +308,15 @@ export default function PackageSubscriptionsPage() {
   };
 
   const requestDelete = (id: string, name: string) => {
-    setError(null); setInfo(null); setDeleteTarget({ id, name }); setDeleteOpen(true);
+    setError(null); setDeleteTarget({ id, name }); setDeleteOpen(true);
   };
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
-    setSaving(true); setError(null); setInfo(null);
+    setSaving(true); setError(null);
     try {
       await callEdgeFunction('packagesubscriptions-delete', { package_id: deleteTarget.id });
-      setDeleteOpen(false); setDeleteTarget(null); setInfo('Διαγράφηκε.');
+      setDeleteOpen(false); setDeleteTarget(null); showToast('Διαγράφηκε.');
       await load();
     } catch (err: any) {
       setError(err?.message ?? 'Αποτυχία διαγραφής.');
@@ -330,26 +331,17 @@ export default function PackageSubscriptionsPage() {
     <div className="space-y-6 px-1">
 
       {/* ── Header ── */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-start gap-3">
-          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
-            style={{ background: 'var(--color-accent)' }}>
-            <Package className="h-4 w-4" style={{ color: 'var(--ch-icon)' }} />
-          </div>
-          <div>
-            <h1 className={`text-base font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Πακέτα Συνδρομών</h1>
-          </div>
-        </div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-end">
         <button type="button" onClick={openAdd} className="btn-primary gap-2 px-4 py-2">
           <Plus className="h-3.5 w-3.5" />Νέο πακέτο
         </button>
       </div>
 
       {/* Feedback */}
-      {(error || info) && (
-        <div className={`flex items-start gap-3 rounded-xl border px-4 py-3 text-xs ${error ? 'border-red-500/40 bg-red-950/40 text-red-200' : 'border-emerald-500/30 bg-emerald-950/30 text-emerald-200'}`}>
-          <span className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${error ? 'bg-red-400' : 'bg-emerald-400'}`} />
-          {error ?? info}
+      {error && (
+        <div className="flex items-start gap-3 rounded-xl border px-4 py-3 text-xs border-red-500/40 bg-red-950/40 text-red-200">
+          <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-red-400" />
+          {error}
         </div>
       )}
 

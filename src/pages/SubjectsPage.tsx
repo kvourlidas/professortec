@@ -189,36 +189,23 @@ export default function SubjectsPage() {
 
       {/* ── Header ── */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-start gap-3">
-          <div
-            className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
-            style={{ background: 'var(--color-accent)' }}
-          >
-            <NotebookText className="h-4 w-4" style={{ color: 'var(--ch-icon)' }} />
-          </div>
-          <div>
-            <h1 className={`text-base font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>
-              Μαθήματα
-            </h1>
-            {schoolId && (
-              <div className="mt-2 flex items-center gap-2 flex-wrap">
-                <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] ${isDark ? 'border-slate-700/60 bg-slate-800/50 text-slate-300' : 'border-slate-200 bg-slate-100 text-slate-600'}`}>
-                  <NotebookText className={`h-3 w-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
-                  {subjects.length} σύνολο
-                </span>
-                {search.trim() && (
-                  <span
-                    className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px]"
-                    style={{ borderColor: 'color-mix(in srgb, var(--color-accent) 40%, transparent)', background: 'color-mix(in srgb, var(--color-accent) 10%, transparent)', color: 'var(--color-accent)' }}
-                  >
-                    <Search className="h-3 w-3" />
-                    {filteredSubjects.length} αποτελέσματα
-                  </span>
-                )}
-              </div>
+        {schoolId && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] ${isDark ? 'border-slate-700/60 bg-slate-800/50 text-slate-300' : 'border-slate-200 bg-slate-100 text-slate-600'}`}>
+              <NotebookText className={`h-3 w-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+              {subjects.length} σύνολο
+            </span>
+            {search.trim() && (
+              <span
+                className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px]"
+                style={{ borderColor: 'color-mix(in srgb, var(--color-accent) 40%, transparent)', background: 'color-mix(in srgb, var(--color-accent) 10%, transparent)', color: 'var(--color-accent)' }}
+              >
+                <Search className="h-3 w-3" />
+                {filteredSubjects.length} αποτελέσματα
+              </span>
             )}
           </div>
-        </div>
+        )}
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2.5">
           <div className="relative">

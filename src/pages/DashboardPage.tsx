@@ -2,10 +2,15 @@
 import { useAuth } from '../auth.tsx';
 import DashboardNotesSection from '../components/dashboard/DashboardNotesSection.tsx';
 import DashboardUpcomingSessionsSection from '../components/dashboard/DashboardUpcomingSessionsSection.tsx';
+import DashboardQuickActionsSection from '../components/dashboard/DashboardQuickActionsSection.tsx';
 
 export default function DashboardPage() {
   const { profile } = useAuth();
   const schoolId = profile?.school_id ?? null;
+  const isFrontistirio = profile?.account_type === 'frontistirio';
+  const quickActions = isFrontistirio
+    ? (['students', 'tutors', 'classes'] as const)
+    : (['students', 'tests'] as const);
 
   return (
     <div className="space-y-6">
@@ -20,6 +25,9 @@ export default function DashboardPage() {
         <DashboardMetricsSection schoolId={schoolId} />
         <DashboardMonthlyTestsAvgGradesSection schoolId={schoolId} />
       </div> */}
+
+      {/* Quick actions */}
+      <DashboardQuickActionsSection schoolId={schoolId} actions={[...quickActions]} />
 
     </div>
   );

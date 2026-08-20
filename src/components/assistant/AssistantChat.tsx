@@ -127,7 +127,10 @@ export default function AssistantChat({ onClose }: Props) {
       >
         <div className="flex items-center gap-2">
           <Bot className="h-4 w-4 text-white" />
-          <span className="text-sm font-semibold text-white">AI Βοηθός</span>
+          <div className="leading-tight">
+            <p className="text-sm font-semibold text-white">Vela</p>
+            <p className="text-[10px] text-white/70">AI Βοηθός</p>
+          </div>
         </div>
         <div className="flex items-center gap-1">
           <button
@@ -154,9 +157,28 @@ export default function AssistantChat({ onClose }: Props) {
 
       <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
         {messages.length === 0 && (
-          <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-            Δοκίμασε: "Πρόσθεσε νέο μαθητή Γιώργο Παπαδόπουλο, τηλέφωνο 6900000000"
-          </p>
+          <div className="flex flex-col items-center gap-3 px-2 py-6 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full" style={{ background: 'linear-gradient(135deg, #FF6B00 0%, #FF9A3C 100%)' }}>
+              <Bot className="h-6 w-6 text-white" />
+            </div>
+            <div className="space-y-1">
+              <p className={`text-sm font-semibold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>Γεια σου! Είμαι η Vela 👋</p>
+              <p className={`mx-auto max-w-[260px] text-xs leading-relaxed ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                Πες μου τι χρειάζεσαι για το φροντιστήριο και θα σε βοηθήσω.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setInput('Πρόσθεσε νέο μαθητή Γιώργο Παπαδόπουλο, τηλέφωνο 6900000000')}
+              className={`mt-1 max-w-full truncate rounded-full border px-3 py-1.5 text-[11px] transition ${
+                isDark
+                  ? 'border-slate-700 bg-slate-800/60 text-slate-400 hover:border-[#FF6B00]/50 hover:text-slate-200'
+                  : 'border-slate-200 bg-slate-50 text-slate-500 hover:border-[#FF6B00]/50 hover:text-slate-700'
+              }`}
+            >
+              "Πρόσθεσε νέο μαθητή Γιώργο Παπαδόπουλο, τηλέφωνο 6900000000"
+            </button>
+          </div>
         )}
         {messages.map((m, i) => (
           <div key={i} className={`flex items-end gap-2 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>

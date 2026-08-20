@@ -1,9 +1,9 @@
 // src/pages/StudentsPage.tsx
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Users, Search, UserPlus, ChevronLeft, ChevronRight,
-  Loader2, Eye, Trash2, Copy, Check,
+  Loader2, Trash2, Copy, Check,
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient.ts';
 import { useAuth } from '../auth.tsx';
@@ -112,6 +112,7 @@ export default function StudentsPage() {
   const isDark = theme === 'dark';
   const schoolId = profile?.school_id ?? null;
   const navigate = useNavigate();
+  const location = useLocation();
 
   const studentsCacheKey = schoolId ? `pt_students_cache_v1_${schoolId}` : '';
   const levelsCacheKey = schoolId ? `pt_levels_cache_v1_${schoolId}` : '';
@@ -123,6 +124,14 @@ export default function StudentsPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [createModalOpen, setCreateModalOpen] = useState(false);
+
+  useEffect(() => {
+    if ((location.state as { openCreate?: boolean } | null)?.openCreate) {
+      setCreateModalOpen(true);
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location.state, location.pathname, navigate]);
+
   const [deleteTarget, setDeleteTarget] = useState<StudentRow | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -325,7 +334,7 @@ export default function StudentsPage() {
   const theadRowCls = '';
   const tbodyDivideCls = isDark ? 'divide-y divide-slate-800/60' : 'divide-y divide-slate-200';
   const colDivider = isDark ? 'border-r border-slate-800/60' : 'border-r border-slate-200';
-  const trHoverCls = isDark ? 'transition-colors hover:bg-slate-900/40' : 'transition-colors hover:bg-slate-50/80';
+  const trHoverCls = isDark ? 'transition-colors hover:bg-blue-500/[0.12]' : 'transition-colors hover:bg-blue-50';
   const modalBg = isDark ? 'border-slate-700/60 bg-slate-900' : 'border-slate-200 bg-white';
   const cancelBtnCls = `btn border px-4 py-1.5 disabled:opacity-50 ${isDark ? 'border-slate-600/60 bg-slate-800/50 text-slate-200 hover:bg-slate-700/60' : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'}`;
   const paginationBarCls = 'flex items-center justify-between gap-3 pt-4';
@@ -333,9 +342,6 @@ export default function StudentsPage() {
     ? 'inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-800 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-30'
     : 'inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-30';
   const paginationPageCls = isDark ? 'px-2 text-[11px] text-slate-300' : 'px-2 text-[11px] text-slate-600';
-  const viewBtnCls = isDark
-    ? 'inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-800 hover:text-sky-400'
-    : 'inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-sky-600';
   const deleteBtnCls = isDark
     ? 'inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 transition hover:bg-red-500/10 hover:text-red-400'
     : 'inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-500';
@@ -345,50 +351,40 @@ export default function StudentsPage() {
 
       {/* ── Header ── */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-start gap-3">
-          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
-            style={{ background: 'var(--color-accent)' }}>
-            <Users className="h-4.5 w-4.5" style={{ color: 'var(--ch-icon)' }} />
-          </div>
-          <div>
-            <h1 className={`text-base font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Μαθητές</h1>
+        {/* Badges + controls row */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Total */}
+          <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] ${isDark ? 'border-slate-700/60 bg-slate-800/50 text-slate-300' : 'border-slate-200 bg-slate-100 text-slate-600'}`}>
+            <Users className={`h-3 w-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+            {students.length} σύνολο
+          </span>
 
-            {/* ── Badges + controls row ── */}
-            <div className="mt-2 flex items-center gap-2 flex-wrap">
-              {/* Total */}
-              <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] ${isDark ? 'border-slate-700/60 bg-slate-800/50 text-slate-300' : 'border-slate-200 bg-slate-100 text-slate-600'}`}>
-                <Users className={`h-3 w-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
-                {students.length} σύνολο
-              </span>
+          {/* Search results */}
+          {search.trim() && (
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px]"
+              style={{ borderColor: 'color-mix(in srgb, var(--color-accent) 40%, transparent)', background: 'color-mix(in srgb, var(--color-accent) 10%, transparent)', color: 'var(--color-accent)' }}>
+              <Search className="h-3 w-3" />
+              {sortedStudents.length} αποτελέσματα
+            </span>
+          )}
 
-              {/* Search results */}
-              {search.trim() && (
-                <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px]"
-                  style={{ borderColor: 'color-mix(in srgb, var(--color-accent) 40%, transparent)', background: 'color-mix(in srgb, var(--color-accent) 10%, transparent)', color: 'var(--color-accent)' }}>
-                  <Search className="h-3 w-3" />
-                  {sortedStudents.length} αποτελέσματα
-                </span>
-              )}
+          {refreshing && (
+            <span className={`inline-flex items-center gap-1 text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+              <Loader2 className="h-3 w-3 animate-spin" />ενημέρωση…
+            </span>
+          )}
 
-              {refreshing && (
-                <span className={`inline-flex items-center gap-1 text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                  <Loader2 className="h-3 w-3 animate-spin" />ενημέρωση…
-                </span>
-              )}
+          {/* Divider */}
+          <span className={`h-3.5 w-px ${isDark ? 'bg-slate-700' : 'bg-slate-300'}`} />
 
-              {/* Divider */}
-              <span className={`h-3.5 w-px ${isDark ? 'bg-slate-700' : 'bg-slate-300'}`} />
+          {/* Sort */}
+          <SortDropdown sort={sort} onChange={handleSortChange} isDark={isDark} />
 
-              {/* Sort */}
-              <SortDropdown sort={sort} onChange={handleSortChange} isDark={isDark} />
+          {/* Columns */}
+          <ColumnFilterDropdown visible={visibleColumns} onChange={handleColumnsChange} isDark={isDark} />
 
-              {/* Columns */}
-              <ColumnFilterDropdown visible={visibleColumns} onChange={handleColumnsChange} isDark={isDark} />
-
-              {/* Page size */}
-              <PageSizeDropdown value={pageSize} onChange={handlePageSizeChange} isDark={isDark} />
-            </div>
-          </div>
+          {/* Page size */}
+          <PageSizeDropdown value={pageSize} onChange={handlePageSizeChange} isDark={isDark} />
         </div>
 
         {/* Right: search + add */}
@@ -466,25 +462,21 @@ export default function StudentsPage() {
               </thead>
               <tbody className={tbodyDivideCls}>
                 {pagedStudents.map((s, i) => (
-                  <tr key={s.id} className={trHoverCls}>
-                    <td className={`whitespace-nowrap px-5 py-3.5 tabular-nums ${visibleColumnDefs.length > 0 ? colDivider : ''} ${isDark ? 'text-slate-600' : 'text-slate-300'}`}>{(page - 1) * pageSize + i + 1}</td>
+                  <tr key={s.id} onClick={() => navigate(`/students/${s.id}`)} title="Άνοιγμα κάρτας μαθητή" className={`group cursor-pointer ${trHoverCls}`}>
+                    <td className={`whitespace-nowrap px-5 py-3.5 tabular-nums transition-colors group-hover:[text-shadow:0_0_0.55px_currentColor,0_0_0.55px_currentColor] ${visibleColumnDefs.length > 0 ? colDivider : ''} ${isDark ? 'text-slate-600 group-hover:text-slate-200' : 'text-slate-300 group-hover:text-slate-600'}`}>{(page - 1) * pageSize + i + 1}</td>
                     {visibleColumnDefs.map((col) => (
-                      <td key={col.key} className={`px-5 py-3.5 ${colDivider}${col.key === 'special_notes' ? ' max-w-[160px]' : ''}`}>
+                      <td key={col.key} className={`px-5 py-3.5 group-hover:[text-shadow:0_0_0.55px_currentColor,0_0_0.55px_currentColor] ${colDivider}${col.key === 'special_notes' ? ' max-w-[160px]' : ''}`}>
                         {renderCell(col.key, s)}
                       </td>
                     ))}
                     <td className="px-5 py-3.5">
                       <div className="flex items-center justify-end gap-1">
-                        <button type="button" onClick={() => navigate(`/students/${s.id}`)}
-                          className={viewBtnCls}
-                          title="Κάρτα μαθητή">
-                          <Eye className="h-3.5 w-3.5" />
-                        </button>
-                        <button type="button" onClick={() => { setError(null); setDeleteTarget(s); }}
+                        <button type="button" onClick={(e) => { e.stopPropagation(); setError(null); setDeleteTarget(s); }}
                           className={deleteBtnCls}
                           title="Διαγραφή">
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
+                        <ChevronRight className={`h-3.5 w-3.5 shrink-0 opacity-0 transition-all duration-150 group-hover:translate-x-0.5 group-hover:opacity-60 ${isDark ? 'text-slate-400' : 'text-slate-400'}`} />
                       </div>
                     </td>
                   </tr>

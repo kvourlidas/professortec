@@ -24,7 +24,7 @@ const NOTE_COLORS = [
 const DEFAULT_NOTE_COLOR = '#3b82f6';
 const NOTES_PER_PAGE = 3;
 
-const COLLAPSED_HEIGHT = 64; // px — ~3 lines at text-sm/leading-relaxed
+const COLLAPSED_HEIGHT = 19; // px — ~1 line at text-sm/leading-relaxed
 
 function NoteContent({ content, isDark }: { content: string; isDark: boolean }) {
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -308,55 +308,62 @@ export default function DashboardNotesSection({ schoolId }: DashboardNotesSectio
                 {pageNotes.map((note) => {
                   const paletteOpenForThis = notePaletteOpenId === note.id;
                   return (
-                    <div key={note.id} className={`group rounded-xl border p-3.5 ${isDark ? 'border-slate-800 bg-slate-950/40' : 'border-slate-100 bg-slate-50'}`}
+                    <div key={note.id} className={`group relative overflow-hidden rounded-xl border p-2 ${isDark ? 'border-slate-800 bg-slate-950/40' : 'border-slate-100 bg-slate-50'}`}
                       style={{ borderLeftColor: note.color, borderLeftWidth: 3 }}>
                       <div className="flex items-start gap-2">
-                        <div className="min-w-0 flex-1">
+                        <div className="relative min-w-0 flex-1">
                           {note.is_urgent && (
-                            <span className={`mb-1.5 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
-                              isDark ? 'border-indigo-500/40 bg-indigo-500/15 text-indigo-300' : 'border-indigo-300/60 bg-indigo-100 text-indigo-600'
-                            }`}>
-                              <Pin className="h-2.5 w-2.5" />Καρφιτσωμένο
-                            </span>
+                            <Pin
+                              className="pointer-events-none absolute -right-3 -top-1 z-0 h-20 w-20 rotate-[18deg]"
+                              style={{ color: note.color, opacity: isDark ? 0.55 : 0.45 }}
+                              strokeWidth={2.5}
+                              fill={note.color}
+                              fillOpacity={0.65}
+                            />
                           )}
-                          <NoteContent content={note.content} isDark={isDark} />
+                          <div className="relative z-10">
+                            <NoteContent content={note.content} isDark={isDark} />
+                          </div>
+                        </div>
+
+                        <div className="flex shrink-0 items-center gap-1.5">
+                          <button type="button" onClick={() => handleToggleUrgent(note.id, note.is_urgent)}
+                            className={`inline-flex items-center justify-center rounded-full border p-1 transition ${
+                              note.is_urgent
+                                ? isDark ? 'border-indigo-500/40 text-indigo-300 hover:bg-indigo-500/10' : 'border-indigo-400/40 text-indigo-500 hover:bg-indigo-100'
+                                : isDark
+                                ? 'border-slate-700 text-slate-500 hover:border-indigo-500/30 hover:text-indigo-300'
+                                : 'border-slate-200 text-slate-400 hover:border-indigo-300 hover:text-indigo-500'
+                            }`}>
+                            {note.is_urgent ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
+                          </button>
+                          <div ref={paletteOpenForThis ? notePaletteWrapRef : null} className="relative">
+                            <button type="button"
+                              onClick={(e) => {
+                                const r = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+                                setNotePalettePos({ bottom: window.innerHeight - r.top + 8, left: r.left });
+                                setNotePaletteOpenId((curr) => curr === note.id ? null : note.id);
+                              }}
+                              className={`inline-flex h-6 w-6 items-center justify-center rounded-full border transition ${
+                                isDark
+                                  ? 'border-slate-700 bg-slate-900/60 text-slate-400 hover:border-slate-600 hover:text-slate-200'
+                                  : 'border-slate-200 bg-white text-slate-400 hover:border-slate-300 hover:text-slate-600'
+                              }`}
+                              title="Αλλαγή χρώματος" aria-haspopup="dialog" aria-expanded={paletteOpenForThis}>
+                              <Palette className="h-3 w-3" />
+                            </button>
+                          </div>
+                          {paletteOpenForThis && notePalettePos && createPortal(
+                            <div ref={notePalettePortalRef} style={{ position: 'fixed', bottom: notePalettePos.bottom, left: notePalettePos.left, zIndex: 9999 }}>
+                              <ColorPalette currentColor={note.color} onSelect={(c) => { handleChangeNoteColor(note.id, c); setNotePaletteOpenId(null); }} />
+                            </div>,
+                            document.body
+                          )}
                         </div>
                       </div>
-                      <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-                        <button type="button" onClick={() => handleToggleUrgent(note.id, note.is_urgent)}
-                          className={`inline-flex items-center justify-center rounded-full border p-1 transition ${
-                            note.is_urgent
-                              ? isDark ? 'border-indigo-500/40 text-indigo-300 hover:bg-indigo-500/10' : 'border-indigo-400/40 text-indigo-500 hover:bg-indigo-100'
-                              : isDark
-                              ? 'border-slate-700 text-slate-500 hover:border-indigo-500/30 hover:text-indigo-300'
-                              : 'border-slate-200 text-slate-400 hover:border-indigo-300 hover:text-indigo-500'
-                          }`}>
-                          {note.is_urgent ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
-                        </button>
-                        <div ref={paletteOpenForThis ? notePaletteWrapRef : null} className="relative">
-                          <button type="button"
-                            onClick={(e) => {
-                              const r = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
-                              setNotePalettePos({ bottom: window.innerHeight - r.top + 8, left: r.left });
-                              setNotePaletteOpenId((curr) => curr === note.id ? null : note.id);
-                            }}
-                            className={`inline-flex h-6 w-6 items-center justify-center rounded-full border transition ${
-                              isDark
-                                ? 'border-slate-700 bg-slate-900/60 text-slate-400 hover:border-slate-600 hover:text-slate-200'
-                                : 'border-slate-200 bg-white text-slate-400 hover:border-slate-300 hover:text-slate-600'
-                            }`}
-                            title="Αλλαγή χρώματος" aria-haspopup="dialog" aria-expanded={paletteOpenForThis}>
-                            <Palette className="h-3 w-3" />
-                          </button>
-                        </div>
-                        {paletteOpenForThis && notePalettePos && createPortal(
-                          <div ref={notePalettePortalRef} style={{ position: 'fixed', bottom: notePalettePos.bottom, left: notePalettePos.left, zIndex: 9999 }}>
-                            <ColorPalette currentColor={note.color} onSelect={(c) => { handleChangeNoteColor(note.id, c); setNotePaletteOpenId(null); }} />
-                          </div>,
-                          document.body
-                        )}
+                      <div className="mt-2.5 flex items-center justify-end">
                         <button type="button" onClick={() => handleDeleteNote(note.id)}
-                          className={`ml-auto rounded-full border border-transparent px-2 py-0.5 text-[10px] opacity-0 transition group-hover:opacity-100 ${
+                          className={`rounded-full border border-transparent px-2 py-0.5 text-[10px] opacity-0 transition group-hover:opacity-100 ${
                             isDark ? 'text-slate-600 hover:border-red-500/30 hover:text-red-300' : 'text-slate-400 hover:border-red-200 hover:text-red-500'
                           }`}>
                           Διαγραφή

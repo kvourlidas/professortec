@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Bell, History } from 'lucide-react';
+import { History } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../auth';
 import { useTheme } from '../../context/ThemeContext';
@@ -165,20 +165,7 @@ export default function SendNotificationsPage() {
       <style>{getScrollbarStyle(isDark)}</style>
 
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-3">
-          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
-            style={{ background: 'var(--color-accent)' }}
-          >
-            <Bell className="h-4.5 w-4.5" style={{ color: 'var(--ch-icon)' }} />
-          </div>
-          <div>
-            <h1 className={`text-base font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>
-              Ειδοποιήσεις μαθητών
-            </h1>
-          </div>
-        </div>
-
+      <div className="flex items-start justify-end gap-4">
         <button
           type="button"
           onClick={() => setHistoryOpen(true)}
