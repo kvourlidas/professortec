@@ -252,7 +252,7 @@ export default function LoginPage() {
               <>
                 <div className="mb-6 space-y-1">
                   <h1 className="text-lg font-bold tracking-tight text-[color:var(--color-text-main)]">Καλώς ήρθες!</h1>
-                  <p className="text-xs text-[color:var(--color-text-muted)]">Σύνδεσε τον λογαριασμό σου.</p>
+                  <p className="text-xs text-[color:var(--color-text-muted)]">Σύνδεση τον λογαριασμό σου.</p>
                 </div>
                 {authError && <ErrorBox isDark={isDark} msg={authError} />}
                 <form onSubmit={onLogin} className="space-y-4">

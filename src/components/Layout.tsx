@@ -9,6 +9,7 @@ import { Menu, LogOut, ChevronRight, Building2, User, HelpCircle } from 'lucide-
 import logoLight from '../assets/edra-primary-transparent-light(PNG)(1).png';
 import logoDark from '../assets/edra-primary-transparent-dark(PNG).png';
 import { useTheme } from '../context/ThemeContext';
+import AssistantWidget from './assistant/AssistantWidget.tsx';
 
 type NavLinkItem = NavItem & {
   to: string;
@@ -482,6 +483,8 @@ export default function Layout({ children }: LayoutProps) {
 
         <div className="page-shell px-4 py-6">{children}</div>
       </main>
+
+      <AssistantWidget />
     </div>
   );
 }
