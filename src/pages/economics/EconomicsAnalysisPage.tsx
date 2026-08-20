@@ -44,9 +44,7 @@ export default function EconomicsAnalysisPage() {
   const schoolId = profile?.school_id ?? null;
   const { year: currentYear, month: currentMonth } = getCurrentPeriod();
 
-  const sparkCardCls = isDark
-    ? 'overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 p-3 shadow-xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]'
-    : 'overflow-hidden rounded-2xl border border-slate-200 bg-white p-3 shadow-md';
+  const sectionDividerColor = 'color-mix(in srgb, var(--color-accent) 35%, transparent)';
 
   const incomeAmountCls = isDark ? 'text-emerald-300' : 'text-emerald-600';
   const expenseAmountCls = isDark ? 'text-rose-300' : 'text-rose-600';
@@ -344,10 +342,10 @@ export default function EconomicsAnalysisPage() {
       )}
 
       {/* Top grid */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-        <div className="flex flex-col gap-4 lg:col-span-8">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        <div className="flex flex-col gap-6 lg:col-span-8 lg:border-r-2 lg:pr-6" style={{ borderColor: sectionDividerColor }}>
           {/* Combined chart card */}
-          <div className={sparkCardCls}>
+          <div className="border-b-2 pb-6" style={{ borderColor: sectionDividerColor }}>
             {/* Stat strip */}
             <div className={`mb-3 flex flex-wrap items-center gap-5 border-b pb-3 ${isDark ? 'border-slate-800/60' : 'border-slate-100'}`}>
               <div>
@@ -398,7 +396,7 @@ export default function EconomicsAnalysisPage() {
           </div>
 
           {/* Collection by payment method */}
-          <div className={`${sparkCardCls} flex flex-1 flex-col`}>
+          <div className="flex flex-1 flex-col">
             <p className={`mb-3 text-[10px] font-semibold uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Είσπραξη ανά τρόπο πληρωμής</p>
             <div className={`flex flex-1 divide-x ${isDark ? 'divide-slate-800' : 'divide-slate-100'}`}>
               {([
@@ -420,10 +418,10 @@ export default function EconomicsAnalysisPage() {
           </div>
         </div>
 
-        <div className="space-y-4 lg:col-span-4">
+        <div className="space-y-6 lg:col-span-4">
 
           {/* Net card */}
-          <div className={sparkCardCls}>
+          <div className="border-b-2 pb-6" style={{ borderColor: sectionDividerColor }}>
             <div className="mb-1 flex items-center gap-2">
               <Wallet className={`h-3.5 w-3.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}/>
               <span className={`text-[10px] font-semibold uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Καθαρό</span>
@@ -447,28 +445,32 @@ export default function EconomicsAnalysisPage() {
       </div>
 
       {/* Bottom: categories + transactions */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-        <EconomicsCategoryBreakdown
-          expenseByCategory={expenseByCategory}
-          catPageRows={catPageRows}
-          catPage={catPage}
-          catTotalPages={catTotalPages}
-          onPrev={() => setCatPage(p => Math.max(1, p - 1))}
-          onNext={() => setCatPage(p => Math.min(catTotalPages, p + 1))}
-          isDark={isDark}
-        />
+      <div className="grid grid-cols-1 gap-6 border-t-2 pt-6 lg:grid-cols-12" style={{ borderColor: sectionDividerColor }}>
+        <div className="lg:col-span-4 lg:border-r-2 lg:pr-6" style={{ borderColor: sectionDividerColor }}>
+          <EconomicsCategoryBreakdown
+            expenseByCategory={expenseByCategory}
+            catPageRows={catPageRows}
+            catPage={catPage}
+            catTotalPages={catTotalPages}
+            onPrev={() => setCatPage(p => Math.max(1, p - 1))}
+            onNext={() => setCatPage(p => Math.min(catTotalPages, p + 1))}
+            isDark={isDark}
+          />
+        </div>
 
-        <EconomicsTransactionsCard
-          txRows={visibleTxRows}
-          txPageRows={txPageRows}
-          txPage={txPage}
-          txTotalPages={txTotalPages}
-          onPrev={() => setTxPage(p => Math.max(1, p - 1))}
-          onNext={() => setTxPage(p => Math.min(txTotalPages, p + 1))}
-          onCancel={setCancelConfirmRow}
-          busy={busy}
-          isDark={isDark}
-        />
+        <div className="lg:col-span-8">
+          <EconomicsTransactionsCard
+            txRows={visibleTxRows}
+            txPageRows={txPageRows}
+            txPage={txPage}
+            txTotalPages={txTotalPages}
+            onPrev={() => setTxPage(p => Math.max(1, p - 1))}
+            onNext={() => setTxPage(p => Math.min(txTotalPages, p + 1))}
+            onCancel={setCancelConfirmRow}
+            busy={busy}
+            isDark={isDark}
+          />
+        </div>
       </div>
 
       {/* Cancel tx row confirm */}

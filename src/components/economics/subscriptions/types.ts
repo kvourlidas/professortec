@@ -59,6 +59,7 @@ export type StudentViewRow = {
   balance: number;
   payments: PaymentRow[];
   carriedDebt?: { amount: number; fromName: string } | null;
+  planRange?: { start_month: string; end_month: string } | null;
 };
 export type SubModal = {
   pkgId: string;

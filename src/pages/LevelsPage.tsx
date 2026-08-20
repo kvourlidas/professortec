@@ -2,12 +2,13 @@
 import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
-import { Pencil, Trash2, Layers, Search, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Layers, Search, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import type { LevelRow } from '../components/levels/types';
 import { normalizeText } from '../components/levels/utils';
 import LevelFormModal from '../components/levels/LevelFormModal';
 import LevelDeleteModal from '../components/levels/LevelDeleteModal';
+import EditDeleteButtons from '../components/ui/EditDeleteButtons';
 
 const PAGE_SIZE = 10;
 
@@ -143,29 +144,19 @@ export default function LevelsPage() {
     ? 'h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 pl-9 pr-3 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30 sm:w-52'
     : 'h-9 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-xs text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30 sm:w-52';
 
-  const tableCardCls = isDark
-    ? 'overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-2xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]'
-    : 'overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md';
+  const tableCardCls = '';
+  const theadRowCls = '';
+  const tbodyDivideCls = isDark ? 'divide-y divide-slate-800/60' : 'divide-y divide-slate-200';
+  const colDivider = isDark ? 'border-r border-slate-800/60' : 'border-r border-slate-200';
+  const trHoverCls = isDark ? 'transition-colors hover:bg-slate-900/40' : 'transition-colors hover:bg-slate-50/80';
 
-  const theadRowCls = 'border-b';
-
-  const tbodyDivideCls = isDark ? 'divide-y divide-slate-800/50' : 'divide-y divide-slate-100';
-  const trHoverCls = isDark ? 'group transition-colors hover:bg-white/[0.025]' : 'group transition-colors hover:bg-slate-50';
-
-  const paginationBarCls = isDark
-    ? 'flex items-center justify-between gap-3 border-t border-slate-800/70 bg-slate-900/20 px-5 py-3'
-    : 'flex items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-5 py-3';
-
-  const paginationTextCls = isDark ? 'text-[11px] text-slate-500' : 'text-[11px] text-slate-400';
-  const paginationHighlightCls = isDark ? 'text-slate-300' : 'text-slate-700';
+  const paginationBarCls = 'flex items-center justify-between gap-3 pt-4';
 
   const paginationBtnCls = isDark
-    ? 'inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-900/30 text-slate-400 transition hover:border-slate-600 hover:bg-slate-800/50 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-30'
-    : 'inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-30';
+    ? 'inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-800 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-30'
+    : 'inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-30';
 
-  const paginationPageCls = isDark
-    ? 'rounded-lg border border-slate-700/60 bg-slate-900/20 px-3 py-1 text-[11px] text-slate-300'
-    : 'rounded-lg border border-slate-200 bg-white px-3 py-1 text-[11px] text-slate-600';
+  const paginationPageCls = isDark ? 'px-2 text-[11px] text-slate-300' : 'px-2 text-[11px] text-slate-600';
 
   const emptyBoxCls = isDark
     ? 'flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-700/50 bg-slate-800/50'
@@ -190,9 +181,6 @@ export default function LevelsPage() {
             <h1 className={`text-base font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>
               Επίπεδα
             </h1>
-            <p className={`mt-0.5 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              Προσθέστε επίπεδα όπως A1, A2, B1, B2 κτλ. για το σχολείο σας.
-            </p>
             {schoolId && (
               <div className="mt-2 flex items-center gap-2 flex-wrap">
                 <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] ${isDark ? 'border-slate-700/60 bg-slate-800/50 text-slate-300' : 'border-slate-200 bg-slate-100 text-slate-600'}`}>
@@ -254,7 +242,7 @@ export default function LevelsPage() {
       {/* ── Table card ── */}
       <div className={tableCardCls}>
         {loading ? (
-          <div className={`divide-y ${isDark ? 'divide-slate-800/60' : 'divide-slate-100'}`}>
+          <div className="space-y-3">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="flex items-center gap-4 px-5 py-3.5 animate-pulse">
                 <div className={`h-3 w-1/3 rounded-full ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`} />
@@ -286,48 +274,22 @@ export default function LevelsPage() {
           <div className="overflow-x-auto">
             <table className="min-w-full border-collapse text-xs">
               <thead>
-                <tr className={theadRowCls} style={{ background: 'var(--ch-bg)', borderColor: 'var(--ch-divider)' }}>
-                  <th
-                    className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest"
-                    style={{ color: 'var(--ch-text)' }}
-                  >
-                    <span className="inline-flex items-center gap-1.5">
-                      <span className="opacity-60"><Layers className="h-3 w-3" /></span>
-                      ΕΠΙΠΕΔΟ
-                    </span>
-                  </th>
-                  <th
-                    className="px-5 py-3 text-right text-[10px] font-semibold uppercase tracking-widest"
-                    style={{ color: 'var(--ch-text)' }}
-                  >
-                    ΕΝΕΡΓΕΙΕΣ
-                  </th>
+                <tr className={theadRowCls} style={{ borderBottom: '2px solid var(--color-accent)' }}>
+                  <th style={{ width: '1%' }} className={`whitespace-nowrap px-5 pb-3 text-left text-xs font-bold uppercase tracking-wide ${colDivider} ${isDark ? 'text-white' : 'text-black'}`}>#</th>
+                  <th className={`px-5 pb-3 text-left text-xs font-bold uppercase tracking-wide ${colDivider} ${isDark ? 'text-white' : 'text-black'}`}>ΕΠΙΠΕΔΟ</th>
+                  <th className={`px-5 pb-3 text-right text-xs font-bold uppercase tracking-wide ${isDark ? 'text-white' : 'text-black'}`}>ΕΝΕΡΓΕΙΕΣ</th>
                 </tr>
               </thead>
               <tbody className={tbodyDivideCls}>
-                {pagedLevels.map((lvl) => (
+                {pagedLevels.map((lvl, i) => (
                   <tr key={lvl.id} className={trHoverCls}>
-                    <td className="px-5 py-3.5">
+                    <td className={`whitespace-nowrap px-5 py-3.5 tabular-nums ${colDivider} ${isDark ? 'text-slate-600' : 'text-slate-300'}`}>{(page - 1) * PAGE_SIZE + i + 1}</td>
+                    <td className={`px-5 py-3.5 ${colDivider}`}>
                       <span className={`text-xs font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{lvl.name}</span>
                     </td>
                     <td className="px-5 py-3.5">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => openEditModal(lvl.id)}
-                          className={`inline-flex h-7 w-7 items-center justify-center rounded-lg border transition ${isDark ? 'border-slate-700/60 bg-slate-900/30 text-slate-500 hover:border-blue-500/40 hover:bg-blue-500/10 hover:text-blue-400' : 'border-slate-200 bg-white text-slate-400 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-500'}`}
-                          title="Επεξεργασία"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => askDeleteLevel(lvl)}
-                          className={`inline-flex h-7 w-7 items-center justify-center rounded-lg border transition ${isDark ? 'border-slate-700/60 bg-slate-900/30 text-slate-500 hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-400' : 'border-slate-200 bg-white text-slate-400 hover:border-red-300 hover:bg-red-50 hover:text-red-500'}`}
-                          title="Διαγραφή"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                      <div className="flex items-center justify-end gap-1">
+                        <EditDeleteButtons onEdit={() => openEditModal(lvl.id)} onDelete={() => askDeleteLevel(lvl)} />
                       </div>
                     </td>
                   </tr>
@@ -340,9 +302,9 @@ export default function LevelsPage() {
         {/* Pagination */}
         {!loading && filteredLevels.length > 0 && (
           <div className={paginationBarCls}>
-            <p className={paginationTextCls}>
-              <span className={paginationHighlightCls}>{showingFrom}–{showingTo}</span>{' '}
-              από <span className={paginationHighlightCls}>{filteredLevels.length}</span> επίπεδα
+            <p className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+              <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>{showingFrom}–{showingTo}</span>{' '}
+              από <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>{filteredLevels.length}</span> επίπεδα
             </p>
             <div className="flex items-center gap-1.5">
               <button

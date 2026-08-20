@@ -1,5 +1,5 @@
 // src/pages/TutorsPage.tsx
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
 import { useTheme } from '../context/ThemeContext';
@@ -24,7 +24,6 @@ import { TUTOR_SELECT } from '../components/tutors/types';
 import { formatDateToGreek, normalizeText, displayToIso } from '../components/tutors/utils';
 import {
   Users, Search, UserPlus, ChevronLeft, ChevronRight,
-  User, Phone, Mail, Calendar, Hash, CreditCard, FileText,
   Copy, Check,
 } from 'lucide-react';
 
@@ -271,14 +270,14 @@ export default function TutorsPage() {
     const empty = <span className={isDark ? 'text-slate-600' : 'text-slate-400'}>—</span>;
     switch (key) {
       case 'full_name':
-        return <span className={`font-medium transition-colors ${isDark ? 'text-slate-100 group-hover:text-white' : 'text-slate-700 group-hover:text-slate-900'}`}>{t.full_name}</span>;
+        return <span className={`font-medium ${isDark ? 'text-slate-100' : 'text-slate-700'}`}>{t.full_name}</span>;
       case 'date_of_birth':
         return t.date_of_birth
           ? <span className={`tabular-nums ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{formatDateToGreek(t.date_of_birth)}</span>
           : empty;
       case 'afm':
         return t.afm
-          ? <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] tabular-nums ${isDark ? 'border-slate-600/50 bg-slate-800/60 text-slate-300' : 'border-slate-200 bg-slate-100 text-slate-600'}`}>{t.afm}</span>
+          ? <span className={`tabular-nums font-medium ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{t.afm}</span>
           : empty;
       case 'phone':
         return t.phone ? <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{t.phone}</span> : empty;
@@ -298,27 +297,18 @@ export default function TutorsPage() {
     }
   };
 
-  const colIcon = (key: TutorColumnKey): React.ReactElement => {
-    switch (key) {
-      case 'full_name':     return <User className="h-3 w-3" />;
-      case 'date_of_birth': return <Calendar className="h-3 w-3" />;
-      case 'afm':           return <Hash className="h-3 w-3" />;
-      case 'phone':         return <Phone className="h-3 w-3" />;
-      case 'email':         return <Mail className="h-3 w-3" />;
-      case 'iban':          return <CreditCard className="h-3 w-3" />;
-      case 'notes':         return <FileText className="h-3 w-3" />;
-      default:              return <Hash className="h-3 w-3" />;
-    }
-  };
-
-  // ── Style helpers ────────────────────────────────────────────────────────
-  const cardCls = `overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-md ring-1 ring-inset ${isDark ? 'border-slate-700/50 bg-slate-950/40 ring-white/[0.04]' : 'border-slate-200 bg-white/80 ring-black/[0.02]'}`;
+  // ── Style helpers — minimal: no cell/card borders at all, just one accent rule under the header ──
   const searchInputCls = `h-9 w-full rounded-lg border pl-9 pr-3 text-xs outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 focus:border-[color:var(--color-accent)] sm:w-52 ${isDark ? 'border-slate-700/70 bg-slate-900/60 text-slate-100 placeholder-slate-500' : 'border-slate-200 bg-white text-slate-800 placeholder-slate-400'}`;
-  const theadRowCls = 'border-b';
-  const tbodyDivideCls = `divide-y ${isDark ? 'divide-slate-800/50' : 'divide-slate-100'}`;
-  const trHoverCls = `group transition-colors ${isDark ? 'hover:bg-white/[0.025]' : 'hover:bg-slate-50'}`;
-  const paginationBtnCls = `inline-flex h-7 w-7 items-center justify-center rounded-lg border transition disabled:cursor-not-allowed disabled:opacity-30 ${isDark ? 'border-slate-700/60 bg-slate-900/30 text-slate-400 hover:border-slate-600 hover:bg-slate-800/50 hover:text-slate-200' : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-700'}`;
-  const paginationFooterCls = `flex items-center justify-between gap-3 border-t px-5 py-3 ${isDark ? 'border-slate-800/70 bg-slate-900/20' : 'border-slate-100 bg-slate-50/50'}`;
+  const tableCardCls = '';
+  const theadRowCls = '';
+  const tbodyDivideCls = isDark ? 'divide-y divide-slate-800/60' : 'divide-y divide-slate-200';
+  const colDivider = isDark ? 'border-r border-slate-800/60' : 'border-r border-slate-200';
+  const trHoverCls = isDark ? 'transition-colors hover:bg-slate-900/40' : 'transition-colors hover:bg-slate-50/80';
+  const paginationBarCls = 'flex items-center justify-between gap-3 pt-4';
+  const paginationBtnCls = isDark
+    ? 'inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-800 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-30'
+    : 'inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-30';
+  const paginationPageCls = isDark ? 'px-2 text-[11px] text-slate-300' : 'px-2 text-[11px] text-slate-600';
 
   return (
     <div className="space-y-6 px-1">
@@ -332,7 +322,6 @@ export default function TutorsPage() {
           </div>
           <div>
             <h1 className={`text-base font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Καθηγητές</h1>
-            <p className={`mt-0.5 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Διαχείριση καθηγητών και στοιχείων επικοινωνίας.</p>
 
             {/* Badges + controls row */}
             <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -385,9 +374,9 @@ export default function TutorsPage() {
       )}
 
       {/* ── Table card ── */}
-      <div className={cardCls}>
+      <div className={tableCardCls}>
         {loading ? (
-          <div className={`space-y-0 divide-y ${isDark ? 'divide-slate-800/60' : 'divide-slate-100'}`}>
+          <div className="space-y-3">
             {[...Array(5)].map((_, i) => (
               <div key={i} className="flex items-center gap-4 px-5 py-3.5 animate-pulse">
                 <div className={`h-3 w-1/4 rounded-full ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`} />
@@ -421,25 +410,22 @@ export default function TutorsPage() {
           <div className="overflow-x-auto">
             <table className="min-w-full border-collapse text-xs">
               <thead>
-                <tr className={theadRowCls} style={{ background: 'var(--ch-bg)', borderColor: 'var(--ch-divider)' }}>
+                <tr className={theadRowCls} style={{ borderBottom: '2px solid var(--color-accent)' }}>
+                  <th style={{ width: '1%' }} className={`whitespace-nowrap px-5 pb-3 text-left text-xs font-bold uppercase tracking-wide ${visibleColumnDefs.length > 0 ? colDivider : ''} ${isDark ? 'text-white' : 'text-black'}`}>#</th>
                   {visibleColumnDefs.map((col: TutorColumnDef) => (
-                    <th key={col.key} className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest"
-                      style={{ color: 'var(--ch-text)' }}>
-                      <span className="inline-flex items-center gap-1.5">
-                        <span className="opacity-60">{colIcon(col.key)}</span>
-                        {stripGreekAccents(col.label)}
-                      </span>
+                    <th key={col.key} className={`px-5 pb-3 text-left text-xs font-bold uppercase tracking-wide ${colDivider} ${isDark ? 'text-white' : 'text-black'}`}>
+                      {stripGreekAccents(col.label)}
                     </th>
                   ))}
-                  <th className="px-5 py-3 text-right text-[10px] font-semibold uppercase tracking-widest"
-                    style={{ color: 'var(--ch-text)' }}>ΕΝΕΡΓΕΙΕΣ</th>
+                  <th className={`px-5 pb-3 text-right text-xs font-bold uppercase tracking-wide ${isDark ? 'text-white' : 'text-black'}`}>ΕΝΕΡΓΕΙΕΣ</th>
                 </tr>
               </thead>
               <tbody className={tbodyDivideCls}>
-                {pagedTutors.map((t) => (
+                {pagedTutors.map((t, i) => (
                   <tr key={t.id} className={trHoverCls}>
+                    <td className={`whitespace-nowrap px-5 py-3.5 tabular-nums ${visibleColumnDefs.length > 0 ? colDivider : ''} ${isDark ? 'text-slate-600' : 'text-slate-300'}`}>{(page - 1) * pageSize + i + 1}</td>
                     {visibleColumnDefs.map((col: TutorColumnDef) => (
-                      <td key={col.key} className="px-5 py-3.5">
+                      <td key={col.key} className={`px-5 py-3.5 ${colDivider}`}>
                         {renderCell(col.key, t)}
                       </td>
                     ))}
@@ -457,18 +443,18 @@ export default function TutorsPage() {
 
         {/* ── Pagination footer ── */}
         {!loading && sortedTutors.length > 0 && (
-          <div className={paginationFooterCls}>
+          <div className={paginationBarCls}>
             <p className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-              <span className={isDark ? 'text-slate-300' : 'text-slate-600'}>{showingFrom}–{showingTo}</span>{' '}
-              από <span className={isDark ? 'text-slate-300' : 'text-slate-600'}>{sortedTutors.length}</span> καθηγητές
+              <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>{showingFrom}–{showingTo}</span>{' '}
+              από <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>{sortedTutors.length}</span> καθηγητές
             </p>
             <div className="flex items-center gap-1.5">
               <button type="button" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className={paginationBtnCls}>
                 <ChevronLeft className="h-3.5 w-3.5" />
               </button>
-              <div className={`rounded-lg border px-3 py-1 text-[11px] ${isDark ? 'border-slate-700/60 bg-slate-900/20 text-slate-300' : 'border-slate-200 bg-white text-slate-600'}`}>
+              <div className={paginationPageCls}>
                 <span className={`font-medium ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>{page}</span>
-                <span className={`mx-1 ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>/</span>
+                <span className={`mx-1 ${isDark ? 'text-slate-600' : 'text-slate-300'}`}>/</span>
                 <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{pageCount}</span>
               </div>
               <button type="button" onClick={() => setPage((p) => Math.min(pageCount, p + 1))} disabled={page >= pageCount} className={paginationBtnCls}>

@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../context/ThemeContext';
-import { CalendarClock, Loader2, Clock } from 'lucide-react';
+import { Loader2, Clock, CalendarClock } from 'lucide-react';
 
 /* ------------ Types ------------ */
 type ClassRow = { id: string; title: string; subject: string | null; subject_id: string | null; tutor_id: string | null };
@@ -237,23 +237,24 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
   /* ── theme tokens ── */
   const muted = isDark ? 'text-slate-500' : 'text-slate-400';
   const sub = isDark ? 'text-slate-400' : 'text-slate-500';
-  const primary = isDark ? 'text-slate-50' : 'text-slate-800';
+  const primary = isDark ? 'text-slate-50' : 'text-slate-900';
+  const rule = isDark ? 'border-slate-800' : 'border-slate-100';
 
   /* ── sub-components ── */
-  const PanelLabel = ({ children }: { children: React.ReactNode }) => (
-    <p className={`mb-3 shrink-0 text-sm font-semibold ${primary}`}>{children}</p>
+  const PanelLabel = ({ children, count }: { children: React.ReactNode; count: number }) => (
+    <div className="mb-3 flex shrink-0 items-center justify-between">
+      <p className={`text-[10px] font-bold uppercase tracking-[0.22em] ${muted}`}>{children}</p>
+      {count > 0 && (
+        <span className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold tabular-nums ${
+          isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600'
+        }`}>{count}</span>
+      )}
+    </div>
   );
 
   const TestBadge = () => (
-    <span className="inline-flex items-center rounded-full border border-purple-500/30 bg-purple-500/10 px-1.5 py-px text-[8px] font-bold uppercase tracking-wider text-purple-400">
+    <span className={`text-[9px] font-bold uppercase tracking-[0.15em] ${isDark ? 'text-purple-300' : 'text-purple-600'}`}>
       Διαγώνισμα
-    </span>
-  );
-
-  const NowBadge = () => (
-    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-px text-[8px] font-bold uppercase tracking-wider text-emerald-400">
-      <span className="h-1 w-1 rounded-full bg-emerald-400 animate-pulse" />
-      Τώρα
     </span>
   );
 
@@ -263,32 +264,28 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
     const progress = Math.min(100, Math.max(0, (elapsed / total) * 100));
     const details = [s.subjectName, s.tutorName].filter(Boolean).join(' · ');
     const isGreen = variant === 'current';
-    const borderCls = isGreen
-      ? isDark ? 'border-emerald-500/20 bg-emerald-500/[0.07]' : 'border-emerald-200 bg-emerald-50/60'
-      : isDark ? 'border-slate-700/50 bg-slate-800/30' : 'border-slate-200 bg-slate-50/60';
+    const barColor = isGreen ? (isDark ? '#34d399' : '#10b981') : 'var(--color-accent)';
+    const tileCls = `rounded-xl border p-3 ${isDark ? 'border-slate-800 bg-slate-950/40' : 'border-slate-100 bg-slate-50'}`;
 
     if (compact) {
       return (
-        <div className={`rounded-lg border px-3 py-2 ${borderCls}`}>
+        <div className={tileCls} style={{ borderLeftColor: barColor, borderLeftWidth: 3 }}>
           <div className="flex items-start justify-between gap-2">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <p className={`text-xs font-bold leading-snug ${primary}`}>{s.classTitle}</p>
-                {s.sessionType === 'test' && <TestBadge />}
-              </div>
-              {details && <p className={`text-[10px] leading-snug mt-0.5 truncate ${sub}`}>{details}</p>}
-            </div>
-            <div className="flex flex-col items-end gap-0.5 shrink-0">
-              <span className={`text-[11px] font-semibold font-sans tabular-nums tracking-tight ${isGreen ? 'text-emerald-400' : ''}`}
-                style={isGreen ? {} : { color: 'var(--color-accent)' }}>
+            <div className="min-w-0">
+              <p className={`text-sm font-bold leading-snug tabular-nums ${isGreen ? (isDark ? 'text-emerald-300' : 'text-emerald-600') : primary}`}>
                 {formatTime(s.startTime)}–{formatTime(s.endTime)}
-              </span>
-              {isGreen ? <NowBadge /> : <span className={`text-[9px] ${muted}`}>{dayLabel(s.date)}</span>}
+              </p>
+              <p className={`mt-0.5 truncate text-[13px] font-semibold ${primary}`}>{s.classTitle}</p>
+              {details && <p className={`truncate text-[10px] ${sub}`}>{details}</p>}
+            </div>
+            <div className="shrink-0 text-right">
+              {s.sessionType === 'test' && <TestBadge />}
+              {!isGreen && <p className={`mt-0.5 text-[9px] font-semibold uppercase tracking-wide ${muted}`}>{dayLabel(s.date)}</p>}
             </div>
           </div>
           {isGreen && (
-            <div className={`mt-1.5 h-0.5 w-full rounded-full overflow-hidden ${isDark ? 'bg-slate-800' : 'bg-emerald-100'}`}>
-              <div className="h-full rounded-full bg-emerald-500 transition-all duration-1000" style={{ width: `${progress}%` }} />
+            <div className={`mt-2 h-1 w-full rounded-full overflow-hidden ${isDark ? 'bg-slate-800' : 'bg-emerald-100'}`}>
+              <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${progress}%`, background: barColor }} />
             </div>
           )}
         </div>
@@ -296,32 +293,24 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
     }
 
     return (
-      <div className={`rounded-xl border p-4 ${borderCls}`}>
-        <div className="flex items-start justify-between mb-2 gap-2">
-          <span className={`text-sm font-semibold font-sans tabular-nums tracking-tight ${isGreen ? 'text-emerald-400' : ''}`}
-            style={isGreen ? {} : { color: 'var(--color-accent)' }}>
-            {formatTime(s.startTime)} – {formatTime(s.endTime)}
-          </span>
-          {isGreen ? (
-            <div className="flex flex-col items-end gap-0.5">
-              <NowBadge />
-              <span className={`text-[10px] tabular-nums ${muted}`}>{formatDMY(s.date)}</span>
-            </div>
-          ) : (
-            <div className="flex flex-col items-end gap-0.5">
-              <span className={`text-[10px] font-medium ${muted}`}>{dayLabel(s.date)}</span>
-              <span className={`text-[10px] tabular-nums ${muted}`}>{formatDMY(s.date)}</span>
-            </div>
-          )}
+      <div className={tileCls} style={{ borderLeftColor: barColor, borderLeftWidth: 3 }}>
+        <div className="flex items-start justify-between gap-3">
+          <p className={`text-2xl font-bold leading-none tabular-nums tracking-tight ${isGreen ? (isDark ? 'text-emerald-300' : 'text-emerald-600') : primary}`}>
+            {formatTime(s.startTime)}<span className={`mx-1 text-base font-normal ${muted}`}>–</span>{formatTime(s.endTime)}
+          </p>
+          <div className="shrink-0 text-right">
+            <p className={`text-[10px] font-bold uppercase tracking-wide ${isGreen ? (isDark ? 'text-emerald-300' : 'text-emerald-600') : muted}`}>{isGreen ? 'Τώρα' : dayLabel(s.date)}</p>
+            <p className={`text-[10px] tabular-nums ${muted}`}>{formatDMY(s.date)}</p>
+          </div>
         </div>
-        <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-          <p className={`text-sm font-bold leading-snug ${primary}`}>{s.classTitle}</p>
+        <div className="mt-2 flex items-center gap-2 flex-wrap">
+          <p className={`text-base font-bold leading-snug ${primary}`}>{s.classTitle}</p>
           {s.sessionType === 'test' && <TestBadge />}
         </div>
-        {details && <p className={`text-[11px] leading-snug ${sub}`}>{details}</p>}
+        {details && <p className={`mt-0.5 text-[12px] ${sub}`}>{details}</p>}
         {isGreen && (
           <div className={`mt-3 h-1 w-full rounded-full overflow-hidden ${isDark ? 'bg-slate-800' : 'bg-emerald-100'}`}>
-            <div className="h-full rounded-full bg-emerald-500 transition-all duration-1000" style={{ width: `${progress}%` }} />
+            <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${progress}%`, background: barColor }} />
           </div>
         )}
       </div>
@@ -337,42 +326,43 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
     </div>
   );
 
-  const currentLabel = currentSessions.length > 1 ? `Τρέχουσες (${currentSessions.length})` : 'Τρέχουσα';
-  const upcomingLabel = upcomingSessions.length > 1 ? `Επόμενες (${upcomingSessions.length})` : 'Επόμενη';
+  const currentLabel = currentSessions.length > 1 ? 'Τρέχουσες' : 'Τρέχουσα';
+  const upcomingLabel = upcomingSessions.length > 1 ? 'Επόμενες' : 'Επόμενη';
   const currentCompact = currentSessions.length > 1;
   const upcomingCompact = upcomingSessions.length > 1;
 
   return (
     <section className="flex flex-col flex-1">
-      {/* Card */}
-      <div className={`flex flex-col flex-1 overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-md ring-1 ring-inset ${
-        isDark ? 'border-slate-700/50 bg-slate-950/40 ring-white/[0.04]' : 'border-slate-200 bg-white/80 ring-black/[0.02]'
-      }`}>
-        {/* Header — inside card */}
-        <div className="flex shrink-0 items-center justify-between px-5 py-3" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
+      {/* Elevated tile — real border + shadow lift, colored accent band up top, icon badge in header */}
+      <div className={`relative flex flex-col flex-1 overflow-hidden rounded-2xl border shadow-lg ${isDark ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white'}`}>
+        <div className="h-1 w-full shrink-0" style={{ background: 'var(--color-accent)' }} />
+
+        {/* Header */}
+        <div className={`flex shrink-0 items-center justify-between px-5 py-3.5 border-b ${rule}`}>
           <div className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
               style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
-              <CalendarClock className="h-3.5 w-3.5" style={{ color: 'var(--ch-icon)' }} />
+              <CalendarClock className="h-4 w-4" style={{ color: 'var(--ch-icon)' }} />
             </div>
-            <p className="text-sm font-semibold" style={{ color: 'var(--ch-text)' }}>Επόμενες Συνεδρίες</p>
+            <p className={`text-sm font-bold ${primary}`}>Επόμενες Συνεδρίες</p>
           </div>
+          <span className={`text-[10px] font-medium uppercase tracking-wide ${muted}`}>{LOOKAHEAD_DAYS} ημέρες</span>
         </div>
 
         {loading ? (
-          <div className="flex flex-1 items-center justify-center gap-2">
+          <div className="flex flex-1 items-center justify-center gap-2 py-10">
             <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
             <span className={`text-xs ${muted}`}>Φόρτωση…</span>
           </div>
         ) : (
-          /* Two-panel split */
+          /* Two-panel split, separated by a single hairline rule */
           <div className="flex flex-1 min-h-0">
 
             {/* LEFT — Current */}
-            <div className="flex flex-col flex-1 min-h-0 p-5">
-              <PanelLabel>{currentLabel}</PanelLabel>
+            <div className="flex flex-col flex-1 min-h-0 px-5 py-4">
+              <PanelLabel count={currentSessions.length}>{currentLabel}</PanelLabel>
               {currentSessions.length > 0 ? (
-                <div className={`flex flex-col flex-1 min-h-0 overflow-y-auto ${currentCompact ? 'gap-1.5' : 'gap-2'}`}>
+                <div className="flex flex-col flex-1 min-h-0 gap-2 overflow-y-auto">
                   {currentSessions.map((s) => <SessionCard key={s.id} s={s} variant="current" compact={currentCompact} />)}
                 </div>
               ) : (
@@ -380,11 +370,13 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
               )}
             </div>
 
+            <div className={`w-px shrink-0 ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`} />
+
             {/* RIGHT — Upcoming */}
-            <div className="flex flex-col flex-1 min-h-0 p-5">
-              <PanelLabel>{upcomingLabel}</PanelLabel>
+            <div className="flex flex-col flex-1 min-h-0 px-5 py-4">
+              <PanelLabel count={upcomingSessions.length}>{upcomingLabel}</PanelLabel>
               {upcomingSessions.length > 0 ? (
-                <div className={`flex flex-col flex-1 min-h-0 overflow-y-auto ${upcomingCompact ? 'gap-1.5' : 'gap-2'}`}>
+                <div className="flex flex-col flex-1 min-h-0 gap-2 overflow-y-auto">
                   {upcomingSessions.map((s) => <SessionCard key={s.id} s={s} variant="upcoming" compact={upcomingCompact} />)}
                 </div>
               ) : (

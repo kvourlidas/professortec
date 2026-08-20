@@ -132,9 +132,6 @@ export default function SchoolInfoPage() {
             <h1 className={`text-base font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>
               Πληροφορίες Σχολείου
             </h1>
-            <p className={`mt-0.5 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              Διαχειριστείτε τα βασικά στοιχεία του σχολείου σας.
-            </p>
           </div>
         </div>
         {!loading && !editing && (

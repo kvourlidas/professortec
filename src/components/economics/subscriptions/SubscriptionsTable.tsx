@@ -15,30 +15,25 @@ interface Props {
   variant: 'active' | 'expired';
   onPageChange: (p: number) => void;
   onOpenAssign: () => void;
-  onPayment: (row: StudentViewRow) => void;
+  onGoToStudent: (row: StudentViewRow) => void;
   onRenew: (row: StudentViewRow) => void;
   onDelete: (row: StudentViewRow) => void;
 }
 
 export function SubscriptionsTable({
   rows, loading, totalCount, page, pageCount, showingFrom, showingTo, isDark, packageById,
-  variant, onPageChange, onOpenAssign, onPayment, onRenew, onDelete,
+  variant, onPageChange, onOpenAssign, onGoToStudent, onRenew, onDelete,
 }: Props) {
   const isExpiredVariant = variant === 'expired';
 
-  const cardCls = isDark
-    ? 'overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]'
-    : 'overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md';
+  const cardCls = '';
+  const colDivider = isDark ? 'border-r border-slate-800/60' : 'border-r border-slate-200';
 
-  const theadCls = 'border-b text-[10px] font-semibold uppercase tracking-widest';
-
-  const paginationBarCls = isDark
-    ? 'flex items-center justify-between gap-3 border-t border-slate-800/60 bg-slate-900/20 px-4 py-3'
-    : 'flex items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-4 py-3';
+  const paginationBarCls = 'flex items-center justify-between gap-3 pt-3';
 
   const paginationBtnCls = isDark
-    ? 'flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-900/40 text-slate-400 transition hover:bg-slate-800/50 hover:text-slate-200 disabled:opacity-30'
-    : 'flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30';
+    ? 'flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-800 hover:text-slate-200 disabled:opacity-30'
+    : 'flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30';
 
   const headerLabel  = isExpiredVariant ? 'Ληγμένες & ανανεωμένες συνδρομές' : 'Ενεργές συνδρομές';
   const emptyMessage = isExpiredVariant ? 'Δεν βρέθηκαν ληγμένες συνδρομές.' : 'Δεν βρέθηκαν ενεργές συνδρομές.';
@@ -49,14 +44,14 @@ export function SubscriptionsTable({
 
   return (
     <div className={cardCls}>
-      {/* Table header bar */}
-      <div className={`flex items-center justify-between px-5 py-3.5 ${isDark ? 'border-b border-slate-800/60 bg-slate-900/30' : 'border-b border-slate-200 bg-slate-50'}`}>
+      {/* Section header */}
+      <div className="flex items-center justify-between pb-3">
         <div className="flex items-center gap-2">
           <span className={`text-xs font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
             {headerLabel}
           </span>
           {!loading && (
-            <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${isDark ? 'border-slate-700/60 bg-slate-900/40 text-slate-400' : 'border-slate-200 bg-white text-slate-500'}`}>
+            <span className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
               {totalCount}
             </span>
           )}
@@ -69,7 +64,7 @@ export function SubscriptionsTable({
 
       <div className="overflow-x-auto ss-thin">
         {loading ? (
-          <div className={`flex items-center gap-2.5 px-6 py-10 text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+          <div className={`flex items-center gap-2.5 px-1 py-10 text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
             <Loader2 className="h-4 w-4 animate-spin" style={{ color: 'var(--color-accent)' }} />Φόρτωση…
           </div>
         ) : rows.length === 0 ? (
@@ -85,25 +80,27 @@ export function SubscriptionsTable({
         ) : (
           <table className="min-w-full border-collapse text-xs">
             <thead>
-              <tr className={theadCls} style={{ background: 'var(--ch-bg)', borderColor: 'var(--ch-divider)', color: 'var(--ch-text)' }}>
-                <th className="px-4 py-3 text-left">Μαθητης</th>
-                <th className="px-4 py-3 text-left">Πακετο</th>
-                <th className="px-4 py-3 text-left">Διαστημα</th>
-                <th className="px-4 py-3 text-right">Τιμη</th>
-                <th className="px-4 py-3 text-right">Πληρωθηκε</th>
-                <th className="px-4 py-3 text-right">Υπολοιπο</th>
-                <th className="px-4 py-3 text-left">Κατασταση</th>
-                <th className="px-4 py-3 text-right">Ενεργειες</th>
+              <tr style={{ borderBottom: '2px solid var(--color-accent)' }}>
+                <th style={{ width: '1%' }} className={`whitespace-nowrap px-4 pb-3 text-left text-xs font-bold uppercase tracking-wide ${colDivider} ${isDark ? 'text-white' : 'text-black'}`}>#</th>
+                <th className={`px-4 pb-3 text-left text-xs font-bold uppercase tracking-wide ${colDivider} ${isDark ? 'text-white' : 'text-black'}`}>Μαθητης</th>
+                <th className={`px-4 pb-3 text-left text-xs font-bold uppercase tracking-wide ${colDivider} ${isDark ? 'text-white' : 'text-black'}`}>Πακετο</th>
+                <th className={`px-4 pb-3 text-left text-xs font-bold uppercase tracking-wide ${colDivider} ${isDark ? 'text-white' : 'text-black'}`}>Διαστημα</th>
+                <th className={`px-4 pb-3 text-right text-xs font-bold uppercase tracking-wide ${colDivider} ${isDark ? 'text-white' : 'text-black'}`}>Τιμη</th>
+                <th className={`px-4 pb-3 text-right text-xs font-bold uppercase tracking-wide ${colDivider} ${isDark ? 'text-white' : 'text-black'}`}>Πληρωθηκε</th>
+                <th className={`px-4 pb-3 text-right text-xs font-bold uppercase tracking-wide ${colDivider} ${isDark ? 'text-white' : 'text-black'}`}>Υπολοιπο</th>
+                <th className={`px-4 pb-3 text-left text-xs font-bold uppercase tracking-wide ${colDivider} ${isDark ? 'text-white' : 'text-black'}`}>Κατασταση</th>
+                <th className={`px-4 pb-3 text-right text-xs font-bold uppercase tracking-wide ${isDark ? 'text-white' : 'text-black'}`}>Ενεργειες</th>
               </tr>
             </thead>
-            <tbody className={isDark ? 'divide-y divide-slate-800/40' : 'divide-y divide-slate-100'}>
-              {rows.map(r => (
+            <tbody className={isDark ? 'divide-y divide-slate-800/60' : 'divide-y divide-slate-200'}>
+              {rows.map((r, i) => (
                 <SubscriptionTableRow
                   key={`${r.student_id}-${r.sub?.id}`}
+                  rowNumber={showingFrom + i}
                   row={r}
                   isDark={isDark}
                   packageById={packageById}
-                  onPayment={onPayment}
+                  onGoToStudent={onGoToStudent}
                   onRenew={onRenew}
                   onDelete={onDelete}
                 />

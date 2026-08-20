@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabaseClient';
-import { Palette, StickyNote, ChevronLeft, ChevronRight, ChevronDown, Loader2, Pin, PinOff } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, Loader2, Pin, PinOff, StickyNote, Palette } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 
 type DashboardNote = {
@@ -24,7 +24,7 @@ const NOTE_COLORS = [
 const DEFAULT_NOTE_COLOR = '#3b82f6';
 const NOTES_PER_PAGE = 3;
 
-const COLLAPSED_HEIGHT = 64; // px — ~3 lines at text-xs/leading-relaxed
+const COLLAPSED_HEIGHT = 64; // px — ~3 lines at text-sm/leading-relaxed
 
 function NoteContent({ content, isDark }: { content: string; isDark: boolean }) {
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -45,13 +45,13 @@ function NoteContent({ content, isDark }: { content: string; isDark: boolean }) 
         className="overflow-hidden transition-all duration-300"
         style={{ maxHeight: expanded ? wrapRef.current?.scrollHeight : COLLAPSED_HEIGHT }}
       >
-        <p className={`whitespace-pre-wrap break-words text-xs leading-relaxed ${isDark ? 'text-slate-100' : 'text-slate-700'}`}>
+        <p className={`whitespace-pre-wrap break-words text-[13px] leading-relaxed ${isDark ? 'text-slate-100' : 'text-slate-700'}`}>
           {content}
         </p>
       </div>
       {(overflows || expanded) && (
         <button type="button" onClick={() => setExpanded((v) => !v)}
-          className={`mt-1 inline-flex items-center gap-0.5 text-[10px] transition ${isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}>
+          className={`mt-1 inline-flex items-center gap-0.5 text-[10px] font-medium uppercase tracking-wide transition ${isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}>
           <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
           {expanded ? 'Λιγότερα' : 'Περισσότερα'}
         </button>
@@ -164,13 +164,9 @@ export default function DashboardNotesSection({ schoolId }: DashboardNotesSectio
     if (error) { console.error(error); setNotes(prev); }
   };
 
-  // overflow-hidden added so rainbow line stays inside rounded corners
   const ColorPalette = ({ onSelect, onReset, currentColor }: { onSelect: (c: string) => void; onReset?: () => void; currentColor?: string }) => (
-    <div className={`rounded-2xl border shadow-[0_8px_32px_rgba(0,0,0,0.35)] backdrop-blur-2xl overflow-hidden ${
-      isDark ? 'border-white/10 bg-slate-900/95' : 'border-slate-200 bg-white/95'
-    }`} style={{ width: 216 }}>
-      <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, #6366f1, #f43f5e, #f97316, #a855f7)' }} />
-      <div className="flex items-center justify-between px-4 pt-3 pb-2">
+    <div className={`overflow-hidden rounded-xl border shadow-lg ${isDark ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-white'}`} style={{ width: 200 }}>
+      <div className={`flex items-center justify-between px-3.5 pt-3 pb-2 border-b ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
         <span className={`text-[9px] font-bold uppercase tracking-[0.15em] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Χρώμα</span>
         {onReset && (
           <button type="button" onClick={onReset}
@@ -179,21 +175,20 @@ export default function DashboardNotesSection({ schoolId }: DashboardNotesSectio
           </button>
         )}
       </div>
-      <div className="grid grid-cols-4 gap-2.5 px-4 pb-4">
+      <div className="grid grid-cols-4 gap-2 p-3">
         {NOTE_COLORS.map((c) => {
           const isActive = currentColor === c.value;
           return (
             <button key={c.value} type="button" onClick={() => onSelect(c.value)}
               aria-label={c.label} title={c.label}
-              className="relative flex h-9 w-9 items-center justify-center rounded-[10px] transition-transform duration-100 hover:scale-110 active:scale-95"
+              className="relative flex h-7 w-7 items-center justify-center rounded-full transition-transform duration-100 hover:scale-110 active:scale-95"
               style={{
-                background: `linear-gradient(135deg, ${c.value}dd, ${c.value})`,
-                boxShadow: isActive
-                  ? `0 0 0 2px ${isDark ? '#0f172a' : '#fff'}, 0 0 0 4px ${c.value}, 0 4px 12px ${c.value}80`
-                  : `0 3px 8px ${c.value}55`,
+                background: c.value,
+                outline: isActive ? `2px solid ${isDark ? '#0f172a' : '#fff'}` : 'none',
+                boxShadow: isActive ? `0 0 0 2px ${c.value}` : 'none',
               }}>
               {isActive && (
-                <svg className="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none">
+                <svg className="h-3 w-3" viewBox="0 0 16 16" fill="none">
                   <path d="M3 8.5l3.5 3.5 6.5-7" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               )}
@@ -204,39 +199,41 @@ export default function DashboardNotesSection({ schoolId }: DashboardNotesSectio
     </div>
   );
 
+  const primary = isDark ? 'text-slate-50' : 'text-slate-900';
+  const muted = isDark ? 'text-slate-500' : 'text-slate-400';
+  const rule = isDark ? 'border-slate-800' : 'border-slate-100';
+
   return (
     <section className="flex flex-col flex-1">
-      {/* Card */}
-      <div className={`flex flex-col flex-1 overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-md ring-1 ring-inset ${
-        isDark
-          ? 'border-slate-700/50 bg-slate-950/40 ring-white/[0.04]'
-          : 'border-slate-200 bg-white/80 ring-black/[0.02]'
-      }`}>
-        {/* Header — inside card */}
-        <div className="flex shrink-0 items-center justify-between px-5 py-3" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
+      {/* Elevated tile — real border + shadow lift, colored accent band up top, icon badge in header */}
+      <div className={`relative flex flex-col flex-1 overflow-hidden rounded-2xl border shadow-lg ${isDark ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white'}`}>
+        <div className="h-1 w-full shrink-0" style={{ background: 'var(--color-accent)' }} />
+
+        {/* Header */}
+        <div className={`flex shrink-0 items-center justify-between px-5 py-3.5 border-b ${rule}`}>
           <div className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
               style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
-              <StickyNote className="h-3.5 w-3.5" style={{ color: 'var(--ch-icon)' }} />
+              <StickyNote className="h-4 w-4" style={{ color: 'var(--ch-icon)' }} />
             </div>
-            <p className="text-sm font-semibold" style={{ color: 'var(--ch-text)' }}>Σημειώσεις</p>
+            <p className={`text-sm font-bold ${primary}`}>Σημειώσεις</p>
           </div>
-          <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] ${
-            isDark ? 'border-slate-700/60 bg-slate-800/50 text-slate-400' : 'border-slate-200 bg-slate-100 text-slate-500'
+          <span className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full px-2 text-[11px] font-bold tabular-nums ${
+            isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600'
           }`}>
-            {notes.length} συνολικά
+            {notes.length}
           </span>
         </div>
 
-        {/* Add note form */}
-        <div className="p-4">
+        {/* Compose */}
+        <div className="px-5 py-4">
           <textarea
-            className={`w-full resize-none rounded-xl border px-3.5 py-2.5 text-xs placeholder outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 ${
+            className={`w-full resize-none rounded-xl border px-3.5 py-2.5 text-[13px] leading-relaxed outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 ${
               isDark
-                ? 'border-slate-700/70 bg-slate-900/60 text-slate-100 placeholder-slate-500 focus:border-[color:var(--color-accent)]'
+                ? 'border-slate-700/70 bg-slate-950/50 text-slate-100 placeholder-slate-500 focus:border-[color:var(--color-accent)]'
                 : 'border-slate-200 bg-slate-50 text-slate-800 placeholder-slate-400 focus:border-[color:var(--color-accent)]'
             }`}
-            rows={3}
+            rows={2}
             placeholder="Γράψε μια σημείωση για σήμερα…"
             value={noteText}
             onChange={(e) => setNoteText(e.target.value)}
@@ -252,14 +249,13 @@ export default function DashboardNotesSection({ schoolId }: DashboardNotesSectio
                 }
                 setPaletteOpen((v) => !v);
               }}
-                className={`inline-flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-[11px] transition ${
+                className={`inline-flex items-center gap-2 rounded-full border px-2.5 py-1.5 text-[11px] font-medium transition ${
                   isDark
-                    ? 'border-slate-700/60 bg-slate-800/50 text-slate-300 hover:border-slate-600 hover:bg-slate-700/60'
-                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                    ? 'border-slate-700 bg-slate-800/60 text-slate-300 hover:border-slate-600'
+                    : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300'
                 }`}
                 aria-haspopup="dialog" aria-expanded={paletteOpen}>
                 <Palette className="h-3 w-3" />
-                <span>Χρώμα</span>
                 <span className="h-3 w-3 rounded-full border border-white/10" style={{ backgroundColor: noteColor || DEFAULT_NOTE_COLOR }} />
               </button>
             </div>
@@ -273,12 +269,12 @@ export default function DashboardNotesSection({ schoolId }: DashboardNotesSectio
             {/* Pin toggle */}
             <button type="button" onClick={() => setNotePinned((v) => !v)}
               title={notePinned ? 'Ξεκαρφίτσωμα' : 'Καρφίτσωμα'}
-              className={`inline-flex items-center justify-center rounded-lg border p-1.5 transition ${
+              className={`inline-flex items-center justify-center rounded-full border p-1.5 transition ${
                 notePinned
                   ? isDark ? 'border-indigo-500/50 bg-indigo-500/15 text-indigo-300' : 'border-indigo-400/50 bg-indigo-50 text-indigo-500'
                   : isDark
-                  ? 'border-slate-700/60 bg-slate-800/50 text-slate-400 hover:border-slate-600'
-                  : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
+                  ? 'border-slate-700 bg-slate-800/60 text-slate-400 hover:border-slate-600'
+                  : 'border-slate-200 bg-slate-50 text-slate-500 hover:border-slate-300'
               }`}
               aria-pressed={notePinned}>
               {notePinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
@@ -286,122 +282,109 @@ export default function DashboardNotesSection({ schoolId }: DashboardNotesSectio
 
             {/* Add button */}
             <button type="button" onClick={handleAddNote} disabled={notesSaving || !noteText.trim()}
-              className="btn-primary ml-auto gap-1.5 px-4 py-1.5 font-semibold shadow-sm hover:brightness-110 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50">
+              className="btn-primary ml-auto gap-1.5 rounded-full px-4 py-1.5 font-semibold shadow-sm hover:brightness-110 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50">
               {notesSaving ? <><Loader2 className="h-3 w-3 animate-spin" />Αποθήκευση…</> : 'Προσθήκη'}
             </button>
           </div>
         </div>
 
-        {/* Notes list */}
-        <div className={`border-t ${isDark ? 'border-slate-800/70' : 'border-slate-100'}`}>
+        {/* Notes list — each note is its own tinted mini-card */}
+        <div className={`flex flex-col flex-1 min-h-0 border-t px-5 py-4 ${rule}`}>
           {notesLoading ? (
-            <div className="flex items-center justify-center gap-2 py-10">
+            <div className="flex flex-1 items-center justify-center gap-2 py-6">
               <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
-              <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Φόρτωση σημειώσεων…</span>
+              <span className={`text-xs ${muted}`}>Φόρτωση σημειώσεων…</span>
             </div>
           ) : sortedNotes.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
-              <div className={`flex h-12 w-12 items-center justify-center rounded-2xl border ${isDark ? 'border-slate-700/50 bg-slate-800/50' : 'border-slate-200 bg-slate-100'}`}>
-                <StickyNote className={`h-5 w-5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+            <div className="flex flex-1 flex-col items-center justify-center gap-3 py-8 text-center">
+              <div className={`flex h-11 w-11 items-center justify-center rounded-2xl border ${isDark ? 'border-slate-700/50 bg-slate-800/50' : 'border-slate-200 bg-slate-50'}`}>
+                <StickyNote className={`h-5 w-5 ${muted}`} />
               </div>
-              <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Δεν υπάρχουν ακόμη σημειώσεις.</p>
+              <p className={`text-xs ${muted}`}>Δεν υπάρχουν ακόμη σημειώσεις.</p>
             </div>
           ) : (
             <>
-              <ol className={`divide-y ${isDark ? 'divide-slate-800/60' : 'divide-slate-100'}`} start={(notesPage - 1) * NOTES_PER_PAGE + 1}>
+              <div className="flex flex-1 min-h-0 flex-col gap-2 overflow-y-auto">
                 {pageNotes.map((note) => {
                   const paletteOpenForThis = notePaletteOpenId === note.id;
                   return (
-                    <li key={note.id} className={`group relative flex gap-3 py-3.5 transition ${
-                      note.is_urgent
-                        ? isDark ? 'bg-indigo-950/30 pl-[18px] pr-4 hover:bg-indigo-950/40' : 'bg-indigo-50 pl-[18px] pr-4 hover:bg-indigo-100/60'
-                        : 'px-4 ' + (isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-slate-50/60')
-                    }`}>
-                      {note.is_urgent && (
-                        <span className={`absolute left-0 top-0 bottom-0 w-[3px] rounded-r-full ${isDark ? 'bg-indigo-500' : 'bg-indigo-400'}`} />
-                      )}
-                      <div className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full border border-white/10" style={{ backgroundColor: note.color }} />
-                      <div className="min-w-0 flex-1">
-                        {note.is_urgent && (
-                          <div className="mb-1.5 flex justify-end">
-                            <span className={`shrink-0 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+                    <div key={note.id} className={`group rounded-xl border p-3.5 ${isDark ? 'border-slate-800 bg-slate-950/40' : 'border-slate-100 bg-slate-50'}`}
+                      style={{ borderLeftColor: note.color, borderLeftWidth: 3 }}>
+                      <div className="flex items-start gap-2">
+                        <div className="min-w-0 flex-1">
+                          {note.is_urgent && (
+                            <span className={`mb-1.5 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
                               isDark ? 'border-indigo-500/40 bg-indigo-500/15 text-indigo-300' : 'border-indigo-300/60 bg-indigo-100 text-indigo-600'
                             }`}>
-                              <Pin className="h-2.5 w-2.5" />
-                              Καρφιτσωμένο
+                              <Pin className="h-2.5 w-2.5" />Καρφιτσωμένο
                             </span>
-                          </div>
-                        )}
-                        <NoteContent content={note.content} isDark={isDark} />
-                        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                          <button type="button" onClick={() => handleToggleUrgent(note.id, note.is_urgent)}
-                            title={note.is_urgent ? 'Ξεκαρφίτσωμα' : 'Καρφίτσωμα'}
-                            className={`inline-flex items-center justify-center rounded-lg border p-1 transition ${
-                              note.is_urgent
-                                ? isDark ? 'border-indigo-500/40 text-indigo-300 hover:bg-indigo-500/10' : 'border-indigo-400/40 text-indigo-500 hover:bg-indigo-100'
-                                : isDark
-                                ? 'border-slate-700/60 text-slate-500 hover:border-indigo-500/30 hover:text-indigo-300'
-                                : 'border-slate-200 text-slate-400 hover:border-indigo-300 hover:text-indigo-500'
-                            }`}>
-                            {note.is_urgent ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
-                          </button>
-                          <div ref={paletteOpenForThis ? notePaletteWrapRef : null} className="relative">
-                            <button type="button"
-                              onClick={(e) => {
-                                const r = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
-                                setNotePalettePos({ bottom: window.innerHeight - r.top + 8, left: r.left });
-                                setNotePaletteOpenId((curr) => curr === note.id ? null : note.id);
-                              }}
-                              className={`inline-flex h-6 w-6 items-center justify-center rounded-lg border transition ${
-                                isDark
-                                  ? 'border-slate-700/60 bg-slate-800/50 text-slate-400 hover:border-slate-600 hover:text-slate-200'
-                                  : 'border-slate-200 bg-white text-slate-400 hover:border-slate-300 hover:text-slate-600'
-                              }`}
-                              title="Αλλαγή χρώματος" aria-haspopup="dialog" aria-expanded={paletteOpenForThis}>
-                              <Palette className="h-3 w-3" />
-                            </button>
-                          </div>
-                          {paletteOpenForThis && notePalettePos && createPortal(
-                            <div ref={notePalettePortalRef} style={{ position: 'fixed', bottom: notePalettePos.bottom, left: notePalettePos.left, zIndex: 9999 }}>
-                              <ColorPalette currentColor={note.color} onSelect={(c) => { handleChangeNoteColor(note.id, c); setNotePaletteOpenId(null); }} />
-                            </div>,
-                            document.body
                           )}
-                          <button type="button" onClick={() => handleDeleteNote(note.id)}
-                            className={`ml-auto rounded-lg border border-transparent px-2 py-0.5 text-[10px] opacity-0 transition group-hover:opacity-100 ${
-                              isDark
-                                ? 'text-slate-600 hover:border-red-500/30 hover:text-red-300'
-                                : 'text-slate-400 hover:border-red-200 hover:text-red-500'
-                            }`}>
-                            Διαγραφή
-                          </button>
+                          <NoteContent content={note.content} isDark={isDark} />
                         </div>
                       </div>
-                    </li>
+                      <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                        <button type="button" onClick={() => handleToggleUrgent(note.id, note.is_urgent)}
+                          className={`inline-flex items-center justify-center rounded-full border p-1 transition ${
+                            note.is_urgent
+                              ? isDark ? 'border-indigo-500/40 text-indigo-300 hover:bg-indigo-500/10' : 'border-indigo-400/40 text-indigo-500 hover:bg-indigo-100'
+                              : isDark
+                              ? 'border-slate-700 text-slate-500 hover:border-indigo-500/30 hover:text-indigo-300'
+                              : 'border-slate-200 text-slate-400 hover:border-indigo-300 hover:text-indigo-500'
+                          }`}>
+                          {note.is_urgent ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
+                        </button>
+                        <div ref={paletteOpenForThis ? notePaletteWrapRef : null} className="relative">
+                          <button type="button"
+                            onClick={(e) => {
+                              const r = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+                              setNotePalettePos({ bottom: window.innerHeight - r.top + 8, left: r.left });
+                              setNotePaletteOpenId((curr) => curr === note.id ? null : note.id);
+                            }}
+                            className={`inline-flex h-6 w-6 items-center justify-center rounded-full border transition ${
+                              isDark
+                                ? 'border-slate-700 bg-slate-900/60 text-slate-400 hover:border-slate-600 hover:text-slate-200'
+                                : 'border-slate-200 bg-white text-slate-400 hover:border-slate-300 hover:text-slate-600'
+                            }`}
+                            title="Αλλαγή χρώματος" aria-haspopup="dialog" aria-expanded={paletteOpenForThis}>
+                            <Palette className="h-3 w-3" />
+                          </button>
+                        </div>
+                        {paletteOpenForThis && notePalettePos && createPortal(
+                          <div ref={notePalettePortalRef} style={{ position: 'fixed', bottom: notePalettePos.bottom, left: notePalettePos.left, zIndex: 9999 }}>
+                            <ColorPalette currentColor={note.color} onSelect={(c) => { handleChangeNoteColor(note.id, c); setNotePaletteOpenId(null); }} />
+                          </div>,
+                          document.body
+                        )}
+                        <button type="button" onClick={() => handleDeleteNote(note.id)}
+                          className={`ml-auto rounded-full border border-transparent px-2 py-0.5 text-[10px] opacity-0 transition group-hover:opacity-100 ${
+                            isDark ? 'text-slate-600 hover:border-red-500/30 hover:text-red-300' : 'text-slate-400 hover:border-red-200 hover:text-red-500'
+                          }`}>
+                          Διαγραφή
+                        </button>
+                      </div>
+                    </div>
                   );
                 })}
-              </ol>
+              </div>
 
               {totalNotesPages > 1 && (
-                <div className={`flex items-center justify-between border-t px-4 py-2.5 ${
-                  isDark ? 'border-slate-800/70 bg-slate-900/20' : 'border-slate-100 bg-slate-50/50'
-                }`}>
-                  <p className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                <div className="mt-3 flex shrink-0 items-center justify-between">
+                  <p className={`text-[11px] ${muted}`}>
                     Σελίδα <span className={isDark ? 'text-slate-300' : 'text-slate-600'}>{notesPage}</span> από <span className={isDark ? 'text-slate-300' : 'text-slate-600'}>{totalNotesPages}</span>
                   </p>
                   <div className="flex items-center gap-1.5">
                     <button type="button" onClick={() => setNotesPage((p) => Math.max(1, p - 1))} disabled={notesPage === 1}
-                      className={`inline-flex h-7 w-7 items-center justify-center rounded-lg border transition disabled:cursor-not-allowed disabled:opacity-30 ${
+                      className={`inline-flex h-7 w-7 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-30 ${
                         isDark
-                          ? 'border-slate-700/60 bg-slate-900/30 text-slate-400 hover:border-slate-600 hover:text-slate-200'
+                          ? 'border-slate-700 bg-slate-800/60 text-slate-400 hover:border-slate-600 hover:text-slate-200'
                           : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-700'
                       }`}>
                       <ChevronLeft className="h-3.5 w-3.5" />
                     </button>
                     <button type="button" onClick={() => setNotesPage((p) => Math.min(totalNotesPages, p + 1))} disabled={notesPage === totalNotesPages}
-                      className={`inline-flex h-7 w-7 items-center justify-center rounded-lg border transition disabled:cursor-not-allowed disabled:opacity-30 ${
+                      className={`inline-flex h-7 w-7 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-30 ${
                         isDark
-                          ? 'border-slate-700/60 bg-slate-900/30 text-slate-400 hover:border-slate-600 hover:text-slate-200'
+                          ? 'border-slate-700 bg-slate-800/60 text-slate-400 hover:border-slate-600 hover:text-slate-200'
                           : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-700'
                       }`}>
                       <ChevronRight className="h-3.5 w-3.5" />

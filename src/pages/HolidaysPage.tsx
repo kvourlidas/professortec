@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
 import { useTheme } from '../context/ThemeContext';
-import { Trash2, CalendarOff, CalendarDays } from 'lucide-react';
+import { Trash2, CalendarOff, Calendar, CalendarRange } from 'lucide-react';
 import DatePickerField from '../components/ui/AppDatePicker';
 import type { HolidayRow, HolidayGroup, Mode } from '../components/holidays/types';
 import { formatLocalYMD, addDays, parseYMD, formatDisplay, formatDateDisplayFromDate, parseDisplayToDate } from '../components/holidays/utils';
@@ -49,22 +49,9 @@ export default function HolidaysPage() {
     ? 'h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 text-sm text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30'
     : 'h-9 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30';
 
-  const cardCls = isDark
-    ? 'overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-2xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]'
-    : 'overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md';
+  const formRuleCls = isDark ? 'border-slate-800' : 'border-slate-200';
 
-  const cardHeaderCls = isDark
-    ? 'border-b border-slate-800/70 bg-slate-900/30 px-5 py-3'
-    : 'border-b border-slate-200 bg-slate-50 px-5 py-3';
-
-  const theadRowCls = 'border-b';
-
-  const tbodyDivideCls = isDark ? 'divide-y divide-slate-800/50' : 'divide-y divide-slate-100';
-  const trHoverCls = isDark ? 'group transition-colors hover:bg-white/[0.025]' : 'group transition-colors hover:bg-slate-50';
-
-  const dateBadgeCls = isDark
-    ? 'inline-flex items-center rounded-full border border-slate-600/50 bg-slate-800/60 px-2.5 py-0.5 text-[11px] font-medium text-slate-300'
-    : 'inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium text-slate-700';
+  const railLineCls = isDark ? 'bg-slate-800' : 'bg-slate-200';
 
   const emptyBoxCls = isDark
     ? 'flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-700/50 bg-slate-800/50'
@@ -73,7 +60,7 @@ export default function HolidaysPage() {
   const emptyTitleCls = isDark ? 'text-sm font-medium text-slate-200' : 'text-sm font-medium text-slate-700';
   const emptySubCls = isDark ? 'mt-1 text-xs text-slate-500' : 'mt-1 text-xs text-slate-400';
 
-  const labelCls = `flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`;
+  const labelCls = `flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-white' : 'text-black'}`;
 
   // ── Load (still direct read — no list edge function) ──
   const loadHolidays = useCallback(async () => {
@@ -176,9 +163,6 @@ export default function HolidaysPage() {
           <h1 className={`text-base font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>
             Αργίες σχολείου
           </h1>
-          <p className={`mt-0.5 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-            Ορίστε μονοήμερες αργίες ή περιόδους αργιών για το σχολείο σας.
-          </p>
           {schoolId && (
             <div className="mt-2 flex items-center gap-2">
               <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] ${isDark ? 'border-slate-700/60 bg-slate-800/50 text-slate-300' : 'border-slate-200 bg-slate-100 text-slate-600'}`}>
@@ -198,91 +182,92 @@ export default function HolidaysPage() {
         </div>
       )}
 
-      {/* ── Add form card ── */}
-      <div className={cardCls}>
-        <div className={cardHeaderCls}>
-          <p className={`text-xs font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-            Προσθήκη αργίας
-          </p>
-        </div>
-        <div className="space-y-4 p-5">
-          {/* Mode toggle */}
-          <div className="flex gap-2">
+      {/* ── Add form — flat inline bar, no card chrome ── */}
+      <div>
+        <p className={`mb-3 text-[10px] font-bold uppercase tracking-[0.22em] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+          Προσθήκη αργίας
+        </p>
+        <div className={`flex flex-col gap-4 border-b pb-5 md:flex-row md:items-end ${formRuleCls}`}>
+          {/* Mode toggle — icon cards, so the icon itself reinforces what each mode means */}
+          <div className="flex shrink-0 gap-2">
             {(['single', 'range'] as Mode[]).map((m) => {
               const active = mode === m;
-              const label = m === 'single' ? 'Μονοήμερη αργία' : 'Περίοδος αργιών';
+              const label = m === 'single' ? 'Μονοήμερη' : 'Περίοδος';
+              const Icon = m === 'single' ? Calendar : CalendarRange;
               return (
                 <button
                   key={m}
                   type="button"
                   onClick={() => setMode(m)}
-                  className="rounded-lg border px-3 py-1.5 text-xs font-medium transition"
+                  className="flex flex-col items-center gap-1 rounded-xl border px-4 py-2.5 transition"
                   style={active ? {
-                    backgroundColor: 'color-mix(in srgb, var(--color-accent) 15%, transparent)',
-                    borderColor: 'color-mix(in srgb, var(--color-accent) 40%, transparent)',
-                    color: 'var(--color-accent)',
+                    borderColor: 'color-mix(in srgb, var(--color-accent) 50%, transparent)',
+                    background: 'color-mix(in srgb, var(--color-accent) 10%, transparent)',
                   } : {
-                    backgroundColor: isDark ? 'transparent' : '#f8fafc',
-                    borderColor: isDark ? 'rgb(71 85 105 / 0.5)' : 'rgb(203 213 225)',
-                    color: isDark ? 'rgb(148 163 184)' : 'rgb(100 116 139)',
+                    borderColor: isDark ? 'rgba(71, 85, 105, 0.5)' : 'rgb(226 232 240)',
+                    background: 'transparent',
                   }}
                 >
-                  {label}
+                  <Icon className="h-4 w-4" style={{ color: active ? 'var(--color-accent)' : (isDark ? '#64748b' : '#94a3b8') }} />
+                  <span className="text-[11px] font-semibold" style={{ color: active ? 'var(--color-accent)' : (isDark ? '#94a3b8' : '#64748b') }}>
+                    {label}
+                  </span>
                 </button>
               );
             })}
           </div>
 
           {/* Form fields */}
-          <div className="flex flex-col gap-3 md:flex-row md:items-end">
+          <div className="flex-1">
+            <DatePickerField
+              label={mode === 'single' ? 'Ημερομηνία αργίας' : 'Από'}
+              value={mode === 'single' ? formatDateDisplayFromDate(singleDate) : formatDateDisplayFromDate(rangeStart)}
+              onChange={(val) => { const d = parseDisplayToDate(val); if (mode === 'single') setSingleDate(d); else setRangeStart(d); }}
+              placeholder="π.χ. 24/12/2025"
+            />
+          </div>
+          {mode === 'range' && (
             <div className="flex-1">
               <DatePickerField
-                label={mode === 'single' ? 'Ημερομηνία αργίας' : 'Από'}
-                value={mode === 'single' ? formatDateDisplayFromDate(singleDate) : formatDateDisplayFromDate(rangeStart)}
-                onChange={(val) => { const d = parseDisplayToDate(val); if (mode === 'single') setSingleDate(d); else setRangeStart(d); }}
-                placeholder="π.χ. 24/12/2025"
+                label="Έως"
+                value={formatDateDisplayFromDate(rangeEnd)}
+                onChange={(val) => setRangeEnd(parseDisplayToDate(val))}
+                placeholder="π.χ. 02/01/2026"
               />
             </div>
-            {mode === 'range' && (
-              <div className="flex-1">
-                <DatePickerField
-                  label="Έως"
-                  value={formatDateDisplayFromDate(rangeEnd)}
-                  onChange={(val) => setRangeEnd(parseDisplayToDate(val))}
-                  placeholder="π.χ. 02/01/2026"
-                />
-              </div>
-            )}
-            <div className="flex-1 space-y-1.5">
-              <label className={labelCls}>Περιγραφή</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="π.χ. Χριστούγεννα (προαιρετικά)"
-                className={inputCls}
-              />
-            </div>
-            <button
-              type="button"
-              onClick={handleAdd}
-              disabled={saving || !canSave}
-              className="btn-primary h-9 shrink-0 gap-2 px-4 font-semibold shadow-sm hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {saving ? 'Αποθήκευση…' : 'Προσθήκη αργίας'}
-            </button>
+          )}
+          <div className="flex-1 space-y-1.5">
+            <label className={labelCls}>Περιγραφή</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="π.χ. Χριστούγεννα (προαιρετικά)"
+              className={inputCls}
+            />
           </div>
+          <button
+            type="button"
+            onClick={handleAdd}
+            disabled={saving || !canSave}
+            className="btn-primary h-9 shrink-0 gap-2 px-4 font-semibold shadow-sm hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {saving ? 'Αποθήκευση…' : 'Προσθήκη αργίας'}
+          </button>
         </div>
       </div>
 
-      {/* ── Holidays table ── */}
-      <div className={cardCls}>
+      {/* ── Holidays timeline ── */}
+      <div>
         {loading ? (
-          <div className={`divide-y ${isDark ? 'divide-slate-800/60' : 'divide-slate-100'}`}>
+          <div className="space-y-5">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="flex items-center gap-4 px-5 py-3.5 animate-pulse">
-                <div className={`h-3 w-1/3 rounded-full ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`} />
-                <div className={`h-3 w-1/4 rounded-full ${isDark ? 'bg-slate-800/70' : 'bg-slate-200/70'}`} />
+              <div key={i} className="flex items-start gap-4 animate-pulse">
+                <div className={`h-3 w-3 shrink-0 rounded-full ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`} />
+                <div className="flex-1 space-y-1.5">
+                  <div className={`h-3 w-1/3 rounded-full ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`} />
+                  <div className={`h-2.5 w-1/4 rounded-full ${isDark ? 'bg-slate-800/70' : 'bg-slate-200/70'}`} />
+                </div>
               </div>
             ))}
           </div>
@@ -297,58 +282,46 @@ export default function HolidaysPage() {
             </div>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full border-collapse text-xs">
-              <thead>
-                <tr className={theadRowCls} style={{ background: 'var(--ch-bg)', borderColor: 'var(--ch-divider)' }}>
-                  {[
-                    { icon: <CalendarDays className="h-3 w-3" />, label: 'ΗΜΕΡΟΜΗΝΙΑ / ΠΕΡΙΟΔΟΣ' },
-                    { icon: <CalendarOff className="h-3 w-3" />, label: 'ΠΕΡΙΓΡΑΦΗ' },
-                  ].map(({ icon, label }) => (
-                    <th key={label} className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest"
-                      style={{ color: 'var(--ch-text)' }}>
-                      <span className="inline-flex items-center gap-1.5">
-                        <span className="opacity-60">{icon}</span>{label}
-                      </span>
-                    </th>
-                  ))}
-                  <th className="px-5 py-3 text-right text-[10px] font-semibold uppercase tracking-widest"
-                    style={{ color: 'var(--ch-text)' }}>
-                    ΕΝΕΡΓΕΙΕΣ
-                  </th>
-                </tr>
-              </thead>
-              <tbody className={tbodyDivideCls}>
-                {groupedHolidays.map((g, idx) => {
-                  const rangeLabel =
-                    g.endDate && g.endDate !== g.startDate
-                      ? `${formatDisplay(g.startDate)} – ${formatDisplay(g.endDate)}`
-                      : formatDisplay(g.startDate);
-                  return (
-                    <tr key={`${g.startDate}-${g.endDate ?? ''}-${idx}`} className={trHoverCls}>
-                      <td className="px-5 py-3.5">
-                        <span className={dateBadgeCls}>{rangeLabel}</span>
-                      </td>
-                      <td className={`px-5 py-3.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                        {g.name || <span className={isDark ? 'text-slate-600' : 'text-slate-300'}>—</span>}
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center justify-end">
-                          <button
-                            type="button"
-                            onClick={() => setDeleteGroup(g)}
-                            className={`inline-flex h-7 w-7 items-center justify-center rounded-lg border transition ${isDark ? 'border-slate-700/60 bg-slate-900/30 text-slate-500 hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-400' : 'border-slate-200 bg-white text-slate-400 hover:border-red-300 hover:bg-red-50 hover:text-red-500'}`}
-                            title="Διαγραφή"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div>
+            {groupedHolidays.map((g, idx) => {
+              const rangeLabel =
+                g.endDate && g.endDate !== g.startDate
+                  ? `${formatDisplay(g.startDate)} – ${formatDisplay(g.endDate)}`
+                  : formatDisplay(g.startDate);
+              const isLast = idx === groupedHolidays.length - 1;
+              return (
+                <div key={`${g.startDate}-${g.endDate ?? ''}-${idx}`} className="group flex gap-4">
+                  {/* Rail: dot + connecting line down to the next entry */}
+                  <div className="flex w-3 shrink-0 flex-col items-center">
+                    <span
+                      className="h-3 w-3 shrink-0 rounded-full border-2"
+                      style={{ borderColor: 'var(--color-accent)', background: isDark ? '#0f172a' : '#fff' }}
+                    />
+                    {!isLast && <span className={`w-px flex-1 ${railLineCls}`} />}
+                  </div>
+
+                  {/* Content */}
+                  <div className={`flex flex-1 items-start justify-between gap-3 pb-6 ${isLast ? 'pb-0' : ''}`}>
+                    <div className="min-w-0 -mt-0.5">
+                      <p className={`text-sm font-bold tabular-nums ${isDark ? 'text-white' : 'text-black'}`}>{rangeLabel}</p>
+                      <p className={`mt-0.5 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        {g.name || <span className={isDark ? 'text-slate-600' : 'text-slate-300'}>Χωρίς περιγραφή</span>}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteGroup(g)}
+                      className={`shrink-0 opacity-0 transition group-hover:opacity-100 -mt-0.5 ${isDark
+                        ? 'inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 hover:bg-red-500/10 hover:text-red-400'
+                        : 'inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-500'}`}
+                      title="Διαγραφή"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

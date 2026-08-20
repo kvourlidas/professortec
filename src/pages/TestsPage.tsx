@@ -15,7 +15,7 @@ import {
   formatDateDisplay, formatTimeDisplay, parseDateDisplayToISO,
 } from '../components/tests/utils';
 import {
-  Search, ClipboardList, Users, Clock, Calendar, BookOpen, Tag,
+  Search, ClipboardList, Users,
   ChevronLeft, ChevronRight,
 } from 'lucide-react';
 
@@ -63,6 +63,7 @@ export default function TestsPage() {
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [tests, setTests] = useState<TestRow[]>([]);
   const [testAssignments, setTestAssignments] = useState<Record<string, StudentAssignment[]>>({});
+  const [testCharges, setTestCharges] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -127,8 +128,10 @@ export default function TestsPage() {
             arr.push({ studentId: r.student_id, subjectId: r.subject_id ?? null });
           });
           setTestAssignments(map);
+          await reloadTestCharges(schoolId, testsList.map((t) => t.id));
         } else {
           setTestAssignments({});
+          setTestCharges({});
         }
       } catch (err) { console.error(err); setError('Αποτυχία φόρτωσης διαγωνισμάτων.'); }
       finally { setLoading(false); }
@@ -144,16 +147,17 @@ export default function TestsPage() {
   const testsWithDisplay = useMemo(() => tests.map((t) => {
     const assignments = testAssignments[t.id] ?? [];
     const timeRange = t.start_time && t.end_time ? `${formatTimeDisplay(t.start_time)} – ${formatTimeDisplay(t.end_time)}` : '';
+    const chargeTotal = testCharges[t.id] ?? null;
     if (isPrivateLessons && assignments.length > 0) {
       const studentNames = assignments.map((a) => studentById.get(a.studentId)?.full_name ?? 'Άγνωστος').join(', ');
       const subjectNames = Array.from(new Set(assignments.map((a) => (a.subjectId ? subjectById.get(a.subjectId)?.name : null)).filter(Boolean) as string[]));
-      return { ...t, classTitle: studentNames || '—', subjectName: subjectNames.length > 1 ? 'Πολλαπλά' : (subjectNames[0] ?? '—'), dateDisplay: formatDateDisplay(t.test_date), timeRange };
+      return { ...t, classTitle: studentNames || '—', subjectName: subjectNames.length > 1 ? 'Πολλαπλά' : (subjectNames[0] ?? '—'), dateDisplay: formatDateDisplay(t.test_date), timeRange, chargeTotal };
     }
     const cls = t.class_id ? classById.get(t.class_id) : undefined;
     const level = t.level_id ? levelById.get(t.level_id) : undefined;
     const subj = t.subject_id ? subjectById.get(t.subject_id) : undefined;
-    return { ...t, classTitle: cls?.title ?? level?.name ?? '—', subjectName: subj?.name ?? '—', dateDisplay: formatDateDisplay(t.test_date), timeRange };
-  }), [tests, classById, levelById, subjectById, isPrivateLessons, testAssignments, studentById]);
+    return { ...t, classTitle: cls?.title ?? level?.name ?? '—', subjectName: subj?.name ?? '—', dateDisplay: formatDateDisplay(t.test_date), timeRange, chargeTotal };
+  }), [tests, classById, levelById, subjectById, isPrivateLessons, testAssignments, studentById, testCharges]);
 
   const filteredTests = useMemo(() => {
     const q = searchTerm.trim().toLowerCase(); if (!q) return testsWithDisplay;
@@ -169,6 +173,25 @@ export default function TestsPage() {
   // Add handlers
   const openModal = () => { setError(null); setModalOpen(true); };
   const closeModal = () => { if (saving) return; setModalOpen(false); };
+
+  // ── Load per-test charge totals from student_extra_charges ────────────────
+  // Same ledger the dashboard calendar's test popup reads/writes, tagged via notes: `test:<testId>` —
+  // both views resolve to the same rows, so a charge added on either side shows up on the other.
+  const reloadTestCharges = async (schoolIdArg: string, testIds: string[]) => {
+    if (testIds.length === 0) { setTestCharges({}); return; }
+    const { data } = await supabase
+      .from('student_extra_charges')
+      .select('amount, notes')
+      .eq('school_id', schoolIdArg)
+      .in('notes', testIds.map((id) => `test:${id}`))
+      .is('cancelled_at', null);
+    const totals: Record<string, number> = {};
+    (data ?? []).forEach((row: any) => {
+      const testId = (row.notes as string).slice('test:'.length);
+      totals[testId] = (totals[testId] ?? 0) + Number(row.amount);
+    });
+    setTestCharges(totals);
+  };
 
   // ── Reconcile per-student test charges against student_extra_charges ──────
   // Charges are tagged via notes: `test:<testId>` so we can find them again without a schema change.
@@ -236,8 +259,9 @@ export default function TestsPage() {
       if (isPrivateLessons && item.test_results) {
         setTestAssignments((prev) => ({ ...prev, [item.id]: item.test_results!.map((r) => ({ studentId: r.student_id, subjectId: r.subject_id ?? null })) }));
       }
-      if (isPrivateLessons) {
+      if (isPrivateLessons && schoolId) {
         await persistTestCharges(item.id, form.studentAssignments, item.title);
+        await reloadTestCharges(schoolId, [...tests.map((t) => t.id), item.id]);
       }
       setModalOpen(false);
     } catch (err) {
@@ -308,6 +332,7 @@ export default function TestsPage() {
       }
       if (isPrivateLessons) {
         await persistTestCharges(item.id, form.studentAssignments, item.title);
+        await reloadTestCharges(schoolId, tests.map((t) => t.id));
       }
       closeEditModal();
     } catch (err) {
@@ -330,8 +355,13 @@ export default function TestsPage() {
     setDeleting(true); setError(null);
     try {
       await callEdgeFunction('tests-delete', { test_id: deleteTarget.id });
+      if (isPrivateLessons && schoolId) {
+        await supabase.from('student_extra_charges').update({ cancelled_at: new Date().toISOString() })
+          .eq('school_id', schoolId).eq('notes', `test:${deleteTarget.id}`).is('cancelled_at', null);
+      }
       setTests((prev) => prev.filter((t) => t.id !== deleteTarget.id));
       setTestAssignments((prev) => { const { [deleteTarget.id]: _removed, ...rest } = prev; return rest; });
+      setTestCharges((prev) => { const { [deleteTarget.id]: _removed, ...rest } = prev; return rest; });
       setDeleteTarget(null);
     } catch (err) {
       console.error(err);
@@ -342,25 +372,18 @@ export default function TestsPage() {
   };
 
 
-  // ── Style classes ──
-  const tableCardCls = isDark
-    ? 'overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-2xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]'
-    : 'overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md';
-  const theadRowCls = 'border-b';
-  const tbodyDivideCls = isDark ? 'divide-y divide-slate-800/50' : 'divide-y divide-slate-100';
-  const trHoverCls = isDark ? 'group transition-colors hover:bg-white/[0.025]' : 'group transition-colors hover:bg-slate-50';
-  const timeBadgeCls = isDark
-    ? 'inline-flex items-center rounded-full border border-slate-600/50 bg-slate-800/60 px-2.5 py-0.5 text-[11px] text-slate-300'
-    : 'inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[11px] text-slate-600';
-  const paginationBarCls = isDark
-    ? 'flex items-center justify-between gap-3 border-t border-slate-800/70 bg-slate-900/20 px-5 py-3'
-    : 'flex items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-5 py-3';
+  // ── Style classes — minimal: no cell/card borders at all, just one accent rule under the header ──
+  const tableCardCls = '';
+  const theadRowCls = '';
+  const tbodyDivideCls = isDark ? 'divide-y divide-slate-800/60' : 'divide-y divide-slate-200';
+  const colDivider = isDark ? 'border-r border-slate-800/60' : 'border-r border-slate-200';
+  const trHoverCls = isDark ? 'transition-colors hover:bg-slate-900/40' : 'transition-colors hover:bg-slate-50/80';
+  const timeBadgeCls = isDark ? 'tabular-nums text-slate-300' : 'tabular-nums text-slate-600';
+  const paginationBarCls = 'flex items-center justify-between gap-3 pt-4';
   const paginationBtnCls = isDark
-    ? 'inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-900/30 text-slate-400 transition hover:border-slate-600 hover:bg-slate-800/50 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-30'
-    : 'inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-30';
-  const paginationPageCls = isDark
-    ? 'rounded-lg border border-slate-700/60 bg-slate-900/20 px-3 py-1 text-[11px] text-slate-300'
-    : 'rounded-lg border border-slate-200 bg-white px-3 py-1 text-[11px] text-slate-600';
+    ? 'inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-800 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-30'
+    : 'inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-30';
+  const paginationPageCls = isDark ? 'px-2 text-[11px] text-slate-300' : 'px-2 text-[11px] text-slate-600';
   const emptyBoxCls = isDark
     ? 'flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-700/50 bg-slate-800/50'
     : 'flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200 bg-slate-100';
@@ -382,7 +405,6 @@ export default function TestsPage() {
           </div>
           <div>
             <h1 className={`text-base font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Διαγωνίσματα</h1>
-            <p className={`mt-0.5 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{isPrivateLessons ? 'Καταχώρησε διαγωνίσματα ανά μαθητή και μάθημα.' : 'Καταχώρησε διαγωνίσματα ανά τμήμα και μάθημα.'}</p>
             {schoolId && (
               <div className="mt-2 flex items-center gap-2 flex-wrap">
                 <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] ${isDark ? 'border-slate-700/60 bg-slate-800/50 text-slate-300' : 'border-slate-200 bg-slate-100 text-slate-600'}`}>
@@ -424,7 +446,7 @@ export default function TestsPage() {
       {/* Table card */}
       <div className={tableCardCls}>
         {loading ? (
-          <div className={`divide-y ${isDark ? 'divide-slate-800/60' : 'divide-slate-100'}`}>
+          <div className="space-y-3">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="flex items-center gap-4 px-5 py-3.5 animate-pulse">
                 <div className={`h-3 w-16 rounded-full ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`} />
@@ -448,37 +470,39 @@ export default function TestsPage() {
           <div className="overflow-x-auto">
             <table className="min-w-full border-collapse text-xs">
               <thead>
-                <tr className={theadRowCls} style={{ background: 'var(--ch-bg)', borderColor: 'var(--ch-divider)' }}>
+                <tr className={theadRowCls} style={{ borderBottom: '2px solid var(--color-accent)' }}>
+                  <th style={{ width: '1%' }} className={`whitespace-nowrap px-5 pb-3 text-left text-xs font-bold uppercase tracking-wide ${colDivider} ${isDark ? 'text-white' : 'text-black'}`}>#</th>
                   {[
-                    { icon: <Calendar className="h-3 w-3" />, label: 'ΗΜΕΡΟΜΗΝΙΑ' },
-                    { icon: <Clock className="h-3 w-3" />, label: 'ΩΡΑ' },
-                    { icon: <BookOpen className="h-3 w-3" />, label: isPrivateLessons ? 'ΜΑΘΗΤΕΣ' : 'ΤΜΗΜΑ' },
-                    { icon: <Tag className="h-3 w-3" />, label: 'ΜΑΘΗΜΑ' },
-                    { icon: <ClipboardList className="h-3 w-3" />, label: 'ΤΙΤΛΟΣ' },
-                  ].map(({ icon, label }) => (
-                    <th key={label} className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest"
-                      style={{ color: 'var(--ch-text)' }}>
-                      <span className="inline-flex items-center gap-1.5"><span className="opacity-60">{icon}</span>{label}</span>
+                    'ΗΜΕΡΟΜΗΝΙΑ', 'ΩΡΑ', isPrivateLessons ? 'ΜΑΘΗΤΕΣ' : 'ΤΜΗΜΑ', 'ΜΑΘΗΜΑ', 'ΤΙΤΛΟΣ',
+                    ...(isPrivateLessons ? ['ΧΡΕΩΣΗ'] : []),
+                  ].map((label) => (
+                    <th key={label} className={`px-5 pb-3 text-left text-xs font-bold uppercase tracking-wide ${colDivider} ${isDark ? 'text-white' : 'text-black'}`}>
+                      {label}
                     </th>
                   ))}
-                  <th className="px-5 py-3 text-right text-[10px] font-semibold uppercase tracking-widest"
-                    style={{ color: 'var(--ch-text)' }}>ΕΝΕΡΓΕΙΕΣ</th>
+                  <th className={`px-5 pb-3 text-right text-xs font-bold uppercase tracking-wide ${isDark ? 'text-white' : 'text-black'}`}>ΕΝΕΡΓΕΙΕΣ</th>
                 </tr>
               </thead>
               <tbody className={tbodyDivideCls}>
-                {pagedTests.map((t) => (
+                {pagedTests.map((t, i) => (
                   <tr key={t.id} className={trHoverCls}>
-                    <td className={`px-5 py-3.5 tabular-nums ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t.dateDisplay}</td>
-                    <td className="px-5 py-3.5">
+                    <td className={`whitespace-nowrap px-5 py-3.5 tabular-nums ${colDivider} ${isDark ? 'text-slate-600' : 'text-slate-300'}`}>{(page - 1) * PAGE_SIZE + i + 1}</td>
+                    <td className={`px-5 py-3.5 tabular-nums ${colDivider} ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t.dateDisplay}</td>
+                    <td className={`px-5 py-3.5 ${colDivider}`}>
                       {t.timeRange ? <span className={timeBadgeCls}>{t.timeRange}</span> : <span className={isDark ? 'text-slate-600' : 'text-slate-300'}>—</span>}
                     </td>
-                    <td className={`px-5 py-3.5 font-medium transition-colors ${isDark ? 'text-slate-100 group-hover:text-white' : 'text-slate-700 group-hover:text-slate-900'}`}>{t.classTitle}</td>
-                    <td className={`px-5 py-3.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t.subjectName}</td>
-                    <td className={`px-5 py-3.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t.title ?? <span className={isDark ? 'text-slate-600' : 'text-slate-300'}>—</span>}</td>
+                    <td className={`px-5 py-3.5 font-medium ${colDivider} ${isDark ? 'text-slate-100' : 'text-slate-700'}`}>{t.classTitle}</td>
+                    <td className={`px-5 py-3.5 ${colDivider} ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t.subjectName}</td>
+                    <td className={`px-5 py-3.5 ${colDivider} ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t.title ?? <span className={isDark ? 'text-slate-600' : 'text-slate-300'}>—</span>}</td>
+                    {isPrivateLessons && (
+                      <td className={`px-5 py-3.5 tabular-nums font-medium ${colDivider} ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                        {t.chargeTotal != null ? `${t.chargeTotal.toFixed(2)}€` : <span className={isDark ? 'text-slate-600' : 'text-slate-300'}>—</span>}
+                      </td>
+                    )}
                     <td className="px-5 py-3.5">
-                      <div className="flex items-center justify-end gap-1.5">
+                      <div className="flex items-center justify-end gap-1">
                         <button type="button" onClick={() => navigate(`/program/tests/${t.id}/results`)}
-                          className={`inline-flex h-7 items-center gap-1.5 rounded-lg border px-2.5 text-[11px] font-medium transition ${isDark ? 'border-slate-700/60 bg-slate-900/30 text-slate-500 hover:border-emerald-500/40 hover:bg-emerald-500/10 hover:text-emerald-400' : 'border-slate-200 bg-white text-slate-400 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-500'}`}
+                          className={`inline-flex h-7 items-center gap-1.5 rounded-lg px-2 text-[11px] font-medium transition ${isDark ? 'text-slate-500 hover:bg-slate-800 hover:text-emerald-400' : 'text-slate-400 hover:bg-slate-100 hover:text-emerald-600'}`}
                           title="Βαθμοί μαθητών">
                           <Users className="h-3.5 w-3.5" />Βαθμοί
                         </button>

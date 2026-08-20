@@ -79,6 +79,17 @@ async function buildViewRows(
     }
   }
 
+  // monthly-plan ranges (from which month until what month)
+  const planIds = [...new Set(subs.map(s => s.plan_id).filter((v): v is string => !!v))];
+  const planRangeMap = new Map<string, { start_month: string; end_month: string }>();
+  if (planIds.length > 0) {
+    const { data: planData } = await supabase
+      .from('student_subscription_plans')
+      .select('id,start_month,end_month')
+      .in('id', planIds);
+    for (const p of (planData ?? []) as any[]) planRangeMap.set(p.id, { start_month: p.start_month, end_month: p.end_month });
+  }
+
   return subs.map(sub => ({
     student_id:   sub.student_id,
     student_name: nameById.get(sub.student_id) ?? '—',
@@ -87,6 +98,7 @@ async function buildViewRows(
     balance:     Number((sub as any).balance ?? 0),
     payments:    payMap.get(sub.id) ?? [],
     carriedDebt: carriedDebtMap.get(sub.student_id) ?? null,
+    planRange:   sub.plan_id ? (planRangeMap.get(sub.plan_id) ?? null) : null,
   }));
 }
 
@@ -115,22 +127,6 @@ export function useSubscriptionsPage() {
   const [payFilter, setPayFilter] = useState<'all' | 'settled' | 'owes' | 'unpaid'>('all');
   const [packages,    setPackages]    = useState<PackageRow[]>([]);
   const [allStudents, setAllStudents] = useState<StudentRow[]>([]);
-
-  // ── Payment modal ──────────────────────────────────────────────────────────
-  const [paymentModal,  setPaymentModal]  = useState<{ row: StudentViewRow; allStudentPayments: PaymentRow[] } | null>(null);
-  const [paymentInput,  setPaymentInput]  = useState('');
-  const [paymentNote,   setPaymentNote]   = useState('');
-  const [payingLoading, setPayingLoading] = useState(false);
-  const [cancellingPaymentId, setCancellingPaymentId] = useState<string | null>(null);
-
-  const pmPaid = useMemo(() => paymentModal?.row.paid ?? 0, [paymentModal]);
-  const pmBilled = useMemo(() => {
-    const sub = paymentModal?.row.sub;
-    if (!sub) return 0;
-    return Number((sub as any).charge_amount ?? sub.price ?? 0);
-  }, [paymentModal]);
-  const pmBalance      = useMemo(() => pmBilled - pmPaid, [pmBilled, pmPaid]);
-  const pmHistoryTotal = useMemo(() => paymentModal?.allStudentPayments.reduce((s, p) => p.cancelled_at ? s : s + Number(p.amount ?? 0), 0) ?? 0, [paymentModal]);
 
   // ── Delete ─────────────────────────────────────────────────────────────────
   const [deleteTarget, setDeleteTarget] = useState<StudentViewRow | null>(null);
@@ -276,7 +272,7 @@ export function useSubscriptionsPage() {
     }
     let q = supabase
       .from('student_subscriptions_with_totals')
-      .select('id,school_id,student_id,package_id,package_name,price,currency,status,starts_on,ends_on,created_at,charge_amount,paid_amount,balance', { count: 'exact' })
+      .select('id,school_id,student_id,package_id,package_name,price,currency,status,starts_on,ends_on,created_at,charge_amount,paid_amount,balance,plan_id', { count: 'exact' })
       .eq('school_id', schoolId)
       .eq('status', 'active')
       .order('created_at', { ascending: false });
@@ -302,7 +298,7 @@ export function useSubscriptionsPage() {
     }
     let q = supabase
       .from('student_subscriptions_with_totals')
-      .select('id,school_id,student_id,package_id,package_name,price,currency,status,starts_on,ends_on,created_at,charge_amount,paid_amount,balance', { count: 'exact' })
+      .select('id,school_id,student_id,package_id,package_name,price,currency,status,starts_on,ends_on,created_at,charge_amount,paid_amount,balance,plan_id', { count: 'exact' })
       .eq('school_id', schoolId)
       .in('status', ['completed', 'expired', 'renewed']) // completed = expired by date/hours; renewed = manually renewed
       .order('created_at', { ascending: false });
@@ -328,84 +324,6 @@ export function useSubscriptionsPage() {
   useEffect(() => { loadExpired(); }, [schoolId, expiredPage, search, payFilter]);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
-  const fetchAllStudentPayments = async (studentId: string): Promise<PaymentRow[]> => {
-    if (!schoolId) return [];
-    const { data: subData } = await supabase
-      .from('student_subscriptions')
-      .select('id')
-      .eq('school_id', schoolId)
-      .eq('student_id', studentId);
-    const allSubIds = (subData ?? []).map((s: any) => s.id as string);
-    if (allSubIds.length === 0) return [];
-    const { data: payData } = await supabase
-      .from('student_subscription_payments')
-      .select('id,subscription_id,amount,created_at,payment_method,cancelled_at')
-      .eq('school_id', schoolId)
-      .in('subscription_id', allSubIds)
-      .order('created_at', { ascending: false });
-    return (payData ?? []) as PaymentRow[];
-  };
-
-  const openPaymentModal = async (row: StudentViewRow) => {
-    setPaymentInput('');
-    const allStudentPayments = await fetchAllStudentPayments(row.student_id);
-    setPaymentModal({ row, allStudentPayments });
-  };
-
-  const submitPayment = async (method: 'cash' | 'card' | 'bank_transfer') => {
-    if (!schoolId || !paymentModal?.row.sub) return;
-    const amount = parseMoney(paymentInput);
-    if (amount <= 0) { setError('Δώσε ποσό μεγαλύτερο από 0.'); return; }
-    setPayingLoading(true); setError(null);
-    try {
-      await callEdgeFunction('student-subscription-payment-create', {
-        subscription_id: paymentModal.row.sub.id,
-        amount: Number(amount.toFixed(2)),
-        payment_method: method,
-        notes: paymentNote.trim() || null,
-      });
-      setPaymentInput(''); setPaymentNote(''); setInfo('Καταχωρήθηκε πληρωμή.');
-      await load();
-      setPaymentModal(null);
-    } catch (err: any) { setError(err.message ?? 'Αποτυχία καταχώρησης πληρωμής.'); }
-    setPayingLoading(false);
-  };
-
-  const cancelSubscriptionPayment = async (paymentId: string) => {
-    setCancellingPaymentId(paymentId); setError(null);
-    try {
-      await callEdgeFunction('student-subscription-payment-cancel', { payment_id: paymentId });
-      // Optimistically update the modal so the row stays visible with cancelled state
-      setPaymentModal(prev => {
-        if (!prev) return null;
-        const now = new Date().toISOString();
-        const isCurrentSub = prev.row.payments.some(p => p.id === paymentId);
-        const cancelledAmount = isCurrentSub
-          ? Number(prev.row.payments.find(p => p.id === paymentId)?.amount ?? 0)
-          : 0;
-        const payments = prev.row.payments.map(p =>
-          p.id === paymentId ? { ...p, cancelled_at: now } : p
-        );
-        const allStudentPayments = prev.allStudentPayments.map(p =>
-          p.id === paymentId ? { ...p, cancelled_at: now } : p
-        );
-        return {
-          ...prev,
-          row: {
-            ...prev.row,
-            payments,
-            paid: Math.max(0, prev.row.paid - cancelledAmount),
-            balance: prev.row.balance + cancelledAmount,
-          },
-          allStudentPayments,
-        };
-      });
-      // Refresh the main subscription tables in the background
-      load().catch(() => {});
-    } catch (err: any) { setError(err.message ?? 'Αποτυχία ακύρωσης πληρωμής.'); }
-    setCancellingPaymentId(null);
-  };
-
   const confirmDelete = async () => {
     if (!deleteTarget?.sub) return;
     setDeleting(true); setError(null); setInfo(null);
@@ -595,13 +513,6 @@ export function useSubscriptionsPage() {
     expiredLoading, expiredRows, expiredTotalCount,
     expiredPage, setExpiredPage, expiredPageCount,
     expiredShowingFrom, expiredShowingTo,
-
-    // payment modal
-    paymentModal, setPaymentModal, paymentInput, setPaymentInput,
-    paymentNote, setPaymentNote,
-    payingLoading, pmPaid, pmBilled, pmBalance, pmHistoryTotal,
-    openPaymentModal, submitPayment,
-    cancellingPaymentId, cancelSubscriptionPayment,
 
     // delete
     deleteTarget, setDeleteTarget, deleting, confirmDelete,

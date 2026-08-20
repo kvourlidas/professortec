@@ -14,7 +14,7 @@ import { useAuth } from '../auth.tsx';
 import { useTheme } from '../context/ThemeContext.tsx';
 import DatePickerField from '../components/ui/AppDatePicker.tsx';
 import type { StudentRow, LevelRow, SubscriptionRow, ClassEnrollment, ProgramSlot } from '../components/students/types.ts';
-import { STUDENT_SELECT, formatDateToGreek, isoToDisplay, displayToIso } from '../components/students/types.ts';
+import { STUDENT_SELECT, formatDateToGreek, formatMonthRangeGreek, isoToDisplay, displayToIso } from '../components/students/types.ts';
 import type { StudentGradeRow } from '../components/grades/types.ts';
 import { StudentSlotModal } from '../components/students/StudentSlotModal';
 import { computeAccruedCharges, type ChargeOverrideRow } from '../components/students/chargeUtils';
@@ -445,7 +445,7 @@ function ReadField({ label, value, isDark, copyable }: { label: string; value: s
 function EditField({ label, icon, children, isDark }: { label: string; icon?: React.ReactNode; children: React.ReactNode; isDark: boolean }) {
   return (
     <div className="space-y-1">
-      <label className={`flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+      <label className={`flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-wider ${isDark ? 'text-white' : 'text-black'}`}>
         {icon && <span className="opacity-60">{icon}</span>}{label}
       </label>
       {children}
@@ -463,25 +463,27 @@ function DashCard({ title, icon, isDark, onEdit, editing, onAdd, children }: {
 }) {
   return (
     <div className={`overflow-hidden rounded-2xl border ${isDark
-      ? 'border-slate-700/50 bg-slate-950/40 backdrop-blur-sm ring-1 ring-inset ring-white/[0.04]'
-      : 'border-slate-200 bg-white shadow-sm'}`}>
-      <div className="flex shrink-0 items-center justify-between px-4 py-3" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
-        <div className="flex items-center gap-2">
-          <span style={{ color: 'var(--ch-icon)' }}>{icon}</span>
-          <h2 className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--ch-text)' }}>{title}</h2>
+      ? 'bg-slate-950/40 backdrop-blur-sm ring-1 ring-inset ring-white/[0.04]'
+      : 'bg-white shadow-sm'}`}
+      style={{ borderColor: 'color-mix(in srgb, var(--color-accent) 35%, transparent)' }}>
+      <div className={`flex shrink-0 items-center justify-between px-4 py-3 border-b ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
+            style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
+            <span style={{ color: 'var(--ch-icon)' }}>{icon}</span>
+          </div>
+          <h2 className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{title}</h2>
         </div>
         <div className="flex items-center gap-2">
           {onAdd && (
             <button type="button" onClick={onAdd}
-              className="flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[10px] font-medium transition"
-              style={{ background: 'var(--ch-btn-bg)', border: '1px solid var(--ch-btn-border)', color: 'var(--ch-btn-text)' }}>
+              className={`flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[10px] font-medium transition ${isDark ? 'border-slate-700 bg-slate-800/60 text-slate-300 hover:bg-slate-700/60' : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'}`}>
               <Plus className="h-2.5 w-2.5" />Προσθήκη
             </button>
           )}
           {onEdit && !editing && (
             <button type="button" onClick={onEdit}
-              className="flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[10px] font-medium transition"
-              style={{ background: 'var(--ch-btn-bg)', border: '1px solid var(--ch-btn-border)', color: 'var(--ch-btn-text)' }}>
+              className={`flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[10px] font-medium transition ${isDark ? 'border-slate-700 bg-slate-800/60 text-slate-300 hover:bg-slate-700/60' : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'}`}>
               <Pencil className="h-2.5 w-2.5" />Επεξεργασία
             </button>
           )}
@@ -518,6 +520,7 @@ export default function StudentCardPage() {
   const [student, setStudent] = useState<StudentRow | null>(null);
   const [levels, setLevels] = useState<LevelRow[]>([]);
   const [subscriptions, setSubscriptions] = useState<SubscriptionRow[]>([]);
+  const [planRangeById, setPlanRangeById] = useState<Map<string, { start_month: string; end_month: string }>>(new Map());
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [classes, setClasses] = useState<ClassEnrollment[]>([]);
   const [scheduleSlots, setScheduleSlots] = useState<ProgramSlot[]>([]);
@@ -726,7 +729,7 @@ export default function StudentCardPage() {
         const drMap = new Map((drData ?? []).map((r: any) => [r.id, r.discount_reason]));
         for (const sub of subs) { (sub as any).discount_reason = drMap.get(sub.id) ?? null; }
       }
-      if (!subRes.error) setSubscriptions([...subs]);
+      if (!subRes.error) { setSubscriptions([...subs]); loadPlanRanges(subs); }
       const classIds = (csRes.data ?? []).map((r: any) => r.class_id as string).filter(Boolean);
       const programId = (progRes.data as any)?.id;
 
@@ -894,6 +897,16 @@ export default function StudentCardPage() {
     setTrimesterSaving(false);
   };
 
+  const loadPlanRanges = async (subs: SubscriptionRow[]) => {
+    const planIds = [...new Set(subs.map(s => s.plan_id).filter((v): v is string => !!v))];
+    if (planIds.length === 0) { setPlanRangeById(new Map()); return; }
+    const { data } = await supabase
+      .from('student_subscription_plans')
+      .select('id, start_month, end_month')
+      .in('id', planIds);
+    setPlanRangeById(new Map((data ?? []).map((r: any) => [r.id as string, { start_month: r.start_month as string, end_month: r.end_month as string }])));
+  };
+
   const reloadSubsAndPayments = async (): Promise<{ subs: SubscriptionRow[]; pays: PaymentRow[] }> => {
     if (!id || !schoolId) return { subs: [], pays: [] };
     const { data: subData } = await supabase
@@ -917,6 +930,7 @@ export default function StudentCardPage() {
       for (const sub of subs) { (sub as any).discount_reason = drMap.get(sub.id) ?? null; }
     }
     setSubscriptions([...subs]);
+    loadPlanRanges(subs);
     return { subs, pays };
   };
 
@@ -1443,6 +1457,11 @@ export default function StudentCardPage() {
                             <Tag className="h-2.5 w-2.5 shrink-0" />{activeSub.discount_reason}
                           </p>
                         )}
+                        {activeSub.plan_id && planRangeById.has(activeSub.plan_id) && (
+                          <p className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                            Πρόγραμμα: {formatMonthRangeGreek(planRangeById.get(activeSub.plan_id)!.start_month, planRangeById.get(activeSub.plan_id)!.end_month)}
+                          </p>
+                        )}
                       </div>
                     </div>
                     {(activeSub.starts_on || activeSub.ends_on) && (
@@ -1479,20 +1498,26 @@ export default function StudentCardPage() {
                   </div>
                 </div>
 
-                {/* Unified history */}
-                <div className={`rounded-xl border overflow-hidden ${isDark ? 'border-slate-700/50' : 'border-slate-200'}`}>
-                  <div className={`flex items-center gap-1.5 px-3 py-1.5 ${isDark ? 'bg-slate-900/40' : 'bg-slate-50'}`}>
+                {/* Unified history — minimal table: accent-underline header, row numbers, faint dividers */}
+                <div>
+                  <div className="mb-2 flex items-center gap-1.5">
                     <Receipt className={`h-2.5 w-2.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-                    <span className={`text-[9px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Ιστορικο ({unifiedHistory.length})</span>
+                    <span className={`text-[9px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Ιστορικο ({unifiedHistory.length})</span>
                   </div>
                   {unifiedHistory.length === 0 ? (
-                    <div className={`flex items-center gap-2 px-3 py-2.5 ${isDark ? 'bg-slate-950/20' : 'bg-white'}`}>
+                    <div className="flex items-center gap-2 py-2.5">
                       <TrendingUp className={`h-3 w-3 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />
                       <span className={`text-[11px] ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>Δεν υπάρχει ιστορικό ακόμα.</span>
                     </div>
                   ) : (
                     <>
-                      <div className={`divide-y ${isDark ? 'divide-slate-800/50' : 'divide-slate-100'}`}>
+                      <div className="grid grid-cols-12" style={{ borderBottom: '2px solid var(--color-accent)' }}>
+                        <div style={{ width: '1%' }} className={`col-span-1 whitespace-nowrap pb-1.5 text-[9px] font-bold uppercase tracking-wider border-r ${isDark ? 'border-slate-800/60' : 'border-slate-200'} ${isDark ? 'text-white' : 'text-black'}`}>#</div>
+                        <div className={`col-span-3 pb-1.5 pl-2 text-[9px] font-bold uppercase tracking-wider border-r ${isDark ? 'border-slate-800/60' : 'border-slate-200'} ${isDark ? 'text-white' : 'text-black'}`}>Ημ/νια</div>
+                        <div className={`col-span-5 pb-1.5 pl-2 text-[9px] font-bold uppercase tracking-wider border-r ${isDark ? 'border-slate-800/60' : 'border-slate-200'} ${isDark ? 'text-white' : 'text-black'}`}>Περιγραφη</div>
+                        <div className={`col-span-3 pb-1.5 pl-2 text-right text-[9px] font-bold uppercase tracking-wider ${isDark ? 'text-white' : 'text-black'}`}>Ποσο</div>
+                      </div>
+                      <div className={`divide-y ${isDark ? 'divide-slate-800/60' : 'divide-slate-200'}`}>
                         {unifiedHistoryPageRows.map((entry, i) => {
                           const isCharge = entry.kind === 'sub_charge' || entry.kind === 'extra_charge';
                           const method = entry.kind === 'payment' ? entry.method : null;
@@ -1503,33 +1528,31 @@ export default function StudentCardPage() {
                           return (
                             <div key={`${entry.kind}-${i}`}
                               onContextMenu={(e) => { e.preventDefault(); setHistContextMenu({ x: e.clientX, y: e.clientY, entry }); }}
-                              className={`select-none cursor-context-menu flex items-center justify-between px-3 py-2 ${isDark ? 'bg-slate-950/20' : 'bg-white'}`}>
-                              <div className="flex items-center gap-2 min-w-0">
-                                <span className={`shrink-0 h-1.5 w-1.5 rounded-full ${isCharge ? (isDark ? 'bg-amber-400' : 'bg-amber-500') : (isDark ? 'bg-emerald-400' : 'bg-emerald-500')}`} />
-                                <span className={`shrink-0 text-[11px] tabular-nums ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{entry.date ? formatDateToGreek(entry.date) : '—'}</span>
-                                {label && <span className={`truncate text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>· {label}</span>}
+                              className={`grid grid-cols-12 items-center py-2 text-[11px] select-none cursor-context-menu ${isDark ? 'transition-colors hover:bg-slate-900/40' : 'transition-colors hover:bg-slate-50/80'}`}>
+                              <div className={`col-span-1 whitespace-nowrap tabular-nums border-r ${isDark ? 'border-slate-800/60 text-slate-600' : 'border-slate-200 text-slate-300'}`}>{unifiedHistoryPage * UNIFIED_HISTORY_PER_PAGE + i + 1}</div>
+                              <div className={`col-span-3 pl-2 tabular-nums border-r ${isDark ? 'border-slate-800/60 text-slate-400' : 'border-slate-200 text-slate-500'}`}>{entry.date ? formatDateToGreek(entry.date) : '—'}</div>
+                              <div className={`col-span-5 pl-2 truncate border-r ${isDark ? 'border-slate-800/60 text-slate-300' : 'border-slate-200 text-slate-600'}`}>
+                                {label || <span className={isDark ? 'text-slate-600' : 'text-slate-300'}>—</span>}
+                                {entry.kind === 'payment' && method === 'card' && <span className={`ml-1.5 inline-flex items-center gap-0.5 ${isDark ? 'text-sky-400' : 'text-sky-600'}`}><CreditCard className="h-2.5 w-2.5" />Κάρτα</span>}
+                                {entry.kind === 'payment' && method === 'cash' && <span className={`ml-1.5 inline-flex items-center gap-0.5 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}><Banknote className="h-2.5 w-2.5" />Μετρητά</span>}
+                                {entry.kind === 'payment' && method === 'bank_transfer' && <span className={`ml-1.5 inline-flex items-center gap-0.5 ${isDark ? 'text-violet-400' : 'text-violet-600'}`}><Landmark className="h-2.5 w-2.5" />Τράπεζα</span>}
                               </div>
-                              <div className="flex items-center gap-2 shrink-0">
-                                {entry.kind === 'payment' && method === 'card' && <span className={`flex items-center gap-1 text-[11px] font-medium ${isDark ? 'text-sky-400' : 'text-sky-600'}`}><CreditCard className="h-3 w-3" />Κάρτα</span>}
-                                {entry.kind === 'payment' && method === 'cash' && <span className={`flex items-center gap-1 text-[11px] font-medium ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}><Banknote className="h-3 w-3" />Μετρητά</span>}
-                                {entry.kind === 'payment' && method === 'bank_transfer' && <span className={`flex items-center gap-1 text-[11px] font-medium ${isDark ? 'text-violet-400' : 'text-violet-600'}`}><Landmark className="h-3 w-3" />Τράπεζα</span>}
-                                <span className={`text-xs font-semibold tabular-nums ${isCharge ? (isDark ? 'text-amber-400' : 'text-amber-600') : (isDark ? 'text-emerald-300' : 'text-emerald-700')}`}>
-                                  {isCharge ? '−' : '+'}{entry.amount.toFixed(2)}€
-                                </span>
+                              <div className={`col-span-3 pl-2 text-right font-semibold tabular-nums ${isCharge ? (isDark ? 'text-amber-400' : 'text-amber-600') : (isDark ? 'text-emerald-300' : 'text-emerald-700')}`}>
+                                {isCharge ? '−' : '+'}{entry.amount.toFixed(2)}€
                               </div>
                             </div>
                           );
                         })}
                       </div>
                       {unifiedHistoryPageCount > 1 && (
-                        <div className={`flex items-center justify-between gap-2 px-3 py-2 border-t ${isDark ? 'border-slate-800/60 bg-slate-900/30' : 'border-slate-100 bg-slate-50'}`}>
+                        <div className="flex items-center justify-between gap-2 pt-2">
                           <button type="button" disabled={unifiedHistoryPage <= 0} onClick={() => setUnifiedHistoryPage(p => Math.max(0, p - 1))}
-                            className={`flex h-6 w-6 items-center justify-center rounded border transition disabled:opacity-30 ${isDark ? 'border-slate-700 bg-slate-800 text-slate-400 hover:text-slate-200' : 'border-slate-200 bg-white text-slate-500 hover:text-slate-700'}`}>
+                            className={`flex h-6 w-6 items-center justify-center rounded transition disabled:opacity-30 ${isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-slate-200' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}>
                             <ChevronLeft className="h-3 w-3" />
                           </button>
                           <span className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{unifiedHistoryPage + 1} / {unifiedHistoryPageCount}</span>
                           <button type="button" disabled={unifiedHistoryPage >= unifiedHistoryPageCount - 1} onClick={() => setUnifiedHistoryPage(p => Math.min(unifiedHistoryPageCount - 1, p + 1))}
-                            className={`flex h-6 w-6 items-center justify-center rounded border transition disabled:opacity-30 ${isDark ? 'border-slate-700 bg-slate-800 text-slate-400 hover:text-slate-200' : 'border-slate-200 bg-white text-slate-500 hover:text-slate-700'}`}>
+                            className={`flex h-6 w-6 items-center justify-center rounded transition disabled:opacity-30 ${isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-slate-200' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}>
                             <ChevronRight className="h-3 w-3" />
                           </button>
                         </div>
@@ -1566,53 +1589,57 @@ export default function StudentCardPage() {
                   </div>
                 </div>
 
-                {/* History */}
-                <div className={`rounded-xl border overflow-hidden ${isDark ? 'border-slate-700/50' : 'border-slate-200'}`}>
-                  <div className={`flex items-center gap-1.5 px-3 py-1.5 ${isDark ? 'bg-slate-900/40' : 'bg-slate-50'}`}>
+                {/* History — minimal table: accent-underline header, row numbers, faint dividers */}
+                <div>
+                  <div className="mb-2 flex items-center gap-1.5">
                     <Receipt className={`h-2.5 w-2.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-                    <span className={`text-[9px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Ιστορικο ({lessonHistory.length})</span>
+                    <span className={`text-[9px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Ιστορικο ({lessonHistory.length})</span>
                   </div>
                   {lessonHistory.length === 0 ? (
-                    <div className={`flex items-center gap-2 px-3 py-2.5 ${isDark ? 'bg-slate-950/20' : 'bg-white'}`}>
+                    <div className="flex items-center gap-2 py-2.5">
                       <TrendingUp className={`h-3 w-3 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />
                       <span className={`text-[11px] ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>Δεν υπάρχει ιστορικό ακόμα.</span>
                     </div>
                   ) : (
                     <>
-                      <div className={`divide-y ${isDark ? 'divide-slate-800/50' : 'divide-slate-100'}`}>
+                      <div className="grid grid-cols-12" style={{ borderBottom: '2px solid var(--color-accent)' }}>
+                        <div style={{ width: '1%' }} className={`col-span-1 whitespace-nowrap pb-1.5 text-[9px] font-bold uppercase tracking-wider border-r ${isDark ? 'border-slate-800/60' : 'border-slate-200'} ${isDark ? 'text-white' : 'text-black'}`}>#</div>
+                        <div className={`col-span-3 pb-1.5 pl-2 text-[9px] font-bold uppercase tracking-wider border-r ${isDark ? 'border-slate-800/60' : 'border-slate-200'} ${isDark ? 'text-white' : 'text-black'}`}>Ημ/νια</div>
+                        <div className={`col-span-5 pb-1.5 pl-2 text-[9px] font-bold uppercase tracking-wider border-r ${isDark ? 'border-slate-800/60' : 'border-slate-200'} ${isDark ? 'text-white' : 'text-black'}`}>Περιγραφη</div>
+                        <div className={`col-span-3 pb-1.5 pl-2 text-right text-[9px] font-bold uppercase tracking-wider ${isDark ? 'text-white' : 'text-black'}`}>Ποσο</div>
+                      </div>
+                      <div className={`divide-y ${isDark ? 'divide-slate-800/60' : 'divide-slate-200'}`}>
                         {lessonHistoryPageRows.map((entry, i) => {
                           const isCharge = entry.kind === 'charge' || entry.kind === 'extra_charge';
                           const method = entry.kind === 'payment' ? entry.payment.payment_method : entry.kind === 'extra_payment' ? entry.method : null;
                           return (
                             <div key={`${entry.kind}-${i}-${entry.date}`}
                               onContextMenu={(e) => { e.preventDefault(); setLessonContextMenu({ x: e.clientX, y: e.clientY, entry }); }}
-                              className={`select-none cursor-context-menu flex items-center justify-between px-3 py-2 ${isDark ? 'bg-slate-950/20' : 'bg-white'}`}>
-                              <div className="flex items-center gap-2 min-w-0">
-                                <span className={`shrink-0 h-1.5 w-1.5 rounded-full ${isCharge ? (isDark ? 'bg-amber-400' : 'bg-amber-500') : (isDark ? 'bg-emerald-400' : 'bg-emerald-500')}`} />
-                                <span className={`shrink-0 text-[11px] tabular-nums ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{formatDateToGreek(entry.date)}</span>
-                                <span className={`truncate text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>· {entry.label}</span>
+                              className={`grid grid-cols-12 items-center py-2 text-[11px] select-none cursor-context-menu ${isDark ? 'transition-colors hover:bg-slate-900/40' : 'transition-colors hover:bg-slate-50/80'}`}>
+                              <div className={`col-span-1 whitespace-nowrap tabular-nums border-r ${isDark ? 'border-slate-800/60 text-slate-600' : 'border-slate-200 text-slate-300'}`}>{lessonHistoryPage * UNIFIED_HISTORY_PER_PAGE + i + 1}</div>
+                              <div className={`col-span-3 pl-2 tabular-nums border-r ${isDark ? 'border-slate-800/60 text-slate-400' : 'border-slate-200 text-slate-500'}`}>{formatDateToGreek(entry.date)}</div>
+                              <div className={`col-span-5 pl-2 truncate border-r ${isDark ? 'border-slate-800/60 text-slate-300' : 'border-slate-200 text-slate-600'}`}>
+                                {entry.label}
+                                {method === 'card' && <span className={`ml-1.5 inline-flex items-center gap-0.5 ${isDark ? 'text-sky-400' : 'text-sky-600'}`}><CreditCard className="h-2.5 w-2.5" />Κάρτα</span>}
+                                {method === 'cash' && <span className={`ml-1.5 inline-flex items-center gap-0.5 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}><Banknote className="h-2.5 w-2.5" />Μετρητά</span>}
+                                {method === 'bank_transfer' && <span className={`ml-1.5 inline-flex items-center gap-0.5 ${isDark ? 'text-violet-400' : 'text-violet-600'}`}><Landmark className="h-2.5 w-2.5" />Τράπεζα</span>}
                               </div>
-                              <div className="flex items-center gap-2 shrink-0">
-                                {method === 'card' && <span className={`flex items-center gap-1 text-[11px] font-medium ${isDark ? 'text-sky-400' : 'text-sky-600'}`}><CreditCard className="h-3 w-3" />Κάρτα</span>}
-                                {method === 'cash' && <span className={`flex items-center gap-1 text-[11px] font-medium ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}><Banknote className="h-3 w-3" />Μετρητά</span>}
-                                {method === 'bank_transfer' && <span className={`flex items-center gap-1 text-[11px] font-medium ${isDark ? 'text-violet-400' : 'text-violet-600'}`}><Landmark className="h-3 w-3" />Τράπεζα</span>}
-                                <span className={`text-xs font-semibold tabular-nums ${isCharge ? (isDark ? 'text-amber-400' : 'text-amber-600') : (isDark ? 'text-emerald-300' : 'text-emerald-700')}`}>
-                                  {isCharge ? '−' : '+'}{entry.amount.toFixed(2)}€
-                                </span>
+                              <div className={`col-span-3 pl-2 text-right font-semibold tabular-nums ${isCharge ? (isDark ? 'text-amber-400' : 'text-amber-600') : (isDark ? 'text-emerald-300' : 'text-emerald-700')}`}>
+                                {isCharge ? '−' : '+'}{entry.amount.toFixed(2)}€
                               </div>
                             </div>
                           );
                         })}
                       </div>
                       {lessonHistoryPageCount > 1 && (
-                        <div className={`flex items-center justify-between gap-2 px-3 py-2 border-t ${isDark ? 'border-slate-800/60 bg-slate-900/30' : 'border-slate-100 bg-slate-50'}`}>
+                        <div className="flex items-center justify-between gap-2 pt-2">
                           <button type="button" disabled={lessonHistoryPage <= 0} onClick={() => setLessonHistoryPage(p => Math.max(0, p - 1))}
-                            className={`flex h-6 w-6 items-center justify-center rounded border transition disabled:opacity-30 ${isDark ? 'border-slate-700 bg-slate-800 text-slate-400 hover:text-slate-200' : 'border-slate-200 bg-white text-slate-500 hover:text-slate-700'}`}>
+                            className={`flex h-6 w-6 items-center justify-center rounded transition disabled:opacity-30 ${isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-slate-200' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}>
                             <ChevronLeft className="h-3 w-3" />
                           </button>
                           <span className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{lessonHistoryPage + 1} / {lessonHistoryPageCount}</span>
                           <button type="button" disabled={lessonHistoryPage >= lessonHistoryPageCount - 1} onClick={() => setLessonHistoryPage(p => Math.min(lessonHistoryPageCount - 1, p + 1))}
-                            className={`flex h-6 w-6 items-center justify-center rounded border transition disabled:opacity-30 ${isDark ? 'border-slate-700 bg-slate-800 text-slate-400 hover:text-slate-200' : 'border-slate-200 bg-white text-slate-500 hover:text-slate-700'}`}>
+                            className={`flex h-6 w-6 items-center justify-center rounded transition disabled:opacity-30 ${isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-slate-200' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}>
                             <ChevronRight className="h-3 w-3" />
                           </button>
                         </div>
@@ -1704,7 +1731,7 @@ export default function StudentCardPage() {
             <div className="grid grid-cols-3 gap-2">
               {([1, 2, 3] as const).map(t => (
                 <div key={t} className={`flex flex-col items-center gap-2 rounded-xl border p-3 ${isDark ? 'border-slate-700/60 bg-slate-900/40' : 'border-slate-200 bg-slate-50'}`}>
-                  <p className={`text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t}ο Τρίμηνο</p>
+                  <p className={`text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-white' : 'text-black'}`}>{t}ο Τρίμηνο</p>
                   <input
                     type="text"
                     inputMode="decimal"
@@ -1744,7 +1771,7 @@ export default function StudentCardPage() {
           {/* ── Grades ── */}
           <DashCard title="Βαθμοι" icon={<BarChart3 className="h-3.5 w-3.5" />} isDark={isDark}>
             {gradesLoading ? (
-              <div className={`divide-y ${isDark ? 'divide-slate-800/50' : 'divide-slate-100'} rounded-xl border overflow-hidden ${isDark ? 'border-slate-700/50' : 'border-slate-200'}`}>
+              <div className={`divide-y ${isDark ? 'divide-slate-800/60' : 'divide-slate-200'}`}>
                 {[...Array(3)].map((_, i) => (
                   <div key={i} className="flex gap-4 px-4 py-3 animate-pulse">
                     <div className={`h-3 w-1/5 rounded-full ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`} />
@@ -1772,41 +1799,39 @@ export default function StudentCardPage() {
                   ) : null;
                 })()}
                 {/* Table */}
-                <div className={`overflow-hidden rounded-xl border ${isDark ? 'border-slate-700/50' : 'border-slate-200'}`}>
-                  <div className="max-h-72 overflow-y-auto">
-                    <table className="min-w-full border-collapse text-xs">
-                      <thead className="sticky top-0 z-10">
-                        <tr className={isDark ? 'border-b border-slate-700/60 bg-slate-900/80' : 'border-b border-slate-200 bg-slate-50'}>
-                          {['Ημερομηνία', 'Διαγώνισμα', 'Τμήμα', 'Βαθμός'].map(h => (
-                            <th key={h} className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-widest"
-                              style={{ color: 'color-mix(in srgb, var(--color-accent) 80%, white)' }}>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className={isDark ? 'divide-y divide-slate-800/50' : 'divide-y divide-slate-100'}>
-                        {grades.map(g => (
-                          <tr key={g.id} className={isDark ? 'hover:bg-white/[0.025] transition-colors' : 'hover:bg-slate-50 transition-colors'}>
-                            <td className={`px-3 py-2 tabular-nums ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                              {g.test_date ? formatDateToGreek(g.test_date) : '—'}
-                            </td>
-                            <td className={`px-3 py-2 font-medium ${isDark ? 'text-slate-100' : 'text-slate-700'}`}>
-                              <p className="truncate max-w-[140px]">{g.test_name ?? '—'}</p>
-                              {g.subject_name && <p className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{g.subject_name}</p>}
-                            </td>
-                            <td className={`px-3 py-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{g.class_title ?? '—'}</td>
-                            <td className="px-3 py-2">
-                              {g.grade !== null
-                                ? <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold"
-                                    style={{ borderColor: 'color-mix(in srgb, var(--color-accent) 40%, transparent)', background: 'color-mix(in srgb, var(--color-accent) 10%, transparent)', color: 'var(--color-accent)' }}>
-                                    {g.grade}
-                                  </span>
-                                : <span className={isDark ? 'text-slate-600' : 'text-slate-300'}>—</span>}
-                            </td>
-                          </tr>
+                <div className="max-h-72 overflow-y-auto">
+                  <table className="min-w-full border-collapse text-xs">
+                    <thead>
+                      <tr style={{ borderBottom: '2px solid var(--color-accent)' }}>
+                        <th style={{ width: '1%' }} className={`whitespace-nowrap px-3 pb-3 text-left text-xs font-bold uppercase tracking-wide border-r ${isDark ? 'border-slate-800/60' : 'border-slate-200'} ${isDark ? 'text-white' : 'text-black'}`}>#</th>
+                        {['Ημερομηνία', 'Διαγώνισμα', 'Τμήμα', 'Βαθμός'].map((h, idx) => (
+                          <th key={h} className={`px-3 pb-3 text-left text-xs font-bold uppercase tracking-wide ${idx < 3 ? `border-r ${isDark ? 'border-slate-800/60' : 'border-slate-200'}` : ''} ${isDark ? 'text-white' : 'text-black'}`}>{h}</th>
                         ))}
-                      </tbody>
-                    </table>
-                  </div>
+                      </tr>
+                    </thead>
+                    <tbody className={isDark ? 'divide-y divide-slate-800/60' : 'divide-y divide-slate-200'}>
+                      {grades.map((g, i) => (
+                        <tr key={g.id} className={isDark ? 'transition-colors hover:bg-slate-900/40' : 'transition-colors hover:bg-slate-50/80'}>
+                          <td className={`whitespace-nowrap px-3 py-2.5 tabular-nums border-r ${isDark ? 'border-slate-800/60 text-slate-600' : 'border-slate-200 text-slate-300'}`}>
+                            {i + 1}
+                          </td>
+                          <td className={`px-3 py-2.5 tabular-nums border-r ${isDark ? 'border-slate-800/60' : 'border-slate-200'} ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                            {g.test_date ? formatDateToGreek(g.test_date) : '—'}
+                          </td>
+                          <td className={`px-3 py-2.5 font-medium border-r ${isDark ? 'border-slate-800/60' : 'border-slate-200'} ${isDark ? 'text-slate-100' : 'text-slate-700'}`}>
+                            <p className="truncate max-w-[140px]">{g.test_name ?? '—'}</p>
+                            {g.subject_name && <p className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{g.subject_name}</p>}
+                          </td>
+                          <td className={`px-3 py-2.5 border-r ${isDark ? 'border-slate-800/60' : 'border-slate-200'} ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{g.class_title ?? '—'}</td>
+                          <td className="px-3 py-2.5">
+                            {g.grade !== null
+                              ? <span className="font-bold" style={{ color: 'var(--color-accent)' }}>{g.grade}</span>
+                              : <span className={isDark ? 'text-slate-600' : 'text-slate-300'}>—</span>}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </>
             )}

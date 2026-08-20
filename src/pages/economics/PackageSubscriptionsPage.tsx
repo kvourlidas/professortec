@@ -338,7 +338,6 @@ export default function PackageSubscriptionsPage() {
           </div>
           <div>
             <h1 className={`text-base font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Πακέτα Συνδρομών</h1>
-            <p className={`mt-0.5 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Δημιούργησε πακέτα (μηνιαία ή ετήσια) για τη σχολή σου.</p>
           </div>
         </div>
         <button type="button" onClick={openAdd} className="btn-primary gap-2 px-4 py-2">

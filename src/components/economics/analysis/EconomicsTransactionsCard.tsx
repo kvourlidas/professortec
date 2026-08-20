@@ -22,19 +22,13 @@ export function EconomicsTransactionsCard({
 }: EconomicsTransactionsCardProps) {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; row: TxRow } | null>(null);
 
-  const cardCls = isDark
-    ? 'overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]'
-    : 'overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md';
+  const cardHeaderCls = 'flex items-center justify-between pb-3';
 
-  const cardHeaderCls = isDark
-    ? 'flex items-center justify-between border-b border-slate-800/70 bg-slate-900/30 px-4 py-3'
-    : 'flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3';
+  const txHeaderCls = 'grid grid-cols-12 text-xs font-bold uppercase tracking-wide';
 
-  const txHeaderCls = isDark
-    ? 'grid grid-cols-12 border-b border-slate-800/60 bg-slate-900/20 px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest'
-    : 'grid grid-cols-12 border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest';
-
-  const txDivideCls = isDark ? 'divide-y divide-slate-800/40' : 'divide-y divide-slate-100';
+  const txDivideCls = isDark ? 'divide-y divide-slate-800/60' : 'divide-y divide-slate-200';
+  const colDivider = isDark ? 'border-r border-slate-800/60' : 'border-r border-slate-200';
+  const trHoverCls = isDark ? 'transition-colors hover:bg-slate-900/40' : 'transition-colors hover:bg-slate-50/80';
 
   const incomeChipCls = isDark
     ? 'border-emerald-700/50 bg-emerald-950/40 text-emerald-300'
@@ -48,11 +42,11 @@ export function EconomicsTransactionsCard({
   const txAmountExpenseCls = isDark ? 'text-rose-400' : 'text-rose-600';
 
   return (
-    <div className={`${cardCls} lg:col-span-8`}>
-      <div className={cardHeaderCls} style={{ background: 'var(--ch-bg)', borderColor: 'var(--ch-divider)' }}>
+    <div>
+      <div className={cardHeaderCls}>
         <div className="flex items-center gap-2">
-          <TrendingUp className="h-3.5 w-3.5" style={{ color: 'var(--ch-icon)' }}/>
-          <span className="text-xs font-semibold" style={{ color: 'var(--ch-text)' }}>Κινήσεις (έσοδα / έξοδα)</span>
+          <TrendingUp className={`h-3.5 w-3.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+          <span className={`text-xs font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Κινήσεις (έσοδα / έξοδα)</span>
         </div>
         {txRows.length > PAGE_SIZE && (
           <EconomicsPaginationBar page={txPage} total={txTotalPages} onPrev={onPrev} onNext={onNext} isDark={isDark}/>
@@ -65,36 +59,38 @@ export function EconomicsTransactionsCard({
         </div>
       ) : (
         <>
-          <div className={txHeaderCls} style={{ color: 'color-mix(in srgb, var(--color-accent) 70%, white)' }}>
-            <div className="col-span-2">Ημερομηνία</div>
-            <div className="col-span-2">Τύπος</div>
-            <div className="col-span-6">Περιγραφή</div>
-            <div className="col-span-2 text-right">Ποσό</div>
+          <div className={txHeaderCls} style={{ borderBottom: '2px solid var(--color-accent)' }}>
+            <div style={{ width: '1%' }} className={`col-span-1 whitespace-nowrap px-3 pb-3 ${colDivider} ${isDark ? 'text-white' : 'text-black'}`}>#</div>
+            <div className={`col-span-2 px-3 pb-3 ${colDivider} ${isDark ? 'text-white' : 'text-black'}`}>Ημερομηνία</div>
+            <div className={`col-span-2 px-3 pb-3 ${colDivider} ${isDark ? 'text-white' : 'text-black'}`}>Τύπος</div>
+            <div className={`col-span-5 px-3 pb-3 ${colDivider} ${isDark ? 'text-white' : 'text-black'}`}>Περιγραφή</div>
+            <div className={`col-span-2 px-3 pb-3 text-right ${isDark ? 'text-white' : 'text-black'}`}>Ποσό</div>
           </div>
           <div className={txDivideCls}>
-            {txPageRows.map(r => (
+            {txPageRows.map((r, i) => (
               <div
                 key={`${r.source}-${r.id}`}
-                className={`grid grid-cols-12 items-center px-4 py-2.5 text-xs transition-colors cursor-default select-none ${isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-slate-50'}`}
+                className={`grid grid-cols-12 items-center py-2.5 text-xs cursor-default select-none ${trHoverCls}`}
                 onContextMenu={e => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, row: r }); }}
               >
-                <div className={`col-span-2 tabular-nums ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{r.date}</div>
-                <div className="col-span-2">
+                <div className={`col-span-1 whitespace-nowrap px-3 tabular-nums ${colDivider} ${isDark ? 'text-slate-600' : 'text-slate-300'}`}>{(txPage - 1) * PAGE_SIZE + i + 1}</div>
+                <div className={`col-span-2 px-3 tabular-nums ${colDivider} ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{r.date}</div>
+                <div className={`col-span-2 px-3 ${colDivider}`}>
                   <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${r.kind === 'income' ? incomeChipCls : expenseChipCls}`}>
                     {r.kind === 'income' ? 'Έσοδο' : 'Έξοδο'}
                   </span>
                 </div>
-                <div className={`col-span-6 truncate ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                <div className={`col-span-5 px-3 truncate ${colDivider} ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
                   {r.label}{r.notes && <span className={isDark ? 'text-slate-600' : 'text-slate-400'}> — {r.notes}</span>}
                 </div>
-                <div className={`col-span-2 text-right font-semibold tabular-nums ${r.kind === 'income' ? txAmountIncomeCls : txAmountExpenseCls}`}>
+                <div className={`col-span-2 px-3 text-right font-semibold tabular-nums ${r.kind === 'income' ? txAmountIncomeCls : txAmountExpenseCls}`}>
                   {r.kind === 'income' ? '+' : '−'} {money(r.amount)}
                 </div>
               </div>
             ))}
           </div>
           {txRows.length > PAGE_SIZE && (
-            <div className={`border-t px-4 py-2.5 ${isDark ? 'border-slate-800/60' : 'border-slate-200'}`}>
+            <div className="pt-3">
               <p className={`text-[11px] ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
                 Εμφάνιση {Math.min(txRows.length, (txPage - 1) * PAGE_SIZE + 1)}–{Math.min(txRows.length, txPage * PAGE_SIZE)} από {txRows.length}
               </p>

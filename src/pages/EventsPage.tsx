@@ -13,7 +13,6 @@ import type { SchoolEventRow, ModalMode } from '../components/events/types';
 import { normalizeText, formatDate, formatTimeRange } from '../components/events/utils';
 import {
   CalendarDays, Search, Plus, ChevronLeft, ChevronRight,
-  Clock, FileText, Calendar,
 } from 'lucide-react';
 
 const PAGE_SIZE = 10;
@@ -75,33 +74,21 @@ export default function EventsPage() {
   useEffect(() => { setPage(1); }, [search]);
 
   // ── Dynamic classes ──
-  const tableCardCls = isDark
-    ? 'overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-2xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]'
-    : 'overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md';
+  const tableCardCls = '';
 
-  const theadRowCls = 'border-b';
+  const theadRowCls = '';
 
-  const tbodyDivideCls = isDark ? 'divide-y divide-slate-800/50' : 'divide-y divide-slate-100';
-  const trHoverCls = isDark ? 'group transition-colors hover:bg-white/[0.025]' : 'group transition-colors hover:bg-slate-50';
+  const tbodyDivideCls = isDark ? 'divide-y divide-slate-800/60' : 'divide-y divide-slate-200';
+  const colDivider = isDark ? 'border-r border-slate-800/60' : 'border-r border-slate-200';
+  const trHoverCls = isDark ? 'transition-colors hover:bg-slate-900/40' : 'transition-colors hover:bg-slate-50/80';
 
-  const timeBadgeCls = isDark
-    ? 'inline-flex items-center rounded-full border border-slate-600/50 bg-slate-800/60 px-2.5 py-0.5 text-[11px] text-slate-300'
-    : 'inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[11px] text-slate-600';
-
-  const paginationBarCls = isDark
-    ? 'flex items-center justify-between gap-3 border-t border-slate-800/70 bg-slate-900/20 px-5 py-3'
-    : 'flex items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-5 py-3';
-
-  const paginationTextCls = isDark ? 'text-[11px] text-slate-500' : 'text-[11px] text-slate-400';
-  const paginationHighlightCls = isDark ? 'text-slate-300' : 'text-slate-700';
+  const paginationBarCls = 'flex items-center justify-between gap-3 pt-4';
 
   const paginationBtnCls = isDark
-    ? 'inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-900/30 text-slate-400 transition hover:border-slate-600 hover:bg-slate-800/50 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-30'
-    : 'inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-30';
+    ? 'inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-800 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-30'
+    : 'inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-30';
 
-  const paginationPageCls = isDark
-    ? 'rounded-lg border border-slate-700/60 bg-slate-900/20 px-3 py-1 text-[11px] text-slate-300'
-    : 'rounded-lg border border-slate-200 bg-white px-3 py-1 text-[11px] text-slate-600';
+  const paginationPageCls = isDark ? 'px-2 text-[11px] text-slate-300' : 'px-2 text-[11px] text-slate-600';
 
   const emptyBoxCls = isDark
     ? 'flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-700/50 bg-slate-800/50'
@@ -232,9 +219,6 @@ export default function EventsPage() {
             <h1 className={`text-base font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>
               Εκδηλώσεις
             </h1>
-            <p className={`mt-0.5 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              Μοναδικές εκδηλώσεις σχολείου που εμφανίζονται στο ημερολόγιο του Dashboard.
-            </p>
             {schoolId && (
               <div className="mt-2 flex items-center gap-2 flex-wrap">
                 <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] ${isDark ? 'border-slate-700/60 bg-slate-800/50 text-slate-300' : 'border-slate-200 bg-slate-100 text-slate-600'}`}>
@@ -291,7 +275,7 @@ export default function EventsPage() {
       {/* ── Table card ── */}
       <div className={tableCardCls}>
         {loading ? (
-          <div className={`divide-y ${isDark ? 'divide-slate-800/60' : 'divide-slate-100'}`}>
+          <div className="space-y-3">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="flex items-center gap-4 px-5 py-3.5 animate-pulse">
                 <div className={`h-3 w-1/4 rounded-full ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`} />
@@ -325,43 +309,36 @@ export default function EventsPage() {
           <div className="overflow-x-auto">
             <table className="min-w-full border-collapse text-xs">
               <thead>
-                <tr className={theadRowCls} style={{ background: 'var(--ch-bg)', borderColor: 'var(--ch-divider)' }}>
-                  {[
-                    { icon: <CalendarDays className="h-3 w-3" />, label: 'ΟΝΟΜΑ' },
-                    { icon: <Calendar className="h-3 w-3" />, label: 'ΗΜΕΡΟΜΗΝΙΑ' },
-                    { icon: <Clock className="h-3 w-3" />, label: 'ΩΡΑ' },
-                    { icon: <FileText className="h-3 w-3" />, label: 'ΠΕΡΙΓΡΑΦΗ' },
-                  ].map(({ icon, label }) => (
-                    <th key={label} className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest"
-                      style={{ color: 'var(--ch-text)' }}>
-                      <span className="inline-flex items-center gap-1.5">
-                        <span className="opacity-60">{icon}</span>{label}
-                      </span>
+                <tr className={theadRowCls} style={{ borderBottom: '2px solid var(--color-accent)' }}>
+                  <th style={{ width: '1%' }} className={`whitespace-nowrap px-5 pb-3 text-left text-xs font-bold uppercase tracking-wide ${colDivider} ${isDark ? 'text-white' : 'text-black'}`}>#</th>
+                  {['ΟΝΟΜΑ', 'ΗΜΕΡΟΜΗΝΙΑ', 'ΩΡΑ', 'ΠΕΡΙΓΡΑΦΗ'].map((label) => (
+                    <th key={label} className={`px-5 pb-3 text-left text-xs font-bold uppercase tracking-wide ${colDivider} ${isDark ? 'text-white' : 'text-black'}`}>
+                      {label}
                     </th>
                   ))}
-                  <th className="px-5 py-3 text-right text-[10px] font-semibold uppercase tracking-widest"
-                    style={{ color: 'var(--ch-text)' }}>
+                  <th className={`px-5 pb-3 text-right text-xs font-bold uppercase tracking-wide ${isDark ? 'text-white' : 'text-black'}`}>
                     ΕΝΕΡΓΕΙΕΣ
                   </th>
                 </tr>
               </thead>
               <tbody className={tbodyDivideCls}>
-                {pagedEvents.map((ev) => (
+                {pagedEvents.map((ev, i) => (
                   <tr key={ev.id} className={trHoverCls}>
-                    <td className="px-5 py-3.5">
-                      <span className={`font-medium transition-colors ${isDark ? 'text-slate-100 group-hover:text-white' : 'text-slate-700 group-hover:text-slate-900'}`}>
+                    <td className={`whitespace-nowrap px-5 py-3.5 tabular-nums ${colDivider} ${isDark ? 'text-slate-600' : 'text-slate-300'}`}>
+                      {(page - 1) * PAGE_SIZE + i + 1}
+                    </td>
+                    <td className={`px-5 py-3.5 ${colDivider}`}>
+                      <span className={`font-medium ${isDark ? 'text-slate-100' : 'text-slate-700'}`}>
                         {ev.name}
                       </span>
                     </td>
-                    <td className={`px-5 py-3.5 tabular-nums ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    <td className={`px-5 py-3.5 tabular-nums ${colDivider} ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                       {formatDate(ev.date)}
                     </td>
-                    <td className="px-5 py-3.5 tabular-nums">
-                      <span className={timeBadgeCls}>
-                        {formatTimeRange(ev.start_time, ev.end_time)}
-                      </span>
+                    <td className={`px-5 py-3.5 tabular-nums font-medium ${colDivider} ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                      {formatTimeRange(ev.start_time, ev.end_time)}
                     </td>
-                    <td className="px-5 py-3.5 max-w-[200px]">
+                    <td className={`px-5 py-3.5 max-w-[200px] ${colDivider}`}>
                       {ev.description?.trim()
                         ? <span className={`truncate block text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{ev.description}</span>
                         : <span className={isDark ? 'text-slate-600' : 'text-slate-300'}>—</span>}
@@ -384,9 +361,9 @@ export default function EventsPage() {
         {/* Pagination */}
         {!loading && filteredEvents.length > 0 && (
           <div className={paginationBarCls}>
-            <p className={paginationTextCls}>
-              <span className={paginationHighlightCls}>{showingFrom}–{showingTo}</span>{' '}
-              από <span className={paginationHighlightCls}>{filteredEvents.length}</span> εκδηλώσεις
+            <p className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+              <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>{showingFrom}–{showingTo}</span>{' '}
+              από <span className={isDark ? 'text-slate-300' : 'text-slate-700'}>{filteredEvents.length}</span> εκδηλώσεις
             </p>
             <div className="flex items-center gap-1.5">
               <button type="button" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}

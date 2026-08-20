@@ -849,8 +849,11 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
   // Idiaitera only: cancel this day's regular session occurrence and create a standalone test in its place.
   const handleConvertSessionToTest = async () => {
     if (!eventModal || !eventModal.studentId) return;
-    const { programItemId, originalDateStr, startTime, endTime, subjectId, studentId } = eventModal;
+    const { programItemId, originalDateStr, startTime, endTime, subjectId, studentId, chargeAmount } = eventModal;
     if (!subjectId) { setEventError('Επιλέξτε μάθημα πριν τη μετατροπή σε διαγώνισμα.'); return; }
+    const trimmedCharge = chargeAmount.trim();
+    const parsedCharge = trimmedCharge ? Number(trimmedCharge.replace(',', '.')) : null;
+    if (parsedCharge !== null && (Number.isNaN(parsedCharge) || parsedCharge <= 0)) { setEventError('Μη έγκυρο ποσό χρέωσης.'); return; }
     setConvertingSessionToTest(true); setEventError(null);
     try {
       const overrideResult = await callEdgeFunction('program-item-override-upsert', { program_item_id: programItemId, override_date: originalDateStr, start_time: null, end_time: null, is_deleted: true, is_inactive: false, holiday_active_override: false, charge_amount: null });
@@ -866,7 +869,15 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
         title: null, description: null,
         student_assignments: [{ student_id: studentId, subject_id: subjectId }],
       });
-      setTests((prev) => [...prev, testResult.item as TestRow]);
+      const newTest = testResult.item as TestRow;
+      setTests((prev) => [...prev, newTest]);
+      if (parsedCharge != null && schoolId) {
+        const { error: chargeErr } = await supabase.from('student_extra_charges').insert({
+          school_id: schoolId, student_id: studentId, description: 'Διαγώνισμα',
+          amount: Number(parsedCharge.toFixed(2)), notes: `test:${newTest.id}`,
+        });
+        if (chargeErr) console.error(chargeErr);
+      }
       setEventModal(null); setShowDeleteConfirm(false);
     } catch (err) {
       console.error(err);
@@ -1009,9 +1020,11 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
   const testModalIsHoliday = useMemo(() => { if (!testModal) return false; const iso = parseDateDisplayToISO(testModal.date); if (!iso) return false; return holidayDateSet.has(iso); }, [testModal, holidayDateSet]);
   const testModalHolidayName = useMemo(() => { if (!testModal) return null; const iso = parseDateDisplayToISO(testModal.date); if (!iso) return null; return holidayNameByDate.get(iso) ?? null; }, [testModal, holidayNameByDate]);
 
-  // A private test can only convert back into a regular session when it has exactly one student
-  // (a session slot always belongs to a single student) and a matching weekly recurring slot exists
-  // for that student on that weekday — otherwise there's no session to revert to.
+  // A private test can only convert back into a regular session when it actually replaced one:
+  // exactly one student, a matching weekly recurring slot for that student on that weekday, AND
+  // a deleted override on that exact date proving a session occurrence was cancelled to make room
+  // for this test. Tests created standalone from the start never cancelled a session, so there's
+  // nothing to revert to even if the student happens to have a regular slot on that weekday.
   const testConvertTarget = useMemo(() => {
     if (!testModal || testModal.classId || testModal.levelId) return null;
     if (testModalAssignments.length !== 1) return null;
@@ -1019,8 +1032,11 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     if (!iso) return null;
     const dow = INDEX_TO_WEEKDAY[new Date(`${iso}T00:00:00`).getDay()];
     const studentId = testModalAssignments[0].studentId;
-    return programItems.find((pi) => pi.student_id === studentId && pi.day_of_week === dow) ?? null;
-  }, [testModal, testModalAssignments, programItems]);
+    const pi = programItems.find((item) => item.student_id === studentId && item.day_of_week === dow);
+    if (!pi) return null;
+    const wasConvertedFromSession = overrides.some((o) => o.program_item_id === pi.id && o.override_date === iso && o.is_deleted);
+    return wasConvertedFromSession ? pi : null;
+  }, [testModal, testModalAssignments, programItems, overrides]);
 
   const studentById = useMemo(() => { const m = new Map<string, StudentRow>(); students.forEach((s) => m.set(s.id, s)); return m; }, [students]);
 
@@ -1379,9 +1395,9 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
                     className="btn gap-1.5 bg-red-600/80 px-4 py-1.5 font-semibold text-white hover:bg-red-600 active:scale-[0.97] disabled:opacity-50">
                     <Ban className="h-3.5 w-3.5" />Ακύρωση για αυτή τη μέρα
                   </button>
-                  {!testModal.classId && !testModal.levelId && (
-                    <button type="button" onClick={() => setShowConvertTestConfirm(true)} disabled={savingTest || !testConvertTarget}
-                      title={testConvertTarget ? 'Διαγράφει το διαγώνισμα και επαναφέρει το τακτικό μάθημα αυτής της ημέρας' : 'Δεν βρέθηκε τακτικό μάθημα αυτού του μαθητή σε αυτή την ημέρα της εβδομάδας'}
+                  {!testModal.classId && !testModal.levelId && testConvertTarget && (
+                    <button type="button" onClick={() => setShowConvertTestConfirm(true)} disabled={savingTest}
+                      title="Διαγράφει το διαγώνισμα και επαναφέρει το τακτικό μάθημα αυτής της ημέρας"
                       className="btn-ghost gap-1.5 px-4 py-1.5 font-semibold">
                       <ArrowLeftRight className="h-3.5 w-3.5" />Μετατροπή σε μάθημα
                     </button>

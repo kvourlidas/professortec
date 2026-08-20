@@ -16,11 +16,7 @@ interface EconomicsCategoryBreakdownProps {
 export function EconomicsCategoryBreakdown({
   expenseByCategory, catPageRows, catPage, catTotalPages, onPrev, onNext, isDark,
 }: EconomicsCategoryBreakdownProps) {
-  const cardCls = isDark
-    ? 'overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]'
-    : 'overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md';
-
-  const cardHeaderCls = 'flex items-center justify-between border-b px-4 py-3';
+  const cardHeaderCls = `flex items-center justify-between pb-3 border-b ${isDark ? 'border-slate-800' : 'border-slate-100'}`;
 
   const catItemCls = isDark
     ? 'rounded-xl border border-slate-800/60 bg-slate-900/30 px-3 py-2.5'
@@ -29,17 +25,20 @@ export function EconomicsCategoryBreakdown({
   const catBarBgCls = isDark ? 'bg-slate-800/60' : 'bg-slate-200';
 
   return (
-    <div className={`${cardCls} lg:col-span-4`}>
-      <div className={cardHeaderCls} style={{ background: 'var(--ch-bg)', borderColor: 'var(--ch-divider)' }}>
-        <div className="flex items-center gap-2">
-          <Tag className="h-3.5 w-3.5" style={{ color: 'var(--ch-icon)' }}/>
-          <span className="text-xs font-semibold" style={{ color: 'var(--ch-text)' }}>Έξοδα ανά κατηγορία</span>
+    <div>
+      <div className={cardHeaderCls}>
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
+            style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
+            <Tag className="h-3.5 w-3.5" style={{ color: 'var(--ch-icon)' }}/>
+          </div>
+          <span className={`text-xs font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Έξοδα ανά κατηγορία</span>
         </div>
         {expenseByCategory.length > PAGE_SIZE && (
           <EconomicsPaginationBar page={catPage} total={catTotalPages} onPrev={onPrev} onNext={onNext} isDark={isDark}/>
         )}
       </div>
-      <div className="space-y-2 p-4">
+      <div className="space-y-2 pt-3">
         {expenseByCategory.length === 0 ? (
           <p className={`py-6 text-center text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Δεν υπάρχουν έξοδα στο φίλτρο.</p>
         ) : catPageRows.map(c => {

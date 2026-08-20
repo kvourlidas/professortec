@@ -111,6 +111,27 @@ export function typeLabel(t: PackageType): string {
   if (t === 'monthly') return 'Μηνιαίο';
   return 'Ετήσιο';
 }
+const GREEK_MONTHS = [
+  'Ιανουάριος', 'Φεβρουάριος', 'Μάρτιος', 'Απρίλιος', 'Μάιος', 'Ιούνιος',
+  'Ιούλιος', 'Αύγουστος', 'Σεπτέμβριος', 'Οκτώβριος', 'Νοέμβριος', 'Δεκέμβριος',
+];
+
+export function formatMonthYearGreek(dateStr: string | null | undefined): string {
+  if (!dateStr) return '—';
+  const [yStr, mStr] = dateStr.split('-');
+  const y = Number(yStr), m = Number(mStr);
+  if (!y || !m || m < 1 || m > 12) return dateStr;
+  return `${GREEK_MONTHS[m - 1]} ${y}`;
+}
+
+export function formatMonthRangeGreek(startMonth: string | null | undefined, endMonth: string | null | undefined): string {
+  const s = formatMonthYearGreek(startMonth);
+  const e = formatMonthYearGreek(endMonth);
+  if (s === '—' && e === '—') return '—';
+  if (s === e) return s;
+  return `${s} – ${e}`;
+}
+
 export function periodSummary(sub: SubscriptionRow | null): string {
   if (!sub) return '—';
   if (sub.ends_on) {

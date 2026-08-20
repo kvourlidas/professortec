@@ -8,18 +8,11 @@ interface GradesTableProps {
 }
 
 export default function GradesTable({ loading, grades, isDark }: GradesTableProps) {
-  const skeletonDivideCls = isDark
-    ? 'divide-y divide-slate-800/50 rounded-xl border border-slate-700/50 overflow-hidden'
-    : 'divide-y divide-slate-100 rounded-xl border border-slate-200 overflow-hidden';
+  const skeletonDivideCls = 'space-y-3';
 
-  const gradesTableWrapCls = isDark
-    ? 'overflow-hidden rounded-xl border border-slate-700/50'
-    : 'overflow-hidden rounded-xl border border-slate-200';
-
-  const theadRowCls = 'border-b';
-
-  const tbodyDivideCls = isDark ? 'divide-y divide-slate-800/50' : 'divide-y divide-slate-100';
-  const trHoverCls = isDark ? 'group transition-colors hover:bg-white/[0.025]' : 'group transition-colors hover:bg-slate-50';
+  const tbodyDivideCls = isDark ? 'divide-y divide-slate-800/60' : 'divide-y divide-slate-200';
+  const trHoverCls = isDark ? 'transition-colors hover:bg-slate-900/40' : 'transition-colors hover:bg-slate-50/80';
+  const colDivider = isDark ? 'border-r border-slate-800/60' : 'border-r border-slate-200';
 
   if (loading) {
     return (
@@ -45,48 +38,42 @@ export default function GradesTable({ loading, grades, isDark }: GradesTableProp
   }
 
   return (
-    <div className={gradesTableWrapCls}>
-      <div className="max-h-[400px] overflow-y-auto grades-scroll">
-        <table className="min-w-full border-collapse text-xs">
-          <thead className="sticky top-0 z-10">
-            <tr className={theadRowCls} style={{ background: 'var(--ch-bg)', borderColor: 'var(--ch-divider)' }}>
-              {['Ημερομηνία', 'Ώρα', 'Διαγώνισμα', 'Μάθημα', 'Τμήμα', 'Βαθμός'].map((h) => (
-                <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-widest"
-                  style={{ color: 'var(--ch-text)' }}>
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className={tbodyDivideCls}>
-            {grades.map((g) => (
-              <tr key={g.id} className={trHoverCls}>
-                <td className={`px-4 py-2.5 tabular-nums ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{formatDate(g.test_date)}</td>
-                <td className={`px-4 py-2.5 tabular-nums ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                  {formatTime(g.start_time)}{g.end_time ? ` – ${formatTime(g.end_time)}` : ''}
-                </td>
-                <td className={`px-4 py-2.5 font-medium ${isDark ? 'text-slate-100' : 'text-slate-700'}`}>
-                  {g.test_name ?? <span className={isDark ? 'text-slate-600' : 'text-slate-300'}>—</span>}
-                </td>
-                <td className={`px-4 py-2.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                  {g.subject_name ?? <span className={isDark ? 'text-slate-600' : 'text-slate-300'}>—</span>}
-                </td>
-                <td className={`px-4 py-2.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                  {g.class_title ?? <span className={isDark ? 'text-slate-600' : 'text-slate-300'}>—</span>}
-                </td>
-                <td className="px-4 py-2.5">
-                  {g.grade !== null
-                    ? <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold"
-                        style={{ borderColor: 'color-mix(in srgb, var(--color-accent) 40%, transparent)', background: 'color-mix(in srgb, var(--color-accent) 10%, transparent)', color: 'var(--color-accent)' }}>
-                        {g.grade}
-                      </span>
-                    : <span className={isDark ? 'text-slate-600' : 'text-slate-300'}>—</span>}
-                </td>
-              </tr>
+    <div className="max-h-[400px] overflow-y-auto grades-scroll">
+      <table className="min-w-full border-collapse text-xs">
+        <thead className="sticky top-0 z-10" style={{ background: isDark ? '#0f172a' : '#fff' }}>
+          <tr style={{ borderBottom: '2px solid var(--color-accent)' }}>
+            <th style={{ width: '1%' }} className={`whitespace-nowrap px-4 pb-3 text-left text-xs font-bold uppercase tracking-wide ${colDivider} ${isDark ? 'text-white' : 'text-black'}`}>#</th>
+            {['Ημερομηνία', 'Ώρα', 'Διαγώνισμα', 'Μάθημα', 'Τμήμα', 'Βαθμός'].map((h, i, arr) => (
+              <th key={h} className={`px-4 pb-3 text-left text-xs font-bold uppercase tracking-wide ${i < arr.length - 1 ? colDivider : ''} ${isDark ? 'text-white' : 'text-black'}`}>
+                {h}
+              </th>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </tr>
+        </thead>
+        <tbody className={tbodyDivideCls}>
+          {grades.map((g, i) => (
+            <tr key={g.id} className={trHoverCls}>
+              <td className={`whitespace-nowrap px-4 py-2.5 tabular-nums ${colDivider} ${isDark ? 'text-slate-600' : 'text-slate-300'}`}>{i + 1}</td>
+              <td className={`px-4 py-2.5 tabular-nums ${colDivider} ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{formatDate(g.test_date)}</td>
+              <td className={`px-4 py-2.5 tabular-nums ${colDivider} ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                {formatTime(g.start_time)}{g.end_time ? ` – ${formatTime(g.end_time)}` : ''}
+              </td>
+              <td className={`px-4 py-2.5 font-medium ${colDivider} ${isDark ? 'text-slate-100' : 'text-slate-700'}`}>
+                {g.test_name ?? <span className={isDark ? 'text-slate-600' : 'text-slate-300'}>—</span>}
+              </td>
+              <td className={`px-4 py-2.5 ${colDivider} ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                {g.subject_name ?? <span className={isDark ? 'text-slate-600' : 'text-slate-300'}>—</span>}
+              </td>
+              <td className={`px-4 py-2.5 ${colDivider} ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                {g.class_title ?? <span className={isDark ? 'text-slate-600' : 'text-slate-300'}>—</span>}
+              </td>
+              <td className={`px-4 py-2.5 tabular-nums font-bold ${isDark ? 'text-slate-100' : 'text-slate-800'}`} style={g.grade !== null ? { color: 'var(--color-accent)' } : undefined}>
+                {g.grade ?? <span className={`font-normal ${isDark ? 'text-slate-600' : 'text-slate-300'}`}>—</span>}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

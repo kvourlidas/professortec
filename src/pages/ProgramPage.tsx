@@ -337,9 +337,6 @@ export default function ProgramPage() {
           <h1 className={`text-base font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>
             Πρόγραμμα Τμημάτων
           </h1>
-          <p className={`mt-0.5 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-            Δημιούργησε ένα εβδομαδιαίο πρόγραμμα, προσθέτοντας τμήματα σε κάθε μέρα.
-          </p>
           {program && (
             <span className={`mt-2 inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] ${isDark ? 'border-slate-700/60 bg-slate-800/50 text-slate-300' : 'border-slate-200 bg-slate-100 text-slate-600'}`}>
               <CalendarDays className={`h-3 w-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />

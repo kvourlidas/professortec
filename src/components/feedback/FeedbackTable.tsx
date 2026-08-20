@@ -21,25 +21,19 @@ export function FeedbackTable({
   loading, rows, total, page, pageCount,
   showingFrom, showingTo, onPrev, onNext, isDark,
 }: FeedbackTableProps) {
-  const tableCardCls = isDark
-    ? 'overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-2xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]'
-    : 'overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md';
+  const tableCardCls = '';
 
-  const theadRowCls = 'border-b';
-  const tbodyDivideCls = isDark ? 'divide-y divide-slate-800/50' : 'divide-y divide-slate-100';
-  const trHoverCls = isDark ? 'group transition-colors hover:bg-white/[0.025]' : 'group transition-colors hover:bg-slate-50';
+  const tbodyDivideCls = isDark ? 'divide-y divide-slate-800/60' : 'divide-y divide-slate-200';
+  const trHoverCls = isDark ? 'transition-colors hover:bg-slate-900/40' : 'transition-colors hover:bg-slate-50/80';
+  const colDivider = isDark ? 'border-r border-slate-800/60' : 'border-r border-slate-200';
 
-  const paginationBarCls = isDark
-    ? 'flex items-center justify-between gap-3 border-t border-slate-800/70 bg-slate-900/20 px-5 py-3'
-    : 'flex items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-5 py-3';
+  const paginationBarCls = 'flex items-center justify-between gap-3 pt-4';
 
   const paginationBtnCls = isDark
-    ? 'inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-900/30 text-slate-400 transition hover:border-slate-600 hover:bg-slate-800/50 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-30'
-    : 'inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-30';
+    ? 'inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-800 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-30'
+    : 'inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-30';
 
-  const paginationPageCls = isDark
-    ? 'rounded-lg border border-slate-700/60 bg-slate-900/20 px-3 py-1 text-[11px] text-slate-300'
-    : 'rounded-lg border border-slate-200 bg-white px-3 py-1 text-[11px] text-slate-600';
+  const paginationPageCls = isDark ? 'px-2 text-[11px] text-slate-300' : 'px-2 text-[11px] text-slate-600';
 
   const emptyBoxCls = isDark
     ? 'flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-700/50 bg-slate-800/50'
@@ -48,7 +42,7 @@ export function FeedbackTable({
   return (
     <div className={tableCardCls}>
       {loading ? (
-        <div className={`space-y-0 divide-y ${isDark ? 'divide-slate-800/60' : 'divide-slate-100'}`}>
+        <div className="space-y-3">
           {[...Array(6)].map((_, i) => (
             <div key={i} className="flex items-center gap-4 px-5 py-3.5 animate-pulse">
               <div className={`h-3 w-1/4 rounded-full ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`} />
@@ -71,24 +65,25 @@ export function FeedbackTable({
         <div className="overflow-x-auto">
           <table className="min-w-full border-collapse text-xs">
             <thead>
-              <tr className={theadRowCls} style={{ background: 'var(--ch-bg)', borderColor: 'var(--ch-divider)' }}>
-                {['ΟΝΟΜΑΤΕΠΩΝΥΜΟ', 'ΑΞΙΟΛΟΓΗΣΗ', 'FEEDBACK'].map((label) => (
-                  <th key={label} className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-widest"
-                    style={{ color: 'var(--ch-text)' }}>
+              <tr style={{ borderBottom: '2px solid var(--color-accent)' }}>
+                <th style={{ width: '1%' }} className={`whitespace-nowrap px-5 pb-3 text-left text-xs font-bold uppercase tracking-wide ${colDivider} ${isDark ? 'text-white' : 'text-black'}`}>#</th>
+                {['ΟΝΟΜΑΤΕΠΩΝΥΜΟ', 'ΑΞΙΟΛΟΓΗΣΗ', 'FEEDBACK'].map((label, i) => (
+                  <th key={label} className={`px-5 pb-3 text-left text-xs font-bold uppercase tracking-wide ${i < 2 ? colDivider : ''} ${isDark ? 'text-white' : 'text-black'}`}>
                     {label}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody className={tbodyDivideCls}>
-              {rows.map((r) => (
+              {rows.map((r, i) => (
                 <tr key={r.studentId} className={trHoverCls}>
-                  <td className="px-5 py-3.5">
-                    <span className={`font-medium transition-colors ${isDark ? 'text-slate-100 group-hover:text-white' : 'text-slate-700 group-hover:text-slate-900'}`}>
+                  <td className={`whitespace-nowrap px-5 py-3.5 tabular-nums ${colDivider} ${isDark ? 'text-slate-600' : 'text-slate-300'}`}>{showingFrom + i}</td>
+                  <td className={`px-5 py-3.5 ${colDivider}`}>
+                    <span className={`font-medium ${isDark ? 'text-slate-100' : 'text-slate-700'}`}>
                       {r.fullName}
                     </span>
                   </td>
-                  <td className="px-5 py-3.5">
+                  <td className={`px-5 py-3.5 ${colDivider}`}>
                     {r.rating > 0
                       ? <Stars value={r.rating} />
                       : <span className={`text-xs italic ${isDark ? 'text-slate-600' : 'text-slate-300'}`}>—</span>}

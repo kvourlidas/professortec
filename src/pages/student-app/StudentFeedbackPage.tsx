@@ -124,9 +124,6 @@ export default function StudentFeedbackPage() {
             <h1 className={`text-base font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>
               Feedback μαθητών
             </h1>
-            <p className={`mt-0.5 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              Αξιολογήσεις (0-5 αστέρια) και σχόλια που αφήνουν οι μαθητές.
-            </p>
             {schoolId && (
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] ${isDark ? 'border-slate-700/60 bg-slate-800/50 text-slate-300' : 'border-slate-200 bg-slate-100 text-slate-600'}`}>

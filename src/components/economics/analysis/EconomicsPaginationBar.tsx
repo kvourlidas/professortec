@@ -10,8 +10,8 @@ interface EconomicsPaginationBarProps {
 
 export function EconomicsPaginationBar({ page, total, onPrev, onNext, isDark }: EconomicsPaginationBarProps) {
   const btnCls = isDark
-    ? 'flex h-6 w-6 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-900/40 text-slate-400 transition hover:bg-slate-800/50 hover:text-slate-200 disabled:opacity-30'
-    : 'flex h-6 w-6 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30';
+    ? 'flex h-6 w-6 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-800 hover:text-slate-200 disabled:opacity-30'
+    : 'flex h-6 w-6 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30';
 
   const textCls = isDark ? 'min-w-[48px] text-center text-[11px] text-slate-400' : 'min-w-[48px] text-center text-[11px] text-slate-500';
 

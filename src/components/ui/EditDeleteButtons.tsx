@@ -12,13 +12,14 @@ export default function EditDeleteButtons({ onEdit, onDelete, disabled }: Props)
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
+  // Minimal — ghost icon buttons, no border/bg box until hovered.
   const editCls = isDark
-    ? 'inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-700/60 bg-slate-900/30 text-slate-500 transition hover:border-blue-500/40 hover:bg-blue-500/15 hover:text-blue-400 disabled:opacity-40'
-    : 'inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400 transition hover:border-blue-300 hover:bg-blue-100 hover:text-blue-500 disabled:opacity-40';
+    ? 'inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-800 hover:text-slate-200 disabled:opacity-40'
+    : 'inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:opacity-40';
 
   const deleteCls = isDark
-    ? 'inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-700/60 bg-slate-900/30 text-slate-500 transition hover:border-rose-500/40 hover:bg-rose-500/15 hover:text-rose-400 disabled:opacity-40'
-    : 'inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400 transition hover:border-rose-300 hover:bg-rose-100 hover:text-rose-500 disabled:opacity-40';
+    ? 'inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 transition hover:bg-red-500/10 hover:text-red-400 disabled:opacity-40'
+    : 'inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-500 disabled:opacity-40';
 
   return (
     <>

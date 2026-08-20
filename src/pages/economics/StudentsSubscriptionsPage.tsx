@@ -1,9 +1,10 @@
 import { AlertCircle, Briefcase, CheckCircle2, Plus, Search, X, XCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useSubscriptionsPage } from '../../components/economics/subscriptions/useSubscriptionsPage';
 import { SubscriptionsTable } from '../../components/economics/subscriptions/SubscriptionsTable';
 import { AssignRenewModal } from '../../components/economics/subscriptions/AssignRenewModal';
 import { DeleteSubscriptionModal } from '../../components/economics/subscriptions/DeleteSubscriptionModal';
-import { PaymentModal } from '../../components/economics/subscriptions/PaymentModal';
+import type { StudentViewRow } from '../../components/economics/subscriptions/types';
 
 type PayFilter = 'all' | 'settled' | 'owes' | 'unpaid';
 
@@ -16,6 +17,8 @@ const FILTER_OPTIONS: { key: PayFilter; label: string; icon: React.ReactNode }[]
 
 export default function StudentsSubscriptionsPage() {
   const p = useSubscriptionsPage();
+  const navigate = useNavigate();
+  const goToStudent = (row: StudentViewRow) => navigate(`/students/${row.student_id}`);
 
   const searchInputCls = p.isDark
     ? 'h-9 w-full rounded-xl border border-slate-700/60 bg-slate-900/60 pl-8 pr-3 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30'
@@ -34,7 +37,6 @@ export default function StudentsSubscriptionsPage() {
             </div>
             <div>
               <h1 className={`text-base font-semibold tracking-tight ${p.isDark ? 'text-slate-50' : 'text-slate-800'}`}>Συνδρομές Μαθητών</h1>
-              <p className={`mt-0.5 text-xs ${p.isDark ? 'text-slate-400' : 'text-slate-500'}`}>Ενεργές & ληγμένες συνδρομές — ανάθεση, πληρωμές, ιστορικό.</p>
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -95,7 +97,7 @@ export default function StudentsSubscriptionsPage() {
           packageById={p.packageById}
           onPageChange={p.setPage}
           onOpenAssign={p.openAssign}
-          onPayment={p.openPaymentModal}
+          onGoToStudent={goToStudent}
           onRenew={p.openRenew}
           onDelete={p.setDeleteTarget}
         />
@@ -114,7 +116,7 @@ export default function StudentsSubscriptionsPage() {
           packageById={p.packageById}
           onPageChange={p.setExpiredPage}
           onOpenAssign={p.openAssign}
-          onPayment={p.openPaymentModal}
+          onGoToStudent={goToStudent}
           onRenew={p.openRenew}
           onDelete={p.setDeleteTarget}
         />
@@ -181,19 +183,6 @@ export default function StudentsSubscriptionsPage() {
           isDark={p.isDark}
           onCancel={() => p.setDeleteTarget(null)}
           onConfirm={p.confirmDelete}
-        />
-
-        {/* Payment modal */}
-        <PaymentModal
-          row={p.paymentModal?.row ?? null}
-          paymentInput={p.paymentInput}
-          payingLoading={p.payingLoading}
-          note={p.paymentNote}
-          isDark={p.isDark}
-          onInputChange={p.setPaymentInput}
-          onNoteChange={p.setPaymentNote}
-          onSubmit={p.submitPayment}
-          onClose={() => p.setPaymentModal(null)}
         />
 
       </div>
