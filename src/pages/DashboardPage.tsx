@@ -1,7 +1,6 @@
 // src/pages/DashboardPage.tsx
 import { useAuth } from '../auth.tsx';
 import DashboardNotesSection from '../components/dashboard/DashboardNotesSection.tsx';
-import DashboardCalendarSection from '../components/dashboard/DashboardCalendarSection.tsx';
 import DashboardUpcomingSessionsSection from '../components/dashboard/DashboardUpcomingSessionsSection.tsx';
 
 export default function DashboardPage() {
@@ -22,8 +21,6 @@ export default function DashboardPage() {
         <DashboardMonthlyTestsAvgGradesSection schoolId={schoolId} />
       </div> */}
 
-      {/* Row 3: Calendar */}
-      <DashboardCalendarSection schoolId={schoolId} />
     </div>
   );
 }

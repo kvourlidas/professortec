@@ -151,6 +151,20 @@
   }
 }
 
+/* ── Typing dots animation (AI chat) ── */
+@keyframes typing-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30%            { transform: translateY(-4px); opacity: 1; }
+}
+.typing-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: currentColor;
+  animation: typing-bounce 1s ease-in-out infinite;
+}
+
 /* bring default react-datepicker styles */
 
 

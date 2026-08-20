@@ -27,6 +27,7 @@ const TutorsPaymentsPage = lazy(() => import('./pages/economics/TutorsPaymentsPa
 const StudentFeedbackPage = lazy(() => import('./pages/student-app/StudentFeedbackPage'));
 const StudentMessagesPage = lazy(() => import('./pages/student-app/StudentMessagesPage'));
 const SendNotificationsPage = lazy(() => import('./pages/student-app/SendNotificationsPage'));
+const CalendarPage = lazy(() => import('./pages/CalendarPage'));
 const HelpSupportPage = lazy(() => import('./pages/HelpSupportPage'));
 
 import { useAuth } from './auth';
@@ -101,6 +102,7 @@ export default function App() {
         <Route path={p('/economics/tutors-payments')} element={<ProtectedRoute><FrontistirioOnly><TutorsPaymentsPage /></FrontistirioOnly></ProtectedRoute>} />
 
         {/* Shared routes (both account types) */}
+        <Route path={p('/calendar')} element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
         <Route path={p('/levels')} element={<ProtectedRoute><LevelsPage /></ProtectedRoute>} />
         <Route path={p('/students')} element={<ProtectedRoute><StudentsPage /></ProtectedRoute>} />
         <Route path={p('/students/:id')} element={<ProtectedRoute><StudentCardPage /></ProtectedRoute>} />

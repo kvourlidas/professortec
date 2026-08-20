@@ -35,6 +35,11 @@ export const idiaiterouNavItems: NavItem[] = [
     icon: LayoutDashboard,
   },
   {
+    label: 'Ημερολόγιο',
+    to: '/calendar',
+    icon: CalendarDays,
+  },
+  {
     label: 'Μαθητές',
     to: '/students',
     icon: Users,
@@ -103,6 +108,11 @@ export const navItems: NavItem[] = [
     label: 'Dashboard',
     to: '/dashboard',
     icon: LayoutDashboard,
+  },
+  {
+    label: 'Ημερολόγιο',
+    to: '/calendar',
+    icon: CalendarDays,
   },
   {
     label: 'Τμήματα',
