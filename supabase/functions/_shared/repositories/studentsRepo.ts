@@ -116,6 +116,67 @@ export async function updateStudentById(
 }
 
 
+export async function getStudentFullByIdAndSchoolId(
+  supabase: any,
+  studentId: string,
+  schoolId: string
+) {
+  const { data, error } = await supabase
+    .from("students")
+    .select(`
+      id,
+      school_id,
+      full_name,
+      date_of_birth,
+      phone,
+      email,
+      special_notes,
+      level_id,
+      father_name,
+      father_date_of_birth,
+      father_phone,
+      father_email,
+      mother_name,
+      mother_date_of_birth,
+      mother_phone,
+      mother_email
+    `)
+    .eq("id", studentId)
+    .eq("school_id", schoolId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!data) {
+    throw new NotFoundError("Student not found or not accessible");
+  }
+
+  return data;
+}
+
+export async function searchStudentsByName(
+  supabase: any,
+  schoolId: string,
+  query: string
+) {
+  const { data, error } = await supabase
+    .from("students")
+    .select("id, full_name, phone, email")
+    .eq("school_id", schoolId)
+    .is("deleted_at", null)
+    .ilike("full_name", `%${query}%`)
+    .limit(10);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data ?? [];
+}
+
 export async function deleteStudentById(
   supabase: any,
   studentId: string

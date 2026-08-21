@@ -26,6 +26,30 @@ type Props = {
   onClose?: () => void;
 };
 
+// FunctionsHttpError from supabase-js carries the raw Response on `.context`.
+function isUnauthorized(fnError: unknown): boolean {
+  const status = (fnError as { context?: { status?: number } } | null)?.context?.status;
+  return status === 401;
+}
+
+async function invokeAssistant(message: string, history: HistoryEntry[]) {
+  const first = await supabase.functions.invoke('assistant-chat', {
+    body: { message, history },
+  });
+
+  // Access token likely expired while the tab was backgrounded — the client
+  // stops auto-refreshing on hidden tabs (see supabaseClient.ts), so a stale
+  // token can outlive the session until the next explicit refresh. Force one
+  // refresh and retry the call once before giving up.
+  if (first.error && isUnauthorized(first.error)) {
+    const { error: refreshError } = await supabase.auth.refreshSession();
+    if (refreshError) return first;
+    return supabase.functions.invoke('assistant-chat', { body: { message, history } });
+  }
+
+  return first;
+}
+
 export default function AssistantChat({ onClose }: Props) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
@@ -96,13 +120,15 @@ export default function AssistantChat({ onClose }: Props) {
     setError(null);
 
     try {
-      const { data, error: fnError } = await supabase.functions.invoke('assistant-chat', {
-        body: { message: text, history },
-      });
+      const { data, error: fnError } = await invokeAssistant(text, history);
 
       if (fnError || !data) {
         console.error(fnError ?? data);
-        setError('Κάτι πήγε στραβά. Δοκίμασε ξανά.');
+        setError(
+          isUnauthorized(fnError)
+            ? 'Η σύνδεσή σου έληξε. Δοκίμασε να ανανεώσεις τη σελίδα.'
+            : 'Κάτι πήγε στραβά. Δοκίμασε ξανά.'
+        );
         return;
       }
 

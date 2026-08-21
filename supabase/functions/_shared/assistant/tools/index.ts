@@ -3,10 +3,12 @@
 import type Anthropic from "npm:@anthropic-ai/sdk";
 import type { AssistantTool } from "../types.ts";
 import { addStudentTool } from "./addStudent.ts";
+import { updateStudentTool } from "./updateStudent.ts";
 
 // Register every new tool here — one line each.
 export const ASSISTANT_TOOLS: AssistantTool[] = [
   addStudentTool,
+  updateStudentTool,
 ];
 
 export const TOOL_DEFINITIONS: Anthropic.Tool[] = ASSISTANT_TOOLS.map((t) => t.definition);
