@@ -29,16 +29,7 @@ export default function StudentsSubscriptionsPage() {
       <div className="space-y-6 px-1">
 
         {/* Header */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex items-start gap-3">
-            <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
-              style={{ background: 'var(--color-accent)' }}>
-              <Briefcase className="h-4 w-4" style={{ color: 'var(--ch-icon)' }} />
-            </div>
-            <div>
-              <h1 className={`text-base font-semibold tracking-tight ${p.isDark ? 'text-slate-50' : 'text-slate-800'}`}>Συνδρομές Μαθητών</h1>
-            </div>
-          </div>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-end">
           <div className="flex items-center gap-2 flex-wrap">
             {/* Payment filter */}
             <div className={`flex items-center gap-0.5 rounded-xl border p-1 ${p.isDark ? 'border-slate-700/50 bg-slate-900/30' : 'border-slate-200 bg-slate-50'}`}>

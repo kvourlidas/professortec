@@ -165,6 +165,15 @@
   animation: typing-bounce 1s ease-in-out infinite;
 }
 
+/* ── Toast pop-up ── */
+@keyframes toast-in {
+  0%   { transform: translateY(-12px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+.animate-toast-in {
+  animation: toast-in 0.2s ease-out;
+}
+
 /* bring default react-datepicker styles */
 
 

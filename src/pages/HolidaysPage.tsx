@@ -152,27 +152,14 @@ export default function HolidaysPage() {
     <div className="space-y-6 px-1">
 
       {/* ── Header ── */}
-      <div className="flex items-start gap-3">
-        <div
-          className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
-          style={{ background: 'var(--color-accent)' }}
-        >
-          <CalendarOff className="h-4 w-4" style={{ color: 'var(--ch-icon)' }} />
+      {schoolId && (
+        <div className="flex items-center gap-2">
+          <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] ${isDark ? 'border-slate-700/60 bg-slate-800/50 text-slate-300' : 'border-slate-200 bg-slate-100 text-slate-600'}`}>
+            <CalendarOff className={`h-3 w-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+            {groupedHolidays.length} καταχωρήσεις
+          </span>
         </div>
-        <div>
-          <h1 className={`text-base font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>
-            Αργίες σχολείου
-          </h1>
-          {schoolId && (
-            <div className="mt-2 flex items-center gap-2">
-              <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] ${isDark ? 'border-slate-700/60 bg-slate-800/50 text-slate-300' : 'border-slate-200 bg-slate-100 text-slate-600'}`}>
-                <CalendarOff className={`h-3 w-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
-                {groupedHolidays.length} καταχωρήσεις
-              </span>
-            </div>
-          )}
-        </div>
-      </div>
+      )}
 
       {/* ── Alerts ── */}
       {pageError && (

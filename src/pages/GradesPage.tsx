@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
 import { useTheme } from '../context/ThemeContext';
-import { BarChart3, Check, ChevronDown, GraduationCap, Search, User, Users, X } from 'lucide-react';
+import { Check, ChevronDown, GraduationCap, Search, User, Users, X } from 'lucide-react';
 import type { StudentRow, TutorRow, StudentGradeRow, TutorGradeRow, GradeRow, GradesTab, SelectionType } from '../components/grades/types';
 import GradesPanel from '../components/grades/GradesPanel';
 
@@ -165,17 +165,6 @@ const GradesPage = () => {
 
       {/* ── Top section ── */}
       <div className="space-y-3">
-
-        {/* Page header */}
-        <div className="flex items-start gap-3">
-          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
-            style={{ background: 'var(--color-accent)' }}>
-            <BarChart3 className="h-4 w-4" style={{ color: 'var(--ch-icon)' }} />
-          </div>
-          <div>
-            <h1 className={`text-base font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Βαθμοί</h1>
-          </div>
-        </div>
 
         {/* Students / Tutors toggle */}
         {!isPrivateLessons && (

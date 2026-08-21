@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient.ts';
 import { useAuth } from '../auth.tsx';
 import { useTheme } from '../context/ThemeContext.tsx';
@@ -7,7 +8,7 @@ import ClassStudentsModal from '../components/classes/ClassStudentsModal.tsx';
 import ClassDeleteModal from '../components/classes/ClassDeleteModal.tsx';
 import ClassesGrid from '../components/classes/ClassesGrid.tsx';
 import type { StudentRow } from '../components/classes/ClassesGrid.tsx';
-import { Plus, School, Search, GraduationCap } from 'lucide-react';
+import { Plus, School, Search } from 'lucide-react';
 import type { ClassRow, SubjectRow, LevelRow, ModalMode, ClassFormState } from '../components/classes/types.ts';
 import { normalizeText } from '../components/classes/utils.ts';
 
@@ -16,6 +17,8 @@ export default function ClassesPage() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const schoolId = profile?.school_id ?? null;
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [subjects, setSubjects] = useState<SubjectRow[]>([]);
@@ -107,6 +110,14 @@ export default function ClassesPage() {
   const openEditModal = (row: ClassRow) => { setError(null); setModalMode('edit'); setEditingClass(row); setModalOpen(true); };
   const closeModal = () => { setModalOpen(false); setEditingClass(null); setSaving(false); };
 
+  useEffect(() => {
+    if ((location.state as { openCreate?: boolean } | null)?.openCreate) {
+      openCreateModal();
+      navigate(location.pathname, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state, location.pathname, navigate]);
+
   const handleSaveClass = async (form: ClassFormState) => {
     setError(null);
     if (!schoolId) { setError('Το προφίλ σας δεν είναι συνδεδεμένο με σχολείο (school_id).'); return; }
@@ -177,27 +188,18 @@ export default function ClassesPage() {
 
       {/* ── Page Header ── */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-start gap-3">
-          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
-            style={{ background: 'var(--color-accent)' }}>
-            <GraduationCap className="h-4.5 w-4.5" style={{ color: 'var(--ch-icon)' }} />
-          </div>
-          <div>
-            <h1 className={`text-base font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Τμήματα</h1>
-            <div className="mt-2 flex items-center gap-3">
-              <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] ${isDark ? 'border-slate-700/60 bg-slate-800/50 text-slate-300' : 'border-slate-200 bg-slate-100 text-slate-600'}`}>
-                <School className={`h-3 w-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
-                {classes.length} σύνολο
-              </span>
-              {search.trim() && (
-                <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px]"
-                  style={{ borderColor: 'color-mix(in srgb, var(--color-accent) 40%, transparent)', background: 'color-mix(in srgb, var(--color-accent) 10%, transparent)', color: 'var(--color-accent)' }}>
-                  <Search className="h-3 w-3" />
-                  {filteredClasses.length} αποτελέσματα
-                </span>
-              )}
-            </div>
-          </div>
+        <div className="flex items-center gap-3">
+          <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] ${isDark ? 'border-slate-700/60 bg-slate-800/50 text-slate-300' : 'border-slate-200 bg-slate-100 text-slate-600'}`}>
+            <School className={`h-3 w-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+            {classes.length} σύνολο
+          </span>
+          {search.trim() && (
+            <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px]"
+              style={{ borderColor: 'color-mix(in srgb, var(--color-accent) 40%, transparent)', background: 'color-mix(in srgb, var(--color-accent) 10%, transparent)', color: 'var(--color-accent)' }}>
+              <Search className="h-3 w-3" />
+              {filteredClasses.length} αποτελέσματα
+            </span>
+          )}
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2.5">
