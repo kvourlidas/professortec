@@ -23,25 +23,18 @@ export default function ProgramScheduleGrid({
   dragClassId, isDark, onEditSlot, onDeleteSlot, onDragOver, onDrop,
 }: ProgramScheduleGridProps) {
   return (
-    <section className={`flex-1 overflow-hidden rounded-2xl border shadow-sm backdrop-blur-md ${
-      isDark
-        ? 'border-slate-700/50 bg-slate-950/40 ring-1 ring-inset ring-white/[0.04]'
-        : 'border-slate-200 bg-white'
-    }`}>
-      {/* Header */}
-      <div className="flex shrink-0 items-center gap-2.5 px-4 py-3" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
-        <div className="flex h-6 w-6 items-center justify-center rounded-lg"
-          style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
-          <CalendarDays className="h-3 w-3" style={{ color: 'var(--ch-icon)' }} />
-        </div>
-        <h2 className="text-xs font-semibold tracking-wide" style={{ color: 'var(--ch-text)' }}>
+    <section className="flex-1">
+      {/* Header — accent underline, no card chrome */}
+      <div className="flex shrink-0 items-center gap-2.5 pb-3" style={{ borderBottom: '2px solid var(--color-accent)' }}>
+        <CalendarDays className="h-5 w-5" style={{ color: 'var(--color-accent)' }} />
+        <h2 className={`text-sm font-bold uppercase tracking-wide ${isDark ? 'text-white' : 'text-black'}`}>
           Εβδομαδιαίο πλάνο
         </h2>
       </div>
 
       {/* Grid */}
-      <div className="overflow-x-auto p-3">
-        <div className="min-w-[700px] grid grid-cols-7 gap-2">
+      <div className="overflow-x-auto pt-3">
+        <div className={`min-w-[700px] grid grid-cols-7 border-t border-l ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
           {DAY_OPTIONS.map((day) => {
             const isWeekend = WEEKEND.has(day.value);
             const slots = itemsByDay[day.value] ?? [];
@@ -49,21 +42,19 @@ export default function ProgramScheduleGrid({
 
             return (
               <div key={day.value}
-                className={`flex flex-col rounded-xl border transition-colors ${
+                className={`flex flex-col border-r border-b transition-colors ${isDark ? 'border-slate-800' : 'border-slate-200'} ${
                   isDragTarget
                     ? isDark
                       ? 'border-dashed border-slate-500/60 bg-slate-800/30'
                       : 'border-dashed border-slate-400/60 bg-slate-100/50'
-                    : isWeekend
-                      ? isDark ? 'border-slate-700/30 bg-slate-900/10' : 'border-slate-200/70 bg-slate-50/30'
-                      : isDark ? 'border-slate-700/40 bg-slate-900/20' : 'border-slate-200 bg-slate-50/60'
+                    : ''
                 }`}
                 onDragOver={(e) => { if (dragClassId) { e.preventDefault(); onDragOver(day.value); } }}
                 onDrop={() => onDrop(day.value)}
               >
                 {/* Day header */}
                 <div className={`border-b px-2 py-2 text-center ${
-                  isDark ? 'border-slate-700/40' : 'border-slate-200'
+                  isDark ? 'border-slate-800' : 'border-slate-200'
                 }`}>
                   <span className={`block text-[9px] font-bold uppercase tracking-widest ${
                     isWeekend
@@ -75,10 +66,10 @@ export default function ProgramScheduleGrid({
                 </div>
 
                 {/* Slots */}
-                <div className="flex-1 space-y-1.5 p-1.5 min-h-[120px]">
+                <div className={`flex-1 divide-y min-h-[120px] ${isDark ? 'divide-slate-800' : 'divide-slate-200'}`}>
                   {slots.length === 0 ? (
-                    <div className={`flex h-full min-h-[80px] items-center justify-center rounded-lg border border-dashed ${
-                      isDark ? 'border-slate-700/40' : 'border-slate-300/50'
+                    <div className={`flex h-full min-h-[80px] items-center justify-center border border-dashed m-1.5 rounded-lg ${
+                      isDark ? 'border-slate-800' : 'border-slate-300/60'
                     }`}>
                       <p className={`text-[9px] text-center px-1 ${isDark ? 'text-slate-700' : 'text-slate-300'}`}>
                         Σύρετε εδώ
@@ -102,14 +93,13 @@ export default function ProgramScheduleGrid({
 
                       return (
                         <div key={item.id}
-                          className={`group relative cursor-pointer rounded-lg border px-2 py-1.5 text-[10px] transition ${
-                            isDark
-                              ? 'bg-slate-800/50 hover:bg-slate-700/50 border-slate-700/40'
-                              : 'bg-white hover:bg-slate-50 border-slate-200'
+                          className={`group relative cursor-pointer overflow-hidden py-1.5 pl-2.5 pr-3 text-[10px] transition-colors ${
+                            isDark ? 'hover:bg-blue-500/[0.12]' : 'hover:bg-blue-50'
                           }`}
-                          style={{ borderLeftWidth: '2px', borderLeftColor: 'var(--color-accent)' }}
                           onClick={() => onEditSlot(item)}
                         >
+                          <span className="absolute inset-y-0 left-0 w-[3px]" style={{ background: 'var(--color-accent)' }} />
+
                           {/* Delete button */}
                           <button type="button"
                             onClick={(e) => {

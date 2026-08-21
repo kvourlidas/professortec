@@ -265,11 +265,11 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
     const details = [s.subjectName, s.tutorName].filter(Boolean).join(' · ');
     const isGreen = variant === 'current';
     const barColor = isGreen ? (isDark ? '#34d399' : '#10b981') : 'var(--color-accent)';
-    const tileCls = `rounded-xl border p-3 ${isDark ? 'border-slate-800 bg-slate-950/40' : 'border-slate-100 bg-slate-50'}`;
+    const rowCls = `relative py-2.5 pl-3 pr-1 transition-colors ${isDark ? 'hover:bg-blue-500/[0.12]' : 'hover:bg-blue-50'}`;
 
     if (compact) {
       return (
-        <div className={tileCls} style={{ borderLeftColor: barColor, borderLeftWidth: 3 }}>
+        <div className={rowCls} style={{ borderLeftColor: barColor, borderLeftWidth: 3 }}>
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <p className={`text-sm font-bold leading-snug tabular-nums ${isGreen ? (isDark ? 'text-emerald-300' : 'text-emerald-600') : primary}`}>
@@ -293,7 +293,7 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
     }
 
     return (
-      <div className={tileCls} style={{ borderLeftColor: barColor, borderLeftWidth: 3 }}>
+      <div className={rowCls} style={{ borderLeftColor: barColor, borderLeftWidth: 3 }}>
         <div className="flex items-start justify-between gap-3">
           <p className={`text-2xl font-bold leading-none tabular-nums tracking-tight ${isGreen ? (isDark ? 'text-emerald-300' : 'text-emerald-600') : primary}`}>
             {formatTime(s.startTime)}<span className={`mx-1 text-base font-normal ${muted}`}>–</span>{formatTime(s.endTime)}
@@ -333,60 +333,52 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
 
   return (
     <section className="flex flex-col flex-1">
-      {/* Elevated tile — real border + shadow lift, colored accent band up top, icon badge in header */}
-      <div className={`relative flex flex-col flex-1 overflow-hidden rounded-2xl border shadow-lg ${isDark ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white'}`}>
-        <div className="h-1 w-full shrink-0" style={{ background: 'var(--color-accent)' }} />
-
-        {/* Header */}
-        <div className={`flex shrink-0 items-center justify-between px-5 py-3.5 border-b ${rule}`}>
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
-              style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
-              <CalendarClock className="h-4 w-4" style={{ color: 'var(--ch-icon)' }} />
-            </div>
-            <p className={`text-sm font-bold ${primary}`}>Επόμενες Συνεδρίες</p>
-          </div>
-          <span className={`text-[10px] font-medium uppercase tracking-wide ${muted}`}>{LOOKAHEAD_DAYS} ημέρες</span>
+      {/* Header — accent underline, no card chrome */}
+      <div className="flex shrink-0 items-center justify-between pb-3" style={{ borderBottom: '2px solid var(--color-accent)' }}>
+        <div className="flex items-center gap-2.5">
+          <CalendarClock className="h-5 w-5" style={{ color: 'var(--color-accent)' }} />
+          <p className={`text-sm font-bold uppercase tracking-wide ${isDark ? 'text-white' : 'text-black'}`}>Επόμενες Συνεδρίες</p>
         </div>
-
-        {loading ? (
-          <div className="flex flex-1 items-center justify-center gap-2 py-10">
-            <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
-            <span className={`text-xs ${muted}`}>Φόρτωση…</span>
-          </div>
-        ) : (
-          /* Two-panel split, separated by a single hairline rule */
-          <div className="flex flex-1 min-h-0">
-
-            {/* LEFT — Current */}
-            <div className="flex flex-col flex-1 min-h-0 px-5 py-4">
-              <PanelLabel count={currentSessions.length}>{currentLabel}</PanelLabel>
-              {currentSessions.length > 0 ? (
-                <div className="flex flex-col flex-1 min-h-0 gap-2 overflow-y-auto">
-                  {currentSessions.map((s) => <SessionCard key={s.id} s={s} variant="current" compact={currentCompact} />)}
-                </div>
-              ) : (
-                <NoSession label="Δεν υπάρχει τρέχουσα συνεδρία" />
-              )}
-            </div>
-
-            <div className={`w-px shrink-0 ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`} />
-
-            {/* RIGHT — Upcoming */}
-            <div className="flex flex-col flex-1 min-h-0 px-5 py-4">
-              <PanelLabel count={upcomingSessions.length}>{upcomingLabel}</PanelLabel>
-              {upcomingSessions.length > 0 ? (
-                <div className="flex flex-col flex-1 min-h-0 gap-2 overflow-y-auto">
-                  {upcomingSessions.map((s) => <SessionCard key={s.id} s={s} variant="upcoming" compact={upcomingCompact} />)}
-                </div>
-              ) : (
-                <NoSession label="Δεν υπάρχουν επόμενα μαθήματα" />
-              )}
-            </div>
-
-          </div>
-        )}
+        <span className={`text-[10px] font-medium uppercase tracking-wide ${muted}`}>{LOOKAHEAD_DAYS} ημέρες</span>
       </div>
+
+      {loading ? (
+        <div className="flex flex-1 items-center justify-center gap-2 py-10">
+          <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
+          <span className={`text-xs ${muted}`}>Φόρτωση…</span>
+        </div>
+      ) : (
+        /* Two-panel split, separated by a single hairline rule */
+        <div className="flex flex-1 min-h-0 pt-4">
+
+          {/* LEFT — Current */}
+          <div className="flex flex-col flex-1 min-h-0 pr-4">
+            <PanelLabel count={currentSessions.length}>{currentLabel}</PanelLabel>
+            {currentSessions.length > 0 ? (
+              <div className={`flex flex-col flex-1 min-h-0 divide-y overflow-y-auto ${rule}`}>
+                {currentSessions.map((s) => <SessionCard key={s.id} s={s} variant="current" compact={currentCompact} />)}
+              </div>
+            ) : (
+              <NoSession label="Δεν υπάρχει τρέχουσα συνεδρία" />
+            )}
+          </div>
+
+          <div className={`w-px shrink-0 ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`} />
+
+          {/* RIGHT — Upcoming */}
+          <div className="flex flex-col flex-1 min-h-0 pl-4">
+            <PanelLabel count={upcomingSessions.length}>{upcomingLabel}</PanelLabel>
+            {upcomingSessions.length > 0 ? (
+              <div className={`flex flex-col flex-1 min-h-0 divide-y overflow-y-auto ${rule}`}>
+                {upcomingSessions.map((s) => <SessionCard key={s.id} s={s} variant="upcoming" compact={upcomingCompact} />)}
+              </div>
+            ) : (
+              <NoSession label="Δεν υπάρχουν επόμενα μαθήματα" />
+            )}
+          </div>
+
+        </div>
+      )}
     </section>
   );
 }

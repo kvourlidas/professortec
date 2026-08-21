@@ -5,7 +5,7 @@ import { useAuth } from '../../auth';
 import { useTheme } from '../../context/ThemeContext';
 import {
   Loader2, Save, HandCoins, Plus, Ban, History,
-  Pencil, ChevronRight, ChevronLeft, Search, X, Euro,
+  Pencil, ChevronRight, ChevronLeft, Search, X,
   ChevronDown, User, Check,
 } from 'lucide-react';
 import ConfirmActionModal from '../../components/ui/ConfirmActionModal';
@@ -64,12 +64,6 @@ export default function TutorsPaymentsPage() {
   }, []);
 
   // ── Theme helpers ────────────────────────────────────────────────────────
-  const surface = isDark
-    ? 'border border-slate-700/50 bg-slate-950/60 backdrop-blur-md ring-1 ring-inset ring-white/[0.04]'
-    : 'border border-slate-200/80 bg-white shadow-sm';
-
-  const cardCls = `overflow-hidden rounded-2xl shadow-xl ${surface}`;
-
   const inputCls = isDark
     ? 'h-10 w-full rounded-xl border border-slate-700/60 bg-slate-900/70 px-3.5 text-sm text-slate-100 placeholder-slate-500 outline-none transition-all focus:border-[color:var(--color-accent)] focus:ring-2 focus:ring-[color:var(--color-accent)]/20'
     : 'h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-sm text-slate-800 placeholder-slate-400 outline-none transition-all focus:border-[color:var(--color-accent)] focus:bg-white focus:ring-2 focus:ring-[color:var(--color-accent)]/15';
@@ -81,7 +75,7 @@ export default function TutorsPaymentsPage() {
   // History table (minimal — no card chrome, accent-underline header, faint dividers)
   const histColDivider = isDark ? 'border-r border-slate-800/60' : 'border-r border-slate-200';
   const histDivideCls = isDark ? 'divide-y divide-slate-800/60' : 'divide-y divide-slate-200';
-  const histRowHoverCls = isDark ? 'transition-colors hover:bg-slate-900/40' : 'transition-colors hover:bg-slate-50/80';
+  const histRowHoverCls = isDark ? 'transition-colors hover:bg-blue-500/[0.12]' : 'transition-colors hover:bg-blue-50';
 
   const cancelBtnCls = isDark
     ? 'btn border border-slate-700/60 bg-slate-800/60 px-4 py-2 text-sm text-slate-300 hover:bg-slate-700/60 disabled:opacity-50'
@@ -327,30 +321,18 @@ export default function TutorsPaymentsPage() {
         <button
           type="button"
           onClick={() => { setDropOpen(v => !v); setDropSearch(''); }}
-          className={`group flex w-full items-center gap-4 rounded-2xl px-5 py-3.5 text-left shadow-lg transition-all ${
+          className={`group flex w-full items-center gap-4 rounded-xl px-5 py-3.5 text-left transition-all ${
             isDark
-              ? 'border border-slate-700/60 bg-slate-900/70 backdrop-blur-md hover:border-slate-600/70'
+              ? 'border border-slate-700/60 bg-slate-900 hover:border-slate-600/70'
               : 'border border-slate-200 bg-white hover:border-slate-300'
           } ${dropOpen
               ? isDark
-                ? 'border-[color:var(--color-accent)]/50 ring-2 ring-[color:var(--color-accent)]/20'
-                : 'border-[color:var(--color-accent)]/40 ring-2 ring-[color:var(--color-accent)]/12'
+                ? 'border-[color:var(--color-accent)]'
+                : 'border-[color:var(--color-accent)]'
               : ''
           }`}
         >
-          {/* Tutor avatar */}
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl font-bold text-sm transition-all"
-            style={{
-              background: selectedTutor
-                ? 'color-mix(in srgb, var(--color-accent) 18%, transparent)'
-                : isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-              border: selectedTutor
-                ? '1px solid color-mix(in srgb, var(--color-accent) 35%, transparent)'
-                : isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.08)',
-              color: selectedTutor ? 'var(--color-accent)' : isDark ? '#64748b' : '#94a3b8',
-            }}>
-            {selectedTutor ? (selectedTutor.full_name ?? '?').charAt(0).toUpperCase() : <User className="h-4 w-4" />}
-          </div>
+          <User className={`h-4 w-4 shrink-0 ${selectedTutor ? '' : (isDark ? 'text-slate-500' : 'text-slate-400')}`} style={selectedTutor ? { color: 'var(--color-accent)' } : undefined} />
 
           {/* Name / placeholder */}
           <div className="min-w-0 flex-1">
@@ -370,7 +352,7 @@ export default function TutorsPaymentsPage() {
 
           {/* Count badge + chevron */}
           <div className="flex shrink-0 items-center gap-2.5">
-            <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-bold tabular-nums ${isDark ? 'border-slate-700/60 bg-slate-800/60 text-slate-400' : 'border-slate-200 bg-slate-100 text-slate-500'}`}>
+            <span className={`rounded-md border px-2.5 py-0.5 text-[10px] font-bold tabular-nums ${isDark ? 'border-slate-700/60 bg-slate-800/60 text-slate-400' : 'border-slate-200 bg-slate-100 text-slate-500'}`}>
               {tutors.length}
             </span>
             <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${dropOpen ? 'rotate-180' : ''} ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
@@ -379,10 +361,8 @@ export default function TutorsPaymentsPage() {
 
         {/* Dropdown panel */}
         {dropOpen && (
-          <div className={`dropdown-animate absolute left-0 right-0 top-[calc(100%+8px)] overflow-hidden rounded-2xl shadow-2xl ${
-            isDark
-              ? 'border border-slate-700/60 bg-slate-900/95 backdrop-blur-xl ring-1 ring-white/[0.05]'
-              : 'border border-slate-200 bg-white ring-1 ring-slate-900/5'
+          <div className={`dropdown-animate absolute left-0 right-0 top-[calc(100%+6px)] overflow-hidden rounded-xl border shadow-md ${
+            isDark ? 'border-slate-700/60 bg-slate-900' : 'border-slate-200 bg-white'
           }`}>
 
             {/* Search */}
@@ -394,10 +374,10 @@ export default function TutorsPaymentsPage() {
                   value={dropSearch}
                   onChange={e => setDropSearch(e.target.value)}
                   placeholder="Αναζήτηση καθηγητή…"
-                  className={`h-9 w-full rounded-xl pl-9 pr-8 text-xs outline-none transition-all ${
+                  className={`h-9 w-full rounded-lg pl-9 pr-8 text-xs outline-none transition-all ${
                     isDark
-                      ? 'border border-slate-700/50 bg-slate-800/70 text-slate-100 placeholder-slate-500 focus:border-[color:var(--color-accent)]/60 focus:ring-1 focus:ring-[color:var(--color-accent)]/20'
-                      : 'border border-slate-200 bg-slate-50 text-slate-800 placeholder-slate-400 focus:border-[color:var(--color-accent)]/50 focus:bg-white'
+                      ? 'border border-slate-700/50 bg-slate-800/70 text-slate-100 placeholder-slate-500 focus:border-[color:var(--color-accent)]'
+                      : 'border border-slate-200 bg-slate-50 text-slate-800 placeholder-slate-400 focus:border-[color:var(--color-accent)] focus:bg-white'
                   }`}
                 />
                 {dropSearch && (
@@ -410,7 +390,7 @@ export default function TutorsPaymentsPage() {
             </div>
 
             {/* List */}
-            <div className="tutor-dropdown-list max-h-64 overflow-y-auto py-1.5">
+            <div className={`tutor-dropdown-list max-h-64 overflow-y-auto ${isDark ? 'divide-y divide-slate-800/60' : 'divide-y divide-slate-100'}`}>
               {filteredTutors.length === 0 && (
                 <div className={`px-4 py-6 text-center text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Δεν βρέθηκαν αποτελέσματα.</div>
               )}
@@ -422,20 +402,11 @@ export default function TutorsPaymentsPage() {
                     key={t.id}
                     type="button"
                     onClick={() => { setSelectedTutorId(t.id); setDropOpen(false); setDropSearch(''); }}
-                    className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors ${
-                      active
-                        ? isDark ? 'bg-white/[0.07]' : 'bg-slate-50'
-                        : isDark ? 'hover:bg-white/[0.04]' : 'hover:bg-slate-50/80'
+                    className={`relative flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors ${
+                      isDark ? 'hover:bg-blue-500/[0.12]' : 'hover:bg-blue-50'
                     }`}
                   >
-                    {/* Avatar initial */}
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold transition-all"
-                      style={active
-                        ? { background: 'var(--color-accent)', color: 'var(--color-input-bg)' }
-                        : { background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)', color: isDark ? '#64748b' : '#94a3b8' }
-                      }>
-                      {(t.full_name ?? '?').charAt(0).toUpperCase()}
-                    </div>
+                    {active && <span className="absolute inset-y-0 left-0 w-[3px]" style={{ background: 'var(--color-accent)' }} />}
 
                     <div className="min-w-0 flex-1">
                       <div className={`text-xs font-semibold leading-tight ${active ? (isDark ? 'text-slate-50' : 'text-slate-900') : (isDark ? 'text-slate-200' : 'text-slate-700')}`}>
@@ -471,16 +442,15 @@ export default function TutorsPaymentsPage() {
           {/* ════════════════════════════════════════════════════════
               CARD 1 — BASE PAY + BONUS
           ════════════════════════════════════════════════════════ */}
-          <div className={cardCls}>
-            {/* Header */}
-            <div className={`flex shrink-0 items-center justify-between px-5 py-3 border-b ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
+          <div>
+            {/* Header — accent underline, no card chrome */}
+            <div className="flex shrink-0 items-center justify-between pb-3" style={{ borderBottom: '2px solid var(--color-accent)' }}>
               <div className="flex items-center gap-2.5">
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg"
-                  style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
-                  <HandCoins className="h-3.5 w-3.5" style={{ color: 'var(--ch-icon)' }} />
+                <HandCoins className="h-5 w-5" style={{ color: 'var(--color-accent)' }} />
+                <div className="flex items-baseline gap-1.5">
+                  <span className={`text-sm font-bold ${isDark ? 'text-white' : 'text-black'}`}>{selectedTutor.full_name ?? '—'}</span>
+                  <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>· Αμοιβή & Μπόνους</span>
                 </div>
-                <span className={`text-sm font-bold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{selectedTutor.full_name ?? '—'}</span>
-                <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>· Αμοιβή & Μπόνους</span>
               </div>
               <button type="button" onClick={saveBasePay} disabled={busy}
                 className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all disabled:opacity-50 ${
@@ -491,12 +461,12 @@ export default function TutorsPaymentsPage() {
               </button>
             </div>
 
-            <div className="space-y-6 px-5 pt-5 pb-6">
+            <div className="space-y-6 pt-5">
 
               {/* ── Base pay ── */}
               <div>
                 <SectionDivider label="Βασική Αμοιβή" />
-                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
                     <FieldLabel>Καθαρά</FieldLabel>
                     <div className="relative">
@@ -509,12 +479,6 @@ export default function TutorsPaymentsPage() {
                     <div className="relative">
                       <input value={baseGross} onChange={e => setBaseGross(clampNumber(e.target.value))} className={inputCls} inputMode="decimal" />
                       <span className={`pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{CURRENCY_SYMBOL}</span>
-                    </div>
-                  </div>
-                  <div>
-                    <FieldLabel>Νόμισμα</FieldLabel>
-                    <div className={`flex h-10 items-center gap-2 rounded-xl border px-3.5 text-sm font-semibold ${isDark ? 'border-slate-700/50 bg-slate-900/50 text-slate-400' : 'border-slate-200 bg-slate-50 text-slate-500'}`}>
-                      <Euro className="h-3.5 w-3.5" />{CURRENCY_SYMBOL} EUR
                     </div>
                   </div>
                 </div>

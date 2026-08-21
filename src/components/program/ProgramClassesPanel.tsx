@@ -53,7 +53,7 @@ function DayPicker({ classId, isDark, onAddSlot }: {
         type="button"
         onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
         title="Προσθήκη σε μέρα"
-        className={`flex h-6 items-center gap-1 rounded-md border px-2 text-[10px] font-medium transition ${
+        className={`flex h-6 items-center gap-1 rounded-md border pl-2 pr-1.5 text-[10px] font-medium transition ${
           open
             ? isDark
               ? 'border-[color:var(--color-accent)]/50 bg-[color:var(--color-accent)]/10 text-[color:var(--color-accent)]'
@@ -63,15 +63,16 @@ function DayPicker({ classId, isDark, onAddSlot }: {
               : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-700'
         }`}
       >
-        <Plus className="h-2.5 w-2.5" />
+        <Plus className="h-2.5 w-2.5 shrink-0" />
         Μέρα
+        <ChevronDown className={`h-3 w-3 shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
-        <div className={`day-picker-animate absolute left-0 top-full z-50 mt-1.5 min-w-[110px] overflow-hidden rounded-xl border py-1 shadow-xl ${
+        <div className={`day-picker-animate absolute left-0 top-full z-50 mt-1.5 min-w-[110px] overflow-hidden rounded-xl border py-1 shadow-md ${
           isDark
-            ? 'border-slate-700/60 bg-slate-900 ring-1 ring-white/[0.06]'
-            : 'border-slate-200 bg-white ring-1 ring-slate-900/5'
+            ? 'border-slate-700/60 bg-slate-900'
+            : 'border-slate-200 bg-white'
         }`}>
           {DAY_OPTIONS.map((d) => (
             <button
@@ -101,64 +102,35 @@ export default function ProgramClassesPanel({
   const [open, setOpen] = useState(false);
 
   return (
-    <div
-      className={`overflow-hidden rounded-2xl border backdrop-blur-md transition-all duration-300 ${
-        open
-          ? isDark
-            ? 'bg-slate-950/40 shadow-sm ring-1 ring-inset ring-white/[0.04]'
-            : 'bg-white shadow-sm'
-          : isDark
-            ? 'bg-slate-900/30'
-            : 'bg-slate-50/80'
-      }`}
-      style={{ borderColor: open ? undefined : 'var(--color-accent)' }}
-    >
+    <div>
       <style>{PICKER_STYLE}</style>
 
-      {/* Header — always visible, click to toggle */}
+      {/* Header — dropdown-style trigger, click to toggle */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-all ${
-          open
-            ? 'hover:brightness-[1.04]'
-            : isDark
-              ? 'hover:bg-slate-800/60'
-              : 'hover:bg-slate-50'
-        }`}
-        style={
-          open
-            ? { background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }
-            : {}
-        }
+        className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all ${
+          isDark ? 'bg-slate-900 hover:border-slate-600/70' : 'bg-white hover:border-slate-300'
+        } ${open ? 'border-[color:var(--color-accent)]' : isDark ? 'border-slate-700/60' : 'border-slate-200'}`}
       >
-        <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg transition-all ${
-          open
-            ? ''
-            : isDark ? 'bg-slate-800 border border-slate-700' : 'bg-slate-100 border border-slate-200'
-        }`}
-          style={open ? { background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' } : {}}>
-          <BookOpen className={`h-3 w-3 transition-colors ${
-            open ? '' : isDark ? 'text-slate-400' : 'text-slate-500'
-          }`} style={open ? { color: 'var(--ch-icon)' } : {}} />
-        </div>
+        <BookOpen className={`h-4 w-4 shrink-0 ${open ? '' : isDark ? 'text-slate-500' : 'text-slate-400'}`}
+          style={open ? { color: 'var(--color-accent)' } : undefined} />
 
         <div className="flex-1 min-w-0">
-          <span className={`text-xs font-semibold transition-colors ${
-            open ? '' : isDark ? 'text-slate-300' : 'text-slate-600'
-          }`} style={open ? { color: 'var(--ch-text)' } : {}}>
+          <div className={`text-sm font-semibold leading-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>
             Διαθέσιμα τμήματα
-          </span>
-          <span className={`ml-2 text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+          </div>
+          <div className={`mt-0.5 text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
             {open ? 'Σύρετε ή επιλέξτε μέρα για προσθήκη' : 'Κλικ για ανάπτυξη'}
-          </span>
+          </div>
         </div>
 
-        <span className={`text-[10px] tabular-nums ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-          {filteredClasses.length} / {classes.length}
-        </span>
-
-        <ChevronDown className={`h-4 w-4 shrink-0 transition-transform duration-300 ${open ? 'rotate-180' : ''} ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+        <div className="flex shrink-0 items-center gap-2.5">
+          <span className={`rounded-md border px-2.5 py-0.5 text-[10px] font-bold tabular-nums ${isDark ? 'border-slate-700/60 bg-slate-800/60 text-slate-400' : 'border-slate-200 bg-slate-100 text-slate-500'}`}>
+            {filteredClasses.length} / {classes.length}
+          </span>
+          <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${open ? 'rotate-180' : ''} ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+        </div>
       </button>
 
       {/* Expandable body — smooth grid animation */}
@@ -167,7 +139,7 @@ export default function ProgramClassesPanel({
         style={{ display: 'grid', gridTemplateRows: open ? '1fr' : '0fr' }}
       >
         <div className="min-h-0">
-          <div className="p-4">
+          <div className="pt-4">
             {/* Search */}
             <div className="relative mb-4">
               <Search className={`pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
@@ -207,10 +179,10 @@ export default function ProgramClassesPanel({
                       draggable
                       onDragStart={() => onDragStart(cls.id)}
                       onDragEnd={() => onDragEnd(cls.id)}
-                      className={`group flex flex-col gap-2 rounded-xl border p-3 cursor-grab active:cursor-grabbing transition-all hover:shadow-sm active:scale-[0.97] ${
+                      className={`group flex flex-col gap-2 rounded-lg border px-3 py-2.5 cursor-grab active:cursor-grabbing transition-colors active:scale-[0.97] ${
                         isDark
-                          ? 'border-slate-700/50 bg-slate-900/50 hover:border-slate-600/70 hover:bg-slate-800/60'
-                          : 'border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white'
+                          ? 'border-slate-700/50 hover:bg-blue-500/[0.12]'
+                          : 'border-slate-200 hover:bg-blue-50'
                       }`}
                     >
                       {/* Top row: grip + title */}

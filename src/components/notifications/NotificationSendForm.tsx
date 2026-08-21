@@ -253,10 +253,6 @@ export function NotificationSendForm({
     ? 'w-full resize-none rounded-xl border border-slate-700/70 bg-slate-900/60 px-3.5 py-2.5 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-2 focus:ring-[color:var(--color-accent)]/20'
     : 'w-full resize-none rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-2 focus:ring-[color:var(--color-accent)]/15';
 
-  const cardCls = isDark
-    ? 'overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-2xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]'
-    : 'overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md';
-
   const labelCls = `text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`;
 
   const MODES: { value: RecipientMode; label: string; icon: React.ReactNode }[] = [
@@ -282,19 +278,16 @@ export function NotificationSendForm({
   };
 
   return (
-    <div className={cardCls}>
-      {/* Header */}
-      <div className="flex shrink-0 items-center gap-3 px-5 py-3" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg"
-          style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
-          <Send className="h-3.5 w-3.5" style={{ color: 'var(--ch-icon)' }} />
-        </div>
-        <span className="text-xs font-semibold" style={{ color: 'var(--ch-text)' }}>
+    <div>
+      {/* Header — accent underline, no card chrome */}
+      <div className="flex shrink-0 items-center gap-2.5 pb-3" style={{ borderBottom: '2px solid var(--color-accent)' }}>
+        <Send className="h-5 w-5" style={{ color: 'var(--color-accent)' }} />
+        <span className={`text-sm font-bold uppercase tracking-wide ${isDark ? 'text-white' : 'text-black'}`}>
           Νέα ειδοποίηση
         </span>
       </div>
 
-      <div className="space-y-4 p-5">
+      <div className="space-y-4 pt-5">
 
         {/* Title */}
         <div className="space-y-1.5">

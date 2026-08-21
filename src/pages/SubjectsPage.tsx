@@ -241,7 +241,7 @@ export default function SubjectsPage() {
         </div>
       )}
 
-      {/* ── Cards grid ── */}
+      {/* ── Subjects table ── */}
       <SubjectsGrid
         loading={loading}
         levels={levels}

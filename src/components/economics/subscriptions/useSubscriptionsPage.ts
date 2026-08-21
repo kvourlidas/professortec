@@ -79,15 +79,30 @@ async function buildViewRows(
     }
   }
 
-  // monthly-plan ranges (from which month until what month)
+  // monthly-plan ranges + fixed monthly price / discount (the plan's price never
+  // grows — only the accumulated `student_subscriptions.price` does, via the
+  // monthly charge-generation job)
   const planIds = [...new Set(subs.map(s => s.plan_id).filter((v): v is string => !!v))];
   const planRangeMap = new Map<string, { start_month: string; end_month: string }>();
+  const planInfoMap = new Map<string, import('./types').PlanInfo>();
   if (planIds.length > 0) {
     const { data: planData } = await supabase
       .from('student_subscription_plans')
-      .select('id,start_month,end_month')
+      .select('id,start_month,end_month,monthly_price,discount_mode,discount_value,discount_reason,discount_scope,discount_months')
       .in('id', planIds);
-    for (const p of (planData ?? []) as any[]) planRangeMap.set(p.id, { start_month: p.start_month, end_month: p.end_month });
+    for (const p of (planData ?? []) as any[]) {
+      planRangeMap.set(p.id, { start_month: p.start_month, end_month: p.end_month });
+      planInfoMap.set(p.id, {
+        start_month: p.start_month,
+        end_month: p.end_month,
+        monthly_price: Number(p.monthly_price ?? 0),
+        discount_mode: (p.discount_mode ?? 'none') as import('./types').DiscountMode,
+        discount_value: Number(p.discount_value ?? 0),
+        discount_reason: p.discount_reason ?? null,
+        discount_scope: (p.discount_scope ?? 'range') as import('./types').DiscountScope,
+        discount_months: Array.isArray(p.discount_months) ? p.discount_months as string[] : [],
+      });
+    }
   }
 
   return subs.map(sub => ({
@@ -99,6 +114,7 @@ async function buildViewRows(
     payments:    payMap.get(sub.id) ?? [],
     carriedDebt: carriedDebtMap.get(sub.student_id) ?? null,
     planRange:   sub.plan_id ? (planRangeMap.get(sub.plan_id) ?? null) : null,
+    plan:        sub.plan_id ? (planInfoMap.get(sub.plan_id) ?? null) : null,
   }));
 }
 
@@ -263,7 +279,8 @@ export function useSubscriptionsPage() {
 
   const loadActive = async () => {
     if (!schoolId) { setLoading(false); return; }
-    await supabase.rpc('run_subscription_expiry', { p_school_id: schoolId });
+    // Monthly charge generation / expiry runs from the student's card page only —
+    // this list shows the fixed plan price and shouldn't trigger new charges.
     setLoading(true);
     const from = (page - 1) * PAGE_SIZE, to = from + PAGE_SIZE - 1;
     const ids = await resolveStudentIds();
@@ -315,7 +332,6 @@ export function useSubscriptionsPage() {
   };
 
   const load = async () => {
-    if (schoolId) await supabase.rpc('run_subscription_expiry', { p_school_id: schoolId });
     await Promise.all([loadActive(), loadExpired()]);
   };
 

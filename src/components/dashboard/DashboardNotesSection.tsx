@@ -199,35 +199,27 @@ export default function DashboardNotesSection({ schoolId }: DashboardNotesSectio
     </div>
   );
 
-  const primary = isDark ? 'text-slate-50' : 'text-slate-900';
   const muted = isDark ? 'text-slate-500' : 'text-slate-400';
   const rule = isDark ? 'border-slate-800' : 'border-slate-100';
 
   return (
     <section className="flex flex-col flex-1">
-      {/* Elevated tile — real border + shadow lift, colored accent band up top, icon badge in header */}
-      <div className={`relative flex flex-col flex-1 overflow-hidden rounded-2xl border shadow-lg ${isDark ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white'}`}>
-        <div className="h-1 w-full shrink-0" style={{ background: 'var(--color-accent)' }} />
-
-        {/* Header */}
-        <div className={`flex shrink-0 items-center justify-between px-5 py-3.5 border-b ${rule}`}>
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
-              style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
-              <StickyNote className="h-4 w-4" style={{ color: 'var(--ch-icon)' }} />
-            </div>
-            <p className={`text-sm font-bold ${primary}`}>Σημειώσεις</p>
-          </div>
-          <span className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full px-2 text-[11px] font-bold tabular-nums ${
-            isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600'
-          }`}>
-            {notes.length}
-          </span>
+      {/* Header — accent underline, no card chrome */}
+      <div className="flex shrink-0 items-center justify-between pb-3" style={{ borderBottom: '2px solid var(--color-accent)' }}>
+        <div className="flex items-center gap-2.5">
+          <StickyNote className="h-5 w-5" style={{ color: 'var(--color-accent)' }} />
+          <p className={`text-sm font-bold uppercase tracking-wide ${isDark ? 'text-white' : 'text-black'}`}>Σημειώσεις</p>
         </div>
+        <span className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full px-2 text-[11px] font-bold tabular-nums ${
+          isDark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600'
+        }`}>
+          {notes.length}
+        </span>
+      </div>
 
-        {/* Compose */}
-        <div className="px-5 py-4">
-          <textarea
+      {/* Compose */}
+      <div className="pt-4">
+        <textarea
             className={`w-full resize-none rounded-xl border px-3.5 py-2.5 text-[13px] leading-relaxed outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 ${
               isDark
                 ? 'border-slate-700/70 bg-slate-950/50 text-slate-100 placeholder-slate-500 focus:border-[color:var(--color-accent)]'
@@ -288,8 +280,8 @@ export default function DashboardNotesSection({ schoolId }: DashboardNotesSectio
           </div>
         </div>
 
-        {/* Notes list — each note is its own tinted mini-card */}
-        <div className={`flex flex-col flex-1 min-h-0 border-t px-5 py-4 ${rule}`}>
+        {/* Notes list — flat divided rows, each with a colored left accent */}
+        <div className="flex flex-col flex-1 min-h-0 pt-4">
           {notesLoading ? (
             <div className="flex flex-1 items-center justify-center gap-2 py-6">
               <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
@@ -304,17 +296,17 @@ export default function DashboardNotesSection({ schoolId }: DashboardNotesSectio
             </div>
           ) : (
             <>
-              <div className="flex flex-1 min-h-0 flex-col gap-2 overflow-y-auto">
+              <div className={`flex flex-1 min-h-0 flex-col divide-y overflow-y-auto ${rule}`}>
                 {pageNotes.map((note) => {
                   const paletteOpenForThis = notePaletteOpenId === note.id;
                   return (
-                    <div key={note.id} className={`group relative overflow-hidden rounded-xl border p-2 ${isDark ? 'border-slate-800 bg-slate-950/40' : 'border-slate-100 bg-slate-50'}`}
+                    <div key={note.id} className={`group relative py-2.5 pl-3 pr-1 transition-colors ${isDark ? 'bg-amber-500/10 hover:bg-amber-500/15' : 'bg-amber-100/70 hover:bg-amber-100'}`}
                       style={{ borderLeftColor: note.color, borderLeftWidth: 3 }}>
                       <div className="flex items-start gap-2">
                         <div className="relative min-w-0 flex-1">
                           {note.is_urgent && (
                             <Pin
-                              className="pointer-events-none absolute -right-3 -top-1 z-0 h-20 w-20 rotate-[18deg]"
+                              className="pointer-events-none absolute -right-1.5 -top-0.5 z-0 h-11 w-11 rotate-[18deg]"
                               style={{ color: note.color, opacity: isDark ? 0.55 : 0.45 }}
                               strokeWidth={2.5}
                               fill={note.color}
@@ -402,7 +394,7 @@ export default function DashboardNotesSection({ schoolId }: DashboardNotesSectio
             </>
           )}
         </div>
-      </div>
     </section>
   );
 }
+

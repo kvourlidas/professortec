@@ -1,19 +1,10 @@
-import { AlertCircle, Briefcase, CheckCircle2, Plus, Search, X, XCircle } from 'lucide-react';
+import { Plus, Search, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useSubscriptionsPage } from '../../components/economics/subscriptions/useSubscriptionsPage';
 import { SubscriptionsTable } from '../../components/economics/subscriptions/SubscriptionsTable';
 import { AssignRenewModal } from '../../components/economics/subscriptions/AssignRenewModal';
 import { DeleteSubscriptionModal } from '../../components/economics/subscriptions/DeleteSubscriptionModal';
 import type { StudentViewRow } from '../../components/economics/subscriptions/types';
-
-type PayFilter = 'all' | 'settled' | 'owes' | 'unpaid';
-
-const FILTER_OPTIONS: { key: PayFilter; label: string; icon: React.ReactNode }[] = [
-  { key: 'all',     label: 'Όλες',         icon: <Briefcase className="h-3 w-3" /> },
-  { key: 'settled', label: 'Εξοφλημένο',   icon: <CheckCircle2 className="h-3 w-3" /> },
-  { key: 'owes',    label: 'Οφείλει',      icon: <AlertCircle className="h-3 w-3" /> },
-  { key: 'unpaid',  label: 'Ανεξόφλητο',   icon: <XCircle className="h-3 w-3" /> },
-];
 
 export default function StudentsSubscriptionsPage() {
   const p = useSubscriptionsPage();
@@ -31,28 +22,6 @@ export default function StudentsSubscriptionsPage() {
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-end">
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Payment filter */}
-            <div className={`flex items-center gap-0.5 rounded-xl border p-1 ${p.isDark ? 'border-slate-700/50 bg-slate-900/30' : 'border-slate-200 bg-slate-50'}`}>
-              {FILTER_OPTIONS.map(({ key, label, icon }) => {
-                const active = p.payFilter === key;
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => p.setPayFilter(key)}
-                    className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-                      active
-                        ? p.isDark ? 'bg-slate-800 shadow-sm' : 'bg-white shadow-sm'
-                        : p.isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'
-                    }`}
-                    style={active ? { color: 'var(--color-accent)' } : undefined}
-                  >
-                    <span style={active ? { color: 'var(--color-accent)' } : undefined}>{icon}</span>
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
             <div className="relative w-full sm:w-48">
               <Search className={`absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 pointer-events-none ${p.isDark ? 'text-slate-500' : 'text-slate-400'}`} />
               <input className={searchInputCls} placeholder="Αναζήτηση μαθητή..." value={p.search} onChange={e => p.setSearch(e.target.value)} />
@@ -87,25 +56,6 @@ export default function StudentsSubscriptionsPage() {
           isDark={p.isDark}
           packageById={p.packageById}
           onPageChange={p.setPage}
-          onOpenAssign={p.openAssign}
-          onGoToStudent={goToStudent}
-          onRenew={p.openRenew}
-          onDelete={p.setDeleteTarget}
-        />
-
-        {/* Expired / renewed subscriptions table */}
-        <SubscriptionsTable
-          variant="expired"
-          rows={p.expiredRows}
-          loading={p.expiredLoading}
-          totalCount={p.expiredTotalCount}
-          page={p.expiredPage}
-          pageCount={p.expiredPageCount}
-          showingFrom={p.expiredShowingFrom}
-          showingTo={p.expiredShowingTo}
-          isDark={p.isDark}
-          packageById={p.packageById}
-          onPageChange={p.setExpiredPage}
           onOpenAssign={p.openAssign}
           onGoToStudent={goToStudent}
           onRenew={p.openRenew}

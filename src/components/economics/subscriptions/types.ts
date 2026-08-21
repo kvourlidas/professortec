@@ -51,6 +51,16 @@ export type SubscriptionRow = {
   plan_id?: string | null;
   period_month?: string | null;
 };
+export type PlanInfo = {
+  start_month: string;
+  end_month: string;
+  monthly_price: number;
+  discount_mode: DiscountMode;
+  discount_value: number;
+  discount_reason: string | null;
+  discount_scope: DiscountScope;
+  discount_months: string[];
+};
 export type StudentViewRow = {
   student_id: string;
   student_name: string;
@@ -60,6 +70,7 @@ export type StudentViewRow = {
   payments: PaymentRow[];
   carriedDebt?: { amount: number; fromName: string } | null;
   planRange?: { start_month: string; end_month: string } | null;
+  plan?: PlanInfo | null;
 };
 export type SubModal = {
   pkgId: string;

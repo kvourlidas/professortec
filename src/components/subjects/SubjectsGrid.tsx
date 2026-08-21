@@ -32,7 +32,7 @@ export default function SubjectsGrid({
 }: SubjectsGridProps) {
   const [tutorsModal, setTutorsModal] = useState<{ id: string; name: string } | null>(null);
 
-  // group filtered subjects by level_id
+  // group filtered subjects by level_id — same order as before (by level, then no-level)
   const levelIds = levels.map((l) => l.id);
   const subjectsByLevel = new Map<string, SubjectRow[]>();
   const noLevel: SubjectRow[] = [];
@@ -52,9 +52,13 @@ export default function SubjectsGrid({
   // ── Loading skeleton ──
   if (loading) {
     return (
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className={`animate-pulse rounded-2xl border h-72 ${isDark ? 'border-slate-700/50 bg-slate-800/40' : 'border-slate-200 bg-slate-100'}`} />
+      <div className="space-y-3">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="flex items-center gap-4 px-1 py-3.5 animate-pulse">
+            <div className={`h-3 w-1/4 rounded-full ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`} />
+            <div className={`h-3 w-16 rounded-full ${isDark ? 'bg-slate-800/80' : 'bg-slate-200/80'}`} />
+            <div className={`h-3 w-24 rounded-full ${isDark ? 'bg-slate-800/60' : 'bg-slate-200/60'}`} />
+          </div>
         ))}
       </div>
     );
@@ -90,85 +94,53 @@ export default function SubjectsGrid({
     );
   }
 
-  const cardCls = `flex flex-col rounded-2xl border overflow-hidden transition-shadow hover:shadow-md ${
+  const groupHeaderCls = `flex items-center justify-between pb-2.5`;
+  const groupHeaderStyle: React.CSSProperties = { borderBottom: '2px solid var(--color-accent)' };
+  const groupTitleCls = `text-xs font-bold uppercase tracking-wide ${isDark ? 'text-white' : 'text-black'}`;
+  const rowDivideCls = isDark ? 'divide-y divide-slate-800/60' : 'divide-y divide-slate-200';
+  const rowHoverCls = isDark ? 'transition-colors hover:bg-blue-500/[0.12]' : 'transition-colors hover:bg-blue-50';
+  const editBtnCls = `flex h-6 w-6 items-center justify-center rounded-md border transition hover:scale-105 active:scale-95 ${
     isDark
-      ? 'border-slate-700/60 bg-slate-900/60 hover:border-slate-600/70'
-      : 'border-slate-200 bg-white hover:border-slate-300'
+      ? 'border-slate-700/60 text-slate-500 hover:bg-blue-900/30 hover:border-blue-700/50 hover:text-blue-400'
+      : 'border-slate-200 text-slate-400 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-500'
   }`;
-
-  const cardHeaderCls = `flex items-center justify-between gap-2 px-4 py-3.5 ${
-    isDark ? 'border-b border-slate-700/50' : 'border-b border-slate-100'
+  const deleteBtnCls = `flex h-6 w-6 items-center justify-center rounded-md border transition hover:scale-105 active:scale-95 ${
+    isDark
+      ? 'border-slate-700/60 text-slate-500 hover:bg-red-900/30 hover:border-red-700/50 hover:text-red-400'
+      : 'border-slate-200 text-slate-400 hover:bg-red-50 hover:border-red-200 hover:text-red-500'
   }`;
-
-  const subjectRowCls = `flex flex-col px-4 py-2.5 ${
-    isDark ? 'border-b border-slate-800/50' : 'border-b border-slate-100'
-  } last:border-b-0`;
+  const tutorsBtnCls = `flex h-6 w-6 items-center justify-center rounded-md border transition hover:scale-105 active:scale-95 ${
+    isDark
+      ? 'border-slate-700/60 text-slate-400 hover:bg-slate-800/50'
+      : 'border-slate-200 text-slate-500 hover:bg-slate-100'
+  }`;
 
   const renderSubjectRow = (subj: SubjectRow) => {
     const tutors = tutorsBySubject.get(subj.id) ?? [];
     return (
-      <div key={subj.id} className={subjectRowCls}>
-        {/* Subject name + actions */}
+      <div key={subj.id} className={`flex flex-col px-1 py-2.5 ${rowHoverCls}`}>
         <div className="flex items-center justify-between gap-2">
-          <span
-            className="text-xs font-semibold truncate"
-            style={{ color: 'var(--color-accent)' }}
-          >
+          <span className="truncate text-xs font-semibold" style={{ color: 'var(--color-accent)' }}>
             {subj.name}
           </span>
-          <div className="flex items-center gap-1 shrink-0">
-            {/* Tutors → opens modal (not shown for idiaiterou) */}
+          <div className="flex shrink-0 items-center gap-1">
             {!hideTutors && (
-              <button
-                type="button"
-                title="Καθηγητές"
-                onClick={() => setTutorsModal({ id: subj.id, name: subj.name })}
-                className={`flex h-6 w-6 items-center justify-center rounded-md border transition hover:scale-105 active:scale-95 ${
-                  isDark
-                    ? 'border-slate-700/60 text-slate-400 hover:bg-slate-800/50'
-                    : 'border-slate-200 text-slate-500 hover:bg-slate-100'
-                }`}
-              >
+              <button type="button" title="Καθηγητές" onClick={() => setTutorsModal({ id: subj.id, name: subj.name })} className={tutorsBtnCls}>
                 <Users className="h-3 w-3" />
               </button>
             )}
-            {/* Edit */}
-            <button
-              type="button"
-              title="Επεξεργασία"
-              onClick={() => onEditSubject(subj)}
-              className={`flex h-6 w-6 items-center justify-center rounded-md border transition hover:scale-105 active:scale-95 ${
-                isDark
-                  ? 'border-slate-700/60 text-slate-500 hover:bg-blue-900/30 hover:border-blue-700/50 hover:text-blue-400'
-                  : 'border-slate-200 text-slate-400 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-500'
-              }`}
-            >
+            <button type="button" title="Επεξεργασία" onClick={() => onEditSubject(subj)} className={editBtnCls}>
               <Pencil className="h-2.5 w-2.5" />
             </button>
-            {/* Delete */}
-            <button
-              type="button"
-              title="Διαγραφή"
-              onClick={() => onDeleteSubject(subj)}
-              className={`flex h-6 w-6 items-center justify-center rounded-md border transition hover:scale-105 active:scale-95 ${
-                isDark
-                  ? 'border-slate-700/60 text-slate-500 hover:bg-red-900/30 hover:border-red-700/50 hover:text-red-400'
-                  : 'border-slate-200 text-slate-400 hover:bg-red-50 hover:border-red-200 hover:text-red-500'
-              }`}
-            >
+            <button type="button" title="Διαγραφή" onClick={() => onDeleteSubject(subj)} className={deleteBtnCls}>
               <Trash2 className="h-2.5 w-2.5" />
             </button>
           </div>
         </div>
-
-        {/* Tutors — plain text (not shown for idiaiterou) */}
         {!hideTutors && tutors.length > 0 && (
           <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5">
             {tutors.map((t) => (
-              <span
-                key={t.id}
-                className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}
-              >
+              <span key={t.id} className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                 {t.full_name ?? 'Χωρίς όνομα'}
               </span>
             ))}
@@ -178,54 +150,40 @@ export default function SubjectsGrid({
     );
   };
 
+  const cellBorderCls = isDark ? 'border-slate-800' : 'border-slate-200';
+
   return (
     <>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 
-        {/* Level cards */}
+        {/* Level groups */}
         {visibleLevels.map((level) => {
           const levelSubjects = subjectsByLevel.get(level.id) ?? [];
           return (
-            <div key={level.id} className={cardCls}>
-              <div className={cardHeaderCls}>
-                <div className="flex items-center gap-2 min-w-0">
-                  <div
-                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg"
-                    style={{
-                      background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)',
-                      color: 'var(--color-accent)',
-                      border: '1px solid color-mix(in srgb, var(--color-accent) 25%, transparent)',
-                    }}
-                  >
-                    <Layers className="h-3 w-3" />
-                  </div>
-                  <p className={`text-sm font-semibold truncate ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>
-                    {level.name}
-                  </p>
-                </div>
+            <div key={level.id} className={`flex flex-col border-b border-r px-5 py-5 ${cellBorderCls}`}>
+              <div className={groupHeaderCls} style={groupHeaderStyle}>
+                <span className={groupTitleCls}>{level.name}</span>
                 <span className={`shrink-0 text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                   {levelSubjects.length} {levelSubjects.length === 1 ? 'μάθημα' : 'μαθήματα'}
                 </span>
               </div>
-              <div className="flex-1 overflow-y-auto">
+              <div className={rowDivideCls}>
                 {levelSubjects.map(renderSubjectRow)}
               </div>
             </div>
           );
         })}
 
-        {/* "No level" card */}
+        {/* "No level" group */}
         {noLevel.length > 0 && (
-          <div className={cardCls}>
-            <div className={cardHeaderCls}>
-              <p className={`text-sm font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                Χωρίς επίπεδο
-              </p>
+          <div className={`flex flex-col border-b border-r px-5 py-5 ${cellBorderCls}`}>
+            <div className={groupHeaderCls} style={groupHeaderStyle}>
+              <span className={groupTitleCls}>Χωρίς επίπεδο</span>
               <span className={`shrink-0 text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                 {noLevel.length} {noLevel.length === 1 ? 'μάθημα' : 'μαθήματα'}
               </span>
             </div>
-            <div className="flex-1 overflow-y-auto">
+            <div className={rowDivideCls}>
               {noLevel.map(renderSubjectRow)}
             </div>
           </div>

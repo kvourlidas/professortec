@@ -9,13 +9,13 @@ export default function DashboardPage() {
   const schoolId = profile?.school_id ?? null;
   const isFrontistirio = profile?.account_type === 'frontistirio';
   const quickActions = isFrontistirio
-    ? (['students', 'tutors', 'classes'] as const)
-    : (['students', 'tests'] as const);
+    ? (['students', 'tutors', 'classes', 'ai'] as const)
+    : (['students', 'tests', 'ai'] as const);
 
   return (
     <div className="space-y-6">
       {/* Row 1: Notes (compact) + Upcoming Sessions */}
-      <div className="grid gap-4 lg:grid-cols-2 lg:items-stretch [&>*]:flex [&>*]:flex-col">
+      <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch lg:gap-x-0 lg:divide-x divide-slate-200 dark:divide-slate-800 [&>*]:flex [&>*]:flex-col [&>*:first-child]:lg:pr-6 [&>*:last-child]:lg:pl-6">
         <DashboardNotesSection schoolId={schoolId} />
         <DashboardUpcomingSessionsSection schoolId={schoolId} />
       </div>

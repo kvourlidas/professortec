@@ -11,7 +11,7 @@ export default function GradesTable({ loading, grades, isDark }: GradesTableProp
   const skeletonDivideCls = 'space-y-3';
 
   const tbodyDivideCls = isDark ? 'divide-y divide-slate-800/60' : 'divide-y divide-slate-200';
-  const trHoverCls = isDark ? 'transition-colors hover:bg-slate-900/40' : 'transition-colors hover:bg-slate-50/80';
+  const trHoverCls = isDark ? 'transition-colors hover:bg-blue-500/[0.12]' : 'transition-colors hover:bg-blue-50';
   const colDivider = isDark ? 'border-r border-slate-800/60' : 'border-r border-slate-200';
 
   if (loading) {

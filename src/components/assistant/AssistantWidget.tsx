@@ -19,31 +19,11 @@ export default function AssistantWidget() {
           width: BUTTON_SIZE,
           height: BUTTON_SIZE,
           color: 'white',
-          background: 'radial-gradient(circle at 32% 26%, #FFB870 0%, #FF8A2E 32%, #D9600A 62%, #8A3C05 100%)',
-          boxShadow: [
-            '0 6px 14px rgba(138, 60, 5, 0.45)',
-            '0 2px 4px rgba(0, 0, 0, 0.2)',
-            'inset 0 -4px 7px rgba(80, 35, 0, 0.6)',
-            'inset 0 3px 4px rgba(255, 210, 160, 0.5)',
-          ].join(', '),
+          background: '#FF8A2E',
+          boxShadow: '0 4px 10px rgba(255, 138, 46, 0.35)',
         }}
       >
-        <span
-          className="pointer-events-none absolute rounded-full"
-          style={{
-            top: '12%',
-            left: '20%',
-            width: '38%',
-            height: '26%',
-            background: 'radial-gradient(ellipse at center, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0) 75%)',
-            filter: 'blur(1px)',
-          }}
-        />
-        <span
-          className="pointer-events-none absolute inset-0 rounded-full"
-          style={{ boxShadow: 'inset 0 0 8px rgba(0,0,0,0.15)' }}
-        />
-        <Bot className="relative h-5 w-5 drop-shadow-sm" />
+        <Bot className="h-5 w-5" />
       </button>
 
       {open && (

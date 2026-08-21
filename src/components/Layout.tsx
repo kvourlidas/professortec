@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { navItems, idiaiterouNavItems, type NavItem } from '../_nav';
 import { ChevronRight, ChevronLeft, Building2, User, HelpCircle } from 'lucide-react';
-import logoDark from '../assets/edra-primary-transparent-dark(PNG).png';
+import edraLogo from '../assets/edra-logo.png';
 import logoMark from '../assets/edra-logo-web_tab.svg';
 import TopBar from './TopBar.tsx';
 
@@ -249,12 +249,8 @@ export default function Layout({ children }: LayoutProps) {
               <img src={logoMark} alt="edra" className="h-8 w-8 rounded-lg" />
             </div>
           ) : (
-            <div style={{ height: '48px', overflow: 'hidden' }}>
-              <img
-                src={logoDark}
-                alt="edra"
-                style={{ height: '200px', width: 'auto', marginTop: '-78px' }}
-              />
+            <div className="flex items-center" style={{ height: '48px' }}>
+              <img src={edraLogo} alt="edra" className="h-11 w-auto object-contain" draggable={false} />
             </div>
           )}
         </div>

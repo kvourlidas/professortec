@@ -160,13 +160,9 @@ export default function PackageSubscriptionsPage() {
   const [deleteOpen,   setDeleteOpen]   = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
-  const pageCardCls = isDark
-    ? 'rounded-2xl border border-slate-700/50 bg-slate-950/40 shadow-xl backdrop-blur-md ring-1 ring-inset ring-white/[0.04]'
-    : 'rounded-2xl border border-slate-200 bg-white shadow-md';
-
-  const pkgCardCls = isDark
-    ? 'group relative rounded-xl border border-slate-800/60 bg-slate-900/30 transition-all hover:border-slate-700/60 hover:bg-slate-900/50'
-    : 'group relative rounded-xl border border-slate-200 bg-slate-50/80 transition-all hover:border-slate-300 hover:bg-white hover:shadow-sm';
+  const pkgRowCls = isDark
+    ? 'group relative transition-colors hover:bg-blue-500/[0.12]'
+    : 'group relative transition-colors hover:bg-blue-50';
 
   const smallInputCls = isDark
     ? 'rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-xs text-slate-100 outline-none transition focus:border-[color:var(--color-accent)]/70'
@@ -346,24 +342,30 @@ export default function PackageSubscriptionsPage() {
       )}
 
       {/* ── Package list ── */}
-      <div className={pageCardCls}>
-        <div className={`flex items-center justify-between px-5 py-3.5 ${isDark ? 'border-b border-slate-800/60 bg-slate-900/30' : 'border-b border-slate-200 bg-slate-50'}`}>
-          <span className={`text-xs font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Πακέτα</span>
+      <div>
+        {/* Header — accent underline, no card chrome */}
+        <div className="flex shrink-0 items-center justify-between pb-3" style={{ borderBottom: '2px solid var(--color-accent)' }}>
+          <div className="flex items-center gap-2.5">
+            <Package className="h-5 w-5" style={{ color: 'var(--color-accent)' }} />
+            <span className={`text-sm font-bold uppercase tracking-wide ${isDark ? 'text-white' : 'text-black'}`}>Πακέτα</span>
+          </div>
           {rows && (
-            <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${isDark ? 'border-slate-700/60 bg-slate-900/40 text-slate-400' : 'border-slate-200 bg-white text-slate-500'}`}>
+            <span className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
               {rows.length}
             </span>
           )}
         </div>
 
-        <div className="p-4">
+        <div className="pt-4">
           {loading ? (
             <div className={`flex items-center gap-2.5 py-8 text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
               <Loader2 className="h-4 w-4 animate-spin" style={{ color: 'var(--color-accent)' }} />Φόρτωση...
             </div>
           ) : (
             <div className="space-y-2.5">
-              {rows && rows.length > 0 && rows.map(r => {
+              {rows && rows.length > 0 && (
+              <div className={`divide-y ${isDark ? 'divide-slate-800/60' : 'divide-slate-100'}`}>
+              {rows.map(r => {
                 const colors = tc(r.package_type);
                 const dateExpanded = expandedDates.has(r.id);
                 const hasDateRange = !!(r.starts_on || r.ends_on);
@@ -419,15 +421,15 @@ export default function PackageSubscriptionsPage() {
                 }
 
                 return (
-                  <div key={r.id} className={pkgCardCls}>
-                    <div className="absolute left-0 top-3 bottom-3 w-0.5 rounded-full" style={{
+                  <div key={r.id} className={pkgRowCls}>
+                    <div className="absolute inset-y-0 left-0 w-[3px]" style={{
                       background: r.is_custom
-                        ? `${r.avatar_color}99`
-                        : r.package_type === 'monthly' ? 'rgba(167,139,250,0.5)'
-                        : 'rgba(251,191,36,0.5)',
+                        ? r.avatar_color
+                        : r.package_type === 'monthly' ? '#a78bfa'
+                        : '#fbbf24',
                     }} />
 
-                    <div className="flex items-center gap-3 p-4 pl-5">
+                    <div className="flex items-center gap-3 py-3 pl-4 pr-1">
                       {r.is_custom
                         ? <PackageAvatar name={r.name} color={r.avatar_color} />
                         : (
@@ -502,6 +504,8 @@ export default function PackageSubscriptionsPage() {
                   </div>
                 );
               })}
+              </div>
+              )}
 
               {/* ── Inline new package row ── */}
               {addOpen && (

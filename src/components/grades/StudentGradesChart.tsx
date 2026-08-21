@@ -41,15 +41,13 @@ const StudentGradesChart = ({ grades, loading }: Props) => {
   );
 
   // ── Theme tokens ──
-  const containerCls = isDark
-    ? 'mb-4 rounded-lg border border-slate-600 bg-slate-800/70 p-3'
-    : 'mb-4 rounded-lg border border-slate-200 bg-white p-3 shadow-sm';
+  const containerCls = '';
 
   const placeholderCls = isDark
-    ? 'mb-4 flex h-[220px] items-center justify-center rounded-lg border border-slate-600 bg-slate-800/60 text-xs text-slate-300'
-    : 'mb-4 flex h-[220px] items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-400';
+    ? 'flex h-[220px] items-center justify-center rounded-lg border border-dashed border-slate-700/50 text-xs text-slate-500'
+    : 'flex h-[220px] items-center justify-center rounded-lg border border-dashed border-slate-200 text-xs text-slate-400';
 
-  const titleCls = isDark ? 'text-[11px] font-medium text-slate-100' : 'text-[11px] font-medium text-slate-600';
+  const titleCls = `text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`;
 
   const gridColor = isDark ? '#4b5563' : '#e2e8f0';
   const axisTickColor = isDark ? '#e5e7eb' : '#64748b';

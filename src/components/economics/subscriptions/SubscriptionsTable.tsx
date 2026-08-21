@@ -86,9 +86,6 @@ export function SubscriptionsTable({
                 <th className={`px-4 pb-3 text-left text-xs font-bold uppercase tracking-wide ${colDivider} ${isDark ? 'text-white' : 'text-black'}`}>Πακετο</th>
                 <th className={`px-4 pb-3 text-left text-xs font-bold uppercase tracking-wide ${colDivider} ${isDark ? 'text-white' : 'text-black'}`}>Διαστημα</th>
                 <th className={`px-4 pb-3 text-right text-xs font-bold uppercase tracking-wide ${colDivider} ${isDark ? 'text-white' : 'text-black'}`}>Τιμη</th>
-                <th className={`px-4 pb-3 text-right text-xs font-bold uppercase tracking-wide ${colDivider} ${isDark ? 'text-white' : 'text-black'}`}>Πληρωθηκε</th>
-                <th className={`px-4 pb-3 text-right text-xs font-bold uppercase tracking-wide ${colDivider} ${isDark ? 'text-white' : 'text-black'}`}>Υπολοιπο</th>
-                <th className={`px-4 pb-3 text-left text-xs font-bold uppercase tracking-wide ${colDivider} ${isDark ? 'text-white' : 'text-black'}`}>Κατασταση</th>
                 <th className={`px-4 pb-3 text-right text-xs font-bold uppercase tracking-wide ${isDark ? 'text-white' : 'text-black'}`}>Ενεργειες</th>
               </tr>
             </thead>

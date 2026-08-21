@@ -1,7 +1,7 @@
-import { AlertCircle, CalendarDays, CheckCircle2, IdCard, RefreshCw, Tag, Trash2, XCircle } from 'lucide-react';
+import { AlertCircle, CalendarDays, IdCard, RefreshCw, Tag, Trash2 } from 'lucide-react';
 import { CURRENCY_SYMBOL, typeColors } from './constants';
 import { TypeIcon } from './TypeIcon';
-import { formatMonthRangeGreek, money, packageTypeFromName, periodSummary, resolvePackageType } from './utils';
+import { formatMonthRangeGreek, money, monthKeyList, packageTypeFromName, periodSummary, resolvePackageType, round2 } from './utils';
 import type { PackageRow, StudentViewRow } from './types';
 
 interface Props {
@@ -21,34 +21,77 @@ export function SubscriptionTableRow({ row, rowNumber, isDark, packageById, onGo
   const isCustom   = !!(pkg?.is_custom && pkg?.avatar_color);
   const pkgType    = packageTypeFromName(pkgName);
   const colors     = typeColors(pkgType, isDark);
-  const paid       = row.paid;
-  const billed     = Number((sub as any).charge_amount ?? sub.price ?? 0);
-  const balance    = Number(row.balance ?? 0);
-  const dispPrice  = Number(sub.price ?? billed);
+
+  // Price shown here is always the fixed starting price, never the accumulated
+  // (monthly-growing) total — that only shows on the student's card page.
+  let basePrice = Number(sub.price ?? 0);
+  let discountAmount = 0;
+  let discountLabel: string | null = null; // "10%" or "5.00 €", shown in its own unit
+  let discountReasonText = sub.discount_reason ?? null;
+  let partialMonths: { discounted: number; total: number } | null = null;
+
+  if (row.plan) {
+    basePrice = row.plan.monthly_price;
+    discountReasonText = row.plan.discount_reason ?? null;
+    if (row.plan.discount_mode === 'pct' && row.plan.discount_value > 0) {
+      discountAmount = round2(basePrice * (row.plan.discount_value / 100));
+      discountLabel = `${row.plan.discount_value}%`;
+    } else if (row.plan.discount_mode === 'amount' && row.plan.discount_value > 0) {
+      discountAmount = Math.min(basePrice, row.plan.discount_value);
+      discountLabel = `${money(discountAmount)} ${CURRENCY_SYMBOL}`;
+    }
+
+    if (discountLabel && row.plan.discount_scope === 'months') {
+      const totalMonths = monthKeyList(row.plan.start_month.slice(0, 7), row.plan.end_month.slice(0, 7)).length;
+      const discountedMonths = row.plan.discount_months.length;
+      if (discountedMonths > 0 && discountedMonths < totalMonths) partialMonths = { discounted: discountedMonths, total: totalMonths };
+    }
+  } else if (pkg && !isCustom) {
+    const pkgBase = Number(pkg.price ?? 0);
+    if (pkgBase > basePrice) {
+      discountAmount = round2(pkgBase - basePrice);
+      discountLabel = `${money(discountAmount)} ${CURRENCY_SYMBOL}`;
+      basePrice = pkgBase;
+    }
+  }
+  // Partial-month discounts don't apply to the whole plan, so the starting fee
+  // stays as the headline number — only the discount itself is called out.
+  const totalPrice = partialMonths ? basePrice : round2(Math.max(0, basePrice - discountAmount));
+
+  // For monthly plans, also total up the full subscription (same per-month
+  // logic the server uses to generate each month's charge).
+  let planMonthCount = 0;
+  let planTotal = 0;
+  if (row.plan) {
+    const plan = row.plan;
+    const months = monthKeyList(plan.start_month.slice(0, 7), plan.end_month.slice(0, 7));
+    planMonthCount = months.length;
+    const hasDiscount = plan.discount_mode !== 'none' && plan.discount_value > 0;
+    planTotal = round2(months.reduce((sum, key) => {
+      const applies = hasDiscount && (plan.discount_scope === 'range' || plan.discount_months.includes(key));
+      if (!applies) return sum + plan.monthly_price;
+      const discounted = plan.discount_mode === 'pct'
+        ? plan.monthly_price * (1 - plan.discount_value / 100)
+        : Math.max(0, plan.monthly_price - plan.discount_value);
+      return sum + discounted;
+    }, 0));
+  }
+
   const effectiveEndsOn = sub.ends_on ?? (isCustom ? (pkg?.ends_on ?? null) : null);
   const isExpired  = effectiveEndsOn ? new Date(effectiveEndsOn) < new Date() : false;
   // Monthly plans auto-charge every month, so manual renewal is retired for them.
   const resolvedType = pkg ? resolvePackageType(pkg) : pkgType;
   const canRenew   = resolvedType !== 'monthly';
 
-  const paidCls    = paid > 0 ? (isDark ? 'text-emerald-400' : 'text-emerald-600') : (isDark ? 'text-slate-400' : 'text-slate-400');
-  const balanceCls = balance > 0 ? (isDark ? 'text-amber-400' : 'text-amber-600') : (isDark ? 'text-emerald-400' : 'text-emerald-600');
-
-  const badge = paid <= 0 && billed > 0
-    ? { text: 'Ανεξόφλητο', cls: isDark ? 'border-red-500/40 bg-red-950/30 text-red-300' : 'border-red-300 bg-red-50 text-red-600', icon: <XCircle className="h-3 w-3" /> }
-    : balance > 0
-    ? { text: 'Υπόλοιπο',   cls: isDark ? 'border-amber-500/40 bg-amber-950/30 text-amber-300' : 'border-amber-300 bg-amber-50 text-amber-600', icon: <AlertCircle className="h-3 w-3" /> }
-    : { text: 'Εξοφλημένο', cls: isDark ? 'border-emerald-500/40 bg-emerald-950/30 text-emerald-300' : 'border-emerald-300 bg-emerald-50 text-emerald-700', icon: <CheckCircle2 className="h-3 w-3" /> };
-
   const colDivider = isDark ? 'border-r border-slate-800/60' : 'border-r border-slate-200';
 
   return (
     <tr key={`${row.student_id}-${sub.id}`} className={isDark ? 'transition-colors hover:bg-slate-900/40' : 'transition-colors hover:bg-slate-50/80'}>
 
-      <td className={`whitespace-nowrap px-4 py-3 align-middle tabular-nums ${colDivider} ${isDark ? 'text-slate-600' : 'text-slate-300'}`}>{rowNumber}</td>
+      <td className={`whitespace-nowrap px-4 py-4 align-middle tabular-nums ${colDivider} ${isDark ? 'text-slate-600' : 'text-slate-300'}`}>{rowNumber}</td>
 
       {/* Student */}
-      <td className={`px-4 py-3 align-middle ${colDivider}`}>
+      <td className={`px-4 py-4 align-middle ${colDivider}`}>
         <div className="flex flex-col gap-0.5">
           <span className={`font-medium ${isDark ? 'text-slate-100' : 'text-slate-700'}`}>{row.student_name}</span>
           {row.carriedDebt && (
@@ -61,7 +104,7 @@ export function SubscriptionTableRow({ row, rowNumber, isDark, packageById, onGo
       </td>
 
       {/* Package badge */}
-      <td className={`px-4 py-3 align-middle ${colDivider}`}>
+      <td className={`px-4 py-4 align-middle ${colDivider}`}>
         {isCustom ? (
           <span
             className="inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold"
@@ -78,40 +121,74 @@ export function SubscriptionTableRow({ row, rowNumber, isDark, packageById, onGo
       </td>
 
       {/* Period */}
-      <td className={`px-4 py-3 align-middle ${colDivider}`}>
+      <td className={`px-4 py-4 align-middle ${colDivider}`}>
         <span className={`inline-flex items-center gap-1.5 text-[11px] ${isExpired ? (isDark ? 'text-rose-400' : 'text-rose-600') : (isDark ? 'text-slate-400' : 'text-slate-500')}`}>
           <CalendarDays className="h-3 w-3 opacity-50 shrink-0" />
           {row.planRange ? formatMonthRangeGreek(row.planRange.start_month, row.planRange.end_month) : periodSummary(sub)}
         </span>
       </td>
 
-      <td className={`px-4 py-3 align-middle text-right ${colDivider}`}>
-        <span className={`text-[12px] tabular-nums ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
-          {money(dispPrice)} {CURRENCY_SYMBOL}
-        </span>
-        {sub.discount_reason && (
-          <div className={`mt-0.5 flex items-center justify-end gap-1 text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-            <Tag className="h-2.5 w-2.5 shrink-0" />
-            <span className="truncate max-w-[120px]">{sub.discount_reason}</span>
+      <td className={`px-4 py-4 align-middle text-right ${colDivider}`}>
+        {row.plan ? (
+          <>
+            {discountLabel && !partialMonths ? (
+              <>
+                <div className={`text-xs tabular-nums ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                  {money(basePrice)} {CURRENCY_SYMBOL} − {discountLabel}
+                </div>
+                <span className={`text-base font-bold tabular-nums ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+                  {money(totalPrice)} {CURRENCY_SYMBOL}
+                </span>
+              </>
+            ) : (
+              <span className={`text-sm font-semibold tabular-nums ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                {money(basePrice)} {CURRENCY_SYMBOL}
+              </span>
+            )}
+            <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}> /μήνα</span>
+            {partialMonths && discountLabel && (
+              <div className={`mt-1 text-xs font-medium ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
+                − {discountLabel} ({partialMonths.discounted}/{partialMonths.total} μήνες)
+              </div>
+            )}
+            {discountReasonText && (
+              <div className={`mt-1 flex items-center justify-end gap-1.5 text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                <Tag className="h-3 w-3 shrink-0" />
+                <span className="truncate max-w-[160px]">{discountReasonText}</span>
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            {discountLabel && (
+              <div className={`text-xs tabular-nums line-through ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
+                {money(basePrice)} {CURRENCY_SYMBOL}
+              </div>
+            )}
+            <span className={`text-base font-bold tabular-nums ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+              {money(discountLabel ? totalPrice : basePrice)} {CURRENCY_SYMBOL}
+            </span>
+            {(discountLabel || discountReasonText) && (
+              <div className={`mt-1 flex items-center justify-end gap-1.5 text-xs font-medium ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
+                <Tag className="h-3 w-3 shrink-0" />
+                {discountLabel && <span className="shrink-0 tabular-nums">− {discountLabel}</span>}
+                {discountReasonText && (
+                  <span className="truncate max-w-[150px]">{discountLabel ? `· ${discountReasonText}` : discountReasonText}</span>
+                )}
+              </div>
+            )}
+          </>
+        )}
+        {row.plan && planMonthCount > 0 && (
+          <div className={`mt-1.5 border-t pt-1.5 text-xs tabular-nums ${isDark ? 'border-slate-800 text-slate-400' : 'border-slate-200 text-slate-500'}`}>
+            Σύνολο ({planMonthCount} {planMonthCount === 1 ? 'μήνας' : 'μήνες'}):{' '}
+            <span className={`font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{money(planTotal)} {CURRENCY_SYMBOL}</span>
           </div>
         )}
       </td>
-      <td className={`px-4 py-3 align-middle text-right text-[12px] tabular-nums font-medium ${colDivider} ${paidCls}`}>
-        {money(paid)} {CURRENCY_SYMBOL}
-      </td>
-      <td className={`px-4 py-3 align-middle text-right text-[12px] tabular-nums font-medium ${colDivider} ${balanceCls}`}>
-        {money(balance)} {CURRENCY_SYMBOL}
-      </td>
-
-      {/* Status badge */}
-      <td className={`px-4 py-3 align-middle ${colDivider}`}>
-        <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium ${badge.cls}`}>
-          {badge.icon}{badge.text}
-        </span>
-      </td>
 
       {/* Actions */}
-      <td className="px-4 py-3 align-middle">
+      <td className="px-4 py-4 align-middle">
         <div className="flex items-center justify-end gap-1">
           {isExpired && canRenew && (
             <button type="button" onClick={() => onRenew(row)}

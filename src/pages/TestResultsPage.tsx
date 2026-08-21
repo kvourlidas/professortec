@@ -217,20 +217,25 @@ export default function TestResultsPage() {
     setSelectedRight(new Set());
   };
 
-  // ── Style helpers ──
-  const cardCls = `overflow-hidden rounded-2xl border shadow-sm ${
-    isDark ? 'border-slate-700/50 bg-slate-950/40' : 'border-slate-200 bg-white'
-  }`;
+  // ── Style helpers — flat, no cards: accent-underline headers + hairline dividers ──
+  const colHeaderCls = 'px-1 pb-3 pt-1';
+  const colHeaderStyle: React.CSSProperties = { borderBottom: '2px solid var(--color-accent)' };
+  const colHeaderLabelCls = `text-xs font-bold uppercase tracking-wide ${isDark ? 'text-white' : 'text-black'}`;
 
-  const colCls = `flex flex-col overflow-hidden rounded-xl border ${
-    isDark ? 'border-slate-700/50 bg-slate-900/30' : 'border-slate-200 bg-slate-50'
-  }`;
+  const sectionTitleRowCls = 'flex items-center gap-2.5';
+  const sectionIconCls = 'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg';
+  const sectionIconStyle: React.CSSProperties = {
+    background: 'color-mix(in srgb, var(--color-accent) 12%, transparent)',
+    color: 'var(--color-accent)',
+  };
+  const sectionTitleCls = `text-sm font-semibold ${isDark ? 'text-slate-100' : 'text-slate-800'}`;
+  const sectionSubtitleCls = `mt-0.5 text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`;
+  const sectionDividerCls = `h-px w-full ${isDark ? 'bg-slate-800/70' : 'bg-slate-200'}`;
+  const colDivideCls = isDark ? 'divide-slate-800' : 'divide-slate-200';
 
-  const colHeaderCls = `border-b px-4 py-3 ${
-    isDark ? 'border-slate-800/70' : 'border-slate-200 bg-slate-100'
-  }`;
   const checkboxStyle: React.CSSProperties = { accentColor: 'var(--color-accent)', cursor: 'pointer' };
-  const rowCls = `flex items-center gap-2.5 px-4 py-2.5 transition cursor-pointer select-none ${isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-slate-100/60'}`;
+  const rowCls = `flex items-center gap-2.5 px-1 py-2.5 transition cursor-pointer select-none ${isDark ? 'hover:bg-blue-500/[0.12]' : 'hover:bg-blue-50'}`;
+  const rowHoverCls = isDark ? 'hover:bg-blue-500/[0.12]' : 'hover:bg-blue-50';
 
   const searchBoxCls = `flex items-center gap-1.5 rounded-lg border px-2 py-1 ${
     isDark ? 'border-slate-700/60 bg-slate-900/60' : 'border-slate-200 bg-white'
@@ -294,51 +299,49 @@ export default function TestResultsPage() {
         </div>
       </div>
 
-      {/* Test info card */}
-      <div className={cardCls}>
-        <div className="flex shrink-0 items-center gap-2 px-5 py-3" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg"
-            style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
-            <ClipboardList className="h-3.5 w-3.5" style={{ color: 'var(--ch-icon)' }} />
+      {/* Test info */}
+      <div className="space-y-5">
+        <div className={sectionTitleRowCls}>
+          <div className={sectionIconCls} style={sectionIconStyle}>
+            <ClipboardList className="h-4 w-4" />
           </div>
-          <h2 className="text-sm font-semibold" style={{ color: 'var(--ch-text)' }}>
+          <h2 className={sectionTitleCls}>
             {test.title || (isPrivateTest ? 'Διαγώνισμα' : `${test.subjectName} — ${test.classTitle}`)}
           </h2>
         </div>
-        <div className="p-5">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {(isPrivateTest ? [
-              { icon: <Calendar className="h-3.5 w-3.5" />, label: 'Ημερομηνία', value: test.dateDisplay },
-              { icon: <Clock className="h-3.5 w-3.5" />, label: 'Ώρα', value: test.timeRange || '—' },
-              { icon: <Users className="h-3.5 w-3.5" />, label: 'Μαθητές', value: loadingStudents ? 'Φόρτωση...' : (allAssignedStudents.map((s) => s.full_name).join(', ') || '—') },
-            ] : [
-              { icon: <Calendar className="h-3.5 w-3.5" />, label: 'Ημερομηνία', value: test.dateDisplay },
-              { icon: <Clock className="h-3.5 w-3.5" />, label: 'Ώρα', value: test.timeRange || '—' },
-              { icon: <BookOpen className="h-3.5 w-3.5" />, label: 'Τμήμα', value: test.classTitle },
-              { icon: <Tag className="h-3.5 w-3.5" />, label: 'Μάθημα', value: test.subjectName },
-            ]).map(({ icon, label, value }) => (
-              <div key={label} className={`rounded-xl border p-3 ${isDark ? 'border-slate-700/50 bg-slate-900/40' : 'border-slate-200 bg-slate-50'}`}>
-                <div className={`mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                  <span style={{ color: 'var(--color-accent)', opacity: 0.7 }}>{icon}</span>
-                  {label}
-                </div>
-                <p className={`text-sm font-medium ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{value}</p>
+        <div className={`grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-4 sm:divide-x ${colDivideCls}`}>
+          {(isPrivateTest ? [
+            { icon: <Calendar className="h-3.5 w-3.5" />, label: 'Ημερομηνία', value: test.dateDisplay },
+            { icon: <Clock className="h-3.5 w-3.5" />, label: 'Ώρα', value: test.timeRange || '—' },
+            { icon: <Users className="h-3.5 w-3.5" />, label: 'Μαθητές', value: loadingStudents ? 'Φόρτωση...' : (allAssignedStudents.map((s) => s.full_name).join(', ') || '—') },
+          ] : [
+            { icon: <Calendar className="h-3.5 w-3.5" />, label: 'Ημερομηνία', value: test.dateDisplay },
+            { icon: <Clock className="h-3.5 w-3.5" />, label: 'Ώρα', value: test.timeRange || '—' },
+            { icon: <BookOpen className="h-3.5 w-3.5" />, label: 'Τμήμα', value: test.classTitle },
+            { icon: <Tag className="h-3.5 w-3.5" />, label: 'Μάθημα', value: test.subjectName },
+          ]).map(({ icon, label, value }, i) => (
+            <div key={label} className={`flex flex-col gap-1.5 ${i > 0 ? 'sm:pl-6' : ''}`}>
+              <div className={`flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                <span style={{ color: 'var(--color-accent)', opacity: 0.8 }}>{icon}</span>
+                {label}
               </div>
-            ))}
-          </div>
+              <p className={`text-sm font-semibold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>{value}</p>
+            </div>
+          ))}
         </div>
       </div>
 
+      <div className={sectionDividerCls} />
+
       {/* Grade entry section */}
-      <div className={cardCls}>
-        <div className="flex shrink-0 items-center gap-3 px-5 py-3" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg"
-            style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
-            <Users className="h-3.5 w-3.5" style={{ color: 'var(--ch-icon)' }} />
+      <div className="space-y-5">
+        <div className={sectionTitleRowCls}>
+          <div className={sectionIconCls} style={sectionIconStyle}>
+            <Users className="h-4 w-4" />
           </div>
           <div>
-            <h2 className="text-xs font-semibold" style={{ color: 'var(--ch-text)' }}>Καταχώρηση βαθμών</h2>
-            <p className="text-[11px]" style={{ color: 'var(--ch-text-muted)' }}>
+            <h2 className={sectionTitleCls}>Καταχώρηση βαθμών</h2>
+            <p className={sectionSubtitleCls}>
               {isPrivateTest ? 'Συμπλήρωσε τον βαθμό για κάθε μαθητή του διαγωνίσματος.' : 'Μετακίνησε μαθητές στα δεξιά και συμπλήρωσε τους βαθμούς τους.'}
             </p>
           </div>
@@ -349,7 +352,7 @@ export default function TestResultsPage() {
             <Loader2 className="h-4 w-4 animate-spin" />Φόρτωση μαθητών...
           </div>
         ) : (
-          <div className="p-5 space-y-4">
+          <div className="space-y-5">
             {/* Error */}
             {error && (
               <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-950/40 px-3.5 py-2.5 text-xs text-amber-200">
@@ -358,10 +361,10 @@ export default function TestResultsPage() {
             )}
 
             {isPrivateTest ? (
-              <div className={colCls}>
-                <div className={colHeaderCls}>
+              <div className="flex flex-col">
+                <div className={colHeaderCls} style={colHeaderStyle}>
                   <div className="flex items-center gap-2">
-                    <span className={`text-xs font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Μαθητές διαγωνίσματος</span>
+                    <span className={colHeaderLabelCls}>Μαθητές διαγωνίσματος</span>
                     {allAssignedStudents.length > 0 && (
                       <span className="rounded-full px-1.5 py-px text-[10px] tabular-nums"
                         style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', color: 'var(--color-accent)' }}>
@@ -372,12 +375,12 @@ export default function TestResultsPage() {
                 </div>
                 <div className={dividerCls}>
                   {allAssignedStudents.length === 0
-                    ? <p className={`px-4 py-5 text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Δεν έχουν ανατεθεί μαθητές σε αυτό το διαγώνισμα. Επεξεργαστείτε το από τη σελίδα «Διαγωνίσματα».</p>
+                    ? <p className={`px-1 py-5 text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Δεν έχουν ανατεθεί μαθητές σε αυτό το διαγώνισμα. Επεξεργαστείτε το από τη σελίδα «Διαγωνίσματα».</p>
                     : allAssignedStudents.map((s) => {
                       const info = gradeByStudent[s.id] ?? { grade: '' };
                       const subjectName = info.subjectId ? subjectNameById.get(info.subjectId) : null;
                       return (
-                        <div key={s.id} className={`flex items-center gap-3 px-4 py-2.5 ${isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-slate-100/60'}`}>
+                        <div key={s.id} className={`flex items-center gap-3 px-1 py-2.5 transition-colors ${rowHoverCls}`}>
                           <div className="min-w-0 flex-1">
                             <p className={`truncate text-[13px] ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{s.full_name}</p>
                             {subjectName && <p className={`truncate text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{subjectName}</p>}
@@ -397,12 +400,12 @@ export default function TestResultsPage() {
                 </div>
               </div>
             ) : (
-            <div className="grid gap-4 lg:grid-cols-2">
+            <div className={`grid gap-6 lg:grid-cols-2 lg:gap-x-0 lg:divide-x ${colDivideCls}`}>
               {/* Left: all students */}
-              <div className={colCls}>
-                <div className={colHeaderCls}>
+              <div className="flex flex-col lg:pr-6">
+                <div className={colHeaderCls} style={colHeaderStyle}>
                   <div className="flex items-center justify-between">
-                    <span className={`text-xs font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                    <span className={colHeaderLabelCls}>
                       Όλοι οι μαθητές
                       {availableStudents.length > 0 && (
                         <span className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] tabular-nums ${isDark ? 'bg-slate-800 text-slate-500' : 'bg-slate-200 text-slate-500'}`}>
@@ -439,7 +442,7 @@ export default function TestResultsPage() {
                 </div>
                 <div className={`flex-1 overflow-y-auto ${dividerCls}`} style={{ maxHeight: 320 }}>
                   {availableStudents.length === 0
-                    ? <p className={`px-4 py-5 text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Δεν υπάρχουν διαθέσιμοι μαθητές.</p>
+                    ? <p className={`px-1 py-5 text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Δεν υπάρχουν διαθέσιμοι μαθητές.</p>
                     : availableStudents.map((s) => (
                       <div key={s.id} className={rowCls} onClick={() => !saving && toggleLeft(s.id)}>
                         <input
@@ -458,10 +461,10 @@ export default function TestResultsPage() {
               </div>
 
               {/* Right: assigned with grades */}
-              <div className={colCls}>
-                <div className={colHeaderCls}>
+              <div className="flex flex-col lg:pl-6">
+                <div className={colHeaderCls} style={colHeaderStyle}>
                   <div className="flex items-center justify-between">
-                    <span className={`text-xs font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                    <span className={colHeaderLabelCls}>
                       Έγραψαν
                       {assignedIds.size > 0 && (
                         <span className="ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] tabular-nums"
@@ -499,11 +502,11 @@ export default function TestResultsPage() {
                 </div>
                 <div className={`flex-1 overflow-y-auto ${dividerCls}`} style={{ maxHeight: 320 }}>
                   {assignedStudents.length === 0
-                    ? <p className={`px-4 py-5 text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Δεν έχουν επιλεγεί μαθητές ακόμα.</p>
+                    ? <p className={`px-1 py-5 text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Δεν έχουν επιλεγεί μαθητές ακόμα.</p>
                     : assignedStudents.map((s) => {
                       const info = gradeByStudent[s.id] ?? { grade: '' };
                       return (
-                        <div key={s.id} className={`flex items-center gap-2 px-4 py-2.5 ${isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-slate-100/60'}`}>
+                        <div key={s.id} className={`flex items-center gap-2 px-1 py-2.5 transition-colors ${rowHoverCls}`}>
                           <input
                             type="checkbox"
                             className="h-3.5 w-3.5 shrink-0 rounded"
@@ -531,7 +534,7 @@ export default function TestResultsPage() {
             )}
 
             {/* Save bar */}
-            <div className={`flex items-center justify-between rounded-xl border px-4 py-3 ${isDark ? 'border-slate-700/50 bg-slate-900/40' : 'border-slate-200 bg-slate-50'}`}>
+            <div className={`flex items-center justify-between border-t pt-4 ${isDark ? 'border-slate-800/70' : 'border-slate-200'}`}>
               <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                 {assignedIds.size} μαθητές επιλέχθηκαν
               </p>
