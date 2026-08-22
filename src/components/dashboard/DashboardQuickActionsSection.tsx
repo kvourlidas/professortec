@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../context/ThemeContext';
 import { ChevronRight, GraduationCap, UserCog, BookOpen, ClipboardList, Bot, Loader2 } from 'lucide-react';
 import AssistantChat from '../assistant/AssistantChat';
+import kikaImg from '../../assets/kika-avatar.png';
 
 type ActionKey = 'students' | 'tutors' | 'classes' | 'tests' | 'ai';
 type CountedActionKey = Exclude<ActionKey, 'ai'>;
@@ -18,7 +19,7 @@ const ACTION_DEFS: Record<ActionKey, { label: string; path: string; icon: typeof
   tutors: { label: 'Καθηγητές', path: '/tutors', icon: UserCog, accent: '#8b5cf6' },
   classes: { label: 'Τμήματα', path: '/classes', icon: BookOpen, accent: '#14b8a6' },
   tests: { label: 'Διαγωνίσματα', path: '/program/tests', icon: ClipboardList, accent: '#f43f5e' },
-  ai: { label: 'Vela', path: '', icon: Bot, accent: '#FF8A2E' },
+  ai: { label: 'Kika', path: '', icon: Bot, accent: '#FF8A2E' },
 };
 
 async function fetchCount(key: CountedActionKey, schoolId: string): Promise<number> {
@@ -83,7 +84,11 @@ export default function DashboardQuickActionsSection({ schoolId, actions }: Prop
               style={{ background: accent }}
             >
               <div className="flex min-w-0 items-center gap-4">
-                <Icon className="h-10 w-10 shrink-0 text-white" />
+                {isAi ? (
+                  <img src={kikaImg} alt="Kika" className="h-16 w-16 shrink-0 rounded-full object-cover" />
+                ) : (
+                  <Icon className="h-10 w-10 shrink-0 text-white" />
+                )}
                 <div className="min-w-0">
                   <p className="truncate text-lg font-bold leading-none text-white">{label}</p>
                   {isAi ? (

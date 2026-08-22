@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Bot } from 'lucide-react';
 import AssistantChat from './AssistantChat.tsx';
+import kikaImg from '../../assets/kika-avatar.png';
 
 const BUTTON_SIZE = 44;
 
@@ -12,18 +12,17 @@ export default function AssistantWidget() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label="Άνοιγμα Vela, του AI βοηθού"
-        title="Vela — AI Βοηθός"
-        className="relative flex shrink-0 items-center justify-center rounded-full transition-transform hover:scale-105 active:scale-95"
+        aria-label="Άνοιγμα Kika, του AI βοηθού"
+        title="Kika — AI Βοηθός"
+        className="relative flex shrink-0 items-center justify-center overflow-hidden rounded-full transition-transform hover:scale-105 active:scale-95"
         style={{
           width: BUTTON_SIZE,
           height: BUTTON_SIZE,
-          color: 'white',
           background: '#FF8A2E',
           boxShadow: '0 4px 10px rgba(255, 138, 46, 0.35)',
         }}
       >
-        <Bot className="h-5 w-5" />
+        <img src={kikaImg} alt="Kika" className="h-full w-full object-cover" />
       </button>
 
       {open && (

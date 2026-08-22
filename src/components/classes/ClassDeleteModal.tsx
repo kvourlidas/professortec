@@ -15,13 +15,14 @@ export default function ClassDeleteModal({ deleteTarget, deleting, isDark, onCan
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className={`relative w-full max-w-sm overflow-hidden rounded-2xl border shadow-2xl ${isDark ? 'border-slate-700/60 bg-slate-900' : 'border-slate-200 bg-white'}`}>
-        <div className="h-1 w-full bg-gradient-to-r from-red-600 via-red-500 to-rose-500" />
-        <div className="p-6">
-          <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/15 ring-1 ring-red-500/30">
+      <div className={`relative w-full max-w-sm overflow-hidden rounded-2xl border shadow-2xl ${isDark ? 'border-slate-700/60' : 'border-slate-200'}`} style={{ background: 'var(--color-sidebar)' }}>
+        <div className="px-6 py-4" style={{ borderBottom: '1px solid var(--ch-divider)' }}>
+          <div className="mb-1 flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/15 ring-1 ring-red-500/30">
             <School className="h-5 w-5 text-red-400" />
           </div>
-          <h3 className={`mb-1 text-sm font-semibold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Διαγραφή τμήματος</h3>
+          <h3 className="text-sm font-bold uppercase tracking-wide" style={{ color: 'var(--ch-text)' }}>Διαγραφή τμήματος</h3>
+        </div>
+        <div className="p-6">
           <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
             Σίγουρα θέλεις να διαγράψεις το τμήμα{' '}
             <span className={`font-semibold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>«{deleteTarget.title}»</span>;

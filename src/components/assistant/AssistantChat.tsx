@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
-import { Bot, Send, X, User, SquarePen } from 'lucide-react';
+import { Send, X, User, SquarePen } from 'lucide-react';
+import kikaImg from '../../assets/kika-avatar.png';
 import { supabase } from '../../lib/supabaseClient.ts';
 import { useTheme } from '../../context/ThemeContext.tsx';
 
@@ -152,9 +153,11 @@ export default function AssistantChat({ onClose }: Props) {
         style={{ background: 'linear-gradient(135deg, #FF6B00 0%, #FF9A3C 100%)' }}
       >
         <div className="flex items-center gap-2">
-          <Bot className="h-4 w-4 text-white" />
+          <div className="h-7 w-7 shrink-0 overflow-hidden rounded-full ring-2 ring-white/40">
+            <img src={kikaImg} alt="Kika" className="h-full w-full object-cover" />
+          </div>
           <div className="leading-tight">
-            <p className="text-sm font-semibold text-white">Vela</p>
+            <p className="text-sm font-semibold text-white">Kika</p>
             <p className="text-[10px] text-white/70">AI Βοηθός</p>
           </div>
         </div>
@@ -184,11 +187,11 @@ export default function AssistantChat({ onClose }: Props) {
       <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
         {messages.length === 0 && (
           <div className="flex flex-col items-center gap-3 px-2 py-6 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full" style={{ background: 'linear-gradient(135deg, #FF6B00 0%, #FF9A3C 100%)' }}>
-              <Bot className="h-6 w-6 text-white" />
+            <div className="h-20 w-20 overflow-hidden rounded-full" style={{ background: 'linear-gradient(135deg, #FF6B00 0%, #FF9A3C 100%)' }}>
+              <img src={kikaImg} alt="Kika" className="h-full w-full object-cover" />
             </div>
             <div className="space-y-1">
-              <p className={`text-sm font-semibold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>Γεια σου! Είμαι η Vela 👋</p>
+              <p className={`text-sm font-semibold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>Γεια σου! Είμαι η Kika 👋</p>
               <p className={`mx-auto max-w-[260px] text-xs leading-relaxed ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                 Πες μου τι χρειάζεσαι για το φροντιστήριο και θα σε βοηθήσω.
               </p>
@@ -209,8 +212,8 @@ export default function AssistantChat({ onClose }: Props) {
         {messages.map((m, i) => (
           <div key={i} className={`flex items-end gap-2 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             {m.role === 'assistant' && (
-              <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full" style={{ background: 'linear-gradient(135deg, #FF6B00 0%, #FF9A3C 100%)' }}>
-                <Bot className="h-4 w-4 text-white" />
+              <div className="h-7 w-7 flex-shrink-0 overflow-hidden rounded-full" style={{ background: 'linear-gradient(135deg, #FF6B00 0%, #FF9A3C 100%)' }}>
+                <img src={kikaImg} alt="Kika" className="h-full w-full object-cover" />
               </div>
             )}
             <div className={`max-w-[75%] rounded-xl px-3 py-2 text-sm whitespace-pre-wrap ${m.role === 'user' ? bubbleUser : bubbleAssistant}`}>
@@ -225,8 +228,8 @@ export default function AssistantChat({ onClose }: Props) {
         ))}
         {sending && (
           <div className="flex items-end gap-2 justify-start">
-            <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full" style={{ background: 'linear-gradient(135deg, #FF6B00 0%, #FF9A3C 100%)' }}>
-              <Bot className="h-4 w-4 text-white" />
+            <div className="h-7 w-7 flex-shrink-0 overflow-hidden rounded-full" style={{ background: 'linear-gradient(135deg, #FF6B00 0%, #FF9A3C 100%)' }}>
+              <img src={kikaImg} alt="Kika" className="h-full w-full object-cover" />
             </div>
             <div className={`flex items-center gap-1 rounded-xl px-3 py-3 ${bubbleAssistant}`}>
               <span className="typing-dot" />

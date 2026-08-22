@@ -152,7 +152,7 @@ function ModalShell({ title, subtitle, icon, onClose, children, maxWidthClass = 
       <div className={`relative w-full ${maxWidthClass} overflow-hidden rounded-2xl border shadow-2xl ${
         isDark ? 'border-slate-700/60 bg-[#1f2d3d]' : 'border-slate-200 bg-white'
       }`}>
-        <div className="flex items-center justify-between px-6 py-4" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
+        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--ch-divider)' }}>
           <div className="flex items-center gap-3">
             {icon && (
               <div className="flex h-8 w-8 items-center justify-center rounded-xl"
@@ -161,7 +161,7 @@ function ModalShell({ title, subtitle, icon, onClose, children, maxWidthClass = 
               </div>
             )}
             <div>
-              <h3 className="text-sm font-semibold" style={{ color: 'var(--ch-text)' }}>{title}</h3>
+              <h3 className="text-sm font-bold uppercase tracking-wide" style={{ color: 'var(--ch-text)' }}>{title}</h3>
               {subtitle && <p className="text-[11px] mt-0.5" style={{ color: 'var(--ch-text-muted)' }}>{subtitle}</p>}
             </div>
           </div>
@@ -1250,11 +1250,11 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
               <div className={`relative w-full max-w-sm overflow-hidden rounded-2xl border shadow-2xl ${
                 isDark ? 'border-slate-700/60 bg-[#1f2d3d]' : 'border-slate-200 bg-white'
               }`}>
-                <div className="px-6 py-4" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
+                <div className="px-6 py-4" style={{ borderBottom: '1px solid var(--ch-divider)' }}>
                   <div className="mb-1 flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/15 ring-1 ring-red-500/30">
                     <CalendarDays className="h-5 w-5 text-red-400" />
                   </div>
-                  <h3 className="text-sm font-semibold" style={{ color: 'var(--ch-text)' }}>Ακύρωση μαθήματος</h3>
+                  <h3 className="text-sm font-bold uppercase tracking-wide" style={{ color: 'var(--ch-text)' }}>Ακύρωση μαθήματος</h3>
                 </div>
                 <div className="p-6">
                   <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Θέλετε σίγουρα να ακυρώσετε το μάθημα μόνο για τη συγκεκριμένη ημερομηνία;</p>
@@ -1417,11 +1417,11 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
               <div className={`relative w-full max-w-sm overflow-hidden rounded-2xl border shadow-2xl ${
                 isDark ? 'border-slate-700/60 bg-[#1f2d3d]' : 'border-slate-200 bg-white'
               }`}>
-                <div className="px-6 py-4" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
+                <div className="px-6 py-4" style={{ borderBottom: '1px solid var(--ch-divider)' }}>
                   <div className="mb-1 flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/15 ring-1 ring-red-500/30">
                     <BookOpen className="h-5 w-5 text-red-400" />
                   </div>
-                  <h3 className="text-sm font-semibold" style={{ color: 'var(--ch-text)' }}>Μετατροπή σε μάθημα</h3>
+                  <h3 className="text-sm font-bold uppercase tracking-wide" style={{ color: 'var(--ch-text)' }}>Μετατροπή σε μάθημα</h3>
                 </div>
                 <div className="p-6">
                   <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>

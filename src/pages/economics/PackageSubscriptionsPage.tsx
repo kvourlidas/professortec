@@ -173,8 +173,8 @@ export default function PackageSubscriptionsPage() {
     : 'btn border border-slate-300 bg-white px-4 py-2 text-slate-600 hover:bg-slate-50 disabled:opacity-50';
 
   const modalCardCls = isDark
-    ? 'w-full max-w-lg rounded-2xl border border-slate-700/60 shadow-2xl overflow-hidden'
-    : 'w-full max-w-lg rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden';
+    ? 'w-full max-w-sm rounded-2xl border border-slate-700/60 shadow-2xl overflow-hidden'
+    : 'w-full max-w-sm rounded-2xl border border-slate-200 shadow-2xl overflow-hidden';
 
   const isDirty = useMemo(() => {
     if (!initial || !rows) return false;
@@ -582,12 +582,16 @@ export default function PackageSubscriptionsPage() {
       {/* ── Delete Modal ── */}
       {deleteOpen && deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className={modalCardCls} style={isDark ? { background: 'var(--color-sidebar)' } : {}}>
-            <div className="h-0.5 w-full bg-rose-500/60" />
+          <div className={modalCardCls} style={{ background: 'var(--color-sidebar)' }}>
+            <div className="px-6 py-4" style={{ borderBottom: '1px solid var(--ch-divider)' }}>
+              <div className="mb-1 flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/15 ring-1 ring-red-500/30">
+                <Package className="h-5 w-5 text-red-400" />
+              </div>
+              <h3 className="text-sm font-bold uppercase tracking-wide" style={{ color: 'var(--ch-text)' }}>Διαγραφή πακέτου</h3>
+            </div>
             <div className="px-6 pt-5 pb-4">
-              <h3 className={`text-sm font-semibold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Διαγραφή πακέτου</h3>
-              <p className={`mt-2 text-xs leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                Σίγουρα θέλετε να διαγράψετε το πακέτο <span className="font-semibold text-amber-400">«{deleteTarget.name}»</span>; Η ενέργεια δεν μπορεί να αναιρεθεί.
+              <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                Σίγουρα θέλετε να διαγράψετε το πακέτο <span className={`font-semibold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>«{deleteTarget.name}»</span>; Η ενέργεια δεν μπορεί να αναιρεθεί.
               </p>
             </div>
             <div className={`flex justify-end gap-2.5 px-6 py-4 ${isDark ? 'border-t border-slate-800/70 bg-slate-900/20' : 'border-t border-slate-100 bg-slate-50'}`}>

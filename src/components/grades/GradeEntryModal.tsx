@@ -244,7 +244,7 @@ export default function GradeEntryModal({ schoolId, onClose, onSaved }: GradeEnt
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className={cardCls} style={{ background: 'var(--color-sidebar)' }}>
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
+        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--ch-divider)' }}>
           <div className="flex items-center gap-3">
             {phase === 2 && (
               <button type="button" onClick={handleBackToPhase1} disabled={saving} className={closeBtnCls}>
@@ -258,7 +258,7 @@ export default function GradeEntryModal({ schoolId, onClose, onSaved }: GradeEnt
                 : <Users className="h-4 w-4" style={{ color: 'var(--ch-icon)' }} />}
             </div>
             <div>
-              <h2 className="text-sm font-semibold" style={{ color: 'var(--ch-text)' }}>
+              <h2 className="text-sm font-bold uppercase tracking-wide" style={{ color: 'var(--ch-text)' }}>
                 {phase === 1 ? 'Καταχώρηση βαθμών' : 'Μαθητές & βαθμοί'}
               </h2>
               <p className="text-[11px]" style={{ color: 'var(--ch-text-muted)' }}>

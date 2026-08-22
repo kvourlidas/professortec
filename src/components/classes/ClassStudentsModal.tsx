@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../auth';
 import { useTheme } from '../../context/ThemeContext';
-import { Loader2, Search, Users, X, GraduationCap, UserCheck, UserMinus, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Loader2, Search, Users, X, GraduationCap, UserCheck, UserMinus, ArrowRight, ArrowLeft, Lock, AlertTriangle } from 'lucide-react';
 
 type ClassStudentsModalProps = {
   open: boolean; onClose: () => void; classId: string | null; classTitle?: string;
@@ -16,6 +16,7 @@ export default function ClassStudentsModal({ open, onClose, classId, classTitle 
   const schoolId = profile?.school_id ?? null;
 
   const [allStudents, setAllStudents] = useState<StudentRow[]>([]);
+  const [activeSubIds, setActiveSubIds] = useState<Set<string>>(new Set());
   const [assignedIds, setAssignedIds] = useState<Set<string>>(new Set());
   const [initialAssignedIds, setInitialAssignedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
@@ -40,6 +41,13 @@ export default function ClassStudentsModal({ open, onClose, classId, classTitle 
         if (csErr) throw csErr;
         const currentIds = new Set<string>((csData ?? []).map((r: any) => r.student_id));
         setAssignedIds(currentIds); setInitialAssignedIds(currentIds);
+        const { data: subData, error: subErr } = await supabase
+          .from('student_subscriptions_with_totals')
+          .select('student_id')
+          .eq('school_id', schoolId)
+          .eq('status', 'active');
+        if (subErr) throw subErr;
+        setActiveSubIds(new Set((subData ?? []).map((r: any) => r.student_id)));
       } catch (err) { console.error('Error loading class students', err); setLocalError('Σφάλμα κατά τη φόρτωση των μαθητών.'); }
       finally { setLoading(false); }
     };
@@ -50,18 +58,26 @@ export default function ClassStudentsModal({ open, onClose, classId, classTitle 
   const assignedStudents = useMemo(() => allStudents.filter((s) => assignedIds.has(s.id)).filter((s) => (s.full_name ?? '').toLowerCase().includes(searchRight.toLowerCase())), [allStudents, assignedIds, searchRight]);
 
   // Selection helpers
+  const selectableLeftStudents = availableStudents.filter(s => activeSubIds.has(s.id));
   const visibleLeftSelected = availableStudents.filter(s => selectedLeft.has(s.id));
   const visibleRightSelected = assignedStudents.filter(s => selectedRight.has(s.id));
-  const allLeftChecked = availableStudents.length > 0 && availableStudents.every(s => selectedLeft.has(s.id));
-  const someLeftChecked = availableStudents.some(s => selectedLeft.has(s.id)) && !allLeftChecked;
+  const allLeftChecked = selectableLeftStudents.length > 0 && selectableLeftStudents.every(s => selectedLeft.has(s.id));
+  const someLeftChecked = selectableLeftStudents.some(s => selectedLeft.has(s.id)) && !allLeftChecked;
   const allRightChecked = assignedStudents.length > 0 && assignedStudents.every(s => selectedRight.has(s.id));
   const someRightChecked = assignedStudents.some(s => selectedRight.has(s.id)) && !allRightChecked;
 
-  const toggleLeft = (id: string) => setSelectedLeft(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleLeft = (id: string) => {
+    if (!activeSubIds.has(id)) {
+      const student = allStudents.find(s => s.id === id);
+      setLocalError(`${student?.full_name ?? 'Ο μαθητής'} δεν έχει ενεργή συνδρομή — δεν μπορεί να προστεθεί σε τμήμα.`);
+      return;
+    }
+    setSelectedLeft(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  };
   const toggleRight = (id: string) => setSelectedRight(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const toggleAllLeft = () => {
     if (allLeftChecked) setSelectedLeft(new Set());
-    else setSelectedLeft(new Set(availableStudents.map(s => s.id)));
+    else setSelectedLeft(new Set(selectableLeftStudents.map(s => s.id)));
   };
   const toggleAllRight = () => {
     if (allRightChecked) setSelectedRight(new Set());
@@ -117,14 +133,14 @@ export default function ClassStudentsModal({ open, onClose, classId, classTitle 
       <div className={`relative w-full max-w-3xl overflow-hidden rounded-2xl border shadow-2xl ${modalBg}`}>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
+        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--ch-divider)' }}>
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl"
               style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
               <Users className="h-4 w-4" style={{ color: 'var(--ch-icon)' }} />
             </div>
             <div>
-              <h2 className="text-sm font-semibold" style={{ color: 'var(--ch-text)' }}>Μαθητές τμήματος</h2>
+              <h2 className="text-sm font-bold uppercase tracking-wide" style={{ color: 'var(--ch-text)' }}>Μαθητές τμήματος</h2>
               {classTitle && (
                 <div className="mt-0.5 flex items-center gap-1.5">
                   <GraduationCap className={`h-3 w-3 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
@@ -190,7 +206,7 @@ export default function ClassStudentsModal({ open, onClose, classId, classTitle 
                       checked={allLeftChecked}
                       ref={el => { if (el) el.indeterminate = someLeftChecked; }}
                       onChange={toggleAllLeft}
-                      disabled={saving || availableStudents.length === 0}
+                      disabled={saving || selectableLeftStudents.length === 0}
                     />
                     Επιλογή όλων
                   </label>
@@ -211,22 +227,27 @@ export default function ClassStudentsModal({ open, onClose, classId, classTitle 
                   </div>
                 ) : (
                   <ul className={listDivideCls}>
-                    {availableStudents.map((s) => (
-                      <li key={s.id} className={rowCls} onClick={() => !saving && toggleLeft(s.id)}>
-                        <input
-                          type="checkbox"
-                          className="h-3.5 w-3.5 shrink-0 rounded"
-                          style={checkboxStyle}
-                          checked={selectedLeft.has(s.id)}
-                          onChange={() => toggleLeft(s.id)}
-                          onClick={e => e.stopPropagation()}
-                          disabled={saving}
-                        />
-                        <span className={`text-xs ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                          {s.full_name ?? 'Χωρίς όνομα'}
-                        </span>
-                      </li>
-                    ))}
+                    {availableStudents.map((s) => {
+                      const hasSub = activeSubIds.has(s.id);
+                      return (
+                        <li key={s.id} className={`${rowCls} ${!hasSub ? 'opacity-50' : ''}`} onClick={() => !saving && toggleLeft(s.id)}
+                          title={!hasSub ? 'Δεν έχει ενεργή συνδρομή — δεν μπορεί να προστεθεί σε τμήμα.' : undefined}>
+                          <input
+                            type="checkbox"
+                            className="h-3.5 w-3.5 shrink-0 rounded"
+                            style={checkboxStyle}
+                            checked={selectedLeft.has(s.id)}
+                            onChange={() => toggleLeft(s.id)}
+                            onClick={e => e.stopPropagation()}
+                            disabled={saving || !hasSub}
+                          />
+                          <span className={`text-xs ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                            {s.full_name ?? 'Χωρίς όνομα'}
+                          </span>
+                          {!hasSub && <Lock className={`ml-auto h-3 w-3 shrink-0 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />}
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
               </div>
@@ -281,22 +302,32 @@ export default function ClassStudentsModal({ open, onClose, classId, classTitle 
                   </div>
                 ) : (
                   <ul className={listDivideCls}>
-                    {assignedStudents.map((s) => (
-                      <li key={s.id} className={rowCls} onClick={() => !saving && toggleRight(s.id)}>
-                        <input
-                          type="checkbox"
-                          className="h-3.5 w-3.5 shrink-0 rounded"
-                          style={checkboxStyle}
-                          checked={selectedRight.has(s.id)}
-                          onChange={() => toggleRight(s.id)}
-                          onClick={e => e.stopPropagation()}
-                          disabled={saving}
-                        />
-                        <span className={`text-xs ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                          {s.full_name ?? 'Χωρίς όνομα'}
-                        </span>
-                      </li>
-                    ))}
+                    {assignedStudents.map((s) => {
+                      const hasSub = activeSubIds.has(s.id);
+                      return (
+                        <li key={s.id} className={rowCls} onClick={() => !saving && toggleRight(s.id)}>
+                          <input
+                            type="checkbox"
+                            className="h-3.5 w-3.5 shrink-0 rounded"
+                            style={checkboxStyle}
+                            checked={selectedRight.has(s.id)}
+                            onChange={() => toggleRight(s.id)}
+                            onClick={e => e.stopPropagation()}
+                            disabled={saving}
+                          />
+                          <span className={`text-xs ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                            {s.full_name ?? 'Χωρίς όνομα'}
+                          </span>
+                          {!hasSub && (
+                            <span
+                              className={`ml-auto flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold ${isDark ? 'border-amber-500/40 bg-amber-950/30 text-amber-300' : 'border-amber-200 bg-amber-50 text-amber-700'}`}
+                              title="Απαιτείται ενέργεια: δεν έχει ενεργή συνδρομή">
+                              <AlertTriangle className="h-3 w-3" />
+                            </span>
+                          )}
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
               </div>

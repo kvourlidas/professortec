@@ -43,14 +43,14 @@ export function EconomicsEditExpenseModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
       <div className={`relative w-full max-w-lg overflow-hidden rounded-2xl shadow-2xl ${isDark ? 'border border-slate-700/60' : 'border border-slate-200 bg-white'}`}
         style={isDark ? { background: 'var(--color-sidebar)' } : {}}>
-        <div className="flex items-center justify-between px-6 py-4" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
+        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--ch-divider)' }}>
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl"
               style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
               <Receipt className="h-4 w-4" style={{ color: 'var(--ch-icon)' }}/>
             </div>
             <div>
-              <h3 className="text-sm font-semibold" style={{ color: 'var(--ch-text)' }}>Επεξεργασία Εξόδου</h3>
+              <h3 className="text-sm font-bold uppercase tracking-wide" style={{ color: 'var(--ch-text)' }}>Επεξεργασία Εξόδου</h3>
               <p className="mt-0.5 text-[11px]" style={{ color: 'var(--ch-text-muted)' }}>Ενημέρωση ονόματος / ποσού / ημερομηνίας / σημειώσεων.</p>
             </div>
           </div>

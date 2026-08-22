@@ -9,6 +9,7 @@ import type { DiscountScope, PackageRow, StudentRow } from './types';
 interface Props {
   open: boolean;
   isRenew: boolean;
+  studentLocked?: boolean;
   saving: boolean;
   assignError: string | null;
   isDark: boolean;
@@ -61,7 +62,7 @@ interface Props {
 }
 
 export function AssignRenewModal({
-  open, isRenew, saving, assignError, isDark,
+  open, isRenew, studentLocked, saving, assignError, isDark,
   selStudent, allStudents, studentQ, setStudentQ, studentDrop, setStudentDrop, onStudentSelect,
   selPackage, packages, packageQ, setPackageQ, packageDrop, setPackageDrop, onPackageSelect,
   customPrice, setCustomPrice: _setCustomPrice, discountPct, setDiscountPct, discountMode, setDiscountMode,
@@ -87,6 +88,8 @@ export function AssignRenewModal({
   }, [customPrice, discountPct, discountMode, selPackage]);
 
   if (!open) return null;
+
+  const lockStudent = studentLocked ?? isRenew;
 
   const filtStudents = allStudents.filter(s => (s.full_name ?? '').toLowerCase().includes(studentQ.toLowerCase()));
   const filtPackages = packages.filter(p => p.name.toLowerCase().includes(packageQ.toLowerCase()));
@@ -159,20 +162,22 @@ export function AssignRenewModal({
         <div style={{ overflow: 'visible' }}>
 
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
+          <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--ch-divider)' }}>
             <div className="flex items-center gap-3">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
                 style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
                 {isRenew ? <RefreshCw className="h-3.5 w-3.5" style={{ color: 'var(--ch-icon)' }} /> : <Package className="h-3.5 w-3.5" style={{ color: 'var(--ch-icon)' }} />}
               </div>
               <div>
-                <h3 className="text-sm font-semibold" style={{ color: 'var(--ch-text)' }}>
+                <h3 className="text-sm font-bold uppercase tracking-wide" style={{ color: 'var(--ch-text)' }}>
                   {isRenew ? 'Ανανέωση συνδρομής' : 'Ανάθεση πακέτου'}
                 </h3>
                 <p className="mt-0.5 text-[11px]" style={{ color: 'var(--ch-text-muted)' }}>
                   {isRenew
                     ? `Ανανέωση για ${selStudent?.full_name ?? ''} — πακέτο, τιμή και νέα περίοδος.`
-                    : 'Επίλεξε μαθητή, πακέτο, τιμή και περίοδο.'}
+                    : lockStudent
+                      ? `Ανάθεση πακέτου σε ${selStudent?.full_name ?? ''} — πακέτο, τιμή και περίοδος.`
+                      : 'Επίλεξε μαθητή, πακέτο, τιμή και περίοδο.'}
                 </p>
               </div>
             </div>
@@ -196,7 +201,7 @@ export function AssignRenewModal({
               {/* Student */}
               <div className="col-span-2">
                 <label className={labelCls}>Μαθητής *</label>
-                {isRenew ? (
+                {lockStudent ? (
                   <div className={lockedRowCls}>
                     <span className={`text-xs font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{selStudent?.full_name}</span>
                     <span className={lockedBadgeCls}>κλειδωμένο</span>

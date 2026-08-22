@@ -3,6 +3,7 @@ import { useAuth } from '../auth.tsx';
 import DashboardNotesSection from '../components/dashboard/DashboardNotesSection.tsx';
 import DashboardUpcomingSessionsSection from '../components/dashboard/DashboardUpcomingSessionsSection.tsx';
 import DashboardQuickActionsSection from '../components/dashboard/DashboardQuickActionsSection.tsx';
+import DashboardSubscriptionAlertsSection from '../components/dashboard/DashboardSubscriptionAlertsSection.tsx';
 
 export default function DashboardPage() {
   const { profile } = useAuth();
@@ -28,6 +29,13 @@ export default function DashboardPage() {
 
       {/* Quick actions */}
       <DashboardQuickActionsSection schoolId={schoolId} actions={[...quickActions]} />
+
+      {/* Subscription alerts (frontistirio only) */}
+      {isFrontistirio && (
+        <div className="pt-2">
+          <DashboardSubscriptionAlertsSection schoolId={schoolId} />
+        </div>
+      )}
 
     </div>
   );

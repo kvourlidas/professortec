@@ -54,14 +54,14 @@ export function PrivateLessonPaymentModal({ studentName, balance, onSubmit, onCl
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4"
-          style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
+          style={{ borderBottom: '1px solid var(--ch-divider)' }}>
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl"
               style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
               <HandCoins className="h-4 w-4" style={{ color: 'var(--ch-icon)' }} />
             </div>
             <div>
-              <p className="text-sm font-semibold" style={{ color: 'var(--ch-text)' }}>Καταχώρηση Πληρωμής</p>
+              <p className="text-sm font-bold uppercase tracking-wide" style={{ color: 'var(--ch-text)' }}>Καταχώρηση Πληρωμής</p>
               <p className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{studentName}</p>
             </div>
           </div>

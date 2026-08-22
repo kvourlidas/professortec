@@ -59,14 +59,14 @@ export default function ClassFormModal({ open, mode, editingClass, subjects, lev
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className={`relative w-full max-w-lg overflow-hidden rounded-2xl border shadow-2xl ${modalBg}`}>
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
+        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--ch-divider)' }}>
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl"
               style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
               <GraduationCap className="h-4 w-4" style={{ color: 'var(--ch-icon)' }} />
             </div>
             <div>
-              <h2 className="text-sm font-semibold" style={{ color: 'var(--ch-text)' }}>
+              <h2 className="text-sm font-bold uppercase tracking-wide" style={{ color: 'var(--ch-text)' }}>
                 {isCreate ? 'Νέο τμήμα' : 'Επεξεργασία τμήματος'}
               </h2>
               <p className="text-[11px]" style={{ color: 'var(--ch-text-muted)' }}>

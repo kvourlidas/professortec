@@ -23,8 +23,8 @@ export function DeleteSubscriptionModal({ target, deleting, isDark, onCancel, on
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm">
       <div className={smallModalCls} style={isDark ? { background: 'var(--color-sidebar)' } : {}}>
-        <div className="px-6 py-4" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
-          <h3 className="text-sm font-semibold" style={{ color: 'var(--ch-text)' }}>Διαγραφή συνδρομής</h3>
+        <div className="px-6 py-4" style={{ borderBottom: '1px solid var(--ch-divider)' }}>
+          <h3 className="text-sm font-bold uppercase tracking-wide" style={{ color: 'var(--ch-text)' }}>Διαγραφή συνδρομής</h3>
           <p className={`mt-2 text-xs leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
             Σίγουρα θέλετε να διαγράψετε τη συνδρομή του{' '}
             <span className="font-semibold" style={{ color: 'var(--color-accent)' }}>{target.student_name}</span>{' '}

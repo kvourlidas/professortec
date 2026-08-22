@@ -42,7 +42,7 @@
 
     /* Card header (dark mode = dark surface, subtle blue accent on icon) */
     --ch-bg: #1A2035;
-    --ch-text: #E5E7EB;
+    --ch-text: #FFFFFF;
     --ch-text-muted: #9CA3AF;
     --ch-icon-bg: rgba(59, 130, 246, 0.14);
     --ch-icon-border: rgba(59, 130, 246, 0.22);
@@ -91,17 +91,17 @@
     --color-border: rgba(30,41,59,0.14);
     --color-border-soft: rgba(30,41,59,0.08);
 
-    /* Card header (light mode = blue accent, white text) */
+    /* Card header (flat: no fill, bold black title, accent-tinted icon chip) */
     --ch-bg: var(--color-accent);
-    --ch-text: var(--color-on-accent);
-    --ch-text-muted: color-mix(in srgb, var(--color-on-accent) 65%, transparent);
-    --ch-icon-bg: color-mix(in srgb, var(--color-on-accent) 10%, transparent);
-    --ch-icon-border: color-mix(in srgb, var(--color-on-accent) 16%, transparent);
-    --ch-icon: var(--color-on-accent);
-    --ch-btn-bg: color-mix(in srgb, var(--color-on-accent) 8%, transparent);
-    --ch-btn-border: color-mix(in srgb, var(--color-on-accent) 16%, transparent);
-    --ch-btn-text: var(--color-on-accent);
-    --ch-divider: color-mix(in srgb, var(--color-on-accent) 10%, transparent);
+    --ch-text: #000000;
+    --ch-text-muted: #94a3b8;
+    --ch-icon-bg: color-mix(in srgb, var(--color-accent) 12%, transparent);
+    --ch-icon-border: color-mix(in srgb, var(--color-accent) 20%, transparent);
+    --ch-icon: var(--color-accent);
+    --ch-btn-bg: #f8fafc;
+    --ch-btn-border: rgba(30, 41, 59, 0.12);
+    --ch-btn-text: #64748b;
+    --ch-divider: rgba(30, 41, 59, 0.08);
 
     /* FullCalendar */
     --fc-border-color: rgba(30, 41, 59, 0.18);
