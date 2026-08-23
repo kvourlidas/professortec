@@ -7,13 +7,16 @@ import {
   Users, BookOpen, UserCheck, ChevronLeft, ChevronRight,
   GraduationCap, TrendingUp, Wallet, Receipt, BarChart3, HandCoins,
   Banknote, CreditCard, Landmark, Tag, Ban, Plus, Trash2,
-  Copy, Check, Award, Package, AlertTriangle, X,
+  Copy, Check, Award, Package, AlertTriangle, AlertCircle, X,
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient.ts';
 import { useAuth } from '../auth.tsx';
 import { useTheme } from '../context/ThemeContext.tsx';
 import { useToast } from '../context/ToastContext.tsx';
 import DatePickerField from '../components/ui/AppDatePicker.tsx';
+import {
+  ModalFormField, ModalFieldIcon, ModalErrorBox, modalInputCls,
+} from '../components/ui/ModalField.tsx';
 import type { StudentRow, LevelRow, SubscriptionRow, ClassEnrollment, ProgramSlot } from '../components/students/types.ts';
 import { STUDENT_SELECT, formatDateToGreek, formatMonthRangeGreek, isoToDisplay, displayToIso } from '../components/students/types.ts';
 import type { StudentGradeRow } from '../components/grades/types.ts';
@@ -666,6 +669,7 @@ export default function StudentCardPage() {
 
   const inputCls = `h-8 w-full rounded-lg border px-2.5 text-xs outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 focus:border-[color:var(--color-accent)] ${isDark ? 'border-slate-700/70 bg-slate-900/60 text-slate-100 placeholder-slate-500' : 'border-slate-200 bg-slate-50 text-slate-800 placeholder-slate-400'}`;
   const cancelBtnCls = `btn border px-3 py-1.5 text-xs disabled:opacity-50 ${isDark ? 'border-slate-600/60 bg-slate-800/50 text-slate-200 hover:bg-slate-700/60' : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'}`;
+  const modalFieldInputCls = modalInputCls(isDark);
 
   const levelNameById = useMemo(() => new Map(levels.map(l => [l.id, l.name])), [levels]);
   const isIdiaiterou = profile?.account_type === 'idiaiterou';
@@ -1548,7 +1552,7 @@ export default function StudentCardPage() {
         </button>
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
           style={{ background: 'var(--color-accent)' }}>
-          <GraduationCap className="h-3.5 w-3.5" style={{ color: 'var(--ch-icon)' }} />
+          <GraduationCap className="h-3.5 w-3.5" style={{ color: 'var(--color-on-accent)' }} />
         </div>
         <h1 className={`text-sm font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>{student.full_name}</h1>
       </div>
@@ -2172,11 +2176,19 @@ export default function StudentCardPage() {
                 <X className="h-3.5 w-3.5" />
               </button>
             </div>
+            {lessonPaymentError && (
+              <ModalErrorBox isDark={isDark}>
+                <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />{lessonPaymentError}
+              </ModalErrorBox>
+            )}
             <div className="space-y-3 p-5">
-              <input type="text" inputMode="decimal" placeholder="Ποσό"
-                className={inputCls} value={lessonPaymentAmount}
-                onChange={e => setLessonPaymentAmount(e.target.value.replace(',', '.').replace(/[^0-9.]/g, ''))}
-                disabled={lessonPaymentSaving} autoFocus />
+              <ModalFormField label="Ποσό (€)" isDark={isDark}>
+                <ModalFieldIcon icon={Wallet} isDark={isDark} />
+                <input type="text" inputMode="decimal" placeholder="0.00"
+                  className={modalFieldInputCls} value={lessonPaymentAmount}
+                  onChange={e => setLessonPaymentAmount(e.target.value.replace(',', '.').replace(/[^0-9.]/g, ''))}
+                  disabled={lessonPaymentSaving} autoFocus />
+              </ModalFormField>
               <div className="flex gap-2">
                 {([{ m: 'cash', Icon: Banknote, label: 'Μετρητά' }, { m: 'card', Icon: CreditCard, label: 'Κάρτα' }, { m: 'bank_transfer', Icon: Landmark, label: 'Τράπεζα' }] as { m: 'cash' | 'card' | 'bank_transfer'; Icon: React.ElementType; label: string }[]).map(({ m, Icon, label }) => (
                   <button key={m} type="button" title={label} disabled={lessonPaymentSaving}
@@ -2186,13 +2198,13 @@ export default function StudentCardPage() {
                   </button>
                 ))}
               </div>
-              <input type="text" placeholder="Σημείωση (προαιρετικό)"
-                className={inputCls} value={lessonPaymentNote}
-                onChange={e => setLessonPaymentNote(e.target.value)}
-                disabled={lessonPaymentSaving} />
-              {lessonPaymentError && (
-                <p className={`text-[11px] ${isDark ? 'text-red-400' : 'text-red-600'}`}>{lessonPaymentError}</p>
-              )}
+              <ModalFormField label="Σημείωση" hint="Προαιρετικό." isDark={isDark}>
+                <ModalFieldIcon icon={FileText} isDark={isDark} />
+                <input type="text" placeholder="π.χ. Πληρωμή Ιανουαρίου"
+                  className={modalFieldInputCls} value={lessonPaymentNote}
+                  onChange={e => setLessonPaymentNote(e.target.value)}
+                  disabled={lessonPaymentSaving} />
+              </ModalFormField>
               <div className="flex gap-2 pt-1">
                 <button type="button" disabled={lessonPaymentSaving}
                   onClick={() => setLessonPayModalOpen(false)}
@@ -2356,22 +2368,27 @@ export default function StudentCardPage() {
                 <X className="h-3.5 w-3.5" />
               </button>
             </div>
-            <div className="px-6 pt-4">
             {addChargeError && (
-              <div className={`mb-3 rounded-lg border px-3 py-2 text-[11px] ${isDark ? 'border-red-500/30 bg-red-950/30 text-red-300' : 'border-red-200 bg-red-50 text-red-700'}`}>{addChargeError}</div>
+              <ModalErrorBox isDark={isDark}>
+                <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />{addChargeError}
+              </ModalErrorBox>
             )}
+            <div className="px-6 pt-4">
             <div className="space-y-3">
-              <EditField label="Περιγραφή" isDark={isDark}>
-                <input className={inputCls} value={newChargeDesc} onChange={e => setNewChargeDesc(e.target.value)} placeholder="π.χ. Βιβλία, Εγγραφή…" autoFocus disabled={addChargeSaving} />
-              </EditField>
-              <EditField label="Ποσό (€)" isDark={isDark}>
-                <input className={inputCls} type="text" inputMode="decimal" value={newChargeAmount}
+              <ModalFormField label="Περιγραφή" isDark={isDark}>
+                <ModalFieldIcon icon={Tag} isDark={isDark} />
+                <input className={modalFieldInputCls} value={newChargeDesc} onChange={e => setNewChargeDesc(e.target.value)} placeholder="π.χ. Βιβλία, Εγγραφή…" autoFocus disabled={addChargeSaving} />
+              </ModalFormField>
+              <ModalFormField label="Ποσό (€)" isDark={isDark}>
+                <ModalFieldIcon icon={Wallet} isDark={isDark} />
+                <input className={modalFieldInputCls} type="text" inputMode="decimal" value={newChargeAmount}
                   onChange={e => setNewChargeAmount(e.target.value.replace(',', '.').replace(/[^0-9.]/g, ''))}
                   placeholder="0.00" disabled={addChargeSaving} />
-              </EditField>
-              <EditField label="Σημειώσεις (προαιρετικό)" isDark={isDark}>
-                <input className={inputCls} value={newChargeNotes} onChange={e => setNewChargeNotes(e.target.value)} disabled={addChargeSaving} />
-              </EditField>
+              </ModalFormField>
+              <ModalFormField label="Σημειώσεις" hint="Προαιρετικό." isDark={isDark}>
+                <ModalFieldIcon icon={FileText} isDark={isDark} />
+                <input className={modalFieldInputCls} value={newChargeNotes} onChange={e => setNewChargeNotes(e.target.value)} disabled={addChargeSaving} />
+              </ModalFormField>
             </div>
             </div>
             <div className={`mt-4 flex justify-end gap-2.5 border-t px-6 py-4 ${isDark ? 'border-slate-800/70 bg-slate-900/20' : 'border-slate-100 bg-slate-50'}`}>
@@ -2472,11 +2489,19 @@ export default function StudentCardPage() {
                 <X className="h-3.5 w-3.5" />
               </button>
             </div>
+            {payingError && (
+              <ModalErrorBox isDark={isDark}>
+                <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />{payingError}
+              </ModalErrorBox>
+            )}
             <div className="space-y-3 p-5">
-              <input type="text" inputMode="decimal" placeholder="Ποσό"
-                className={inputCls} value={paymentInput}
-                onChange={e => setPaymentInput(e.target.value.replace(',', '.').replace(/[^0-9.]/g, ''))}
-                disabled={payingLoading} autoFocus />
+              <ModalFormField label="Ποσό (€)" isDark={isDark}>
+                <ModalFieldIcon icon={Wallet} isDark={isDark} />
+                <input type="text" inputMode="decimal" placeholder="0.00"
+                  className={modalFieldInputCls} value={paymentInput}
+                  onChange={e => setPaymentInput(e.target.value.replace(',', '.').replace(/[^0-9.]/g, ''))}
+                  disabled={payingLoading} autoFocus />
+              </ModalFormField>
               <div className="flex gap-2">
                 {([{ m: 'cash', Icon: Banknote, label: 'Μετρητά' }, { m: 'card', Icon: CreditCard, label: 'Κάρτα' }, { m: 'bank_transfer', Icon: Landmark, label: 'Τράπεζα' }] as { m: 'cash' | 'card' | 'bank_transfer'; Icon: React.ElementType; label: string }[]).map(({ m, Icon, label }) => (
                   <button key={m} type="button" title={label} disabled={payingLoading}
@@ -2486,11 +2511,13 @@ export default function StudentCardPage() {
                   </button>
                 ))}
               </div>
-              <input type="text" placeholder="Σημείωση (προαιρετικό)"
-                className={inputCls} value={subPayNote}
-                onChange={e => setSubPayNote(e.target.value)}
-                disabled={payingLoading} />
-              {payingError && <p className={`text-[11px] ${isDark ? 'text-red-400' : 'text-red-600'}`}>{payingError}</p>}
+              <ModalFormField label="Σημείωση" hint="Προαιρετικό." isDark={isDark}>
+                <ModalFieldIcon icon={FileText} isDark={isDark} />
+                <input type="text" placeholder="π.χ. Πληρωμή Ιανουαρίου"
+                  className={modalFieldInputCls} value={subPayNote}
+                  onChange={e => setSubPayNote(e.target.value)}
+                  disabled={payingLoading} />
+              </ModalFormField>
               <div className="flex gap-2 pt-1">
                 <button type="button" disabled={payingLoading}
                   onClick={() => setSubPayModalOpen(false)}

@@ -2,8 +2,11 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import DatePickerField from '../ui/AppDatePicker';
 import TimePicker from '../ui/TimePicker';
-import { CalendarDays, Clock, FileText, X, Loader2 } from 'lucide-react';
+import { CalendarDays, Type, X, Loader2, AlertCircle } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import {
+  ModalFormField as FormField, ModalFieldIcon as FieldIcon, ModalErrorBox, modalInputCls,
+} from '../ui/ModalField';
 
 export type EventFormState = {
   name: string;
@@ -65,13 +68,13 @@ export default function EventFormModal({
   const [endTime, setEndTime] = useState('');
 
   // ── Dynamic classes ──
-  const inputCls = isDark
-    ? 'h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 text-sm text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30'
-    : 'h-9 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30';
+  const inputCls = modalInputCls(isDark);
 
-  const textareaCls = isDark
-    ? 'w-full rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30 min-h-[72px] resize-none'
-    : 'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30 min-h-[72px] resize-none';
+  const textareaCls = `w-full border-b bg-transparent pl-3 pr-2 py-2 text-sm outline-none transition-colors duration-200 min-h-[72px] resize-none ${
+    isDark
+      ? 'border-white/15 text-slate-100 placeholder-slate-600 focus:border-[color:var(--color-accent)]'
+      : 'border-slate-300 text-slate-800 placeholder-slate-400 focus:border-[color:var(--color-accent)]'
+  }`;
 
   const modalCardCls = isDark
     ? 'relative w-full max-w-md overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl'
@@ -82,18 +85,6 @@ export default function EventFormModal({
     : 'flex justify-end gap-2.5 border-t border-slate-200 bg-slate-50 px-6 py-4 mt-3';
 
   const cancelBtnCls = 'btn border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-slate-200 hover:bg-slate-700/60 disabled:opacity-50';
-
-  const labelCls = `flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`;
-
-  const FormField = ({ label, icon, children }: { label: string; icon?: React.ReactNode; children: React.ReactNode }) => (
-    <div className="space-y-1.5">
-      <label className={labelCls}>
-        {icon && <span className="opacity-70">{icon}</span>}
-        {label}
-      </label>
-      {children}
-    </div>
-  );
 
   useEffect(() => {
     if (!open) return;
@@ -152,17 +143,18 @@ export default function EventFormModal({
 
         {/* Error */}
         {error && (
-          <div className="mx-6 mb-3 flex items-start gap-2.5 rounded-xl border border-red-500/30 bg-red-950/40 px-3.5 py-2.5 text-xs text-red-200">
-            <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />
+          <ModalErrorBox isDark={isDark}>
+            <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             {error}
-          </div>
+          </ModalErrorBox>
         )}
 
         <form onSubmit={handleSubmit}>
           <div className="max-h-[60vh] overflow-y-auto px-6 pb-2 space-y-4">
 
             {/* Name */}
-            <FormField label="ΟΝΟΜΑ EVENT *" icon={<CalendarDays className="h-3 w-3" />}>
+            <FormField label="Όνομα event *" isDark={isDark}>
+              <FieldIcon icon={Type} isDark={isDark} />
               <input
                 className={inputCls}
                 placeholder="π.χ. Παράσταση Χριστουγέννων"
@@ -174,28 +166,29 @@ export default function EventFormModal({
             </FormField>
 
             {/* Date */}
-            <FormField label="ΗΜΕΡΟΜΗΝΙΑ *" icon={<CalendarDays className="h-3 w-3" />}>
+            <FormField label="Ημερομηνία *" isDark={isDark}>
               <DatePickerField
                 label=""
                 value={dateDisplay}
                 onChange={setDateDisplay}
                 placeholder="π.χ. 24/12/2025"
+                variant="underline"
               />
             </FormField>
 
             {/* Time fields */}
             <div className="grid gap-3 sm:grid-cols-2">
-              <FormField label="ΩΡΑ ΕΝΑΡΞΗΣ *" icon={<Clock className="h-3 w-3" />}>
+              <FormField label="Ώρα έναρξης *" isDark={isDark}>
                 <TimePicker value={startTime} onChange={setStartTime} required />
               </FormField>
 
-              <FormField label="ΩΡΑ ΛΗΞΗΣ *" icon={<Clock className="h-3 w-3" />}>
+              <FormField label="Ώρα λήξης *" isDark={isDark}>
                 <TimePicker value={endTime} onChange={setEndTime} required />
               </FormField>
             </div>
 
             {/* Description */}
-            <FormField label="ΠΕΡΙΓΡΑΦΗ (ΠΡΟΑΙΡΕΤΙΚΑ)" icon={<FileText className="h-3 w-3" />}>
+            <FormField label="Περιγραφή (προαιρετικά)" isDark={isDark}>
               <textarea
                 className={textareaCls}
                 placeholder="π.χ. Παράσταση με όλους τους μαθητές της Γ' Γυμνασίου"

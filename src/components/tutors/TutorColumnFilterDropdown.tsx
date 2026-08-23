@@ -45,7 +45,7 @@ export default function TutorColumnFilterDropdown({ visible, onChange, isDark }:
   const toggle = (key: TutorColumnKey, alwaysVisible?: boolean) => {
     if (alwaysVisible) return;
     const next = new Set(visible);
-    if (next.has(key)) { if (next.size > 1) next.delete(key); } else next.add(key);
+    if (next.has(key)) next.delete(key); else next.add(key);
     onChange(next);
   };
 

@@ -1,6 +1,6 @@
 // src/components/tutors/TutorSortDropdown.tsx
 import { useState, useRef, useEffect } from 'react';
-import { ArrowUpDown, ChevronDown, Check } from 'lucide-react';
+import { ArrowUpDown, Check, ChevronDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { triggerCls } from '../students/dropdownTriggerCls';
 
 export type TutorSortField = 'full_name' | 'date_of_birth' | 'afm' | 'phone' | 'email';
@@ -8,13 +8,15 @@ export type SortDir = 'asc' | 'desc';
 export interface TutorSortState { field: TutorSortField; dir: SortDir; }
 export const DEFAULT_TUTOR_SORT: TutorSortState = { field: 'full_name', dir: 'asc' };
 
-const SORT_OPTIONS: { field: TutorSortField; label: string }[] = [
-  { field: 'full_name',     label: 'Ονοματεπώνυμο' },
-  { field: 'date_of_birth', label: 'Ημ. Γέννησης'  },
-  { field: 'afm',           label: 'ΑΦΜ'            },
-  { field: 'phone',         label: 'Τηλέφωνο'       },
-  { field: 'email',         label: 'Email'           },
+const SORT_OPTIONS: { field: TutorSortField; label: string; group: string }[] = [
+  { field: 'full_name',     label: 'Ονοματεπώνυμο', group: 'Αλφαβητικά' },
+  { field: 'afm',           label: 'ΑΦΜ',            group: 'Αλφαβητικά' },
+  { field: 'email',         label: 'Email',           group: 'Αλφαβητικά' },
+  { field: 'phone',         label: 'Τηλέφωνο',       group: 'Αλφαβητικά' },
+  { field: 'date_of_birth', label: 'Ημ. Γέννησης',   group: 'Χρονολογικά' },
 ];
+
+const GROUPS = ['Αλφαβητικά', 'Χρονολογικά'];
 
 type Props = { sort: TutorSortState; onChange: (s: TutorSortState) => void; isDark: boolean; };
 
@@ -29,55 +31,108 @@ export default function TutorSortDropdown({ sort, onChange, isDark }: Props) {
     return () => document.removeEventListener('mousedown', h);
   }, [open]);
 
-  const activeLabel = SORT_OPTIONS.find(o => o.field === sort.field)?.label ?? '';
+  const selectField = (field: TutorSortField) => {
+    if (sort.field === field) {
+      onChange({ field, dir: sort.dir === 'asc' ? 'desc' : 'asc' });
+    } else {
+      const defaultDir: SortDir = field === 'date_of_birth' ? 'desc' : 'asc';
+      onChange({ field, dir: defaultDir });
+    }
+    setOpen(false);
+  };
+
+  const currentLabel = SORT_OPTIONS.find((o) => o.field === sort.field)?.label ?? '—';
+  const DirIcon = sort.dir === 'asc' ? ArrowUp : ArrowDown;
 
   return (
     <div className="relative" ref={ref}>
-      <button type="button" onClick={() => setOpen(o => !o)} className={triggerCls(open, isDark)}>
+      <button type="button" onClick={() => setOpen((o) => !o)} className={triggerCls(open, isDark)}>
         <ArrowUpDown className="h-3 w-3 shrink-0 opacity-60" />
-        <span>Ταξινόμηση</span>
+        <span>{currentLabel}</span>
+        {/* Direction chip */}
         <span
-          className="inline-flex items-center rounded-sm px-1 text-[9px] font-bold"
-          style={{ background: 'color-mix(in srgb, var(--color-accent) 20%, transparent)', color: 'var(--color-accent)' }}
+          className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-sm"
+          style={{
+            background: 'color-mix(in srgb, var(--color-accent) 20%, transparent)',
+            color: 'var(--color-accent)',
+          }}
         >
-          {sort.dir === 'asc' ? '↑' : '↓'} {activeLabel}
+          <DirIcon className="h-2 w-2" strokeWidth={2.5} />
         </span>
         <ChevronDown className={`h-3 w-3 shrink-0 opacity-40 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
         <div
-          className={`absolute left-0 top-full z-50 mt-1.5 w-52 overflow-hidden rounded-2xl border shadow-2xl
+          className={`absolute left-0 top-full z-50 mt-1.5 w-56 overflow-hidden rounded-2xl border shadow-2xl
             ${isDark ? 'border-white/10 bg-slate-900/90 shadow-black/60' : 'border-slate-200/80 bg-white/90 shadow-slate-300/50'}`}
           style={{ backdropFilter: 'blur(20px)' }}
         >
-          <div className={`px-3.5 py-2.5 border-b text-[11px] font-semibold ${isDark ? 'border-white/[0.07] text-slate-200' : 'border-slate-100 text-slate-700'}`}>
-            Ταξινόμηση κατά
+          {/* Header */}
+          <div className={`flex items-center justify-between px-3.5 py-2.5 border-b ${isDark ? 'border-white/[0.07]' : 'border-slate-100'}`}>
+            <span className={`text-[11px] font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Ταξινόμηση</span>
+            <button
+              type="button"
+              onClick={() => onChange({ ...sort, dir: sort.dir === 'asc' ? 'desc' : 'asc' })}
+              className={`inline-flex items-center gap-1 rounded-lg px-1.5 py-0.5 text-[10px] font-medium transition-all
+                ${isDark ? 'text-slate-400 hover:bg-white/[0.06] hover:text-slate-200' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'}`}
+            >
+              {sort.dir === 'asc'
+                ? <><ArrowUp className="h-2.5 w-2.5" /> Αύξουσα</>
+                : <><ArrowDown className="h-2.5 w-2.5" /> Φθίνουσα</>}
+            </button>
           </div>
 
-          {SORT_OPTIONS.map(({ field, label }) =>
-            (['asc', 'desc'] as SortDir[]).map(dir => {
-              const active = sort.field === field && sort.dir === dir;
-              const dirLabel = field === 'full_name'
-                ? (dir === 'asc' ? '↑ Α→Ω' : '↓ Ω→Α')
-                : (dir === 'asc' ? '↑' : '↓');
-              return (
-                <button
-                  key={`${field}-${dir}`}
-                  type="button"
-                  onClick={() => { onChange({ field, dir }); setOpen(false); }}
-                  className={`flex w-full items-center justify-between gap-2 px-3.5 py-[7px] text-[11px] transition-colors duration-100
-                    ${active
-                      ? isDark ? 'bg-white/[0.06] text-slate-100' : 'bg-slate-100 text-slate-800'
-                      : isDark ? 'text-slate-400 hover:bg-white/[0.05] hover:text-slate-200' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'
-                    }`}
+          {GROUPS.map((group, gi) => {
+            const opts = SORT_OPTIONS.filter((o) => o.group === group);
+            return (
+              <div key={group}>
+                <div
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5
+                    ${gi > 0 ? `border-t ${isDark ? 'border-white/[0.06]' : 'border-slate-100'}` : ''}
+                    ${isDark ? 'bg-slate-900/90' : 'bg-white/90'}`}
                 >
-                  <span>{label} <span className="opacity-50">{dirLabel}</span></span>
-                  {active && <Check className="h-3 w-3 shrink-0" style={{ color: 'var(--color-accent)' }} />}
-                </button>
-              );
-            })
-          )}
+                  <span className={`text-[9px] font-bold uppercase tracking-[0.12em] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                    {group}
+                  </span>
+                </div>
+                {opts.map((opt) => {
+                  const active = sort.field === opt.field;
+                  return (
+                    <button
+                      key={opt.field}
+                      type="button"
+                      onClick={() => selectField(opt.field)}
+                      className={`flex w-full items-center gap-2.5 px-3.5 py-[7px] text-[11px] transition-colors duration-100
+                        ${active
+                          ? isDark ? 'bg-white/[0.06] text-white' : 'bg-slate-50 text-slate-900'
+                          : isDark ? 'text-slate-300 hover:bg-white/[0.05]' : 'text-slate-600 hover:bg-slate-50'}`}
+                    >
+                      <span
+                        className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[4px] border transition-all
+                          ${active ? 'border-transparent' : isDark ? 'border-slate-600' : 'border-slate-300'}`}
+                        style={active ? { background: 'var(--color-accent)' } : undefined}
+                      >
+                        {active && <Check className="h-2 w-2 text-white" strokeWidth={3.5} />}
+                      </span>
+                      <span className="flex-1 text-left leading-none">{opt.label}</span>
+                      {active && (
+                        <span style={{ color: 'var(--color-accent)' }}>
+                          <DirIcon className="h-3 w-3" strokeWidth={2.5} />
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })}
+
+          <div className={`px-3.5 py-2 border-t ${isDark ? 'border-white/[0.07]' : 'border-slate-100'}`}>
+            <span className={`text-[10px] ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
+              Κλικ στο ίδιο πεδίο για αντιστροφή
+            </span>
+          </div>
         </div>
       )}
     </div>

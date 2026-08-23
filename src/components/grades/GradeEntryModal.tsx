@@ -364,8 +364,8 @@ export default function GradeEntryModal({ schoolId, onClose, onSaved }: GradeEnt
                         </label>
                         <button type="button" onClick={moveToAssigned}
                           disabled={saving || visibleLeftSelected.length === 0}
-                          className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition disabled:opacity-30 active:scale-95"
-                          style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', color: 'var(--color-accent)', border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>
+                          className="flex items-center gap-1 px-1 py-1 text-[11px] font-semibold transition disabled:opacity-30 active:scale-95"
+                          style={{ color: 'var(--color-accent)' }}>
                           {visibleLeftSelected.length > 0 ? `Προσθήκη (${visibleLeftSelected.length})` : 'Προσθήκη'}
                           <ArrowRight className="h-3 w-3" />
                         </button>
@@ -414,8 +414,8 @@ export default function GradeEntryModal({ schoolId, onClose, onSaved }: GradeEnt
                       <div className="mt-2 flex items-center justify-between">
                         <button type="button" onClick={moveToAvailable}
                           disabled={saving || visibleRightSelected.length === 0}
-                          className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition disabled:opacity-30 active:scale-95"
-                          style={{ background: isDark ? 'rgba(239,68,68,0.12)' : 'rgba(239,68,68,0.08)', color: isDark ? '#f87171' : '#dc2626', border: `1px solid ${isDark ? 'rgba(239,68,68,0.25)' : 'rgba(239,68,68,0.20)'}` }}>
+                          className="flex items-center gap-1 px-1 py-1 text-[11px] font-semibold transition disabled:opacity-30 active:scale-95"
+                          style={{ color: isDark ? '#f87171' : '#dc2626' }}>
                           <ArrowLeft className="h-3 w-3" />
                           {visibleRightSelected.length > 0 ? `Αφαίρεση (${visibleRightSelected.length})` : 'Αφαίρεση'}
                         </button>

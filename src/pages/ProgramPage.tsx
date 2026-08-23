@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
 import { useTheme } from '../context/ThemeContext';
-import { CalendarDays, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import type { ClassRow, SubjectRow, LevelRow, TutorRow, ProgramRow, ProgramItemRow, ClassSubjectRow, SubjectTutorRow, AddSlotForm, EditSlotForm, DeleteSlotTarget } from '../components/program/types';
 import { DAY_OPTIONS, emptyAddSlotForm } from '../components/program/constants';
 import { formatDateDisplay, parseDateDisplayToISO, timeToMinutes, todayISO, normalizeText } from '../components/program/utils';
@@ -326,16 +326,6 @@ export default function ProgramPage() {
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6 px-1">
-
-      {/* ── Header ── */}
-      {program && (
-        <div className="flex items-center gap-3">
-          <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] ${isDark ? 'border-slate-700/60 bg-slate-800/50 text-slate-300' : 'border-slate-200 bg-slate-100 text-slate-600'}`}>
-            <CalendarDays className={`h-3 w-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
-            {program.name}
-          </span>
-        </div>
-      )}
 
       {/* ── Alerts ── */}
       {error && (

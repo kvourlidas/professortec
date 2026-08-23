@@ -1,6 +1,7 @@
-import { CalendarDays, ChevronDown, Loader2, Package, Plus, RefreshCw, Search, X } from 'lucide-react';
+import { AlertCircle, CalendarDays, ChevronDown, Loader2, Package, Plus, RefreshCw, Search, X } from 'lucide-react';
 import { useMemo } from 'react';
 import AppDatePicker from '../../ui/AppDatePicker';
+import { ModalErrorBox, ModalSelectChevron, modalInputCls, modalSelectCls } from '../../ui/ModalField';
 import { typeColors } from './constants';
 import { CURRENCY_SYMBOL } from './constants';
 import { resolvePackageType, money, typeLabel } from './utils';
@@ -103,11 +104,11 @@ export function AssignRenewModal({
   const isCustom  = !!(selPackage?.is_custom);
 
   // ── Styles ────────────────────────────────────────────────────────────────
-  const inputCls = isDark
-    ? 'rounded-lg border border-slate-700/60 bg-slate-800/50 px-3 py-2 text-sm text-slate-100 placeholder-slate-600 outline-none transition focus:border-[color:var(--color-accent)]/70 focus:bg-slate-800/80'
-    : 'rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)]/60 focus:bg-white';
+  // Underline-style fields (no left icon on these) — see ../../ui/ModalField.tsx
+  const inputCls = modalInputCls(isDark).replace('pl-7', 'pl-3');
+  const selectCls = modalSelectCls(isDark).replace('pl-7', 'pl-3');
 
-  const labelCls = `mb-1.5 block text-xs font-semibold uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`;
+  const labelCls = `mb-1.5 block text-[11px] font-bold uppercase tracking-widest ${isDark ? 'text-white' : 'text-black'}`;
 
   const triggerCls = isDark
     ? 'flex w-full items-center gap-2 rounded-lg border border-slate-700/60 bg-slate-800/50 px-3 py-2 text-left text-xs transition hover:border-slate-600'
@@ -189,9 +190,9 @@ export function AssignRenewModal({
           </div>
 
           {assignError && (
-            <div className="mx-6 mb-2 rounded-lg border border-red-500/30 bg-red-950/20 px-3 py-2 text-xs text-red-400">
-              {assignError}
-            </div>
+            <ModalErrorBox isDark={isDark}>
+              <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />{assignError}
+            </ModalErrorBox>
           )}
 
           {/* Body */}
@@ -421,8 +422,8 @@ export function AssignRenewModal({
                     {/* Custom package — always uses date range */}
                     {isCustom && (
                       <div className="flex flex-col gap-2">
-                        <AppDatePicker value={assignStartsOn} onChange={setAssignStartsOn} />
-                        <AppDatePicker value={assignEndsOn} onChange={setAssignEndsOn} />
+                        <AppDatePicker value={assignStartsOn} onChange={setAssignStartsOn} variant="underline" />
+                        <AppDatePicker value={assignEndsOn} onChange={setAssignEndsOn} variant="underline" />
                       </div>
                     )}
 
@@ -432,23 +433,35 @@ export function AssignRenewModal({
                         <div>
                           <span className={`mb-1 block text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Μήνας έναρξης</span>
                           <div className="flex gap-2">
-                            <select value={assignMonthNum} onChange={e => setAssignMonthNum(e.target.value)} className={`flex-1 ${inputCls}`}>
-                              {monthOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                            </select>
-                            <select value={assignYear} onChange={e => setAssignYear(e.target.value)} className={`w-20 ${inputCls}`}>
-                              {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
-                            </select>
+                            <div className="relative flex-1">
+                              <select value={assignMonthNum} onChange={e => setAssignMonthNum(e.target.value)} className={selectCls}>
+                                {monthOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                              </select>
+                              <ModalSelectChevron isDark={isDark} />
+                            </div>
+                            <div className="relative w-20">
+                              <select value={assignYear} onChange={e => setAssignYear(e.target.value)} className={selectCls}>
+                                {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
+                              </select>
+                              <ModalSelectChevron isDark={isDark} />
+                            </div>
                           </div>
                         </div>
                         <div>
                           <span className={`mb-1 block text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Μήνας λήξης</span>
                           <div className="flex gap-2">
-                            <select value={assignEndMonthNum} onChange={e => setAssignEndMonthNum(e.target.value)} className={`flex-1 ${inputCls}`}>
-                              {monthOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                            </select>
-                            <select value={assignEndYear} onChange={e => setAssignEndYear(e.target.value)} className={`w-20 ${inputCls}`}>
-                              {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
-                            </select>
+                            <div className="relative flex-1">
+                              <select value={assignEndMonthNum} onChange={e => setAssignEndMonthNum(e.target.value)} className={selectCls}>
+                                {monthOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                              </select>
+                              <ModalSelectChevron isDark={isDark} />
+                            </div>
+                            <div className="relative w-20">
+                              <select value={assignEndYear} onChange={e => setAssignEndYear(e.target.value)} className={selectCls}>
+                                {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
+                              </select>
+                              <ModalSelectChevron isDark={isDark} />
+                            </div>
                           </div>
                         </div>
                       </div>

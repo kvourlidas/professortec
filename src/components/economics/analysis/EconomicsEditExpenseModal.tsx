@@ -1,5 +1,6 @@
-import { X, Receipt, Loader2 } from 'lucide-react';
+import { X, Receipt, Loader2, Euro, FileText } from 'lucide-react';
 import AppDatePicker from '../../ui/AppDatePicker';
+import { ModalFormField, ModalFieldIcon, modalInputCls } from '../../ui/ModalField';
 import { clampNumber } from '../utils';
 import type { ExtraExpenseRow } from '../types';
 
@@ -27,17 +28,14 @@ export function EconomicsEditExpenseModal({
 }: EconomicsEditExpenseModalProps) {
   if (!open || !editing) return null;
 
-  const inputCls = isDark
-    ? 'h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 text-sm text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30'
-    : 'h-9 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30';
+  const inputCls = modalInputCls(isDark);
+  const inputClsNoIcon = inputCls.replace('pl-7', 'pl-3');
 
   const modalFooterCls = isDark
     ? 'flex justify-end gap-2.5 border-t border-slate-800/70 bg-slate-900/20 px-6 py-4 mt-4'
     : 'flex justify-end gap-2.5 border-t border-slate-200 bg-slate-50 px-6 py-4 mt-4';
 
   const cancelBtnCls = 'btn border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-slate-200 hover:bg-slate-700/60 disabled:opacity-50';
-
-  const labelCls = `mb-1.5 text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
@@ -63,20 +61,26 @@ export function EconomicsEditExpenseModal({
 
         <div className="grid grid-cols-1 gap-4 px-6 pb-2 md:grid-cols-2">
           <div className="md:col-span-2">
-            <div className={labelCls}>Όνομα εξόδου</div>
-            <input value={editName} onChange={e => onEditNameChange(e.target.value)} className={inputCls} disabled={busy}/>
+            <ModalFormField label="Όνομα εξόδου" isDark={isDark}>
+              <ModalFieldIcon icon={FileText} isDark={isDark} />
+              <input value={editName} onChange={e => onEditNameChange(e.target.value)} className={inputCls} disabled={busy}/>
+            </ModalFormField>
           </div>
           <div>
-            <div className={labelCls}>Ποσό</div>
-            <input value={editAmount} onChange={e => onEditAmountChange(clampNumber(e.target.value))} className={inputCls} inputMode="decimal" disabled={busy}/>
+            <ModalFormField label="Ποσό" isDark={isDark}>
+              <ModalFieldIcon icon={Euro} isDark={isDark} />
+              <input value={editAmount} onChange={e => onEditAmountChange(clampNumber(e.target.value))} className={inputCls} inputMode="decimal" disabled={busy}/>
+            </ModalFormField>
           </div>
           <div>
-            <div className={labelCls}>Ημερομηνία</div>
-            <AppDatePicker value={editDate} onChange={onEditDateChange}/>
+            <ModalFormField label="Ημερομηνία" isDark={isDark}>
+              <AppDatePicker label="" value={editDate} onChange={onEditDateChange} variant="underline"/>
+            </ModalFormField>
           </div>
           <div className="md:col-span-2">
-            <div className={labelCls}>Σημειώσεις</div>
-            <input value={editNotes} onChange={e => onEditNotesChange(e.target.value)} className={inputCls} disabled={busy}/>
+            <ModalFormField label="Σημειώσεις" isDark={isDark}>
+              <input value={editNotes} onChange={e => onEditNotesChange(e.target.value)} className={inputClsNoIcon} disabled={busy}/>
+            </ModalFormField>
           </div>
         </div>
 

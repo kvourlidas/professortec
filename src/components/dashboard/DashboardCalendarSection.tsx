@@ -23,7 +23,11 @@ import EventFormModal, {
   type EventFormState,
   type SchoolEventForEdit,
 } from '../events/EventFormModal';
-import { CalendarDays, Clock, BookOpen, GraduationCap, X, Loader2, Layers, Euro, Ban, ArrowLeftRight, Check } from 'lucide-react';
+import {
+  ModalFormField, ModalFieldIcon, ModalSelectChevron, ModalErrorBox,
+  modalInputCls, modalSelectCls,
+} from '../ui/ModalField';
+import { CalendarDays, Clock, BookOpen, GraduationCap, X, Loader2, Layers, Euro, Ban, ArrowLeftRight, Check, AlertCircle } from 'lucide-react';
 
 /* ------------ Types (unchanged) ------------ */
 
@@ -122,24 +126,6 @@ function getNextDateForDow(from: Date, dow: number): Date {
   return d;
 }
 
-/* -------- Shared form components --------
-   Defined at module scope (not inside the component) so they keep a stable identity
-   across re-renders — nesting them inside the component would make React treat them
-   as new component types on every render, remounting inputs and dropping focus mid-typing. */
-function FormField({ label, icon, children }: { label: string; icon?: React.ReactNode; children: React.ReactNode }) {
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
-  return (
-    <div className="space-y-1.5">
-      <label className={`flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-        {icon && <span className="opacity-70">{icon}</span>}
-        {label}
-      </label>
-      {children}
-    </div>
-  );
-}
-
 /* -------- Shared modal shell -------- */
 function ModalShell({ title, subtitle, icon, onClose, children, maxWidthClass = 'max-w-md' }: {
   title: string; subtitle?: string; icon?: React.ReactNode;
@@ -186,13 +172,9 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
   const isDark = theme === 'dark';
   const navigate = useNavigate();
 
-  // Dynamic classes based on theme
-  const inputCls = `h-9 w-full rounded-lg border px-3 text-sm outline-none transition disabled:opacity-60 ${
-    isDark
-      ? 'border-slate-700/70 bg-slate-900/60 text-slate-100 placeholder-slate-500 focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30'
-      : 'border-slate-200 bg-white text-slate-800 placeholder-slate-400 focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/20'
-  }`;
-  const selectCls = inputCls;
+  // Login-page-styled field classes (see ../ui/ModalField.tsx), used by the program/test edit modals below.
+  const inputCls = modalInputCls(isDark);
+  const selectCls = modalSelectCls(isDark);
 
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [tutors, setTutors] = useState<TutorRow[]>([]);
@@ -1058,9 +1040,6 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
   const modalFooterCls = `flex items-center justify-between gap-2 border-t px-6 py-4 mt-4 ${
     isDark ? 'border-slate-800/70 bg-slate-900/20' : 'border-slate-100 bg-slate-50/50'
   }`;
-  const errorBannerCls = `flex items-start gap-2.5 rounded-xl border px-3.5 py-2.5 text-xs ${
-    isDark ? 'border-red-500/30 bg-red-950/40 text-red-200' : 'border-red-200 bg-red-50 text-red-700'
-  }`;
 
   /* -------- Return -------- */
   return (
@@ -1069,7 +1048,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
       <div className="flex items-center gap-3">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
           style={{ background: 'var(--color-accent)' }}>
-          <CalendarDays className="h-4 w-4" style={{ color: 'var(--ch-icon)' }}/>
+          <CalendarDays className="h-4 w-4" style={{ color: 'var(--color-on-accent)' }}/>
         </div>
         <h2 className={`text-sm font-semibold ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>Πρόγραμμα Τμημάτων & Εκδηλώσεις</h2>
       </div>
@@ -1159,52 +1138,62 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
           {eventModal && !showDeleteConfirm && (
             <ModalShell title="Επεξεργασία μαθήματος" icon={<BookOpen className="h-4 w-4" style={{ color: 'var(--ch-icon)' }} />} onClose={handleEventModalClose} maxWidthClass="max-w-2xl">
               <div className="space-y-4 px-6 pb-2">
-                {eventError && <div className={errorBannerCls}><span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />{eventError}</div>}
+                {eventError && (
+                  <ModalErrorBox isDark={isDark}>
+                    <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />{eventError}
+                  </ModalErrorBox>
+                )}
 
                 {eventModal.studentId ? (
-                  <FormField label="Μαθητής" icon={<GraduationCap className="h-3 w-3" />}>
-                    <div className={`${selectCls} flex items-center`}>{studentById.get(eventModal.studentId)?.full_name ?? '—'}</div>
-                  </FormField>
+                  <ModalFormField label="Μαθητής" isDark={isDark}>
+                    <ModalFieldIcon icon={GraduationCap} isDark={isDark} />
+                    <div className={`${inputCls} flex items-center`}>{studentById.get(eventModal.studentId)?.full_name ?? '—'}</div>
+                  </ModalFormField>
                 ) : (
-                  <FormField label="Τμήμα" icon={<GraduationCap className="h-3 w-3" />}>
+                  <ModalFormField label="Τμήμα" isDark={isDark}>
+                    <ModalFieldIcon icon={GraduationCap} isDark={isDark} />
                     <select value={eventModal.classId ?? ''} onChange={handleProgramFieldChange('classId')} className={selectCls}>
                       <option value="">Επιλέξτε τμήμα</option>
                       {classes.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
                     </select>
-                  </FormField>
+                    <ModalSelectChevron isDark={isDark} />
+                  </ModalFormField>
                 )}
 
-                <FormField label="Μάθημα" icon={<Layers className="h-3 w-3" />}>
+                <ModalFormField label="Μάθημα" isDark={isDark}>
+                  <ModalFieldIcon icon={Layers} isDark={isDark} />
                   <select value={eventModal.subjectId ?? ''} onChange={handleProgramFieldChange('subjectId')} className={selectCls} disabled={(!eventModal.classId && !eventModal.studentId) || programSubjectOptions.length === 0}>
                     <option value="">{programSubjectOptions.length === 0 ? 'Δεν υπάρχουν μαθήματα' : 'Επιλέξτε μάθημα'}</option>
                     {programSubjectOptions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
-                </FormField>
+                  <ModalSelectChevron isDark={isDark} />
+                </ModalFormField>
 
-                <FormField label="Ημερομηνία" icon={<CalendarDays className="h-3 w-3" />}>
-                  <AppDatePicker value={eventModal.date} onChange={(v) => setEventModal((p) => (p ? { ...p, date: v } : p))} placeholder="dd/mm/yyyy" />
-                </FormField>
+                <ModalFormField label="Ημερομηνία" isDark={isDark}>
+                  <AppDatePicker value={eventModal.date} onChange={(v) => setEventModal((p) => (p ? { ...p, date: v } : p))} placeholder="dd/mm/yyyy" variant="underline" />
+                </ModalFormField>
 
                 <div className="grid grid-cols-2 gap-3">
-                  <FormField label="Ώρα έναρξης" icon={<Clock className="h-3 w-3" />}>
+                  <ModalFormField label="Ώρα έναρξης" isDark={isDark}>
                     <TimePicker value={eventModal.startTime} onChange={(t) => setEventModal((p) => p ? { ...p, startTime: t } : p)} required />
-                  </FormField>
-                  <FormField label="Ώρα λήξης" icon={<Clock className="h-3 w-3" />}>
+                  </ModalFormField>
+                  <ModalFormField label="Ώρα λήξης" isDark={isDark}>
                     <TimePicker value={eventModal.endTime} onChange={(t) => setEventModal((p) => p ? { ...p, endTime: t } : p)} required />
-                  </FormField>
+                  </ModalFormField>
                 </div>
 
                 {eventModal.studentId && (
-                  <FormField label="Χρέωση (€)" icon={<Euro className="h-3 w-3" />}>
+                  <ModalFormField label="Χρέωση (€)" isDark={isDark}>
+                    <ModalFieldIcon icon={Euro} isDark={isDark} />
                     <input
                       type="text"
                       inputMode="decimal"
-                      className={selectCls}
+                      className={inputCls}
                       value={eventModal.chargeAmount}
                       onChange={(e) => { const v = e.target.value.replace(',', '.').replace(/[^0-9.]/g, ''); setEventModal((p) => (p ? { ...p, chargeAmount: v } : p)); }}
                       placeholder="π.χ. 25 (προαιρετικό)"
                     />
-                  </FormField>
+                  </ModalFormField>
                 )}
 
                 {programModalIsHoliday && (
@@ -1278,10 +1267,14 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
               icon={<span className="text-[10px] font-bold" style={{ color: 'var(--ch-icon)' }}>✎</span>}
               onClose={handleTestModalClose} maxWidthClass="max-w-2xl">
               <div className="space-y-4 px-6 pb-2">
-                {testError && <div className={errorBannerCls}><span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />{testError}</div>}
+                {testError && (
+                  <ModalErrorBox isDark={isDark}>
+                    <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />{testError}
+                  </ModalErrorBox>
+                )}
 
                 {!testModal.classId && !testModal.levelId ? (
-                  <FormField label="Μαθητές" icon={<GraduationCap className="h-3 w-3" />}>
+                  <ModalFormField label="Μαθητές" isDark={isDark}>
                     <div className={`flex w-full flex-col gap-1.5 rounded-lg border px-3 py-2 ${isDark ? 'border-slate-700/70 bg-slate-900/60' : 'border-slate-200 bg-white'}`}>
                       {testModalAssignmentsLoading ? (
                         <span className="text-xs opacity-70">Φόρτωση...</span>
@@ -1333,45 +1326,51 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
                       className="mt-1.5 text-[11px] underline underline-offset-2" style={{ color: 'var(--color-accent)' }}>
                       Επεξεργασία μαθητών από τη σελίδα «Διαγωνίσματα»
                     </button>
-                  </FormField>
+                  </ModalFormField>
                 ) : (
                   <>
                     {testModal.levelId !== null ? (
-                      <FormField label="Επίπεδο" icon={<GraduationCap className="h-3 w-3" />}>
+                      <ModalFormField label="Επίπεδο" isDark={isDark}>
+                        <ModalFieldIcon icon={GraduationCap} isDark={isDark} />
                         <select value={testModal.levelId ?? ''} onChange={handleTestFieldChange('levelId')} className={selectCls}>
                           <option value="">Επιλέξτε επίπεδο</option>
                           {levels.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
                         </select>
-                      </FormField>
+                        <ModalSelectChevron isDark={isDark} />
+                      </ModalFormField>
                     ) : (
-                      <FormField label="Τμήμα" icon={<GraduationCap className="h-3 w-3" />}>
+                      <ModalFormField label="Τμήμα" isDark={isDark}>
+                        <ModalFieldIcon icon={GraduationCap} isDark={isDark} />
                         <select value={testModal.classId ?? ''} onChange={handleTestFieldChange('classId')} className={selectCls}>
                           <option value="">Επιλέξτε τμήμα</option>
                           {classes.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
                         </select>
-                      </FormField>
+                        <ModalSelectChevron isDark={isDark} />
+                      </ModalFormField>
                     )}
 
-                    <FormField label="Μάθημα" icon={<Layers className="h-3 w-3" />}>
+                    <ModalFormField label="Μάθημα" isDark={isDark}>
+                      <ModalFieldIcon icon={Layers} isDark={isDark} />
                       <select value={testModal.subjectId ?? ''} onChange={handleTestFieldChange('subjectId')} className={selectCls} disabled={(!testModal.classId && !testModal.levelId) || testSubjectOptions.length === 0}>
                         <option value="">{testSubjectOptions.length === 0 ? 'Δεν υπάρχουν μαθήματα' : 'Επιλέξτε μάθημα'}</option>
                         {testSubjectOptions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                       </select>
-                    </FormField>
+                      <ModalSelectChevron isDark={isDark} />
+                    </ModalFormField>
                   </>
                 )}
 
-                <FormField label="Ημερομηνία" icon={<CalendarDays className="h-3 w-3" />}>
-                  <AppDatePicker value={testModal.date} onChange={(v) => setTestModal((p) => (p ? { ...p, date: v } : p))} placeholder="dd/mm/yyyy" />
-                </FormField>
+                <ModalFormField label="Ημερομηνία" isDark={isDark}>
+                  <AppDatePicker value={testModal.date} onChange={(v) => setTestModal((p) => (p ? { ...p, date: v } : p))} placeholder="dd/mm/yyyy" variant="underline" />
+                </ModalFormField>
 
                 <div className="grid grid-cols-2 gap-3">
-                  <FormField label="Ώρα έναρξης" icon={<Clock className="h-3 w-3" />}>
+                  <ModalFormField label="Ώρα έναρξης" isDark={isDark}>
                     <TimePicker value={testModal.startTime} onChange={(t) => setTestModal((p) => p ? { ...p, startTime: t } : p)} required />
-                  </FormField>
-                  <FormField label="Ώρα λήξης" icon={<Clock className="h-3 w-3" />}>
+                  </ModalFormField>
+                  <ModalFormField label="Ώρα λήξης" isDark={isDark}>
                     <TimePicker value={testModal.endTime} onChange={(t) => setTestModal((p) => p ? { ...p, endTime: t } : p)} required />
-                  </FormField>
+                  </ModalFormField>
                 </div>
 
                 {testModalIsHoliday && (

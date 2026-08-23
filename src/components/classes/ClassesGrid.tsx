@@ -135,12 +135,8 @@ function ClassCard({
               Μαθητές {students.length > 0 && `(${students.length})`}
             </span>
             <button type="button" onClick={() => onViewStudents({ id: cls.id, title: cls.title })}
-              className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition active:scale-95 ${
-                isDark
-                  ? 'border border-[color:var(--color-accent)]/40 bg-[color:var(--color-accent)]/10 text-[color:var(--color-accent)] hover:bg-[color:var(--color-accent)]/20'
-                  : 'border border-transparent text-white hover:brightness-110'
-              }`}
-              style={isDark ? {} : { background: 'var(--color-accent)' }}>
+              className="flex items-center gap-1.5 text-[11px] font-semibold transition hover:underline"
+              style={{ color: 'var(--color-accent)' }}>
               <UserPlus className="h-3 w-3" />
               Προσθήκη Μαθητών
             </button>
@@ -260,7 +256,9 @@ function LevelSection({
         </div>
 
         <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg"
-          style={{ background: levelId ? 'var(--color-accent)' : isDark ? '#334155' : '#e2e8f0' }}>
+          style={levelId
+            ? { background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }
+            : { background: isDark ? '#334155' : '#e2e8f0' }}>
           <GraduationCap className="h-3.5 w-3.5"
             style={{ color: levelId ? 'var(--ch-icon)' : isDark ? '#94a3b8' : '#64748b' }} />
         </div>

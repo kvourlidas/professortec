@@ -38,6 +38,8 @@ export default function TestResultsPage() {
 
   const [loadingStudents, setLoadingStudents] = useState(true);
   const [allStudents, setAllStudents] = useState<StudentRow[]>([]);
+  const [classStudentIds, setClassStudentIds] = useState<Set<string> | null>(null);
+  const [showAllStudents, setShowAllStudents] = useState(false);
   const [assignedIds, setAssignedIds] = useState<Set<string>>(new Set());
   const [initialAssignedIds, setInitialAssignedIds] = useState<Set<string>>(new Set());
   const [gradeByStudent, setGradeByStudent] = useState<Record<string, GradeInfo>>({});
@@ -98,21 +100,30 @@ export default function TestResultsPage() {
 
   // Load students + existing results
   useEffect(() => {
-    if (!testId || !schoolId) return;
+    if (!testId || !schoolId || loadingTest) return;
     const load = async () => {
       setLoadingStudents(true);
       try {
         const [
           { data: studentsData, error: studentsErr },
           { data: resultsData, error: resultsErr },
+          classStudentsRes,
         ] = await Promise.all([
           supabase.from('students').select('id, school_id, full_name').eq('school_id', schoolId).is('deleted_at', null).order('full_name', { ascending: true }),
           supabase.from('test_results').select('id, test_id, student_id, subject_id, grade').eq('test_id', testId),
+          test?.class_id
+            ? supabase.from('class_students').select('student_id').eq('school_id', schoolId).eq('class_id', test.class_id)
+            : Promise.resolve({ data: null, error: null }),
         ]);
         if (studentsErr) throw studentsErr;
         if (resultsErr) throw resultsErr;
         const studentsList = (studentsData ?? []) as StudentRow[];
         setAllStudents(studentsList);
+        setClassStudentIds(
+          test?.class_id && !classStudentsRes.error
+            ? new Set((classStudentsRes.data ?? []).map((r: { student_id: string }) => r.student_id))
+            : null,
+        );
         const newAssigned = new Set<string>();
         const gradeMap: Record<string, GradeInfo> = {};
         (resultsData ?? []).forEach((raw) => {
@@ -128,7 +139,7 @@ export default function TestResultsPage() {
       finally { setLoadingStudents(false); }
     };
     load();
-  }, [testId, schoolId]);
+  }, [testId, schoolId, loadingTest, test?.class_id]);
 
   const handleSave = async () => {
     setError(null);
@@ -176,9 +187,13 @@ export default function TestResultsPage() {
     finally { setSaving(false); }
   };
 
+  const scopedToClass = !showAllStudents && classStudentIds !== null;
   const availableStudents = useMemo(() =>
-    allStudents.filter((s) => !assignedIds.has(s.id) && (s.full_name ?? '').toLowerCase().includes(searchLeft.toLowerCase())),
-    [allStudents, assignedIds, searchLeft]);
+    allStudents.filter((s) =>
+      !assignedIds.has(s.id) &&
+      (!scopedToClass || classStudentIds!.has(s.id)) &&
+      (s.full_name ?? '').toLowerCase().includes(searchLeft.toLowerCase())),
+    [allStudents, assignedIds, searchLeft, scopedToClass, classStudentIds]);
 
   const assignedStudents = useMemo(() =>
     allStudents.filter((s) => assignedIds.has(s.id) && (s.full_name ?? '').toLowerCase().includes(searchRight.toLowerCase())),
@@ -289,7 +304,7 @@ export default function TestResultsPage() {
         <div className="flex items-start gap-3">
           <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
             style={{ background: 'var(--color-accent)' }}>
-            <Users className="h-4 w-4" style={{ color: 'var(--ch-icon)' }} />
+            <Users className="h-4 w-4" style={{ color: 'var(--color-on-accent)' }} />
           </div>
           <div>
             <h1 className={`text-base font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>
@@ -406,7 +421,7 @@ export default function TestResultsPage() {
                 <div className={colHeaderCls} style={colHeaderStyle}>
                   <div className="flex items-center justify-between">
                     <span className={colHeaderLabelCls}>
-                      Όλοι οι μαθητές
+                      {scopedToClass ? 'Μαθητές τμήματος' : 'Όλοι οι μαθητές'}
                       {availableStudents.length > 0 && (
                         <span className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] tabular-nums ${isDark ? 'bg-slate-800 text-slate-500' : 'bg-slate-200 text-slate-500'}`}>
                           {availableStudents.length}
@@ -418,6 +433,19 @@ export default function TestResultsPage() {
                       <input className={searchInputCls} placeholder="Αναζήτηση..." value={searchLeft} onChange={(e) => setSearchLeft(e.target.value)} disabled={saving} />
                     </div>
                   </div>
+                  {classStudentIds !== null && (
+                    <label className={`mt-2 flex w-fit items-center gap-1.5 text-[11px] cursor-pointer ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      <input
+                        type="checkbox"
+                        className="h-3.5 w-3.5 rounded"
+                        style={checkboxStyle}
+                        checked={showAllStudents}
+                        onChange={() => setShowAllStudents((v) => !v)}
+                        disabled={saving}
+                      />
+                      Εμφάνιση όλων των μαθητών
+                    </label>
+                  )}
                   <div className="mt-2 flex items-center justify-between">
                     <label className={`flex items-center gap-1.5 text-[11px] cursor-pointer ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                       <input
@@ -433,8 +461,8 @@ export default function TestResultsPage() {
                     </label>
                     <button type="button" onClick={moveToAssigned}
                       disabled={saving || visibleLeftSelected.length === 0}
-                      className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition disabled:opacity-30 active:scale-95"
-                      style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', color: 'var(--color-accent)', border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>
+                      className="flex items-center gap-1 px-1 py-1 text-[11px] font-semibold transition disabled:opacity-30 active:scale-95"
+                      style={{ color: 'var(--color-accent)' }}>
                       {visibleLeftSelected.length > 0 ? `Προσθήκη (${visibleLeftSelected.length})` : 'Προσθήκη'}
                       <ArrowRight className="h-3 w-3" />
                     </button>
@@ -481,8 +509,8 @@ export default function TestResultsPage() {
                   <div className="mt-2 flex items-center justify-between">
                     <button type="button" onClick={moveToAvailable}
                       disabled={saving || visibleRightSelected.length === 0}
-                      className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition disabled:opacity-30 active:scale-95"
-                      style={{ background: isDark ? 'rgba(239,68,68,0.12)' : 'rgba(239,68,68,0.08)', color: isDark ? '#f87171' : '#dc2626', border: `1px solid ${isDark ? 'rgba(239,68,68,0.25)' : 'rgba(239,68,68,0.20)'}` }}>
+                      className="flex items-center gap-1 px-1 py-1 text-[11px] font-semibold transition disabled:opacity-30 active:scale-95"
+                      style={{ color: isDark ? '#f87171' : '#dc2626' }}>
                       <ArrowLeft className="h-3 w-3" />
                       {visibleRightSelected.length > 0 ? `Αφαίρεση (${visibleRightSelected.length})` : 'Αφαίρεση'}
                     </button>

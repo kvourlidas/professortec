@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react';
-import { CalendarDays, X, Loader2 } from 'lucide-react';
+import { CalendarDays, BookOpen, X, Loader2, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../context/ThemeContext';
 import TimePicker from '../ui/TimePicker';
-import AppDatePicker from '../ui/AppDatePicker';
+import DatePickerField from '../ui/AppDatePicker';
+import {
+  ModalFormField as FormField, ModalFieldIcon as FieldIcon, ModalSelectChevron,
+  ModalErrorBox, modalInputCls, modalSelectCls,
+} from '../ui/ModalField';
 import { displayToIso } from './types';
 
 interface SubjectRow { id: string; name: string; }
@@ -24,17 +28,6 @@ const DAYS = [
   { value: 'saturday', label: 'Σάββατο' },
   { value: 'sunday', label: 'Κυριακή' },
 ];
-
-function FormField({ label, children, isDark }: { label: string; children: React.ReactNode; isDark: boolean }) {
-  return (
-    <div className="space-y-1.5">
-      <label className={`flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-        {label}
-      </label>
-      {children}
-    </div>
-  );
-}
 
 export function StudentSlotModal({ studentId, levelId, onClose, onCreated }: StudentSlotModalProps) {
   const { theme } = useTheme();
@@ -103,9 +96,8 @@ export function StudentSlotModal({ studentId, levelId, onClose, onCreated }: Stu
     onCreated(res.data.item);
   };
 
-  const selectCls = isDark
-    ? 'h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 text-sm text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30'
-    : 'h-9 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30';
+  const inputCls = modalInputCls(isDark);
+  const selectCls = modalSelectCls(isDark);
 
   const modalCardCls = isDark
     ? 'relative w-full max-w-lg overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl'
@@ -138,23 +130,27 @@ export function StudentSlotModal({ studentId, levelId, onClose, onCreated }: Stu
         </div>
 
         {error && (
-          <div className="mx-6 mb-3 flex items-start gap-2.5 rounded-xl border border-red-500/30 bg-red-950/40 px-3.5 py-2.5 text-xs text-red-200">
-            <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />{error}
-          </div>
+          <ModalErrorBox isDark={isDark}>
+            <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />{error}
+          </ModalErrorBox>
         )}
 
         <div className="px-6 pb-2 space-y-4">
           <div className="grid gap-3 sm:grid-cols-2">
             <FormField label="ΗΜΕΡΑ" isDark={isDark}>
+              <FieldIcon icon={CalendarDays} isDark={isDark} />
               <select className={selectCls} value={dayOfWeek} onChange={e => setDayOfWeek(e.target.value)}>
                 {DAYS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
               </select>
+              <ModalSelectChevron isDark={isDark} />
             </FormField>
             <FormField label="ΜΑΘΗΜΑ" isDark={isDark}>
+              <FieldIcon icon={BookOpen} isDark={isDark} />
               <select className={selectCls} value={subjectId} onChange={e => setSubjectId(e.target.value)}>
                 <option value="">Επιλέξτε μάθημα (προαιρετικό)</option>
                 {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
+              <ModalSelectChevron isDark={isDark} />
             </FormField>
           </div>
 
@@ -169,10 +165,10 @@ export function StudentSlotModal({ studentId, levelId, onClose, onCreated }: Stu
 
           <div className="grid gap-3 sm:grid-cols-2">
             <FormField label="ΗΜΕΡΟΜΗΝΙΑ ΕΝΑΡΞΗΣ" isDark={isDark}>
-              <AppDatePicker value={startDate} onChange={setStartDate} placeholder="π.χ. 12/05/2025" />
+              <DatePickerField label="" value={startDate} onChange={setStartDate} placeholder="π.χ. 12/05/2025" id="student-slot-start-date" variant="underline" />
             </FormField>
             <FormField label="ΗΜΕΡΟΜΗΝΙΑ ΛΗΞΗΣ" isDark={isDark}>
-              <AppDatePicker value={endDate} onChange={setEndDate} placeholder="π.χ. 12/05/2026" />
+              <DatePickerField label="" value={endDate} onChange={setEndDate} placeholder="π.χ. 12/05/2026" id="student-slot-end-date" variant="underline" />
             </FormField>
           </div>
 
@@ -180,7 +176,7 @@ export function StudentSlotModal({ studentId, levelId, onClose, onCreated }: Stu
             <input
               type="text"
               inputMode="decimal"
-              className={selectCls}
+              className={`${inputCls} pl-3`}
               value={chargePerSession}
               onChange={e => setChargePerSession(e.target.value.replace(',', '.').replace(/[^0-9.]/g, ''))}
               placeholder="π.χ. 25 (προαιρετικό)"

@@ -118,15 +118,15 @@ export default function ClassStudentsModal({ open, onClose, classId, classTitle 
     [...initialAssignedIds].filter((id) => !assignedIds.has(id)).length;
 
   const modalBg = isDark ? 'border-slate-700/60 bg-slate-900' : 'border-slate-200 bg-white';
-  const panelCls = `overflow-hidden rounded-xl border ${isDark ? 'border-slate-700/60 bg-slate-900/40' : 'border-slate-200 bg-slate-50'}`;
-  const panelHeaderCls = `border-b px-3.5 py-2.5 ${isDark ? 'border-slate-700/60 bg-slate-900/30' : 'border-slate-200 bg-slate-100/80'}`;
   const searchInputCls = `h-7 w-28 rounded-lg border pl-6 pr-2 text-[11px] outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/20 focus:border-[color:var(--color-accent)] ${isDark ? 'border-slate-700/60 bg-slate-800/60 text-slate-200 placeholder-slate-500' : 'border-slate-200 bg-white text-slate-700 placeholder-slate-400'}`;
-  const listDivideCls = `divide-y p-1 ${isDark ? 'divide-slate-800/50' : 'divide-slate-100'}`;
+  const listDivideCls = `divide-y ${isDark ? 'divide-slate-800/60' : 'divide-slate-200'}`;
   const footerCls = `mt-3 flex items-center justify-between gap-3 border-t px-6 py-4 ${isDark ? 'border-slate-800/70 bg-slate-900/20' : 'border-slate-100 bg-slate-50/50'}`;
   const cancelBtnCls = `btn border px-4 py-1.5 disabled:opacity-50 ${isDark ? 'border-slate-600/60 bg-slate-800/50 text-slate-200 hover:bg-slate-700/60' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'}`;
   const scrollStyle: React.CSSProperties = { scrollbarWidth: 'thin', scrollbarColor: isDark ? 'rgba(71,85,105,0.35) transparent' : 'rgba(203,213,225,0.7) transparent' };
   const checkboxStyle: React.CSSProperties = { accentColor: 'var(--color-accent)', cursor: 'pointer' };
-  const rowCls = `flex items-center gap-2.5 rounded-lg px-2.5 py-2 transition cursor-pointer select-none ${isDark ? 'hover:bg-slate-800/50' : 'hover:bg-slate-100'}`;
+  const rowHoverCls = isDark ? 'transition-colors hover:bg-blue-500/[0.12]' : 'transition-colors hover:bg-blue-50';
+  const rowCls = `flex items-center gap-2.5 px-2 py-2 cursor-pointer select-none ${rowHoverCls}`;
+  const sectionLabelCls = `text-[10px] font-bold uppercase tracking-wide ${isDark ? 'text-white' : 'text-black'}`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -177,56 +177,54 @@ export default function ClassStudentsModal({ open, onClose, classId, classTitle 
             <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Φόρτωση μαθητών...</p>
           </div>
         ) : (
-          <div className="grid gap-3 px-6 pt-4 pb-2 md:grid-cols-2">
+          <div className={`grid gap-6 px-6 pt-4 pb-2 md:grid-cols-2 md:gap-x-0 md:divide-x ${isDark ? 'divide-slate-800' : 'divide-slate-200'}`}>
 
             {/* Left panel — available */}
-            <div className={panelCls}>
-              <div className={panelHeaderCls}>
-                {/* Row 1: title + search */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <UserMinus className={`h-3.5 w-3.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
-                    <h3 className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>ΔΙΑΘΕΣΙΜΟΙ</h3>
-                    <span className={`rounded-full border px-1.5 py-0.5 text-[10px] ${isDark ? 'border-slate-700 bg-slate-800 text-slate-400' : 'border-slate-200 bg-white text-slate-500'}`}>
-                      {availableStudents.length}
-                    </span>
-                  </div>
-                  <div className="relative">
-                    <Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-500" />
-                    <input className={searchInputCls} placeholder="Αναζήτηση..." value={searchLeft} onChange={(e) => setSearchLeft(e.target.value)} disabled={saving} />
-                  </div>
+            <div className="md:pr-6">
+              {/* Row 1: title + search */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <UserMinus className={`h-3.5 w-3.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+                  <h3 className={sectionLabelCls}>Διαθέσιμοι</h3>
+                  <span className={`text-[11px] tabular-nums ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                    {availableStudents.length}
+                  </span>
                 </div>
-                {/* Row 2: select-all + move button */}
-                <div className="mt-2 flex items-center justify-between">
-                  <label className={`flex items-center gap-1.5 text-[11px] cursor-pointer ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                    <input
-                      type="checkbox"
-                      className="h-3.5 w-3.5 rounded"
-                      style={checkboxStyle}
-                      checked={allLeftChecked}
-                      ref={el => { if (el) el.indeterminate = someLeftChecked; }}
-                      onChange={toggleAllLeft}
-                      disabled={saving || selectableLeftStudents.length === 0}
-                    />
-                    Επιλογή όλων
-                  </label>
-                  <button type="button" onClick={moveToAssigned}
-                    disabled={saving || visibleLeftSelected.length === 0}
-                    className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition disabled:opacity-30 active:scale-95"
-                    style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', color: 'var(--color-accent)', border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>
-                    {visibleLeftSelected.length > 0 ? `Προσθήκη (${visibleLeftSelected.length})` : 'Προσθήκη'}
-                    <ArrowRight className="h-3 w-3" />
-                  </button>
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-500" />
+                  <input className={searchInputCls} placeholder="Αναζήτηση..." value={searchLeft} onChange={(e) => setSearchLeft(e.target.value)} disabled={saving} />
                 </div>
               </div>
-              <div className="max-h-64 overflow-y-auto" style={scrollStyle}>
+              {/* Row 2: select-all + move button */}
+              <div className="mt-2 flex items-center justify-between">
+                <label className={`flex items-center gap-1.5 text-[11px] cursor-pointer ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                  <input
+                    type="checkbox"
+                    className="h-3.5 w-3.5 rounded"
+                    style={checkboxStyle}
+                    checked={allLeftChecked}
+                    ref={el => { if (el) el.indeterminate = someLeftChecked; }}
+                    onChange={toggleAllLeft}
+                    disabled={saving || selectableLeftStudents.length === 0}
+                  />
+                  Επιλογή όλων
+                </label>
+                <button type="button" onClick={moveToAssigned}
+                  disabled={saving || visibleLeftSelected.length === 0}
+                  className="flex items-center gap-1 text-[11px] font-semibold transition hover:underline disabled:opacity-30"
+                  style={{ color: 'var(--color-accent)' }}>
+                  {visibleLeftSelected.length > 0 ? `Προσθήκη (${visibleLeftSelected.length})` : 'Προσθήκη'}
+                  <ArrowRight className="h-3 w-3" />
+                </button>
+              </div>
+              <div className="mt-3 max-h-64 overflow-y-auto" style={scrollStyle}>
                 {availableStudents.length === 0 ? (
                   <div className="flex flex-col items-center justify-center gap-2 py-10">
                     <Users className={`h-5 w-5 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />
                     <p className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Δεν υπάρχουν διαθέσιμοι μαθητές.</p>
                   </div>
                 ) : (
-                  <ul className={listDivideCls}>
+                  <ul className={listDivideCls} style={{ borderTop: '2px solid var(--color-accent)' }}>
                     {availableStudents.map((s) => {
                       const hasSub = activeSubIds.has(s.id);
                       return (
@@ -241,7 +239,7 @@ export default function ClassStudentsModal({ open, onClose, classId, classTitle 
                             onClick={e => e.stopPropagation()}
                             disabled={saving || !hasSub}
                           />
-                          <span className={`text-xs ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                          <span className={`text-xs font-medium ${isDark ? 'text-slate-100' : 'text-slate-700'}`}>
                             {s.full_name ?? 'Χωρίς όνομα'}
                           </span>
                           {!hasSub && <Lock className={`ml-auto h-3 w-3 shrink-0 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />}
@@ -254,54 +252,50 @@ export default function ClassStudentsModal({ open, onClose, classId, classTitle 
             </div>
 
             {/* Right panel — assigned */}
-            <div className={panelCls}>
-              <div className={panelHeaderCls}>
-                {/* Row 1: title + search */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <UserCheck className="h-3.5 w-3.5" style={{ color: 'var(--color-accent)' }} />
-                    <h3 className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--color-accent)' }}>ΣΤΟ ΤΜΗΜΑ</h3>
-                    <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
-                      style={{ background: 'color-mix(in srgb, var(--color-accent) 15%, transparent)', color: 'var(--color-accent)', border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)' }}>
-                      {assignedStudents.length}
-                    </span>
-                  </div>
-                  <div className="relative">
-                    <Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-500" />
-                    <input className={searchInputCls} placeholder="Αναζήτηση..." value={searchRight} onChange={(e) => setSearchRight(e.target.value)} disabled={saving} />
-                  </div>
+            <div className="md:pl-6">
+              {/* Row 1: title + search */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <UserCheck className="h-3.5 w-3.5" style={{ color: 'var(--color-accent)' }} />
+                  <h3 className={sectionLabelCls}>Στο τμήμα</h3>
+                  <span className="text-[11px] font-semibold tabular-nums" style={{ color: 'var(--color-accent)' }}>
+                    {assignedStudents.length}
+                  </span>
                 </div>
-                {/* Row 2: move button + select-all */}
-                <div className="mt-2 flex items-center justify-between">
-                  <button type="button" onClick={moveToAvailable}
-                    disabled={saving || visibleRightSelected.length === 0}
-                    className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition disabled:opacity-30 active:scale-95"
-                    style={{ background: isDark ? 'rgba(239,68,68,0.12)' : 'rgba(239,68,68,0.08)', color: isDark ? '#f87171' : '#dc2626', border: `1px solid ${isDark ? 'rgba(239,68,68,0.25)' : 'rgba(239,68,68,0.20)'}` }}>
-                    <ArrowLeft className="h-3 w-3" />
-                    {visibleRightSelected.length > 0 ? `Αφαίρεση (${visibleRightSelected.length})` : 'Αφαίρεση'}
-                  </button>
-                  <label className={`flex items-center gap-1.5 text-[11px] cursor-pointer ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                    <input
-                      type="checkbox"
-                      className="h-3.5 w-3.5 rounded"
-                      style={checkboxStyle}
-                      checked={allRightChecked}
-                      ref={el => { if (el) el.indeterminate = someRightChecked; }}
-                      onChange={toggleAllRight}
-                      disabled={saving || assignedStudents.length === 0}
-                    />
-                    Επιλογή όλων
-                  </label>
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-500" />
+                  <input className={searchInputCls} placeholder="Αναζήτηση..." value={searchRight} onChange={(e) => setSearchRight(e.target.value)} disabled={saving} />
                 </div>
               </div>
-              <div className="max-h-64 overflow-y-auto" style={scrollStyle}>
+              {/* Row 2: move button + select-all */}
+              <div className="mt-2 flex items-center justify-between">
+                <button type="button" onClick={moveToAvailable}
+                  disabled={saving || visibleRightSelected.length === 0}
+                  className={`flex items-center gap-1 text-[11px] font-semibold transition hover:underline disabled:opacity-30 ${isDark ? 'text-red-400' : 'text-red-600'}`}>
+                  <ArrowLeft className="h-3 w-3" />
+                  {visibleRightSelected.length > 0 ? `Αφαίρεση (${visibleRightSelected.length})` : 'Αφαίρεση'}
+                </button>
+                <label className={`flex items-center gap-1.5 text-[11px] cursor-pointer ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                  <input
+                    type="checkbox"
+                    className="h-3.5 w-3.5 rounded"
+                    style={checkboxStyle}
+                    checked={allRightChecked}
+                    ref={el => { if (el) el.indeterminate = someRightChecked; }}
+                    onChange={toggleAllRight}
+                    disabled={saving || assignedStudents.length === 0}
+                  />
+                  Επιλογή όλων
+                </label>
+              </div>
+              <div className="mt-3 max-h-64 overflow-y-auto" style={scrollStyle}>
                 {assignedStudents.length === 0 ? (
                   <div className="flex flex-col items-center justify-center gap-2 py-10">
                     <UserCheck className={`h-5 w-5 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />
                     <p className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Δεν έχουν προστεθεί μαθητές.</p>
                   </div>
                 ) : (
-                  <ul className={listDivideCls}>
+                  <ul className={listDivideCls} style={{ borderTop: '2px solid var(--color-accent)' }}>
                     {assignedStudents.map((s) => {
                       const hasSub = activeSubIds.has(s.id);
                       return (
@@ -315,7 +309,7 @@ export default function ClassStudentsModal({ open, onClose, classId, classTitle 
                             onClick={e => e.stopPropagation()}
                             disabled={saving}
                           />
-                          <span className={`text-xs ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                          <span className={`text-xs font-medium ${isDark ? 'text-slate-100' : 'text-slate-700'}`}>
                             {s.full_name ?? 'Χωρίς όνομα'}
                           </span>
                           {!hasSub && (

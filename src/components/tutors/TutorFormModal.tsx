@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
-import { X, GraduationCap, User, Calendar, Hash, Phone, Mail, CreditCard, FileText, Loader2 } from 'lucide-react';
+import { X, GraduationCap, User, Hash, Phone, Mail, CreditCard, Loader2, AlertCircle } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import DatePickerField from '../ui/AppDatePicker';
+import {
+  ModalFormField as FormField, ModalFieldIcon as FieldIcon,
+  ModalErrorBox, modalInputCls,
+} from '../ui/ModalField.tsx';
 import type { ModalMode, TutorFormState, TutorRow } from './types';
 import { emptyForm } from './types';
 import { isoToDisplay } from './utils';
@@ -16,20 +20,6 @@ type TutorFormModalProps = {
   onClose: () => void;
   onSubmit: (form: TutorFormState) => Promise<void>;
 };
-
-function FormField({ label, icon, children, isDark }: {
-  label: string; icon?: React.ReactNode; children: React.ReactNode; isDark: boolean;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <label className={`flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-        {icon && <span className="opacity-70">{icon}</span>}
-        {label}
-      </label>
-      {children}
-    </div>
-  );
-}
 
 export default function TutorFormModal({
   open,
@@ -72,8 +62,8 @@ export default function TutorFormModal({
     await onSubmit(form);
   };
 
-  const inputCls = `h-9 w-full rounded-lg border px-3 text-sm outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 focus:border-[color:var(--color-accent)] ${isDark ? 'border-slate-700/70 bg-slate-900/60 text-slate-100 placeholder-slate-500' : 'border-slate-200 bg-slate-50 text-slate-800 placeholder-slate-400'}`;
-  const textareaCls = `w-full rounded-lg border px-3 py-2 text-sm outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 focus:border-[color:var(--color-accent)] resize-none ${isDark ? 'border-slate-700/70 bg-slate-900/60 text-slate-100 placeholder-slate-500' : 'border-slate-200 bg-slate-50 text-slate-800 placeholder-slate-400'}`;
+  const inputCls = modalInputCls(isDark);
+  const textareaCls = `w-full resize-none border-b bg-transparent px-0 py-2 text-sm outline-none transition-colors duration-200 ${isDark ? 'border-white/15 text-slate-100 placeholder-slate-600 focus:border-[color:var(--color-accent)]' : 'border-slate-300 text-slate-800 placeholder-slate-400 focus:border-[color:var(--color-accent)]'}`;
   const modalBg = isDark ? 'border-slate-700/60 bg-slate-900' : 'border-slate-200 bg-white';
   const cancelBtnCls = `btn border px-4 py-1.5 disabled:opacity-50 ${isDark ? 'border-slate-600/60 bg-slate-800/50 text-slate-200 hover:bg-slate-700/60' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'}`;
   const modalFooterCls = `flex justify-end gap-2.5 border-t px-6 py-4 mt-4 ${isDark ? 'border-slate-800/70 bg-slate-900/20' : 'border-slate-100 bg-slate-50/50'}`;
@@ -107,9 +97,9 @@ export default function TutorFormModal({
 
         {/* Error */}
         {error && (
-          <div className={`mx-6 mb-3 flex items-start gap-2.5 rounded-xl border px-3.5 py-2.5 text-xs ${isDark ? 'border-red-500/30 bg-red-950/40 text-red-200' : 'border-red-200 bg-red-50 text-red-700'}`}>
-            <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />{error}
-          </div>
+          <ModalErrorBox isDark={isDark}>
+            <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />{error}
+          </ModalErrorBox>
         )}
 
         {/* Scrollable form body */}
@@ -118,19 +108,23 @@ export default function TutorFormModal({
             <div className="space-y-4 px-6 pb-2">
 
               {/* ── Basic info ── */}
-              <FormField label="Ονοματεπωνυμο" icon={<User className="h-3 w-3" />} isDark={isDark}>
+              <FormField label="Ονοματεπωνυμο" isDark={isDark}>
+                <FieldIcon icon={User} isDark={isDark} />
                 <input className={inputCls} placeholder="π.χ. Γιάννης Παπαδόπουλος" value={form.fullName} onChange={handleChange('fullName')} required />
               </FormField>
-              <FormField label="Ημερομηνια γεννησης" icon={<Calendar className="h-3 w-3" />} isDark={isDark}>
-                <DatePickerField label="" value={form.dateOfBirth} onChange={(value) => setForm((prev) => ({ ...prev, dateOfBirth: value }))} placeholder="π.χ. 24/12/1985" id="tutor-dob" />
+              <FormField label="Ημερομηνια γεννησης" isDark={isDark}>
+                <DatePickerField label="" value={form.dateOfBirth} onChange={(value) => setForm((prev) => ({ ...prev, dateOfBirth: value }))} placeholder="π.χ. 24/12/1985" id="tutor-dob" variant="underline" />
               </FormField>
-              <FormField label="ΑΦΜ" icon={<Hash className="h-3 w-3" />} isDark={isDark}>
+              <FormField label="ΑΦΜ" isDark={isDark}>
+                <FieldIcon icon={Hash} isDark={isDark} />
                 <input className={inputCls} placeholder="π.χ. 123456789" value={form.afm} onChange={handleChange('afm')} />
               </FormField>
-              <FormField label="Τηλεφωνο" icon={<Phone className="h-3 w-3" />} isDark={isDark}>
+              <FormField label="Τηλεφωνο" isDark={isDark}>
+                <FieldIcon icon={Phone} isDark={isDark} />
                 <input className={inputCls} placeholder="π.χ. 6900000000" value={form.phone} onChange={handleChange('phone')} />
               </FormField>
-              <FormField label="Email" icon={<Mail className="h-3 w-3" />} isDark={isDark}>
+              <FormField label="Email" isDark={isDark}>
+                <FieldIcon icon={Mail} isDark={isDark} />
                 <input type="email" className={inputCls} placeholder="π.χ. tutor@example.com" value={form.email} onChange={handleChange('email')} />
               </FormField>
 
@@ -142,7 +136,8 @@ export default function TutorFormModal({
               </div>
 
               {/* ── IBAN ── */}
-              <FormField label="IBAN" icon={<CreditCard className="h-3 w-3" />} isDark={isDark}>
+              <FormField label="IBAN" isDark={isDark}>
+                <FieldIcon icon={CreditCard} isDark={isDark} />
                 <input
                   className={inputCls}
                   placeholder="π.χ. GR1601101250000000012300695"
@@ -154,7 +149,7 @@ export default function TutorFormModal({
               </FormField>
 
               {/* ── Notes ── */}
-              <FormField label="Σημειωσεις" icon={<FileText className="h-3 w-3" />} isDark={isDark}>
+              <FormField label="Σημειωσεις" isDark={isDark}>
                 <textarea
                   className={textareaCls}
                   placeholder="Προαιρετικές σημειώσεις για τον καθηγητή..."

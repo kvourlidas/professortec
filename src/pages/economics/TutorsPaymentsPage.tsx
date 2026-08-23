@@ -6,9 +6,10 @@ import { useTheme } from '../../context/ThemeContext';
 import {
   Loader2, Save, HandCoins, Plus, Ban, History,
   Pencil, ChevronRight, ChevronLeft, Search, X,
-  ChevronDown, User, Check,
+  ChevronDown, User, Check, Euro, CalendarDays,
 } from 'lucide-react';
 import ConfirmActionModal from '../../components/ui/ConfirmActionModal';
+import { ModalFormField, ModalFieldIcon, modalInputCls } from '../../components/ui/ModalField';
 
 type TutorRow = { id: string; school_id: string; full_name: string | null };
 type TutorPaymentProfileRow = { id: string; school_id: string; tutor_id: string; base_gross: number; base_net: number; currency: string; updated_at: string; updated_by: string | null };
@@ -89,6 +90,10 @@ export default function TutorsPaymentsPage() {
   const cancelBtnCls = isDark
     ? 'btn border border-slate-700/60 bg-slate-800/60 px-4 py-2 text-sm text-slate-300 hover:bg-slate-700/60 disabled:opacity-50'
     : 'btn border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 disabled:opacity-50';
+
+  // Underline-style fields used only inside the "Edit payment" modal below.
+  const editModalInputCls = modalInputCls(isDark);
+  const editModalInputClsNoIcon = editModalInputCls.replace('pl-7', 'pl-3');
 
   const FieldLabel = ({ children }: { children: React.ReactNode }) => (
     <div className={`mb-1.5 text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{children}</div>
@@ -745,25 +750,26 @@ export default function TutorsPaymentsPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-4 px-6 py-5 sm:grid-cols-2">
-              <div>
-                <FieldLabel>Καθαρά</FieldLabel>
-                <div className="relative"><input value={editNet} onChange={e => setEditNet(clampNumber(e.target.value))} className={inputCls} inputMode="decimal" /><span className={`pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold ${isDark?'text-slate-500':'text-slate-400'}`}>{CURRENCY_SYMBOL}</span></div>
-              </div>
-              <div>
-                <FieldLabel>Μικτά</FieldLabel>
-                <div className="relative"><input value={editGross} onChange={e => setEditGross(clampNumber(e.target.value))} className={inputCls} inputMode="decimal" /><span className={`pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold ${isDark?'text-slate-500':'text-slate-400'}`}>{CURRENCY_SYMBOL}</span></div>
-              </div>
-              <div>
-                <FieldLabel>Μπόνους</FieldLabel>
-                <div className="relative"><input value={editBonusTotal} onChange={e => setEditBonusTotal(clampNumber(e.target.value))} className={inputCls} inputMode="decimal" /><span className={`pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold ${isDark?'text-slate-500':'text-slate-400'}`}>{CURRENCY_SYMBOL}</span></div>
-              </div>
-              <div>
-                <FieldLabel>Ημερομηνία πληρωμής</FieldLabel>
-                <input type="date" value={editPaidOn} onChange={e => setEditPaidOn(e.target.value)} className={inputCls} />
-              </div>
+              <ModalFormField label="Καθαρά" isDark={isDark}>
+                <ModalFieldIcon icon={Euro} isDark={isDark} />
+                <input value={editNet} onChange={e => setEditNet(clampNumber(e.target.value))} className={editModalInputCls} inputMode="decimal" />
+              </ModalFormField>
+              <ModalFormField label="Μικτά" isDark={isDark}>
+                <ModalFieldIcon icon={Euro} isDark={isDark} />
+                <input value={editGross} onChange={e => setEditGross(clampNumber(e.target.value))} className={editModalInputCls} inputMode="decimal" />
+              </ModalFormField>
+              <ModalFormField label="Μπόνους" isDark={isDark}>
+                <ModalFieldIcon icon={Euro} isDark={isDark} />
+                <input value={editBonusTotal} onChange={e => setEditBonusTotal(clampNumber(e.target.value))} className={editModalInputCls} inputMode="decimal" />
+              </ModalFormField>
+              <ModalFormField label="Ημερομηνία πληρωμής" isDark={isDark}>
+                <ModalFieldIcon icon={CalendarDays} isDark={isDark} />
+                <input type="date" value={editPaidOn} onChange={e => setEditPaidOn(e.target.value)} className={editModalInputCls} />
+              </ModalFormField>
               <div className="sm:col-span-2">
-                <FieldLabel>Σημειώσεις</FieldLabel>
-                <input value={editNotes} onChange={e => setEditNotes(e.target.value)} className={inputCls} placeholder="π.χ. παρατηρήσεις πληρωμής" />
+                <ModalFormField label="Σημειώσεις" isDark={isDark}>
+                  <input value={editNotes} onChange={e => setEditNotes(e.target.value)} className={editModalInputClsNoIcon} placeholder="π.χ. παρατηρήσεις πληρωμής" />
+                </ModalFormField>
               </div>
             </div>
 

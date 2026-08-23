@@ -1,25 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
-import { X, ClipboardList, BookOpen, Tag, Calendar, Loader2, Users, Search, Plus, Euro } from 'lucide-react';
+import { X, ClipboardList, BookOpen, Tag, Loader2, Search, Plus, Euro, AlertCircle, CheckSquare, Square } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import AppDatePicker from '../ui/AppDatePicker';
 import TimePicker from '../ui/TimePicker';
+import {
+  ModalFormField as FormField, ModalFieldIcon as FieldIcon, ModalSelectChevron,
+  ModalErrorBox, modalInputCls, modalSelectCls,
+} from '../ui/ModalField';
 import type { AddTestForm, ClassRow, ClassSubjectRow, EditTestForm, StudentRow, SubjectRow } from './types';
 import { emptyForm } from './types';
 import { parseDateDisplayToISO } from './utils';
-
-function FormField({ label, icon, hint, children }: { label: string; icon?: React.ReactNode; hint?: string; children: React.ReactNode }) {
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
-  const labelCls = `flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`;
-  return (
-    <div className="space-y-1.5">
-      <label className={labelCls}>{icon && <span className="opacity-70">{icon}</span>}{label}</label>
-      {children}
-      {hint && <p className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{hint}</p>}
-    </div>
-  );
-}
 
 type TestFormModalProps = {
   open: boolean;
@@ -80,6 +71,13 @@ export default function TestFormModal({
     return Array.from(merged.values()).sort((a, b) => a.name.localeCompare(b.name, 'el-GR'));
   };
 
+  const getCommonSubjectsForClasses = (classIds: string[]): SubjectRow[] => {
+    if (classIds.length === 0) return [];
+    const perClass = classIds.map((id) => getSubjectsForClass(id));
+    const [first, ...rest] = perClass;
+    return first.filter((s) => rest.every((list) => list.some((x) => x.id === s.id)));
+  };
+
   const studentById = useMemo(() => {
     const m = new Map<string, StudentRow>(); (students ?? []).forEach((s) => m.set(s.id, s)); return m;
   }, [students]);
@@ -114,6 +112,15 @@ export default function TestFormModal({
       studentAssignments: prev.studentAssignments.map((a) => ({ ...a, subjectId })),
     }));
   };
+  const toggleClassId = (classId: string) => {
+    setForm((prev) => {
+      const has = prev.classIds.includes(classId);
+      const nextIds = has ? prev.classIds.filter((id) => id !== classId) : [...prev.classIds, classId];
+      const nextOpts = getCommonSubjectsForClasses(nextIds);
+      const subjectStillValid = prev.subjectId && nextOpts.some((s) => s.id === prev.subjectId);
+      return { ...prev, classIds: nextIds, subjectId: subjectStillValid ? prev.subjectId : null };
+    });
+  };
   const addStudentAssignment = (studentId: string) => {
     setForm((prev) => ({ ...prev, studentAssignments: [...prev.studentAssignments, { studentId, subjectId: prev.subjectId, chargeAmount: '' }] }));
   };
@@ -132,10 +139,8 @@ export default function TestFormModal({
   };
 
   // ── Styles ──
-  const inputCls = isDark
-    ? 'h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 text-sm text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30'
-    : 'h-9 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30';
-  const labelCls = `flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`;
+  const inputCls = modalInputCls(isDark);
+  const selectCls = modalSelectCls(isDark);
   const modalCardCls = isDark
     ? `relative w-full ${isPrivateLessons ? 'max-w-2xl' : 'max-w-md'} overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl`
     : `relative w-full ${isPrivateLessons ? 'max-w-2xl' : 'max-w-md'} overflow-hidden rounded-2xl border border-slate-200 shadow-2xl`;
@@ -162,8 +167,14 @@ export default function TestFormModal({
   const addStudentBtnCls = isDark
     ? 'flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-700/70 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:border-[color:var(--color-accent)]/60 hover:text-[color:var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-40'
     : 'flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-xs font-semibold text-slate-500 transition hover:border-[color:var(--color-accent)]/60 hover:text-[color:var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-40';
+  const classLabelCls = `flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`;
+  const classHintCls = `text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`;
+  const classEmptyBoxCls = `flex h-16 items-center justify-center rounded-xl border border-dashed ${isDark ? 'border-slate-700/60 bg-slate-900/30' : 'border-slate-200 bg-slate-50'}`;
+  const classListCls = `max-h-44 space-y-1 overflow-y-auto rounded-xl border p-2 ${isDark ? 'border-slate-700/60 bg-slate-900/40' : 'border-slate-200 bg-slate-50'}`;
+  const classItemCls = `flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-xs transition ${isDark ? 'hover:bg-slate-800/60' : 'hover:bg-slate-100'}`;
 
-  const subOpts = isPrivateLessons ? [] : getSubjectsForClass(form.classId);
+  const subOpts = isPrivateLessons ? [] : mode === 'add' ? getCommonSubjectsForClasses(form.classIds) : getSubjectsForClass(form.classId);
+  const hasClassSelection = mode === 'add' ? form.classIds.length > 0 : !!form.classId;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -188,9 +199,9 @@ export default function TestFormModal({
 
         {/* Error */}
         {error && (
-          <div className="mx-6 mb-3 flex items-start gap-2.5 rounded-xl border border-red-500/30 bg-red-950/40 px-3.5 py-2.5 text-xs text-red-200">
-            <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />{error}
-          </div>
+          <ModalErrorBox isDark={isDark}>
+            <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />{error}
+          </ModalErrorBox>
         )}
 
         <form onSubmit={handleSubmit}>
@@ -198,7 +209,7 @@ export default function TestFormModal({
             <div className="space-y-4">
               {isPrivateLessons ? (
                 <>
-                  <FormField label="Μαθητές *" icon={<Users className="h-3 w-3" />}
+                  <FormField label="Μαθητές *" isDark={isDark}
                     hint={form.studentAssignments.length === 0 ? 'Προσθέστε τουλάχιστον έναν μαθητή.' : undefined}>
                     {form.studentAssignments.length > 0 && (
                       <div className="mb-2.5 space-y-2">
@@ -259,44 +270,87 @@ export default function TestFormModal({
                     )}
                   </FormField>
 
-                  <FormField label="Μάθημα *" icon={<Tag className="h-3 w-3" />}
+                  <FormField label="Μάθημα *" isDark={isDark}
                     hint={sortedSubjects.length === 0 ? 'Δεν έχουν οριστεί μαθήματα.' : undefined}>
-                    <select className={inputCls} value={form.subjectId ?? ''} onChange={handleCommonSubjectChange} disabled={sortedSubjects.length === 0}>
+                    <FieldIcon icon={Tag} isDark={isDark} />
+                    <select className={selectCls} value={form.subjectId ?? ''} onChange={handleCommonSubjectChange} disabled={sortedSubjects.length === 0}>
                       <option value="">{sortedSubjects.length === 0 ? 'Δεν έχουν οριστεί μαθήματα' : 'Επιλέξτε μάθημα'}</option>
                       {sortedSubjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                     </select>
+                    <ModalSelectChevron isDark={isDark} />
                   </FormField>
                 </>
               ) : (
                 <>
-                  <FormField label="Τμήμα *" icon={<BookOpen className="h-3 w-3" />}>
-                    <select className={inputCls} value={form.classId ?? ''} onChange={handleFieldChange('classId')} required>
-                      <option value="">Επιλέξτε τμήμα</option>
-                      {classes.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
-                    </select>
-                  </FormField>
-                  <FormField label="Μάθημα *" icon={<Tag className="h-3 w-3" />} hint={subOpts.length === 0 && form.classId ? 'Ρυθμίστε τα μαθήματα στη σελίδα «Μαθήματα».' : undefined}>
-                    <select className={inputCls} value={form.subjectId ?? ''} onChange={handleFieldChange('subjectId')} disabled={subOpts.length === 0 || !form.classId}>
+                  {mode === 'edit' ? (
+                    <FormField label="Τμήμα *" isDark={isDark}>
+                      <FieldIcon icon={BookOpen} isDark={isDark} />
+                      <select className={selectCls} value={form.classId ?? ''} onChange={handleFieldChange('classId')} required>
+                        <option value="">Επιλέξτε τμήμα</option>
+                        {classes.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+                      </select>
+                      <ModalSelectChevron isDark={isDark} />
+                    </FormField>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <label className={classLabelCls}>
+                        <BookOpen className="h-3 w-3" />
+                        Τμήματα *
+                        {form.classIds.length > 0 && (
+                          <span className="ml-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold"
+                            style={{ background: 'color-mix(in srgb, var(--color-accent) 20%, transparent)', color: 'var(--color-accent)' }}>
+                            {form.classIds.length}
+                          </span>
+                        )}
+                      </label>
+                      {classes.length === 0 ? (
+                        <div className={classEmptyBoxCls}>
+                          <p className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Δεν υπάρχουν τμήματα.</p>
+                        </div>
+                      ) : (
+                        <div className={classListCls}>
+                          {classes.map((c) => {
+                            const checked = form.classIds.includes(c.id);
+                            return (
+                              <label key={c.id} className={classItemCls}>
+                                {checked
+                                  ? <CheckSquare className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--color-accent)' }} />
+                                  : <Square className={`h-3.5 w-3.5 shrink-0 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />}
+                                <input type="checkbox" checked={checked} onChange={() => toggleClassId(c.id)} className="sr-only" />
+                                <span className={checked ? (isDark ? 'text-slate-100' : 'text-slate-800') : (isDark ? 'text-slate-400' : 'text-slate-500')}>
+                                  {c.title}
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
+                      <p className={classHintCls}>Μπορείτε να επιλέξετε πολλά τμήματα — θα δημιουργηθεί ξεχωριστό διαγώνισμα για κάθε τμήμα.</p>
+                    </div>
+                  )}
+                  <FormField label="Μάθημα *" isDark={isDark} hint={subOpts.length === 0 && hasClassSelection ? 'Ρυθμίστε τα μαθήματα στη σελίδα «Μαθήματα».' : undefined}>
+                    <FieldIcon icon={Tag} isDark={isDark} />
+                    <select className={selectCls} value={form.subjectId ?? ''} onChange={handleFieldChange('subjectId')} disabled={subOpts.length === 0 || !hasClassSelection}>
                       <option value="">{subOpts.length === 0 ? 'Δεν έχουν οριστεί μαθήματα' : 'Επιλέξτε μάθημα'}</option>
                       {subOpts.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                     </select>
+                    <ModalSelectChevron isDark={isDark} />
                   </FormField>
                 </>
               )}
-              <FormField label="Ημερομηνία *" icon={<Calendar className="h-3 w-3" />}>
-                <AppDatePicker value={form.date} onChange={(v) => handleFieldChange('date')({ target: { value: v } } as any)} placeholder="π.χ. 12/05/2025" />
+              <FormField label="Ημερομηνία *" isDark={isDark}>
+                <AppDatePicker value={form.date} onChange={(v) => handleFieldChange('date')({ target: { value: v } } as any)} placeholder="π.χ. 12/05/2025" variant="underline" />
               </FormField>
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <label className={labelCls}>Ώρα έναρξης *</label>
+                <FormField label="Ώρα έναρξης *" isDark={isDark}>
                   <TimePicker value={form.startTime} onChange={(t) => setForm((p) => ({ ...p, startTime: t }))} required />
-                </div>
-                <div className="space-y-1.5">
-                  <label className={labelCls}>Ώρα λήξης *</label>
+                </FormField>
+                <FormField label="Ώρα λήξης *" isDark={isDark}>
                   <TimePicker value={form.endTime} onChange={(t) => setForm((p) => ({ ...p, endTime: t }))} required />
-                </div>
+                </FormField>
               </div>
-              <FormField label="Τίτλος (προαιρετικό)" icon={<Tag className="h-3 w-3" />}>
+              <FormField label="Τίτλος (προαιρετικό)" isDark={isDark}>
+                <FieldIcon icon={Tag} isDark={isDark} />
                 <input className={inputCls} placeholder="π.χ. Διαγώνισμα Κεφαλαίου 3" value={form.title} onChange={handleFieldChange('title')} />
               </FormField>
             </div>

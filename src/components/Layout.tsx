@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabaseClient';
 import { navItems, idiaiterouNavItems, type NavItem } from '../_nav';
 import { ChevronRight, ChevronLeft, Building2, User, HelpCircle } from 'lucide-react';
 import edraLogo from '../assets/edra-logo.png';
-import logoMark from '../assets/edra-logo-web_tab.svg';
+import logoMark from '../assets/edra-webtab.png';
 import TopBar from './TopBar.tsx';
 
 const SIDEBAR_COLLAPSED_KEY = 'pt_sidebar_collapsed_v1';
