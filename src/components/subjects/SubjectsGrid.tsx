@@ -9,6 +9,7 @@ interface SubjectsGridProps {
   levels: LevelRow[];
   subjects: SubjectRow[];
   filteredSubjects: SubjectRow[];
+  isFiltering: boolean;
   tutorsBySubject: Map<string, TutorRow[]>;
   allTutors: TutorRow[];
   isDark: boolean;
@@ -16,6 +17,8 @@ interface SubjectsGridProps {
   onEditSubject: (s: SubjectRow) => void;
   onDeleteSubject: (s: SubjectRow) => void;
   onTutorsChanged: () => void;
+  onEditLevel: (id: string) => void;
+  onDeleteLevel: (l: LevelRow) => void;
 }
 
 export default function SubjectsGrid({
@@ -23,12 +26,15 @@ export default function SubjectsGrid({
   levels,
   subjects,
   filteredSubjects,
+  isFiltering,
   tutorsBySubject,
   isDark,
   hideTutors = false,
   onEditSubject,
   onDeleteSubject,
   onTutorsChanged,
+  onEditLevel,
+  onDeleteLevel,
 }: SubjectsGridProps) {
   const [tutorsModal, setTutorsModal] = useState<{ id: string; name: string } | null>(null);
 
@@ -47,7 +53,12 @@ export default function SubjectsGrid({
     }
   });
 
-  const visibleLevels = levels.filter((l) => (subjectsByLevel.get(l.id) ?? []).length > 0);
+  // Without an active search, show every level (even ones with no subjects yet)
+  // so a freshly created level appears right away; while searching, only show
+  // levels that actually have a matching subject.
+  const visibleLevels = isFiltering
+    ? levels.filter((l) => (subjectsByLevel.get(l.id) ?? []).length > 0)
+    : levels;
 
   // ── Loading skeleton ──
   if (loading) {
@@ -64,23 +75,23 @@ export default function SubjectsGrid({
     );
   }
 
-  // ── No subjects at all ──
-  if (subjects.length === 0) {
+  // ── Nothing at all (no levels, no subjects) ──
+  if (subjects.length === 0 && levels.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
         <div className={`flex h-14 w-14 items-center justify-center rounded-2xl border ${isDark ? 'border-slate-700/50 bg-slate-800/50' : 'border-slate-200 bg-slate-100'}`}>
           <Layers className={`h-6 w-6 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
         </div>
         <div>
-          <p className={`text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Δεν υπάρχουν ακόμη μαθήματα</p>
-          <p className={`mt-1 text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Πατήστε «Προσθήκη μαθήματος» για να δημιουργήσετε το πρώτο.</p>
+          <p className={`text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>Δεν υπάρχουν ακόμη επίπεδα ή μαθήματα</p>
+          <p className={`mt-1 text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Πατήστε «Προσθήκη επιπέδου» ή «Προσθήκη μαθήματος» για να ξεκινήσετε.</p>
         </div>
       </div>
     );
   }
 
   // ── No search results ──
-  if (filteredSubjects.length === 0) {
+  if (isFiltering && filteredSubjects.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
         <div className={`flex h-14 w-14 items-center justify-center rounded-2xl border ${isDark ? 'border-slate-700/50 bg-slate-800/50' : 'border-slate-200 bg-slate-100'}`}>
@@ -163,12 +174,28 @@ export default function SubjectsGrid({
             <div key={level.id} className={`flex flex-col border-b border-r px-5 py-5 ${cellBorderCls}`}>
               <div className={groupHeaderCls} style={groupHeaderStyle}>
                 <span className={groupTitleCls}>{level.name}</span>
-                <span className={`shrink-0 text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                  {levelSubjects.length} {levelSubjects.length === 1 ? 'μάθημα' : 'μαθήματα'}
-                </span>
+                <div className="flex shrink-0 items-center gap-2">
+                  <span className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                    {levelSubjects.length} {levelSubjects.length === 1 ? 'μάθημα' : 'μαθήματα'}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button type="button" title="Επεξεργασία επιπέδου" onClick={() => onEditLevel(level.id)} className={editBtnCls}>
+                      <Pencil className="h-2.5 w-2.5" />
+                    </button>
+                    <button type="button" title="Διαγραφή επιπέδου" onClick={() => onDeleteLevel(level)} className={deleteBtnCls}>
+                      <Trash2 className="h-2.5 w-2.5" />
+                    </button>
+                  </div>
+                </div>
               </div>
               <div className={rowDivideCls}>
-                {levelSubjects.map(renderSubjectRow)}
+                {levelSubjects.length > 0 ? (
+                  levelSubjects.map(renderSubjectRow)
+                ) : (
+                  <p className={`py-3 text-[11px] ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
+                    Δεν υπάρχουν ακόμη μαθήματα σε αυτό το επίπεδο.
+                  </p>
+                )}
               </div>
             </div>
           );

@@ -5,10 +5,10 @@ import type { ReactElement } from 'react';
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const ClassesPage = lazy(() => import('./pages/ClassesPage'));
-const LevelsPage = lazy(() => import('./pages/LevelsPage'));
 const StudentsPage = lazy(() => import('./pages/StudentsPage'));
 const StudentCardPage = lazy(() => import('./pages/StudentCardPage'));
 const SubjectsPage = lazy(() => import('./pages/SubjectsPage'));
+const AttendancePage = lazy(() => import('./pages/AttendancePage'));
 const TutorsPage = lazy(() => import('./pages/TutorsPage'));
 const ProgramPage = lazy(() => import('./pages/ProgramPage'));
 const HolidaysPage = lazy(() => import('./pages/HolidaysPage'));
@@ -94,6 +94,7 @@ export default function App() {
 
         {/* Frontistirio-only routes */}
         <Route path={p('/classes')} element={<ProtectedRoute><FrontistirioOnly><ClassesPage /></FrontistirioOnly></ProtectedRoute>} />
+        <Route path={p('/attendance')} element={<ProtectedRoute><FrontistirioOnly><AttendancePage /></FrontistirioOnly></ProtectedRoute>} />
         <Route path={p('/tutors')} element={<ProtectedRoute><FrontistirioOnly><TutorsPage /></FrontistirioOnly></ProtectedRoute>} />
         <Route path={p('/program')} element={<ProtectedRoute><FrontistirioOnly><ProgramPage /></FrontistirioOnly></ProtectedRoute>} />
         <Route path={p('/program/events')} element={<ProtectedRoute><FrontistirioOnly><EventsPage /></FrontistirioOnly></ProtectedRoute>} />
@@ -105,7 +106,6 @@ export default function App() {
 
         {/* Shared routes (both account types) */}
         <Route path={p('/calendar')} element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
-        <Route path={p('/levels')} element={<ProtectedRoute><LevelsPage /></ProtectedRoute>} />
         <Route path={p('/students')} element={<ProtectedRoute><StudentsPage /></ProtectedRoute>} />
         <Route path={p('/students/:id')} element={<ProtectedRoute><StudentCardPage /></ProtectedRoute>} />
         <Route path={p('/subjects')} element={<ProtectedRoute><SubjectsPage /></ProtectedRoute>} />

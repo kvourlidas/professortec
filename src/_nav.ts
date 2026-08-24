@@ -5,11 +5,10 @@ import {
   Users,
   Users2,
   BookOpen,
-  Layers3,
-  NotebookTabs,
   CalendarDays,
   CalendarX2,
   ClipboardList,
+  ClipboardCheck,
   BarChart3,
   Wallet,
   Package,
@@ -46,19 +45,8 @@ export const idiaiterouNavItems: NavItem[] = [
   },
   {
     label: 'Μαθήματα',
+    to: '/subjects',
     icon: BookOpen,
-    children: [
-      {
-        label: 'Επίπεδα',
-        to: '/levels',
-        icon: Layers3,
-      },
-      {
-        label: 'Μαθήματα',
-        to: '/subjects',
-        icon: NotebookTabs,
-      },
-    ],
   },
   {
     label: 'Αργίες',
@@ -115,9 +103,9 @@ export const navItems: NavItem[] = [
     icon: CalendarDays,
   },
   {
-    label: 'Τμήματα',
-    to: '/classes',
-    icon: School,
+    label: 'Παρουσίες',
+    to: '/attendance',
+    icon: ClipboardCheck,
   },
   {
     label: 'Μαθητές',
@@ -130,20 +118,14 @@ export const navItems: NavItem[] = [
     icon: Users2,
   },
   {
+    label: 'Τμήματα',
+    to: '/classes',
+    icon: School,
+  },
+  {
     label: 'Μαθήματα',
+    to: '/subjects',
     icon: BookOpen,
-    children: [
-      {
-        label: 'Επίπεδα',
-        to: '/levels',
-        icon: Layers3,
-      },
-      {
-        label: 'Μαθήματα',
-        to: '/subjects',
-        icon: NotebookTabs,
-      },
-    ],
   },
   {
     label: 'Προγράμματα',

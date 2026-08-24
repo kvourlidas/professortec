@@ -2,10 +2,12 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
-import { NotebookText, Search, Plus } from 'lucide-react';
+import { NotebookText, Search, Plus, Layers } from 'lucide-react';
 import SubjectsGrid from '../components/subjects/SubjectsGrid';
 import SubjectFormModal from '../components/subjects/SubjectFormModal';
 import SubjectDeleteModal from '../components/subjects/SubjectDeleteModal';
+import LevelFormModal from '../components/levels/LevelFormModal';
+import LevelDeleteModal from '../components/levels/LevelDeleteModal';
 import { useTheme } from '../context/ThemeContext';
 import type { LevelRow, SubjectRow, TutorRow, ModalMode } from '../components/subjects/types';
 import { normalizeText } from '../components/subjects/utils';
@@ -46,6 +48,15 @@ export default function SubjectsPage() {
   // Delete modal
   const [deleteTarget, setDeleteTarget] = useState<SubjectRow | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // Level form modal
+  const [levelModalOpen, setLevelModalOpen] = useState(false);
+  const [editingLevelId, setEditingLevelId] = useState<string | null>(null);
+  const [savingLevel, setSavingLevel] = useState(false);
+
+  // Level delete modal
+  const [deleteLevelTarget, setDeleteLevelTarget] = useState<LevelRow | null>(null);
+  const [deletingLevel, setDeletingLevel] = useState(false);
 
   // Tutor assignments map
   const [tutorsBySubject, setTutorsBySubject] = useState<Map<string, TutorRow[]>>(new Map());
@@ -163,6 +174,52 @@ export default function SubjectsPage() {
     }
   };
 
+  // ── Level modal handlers ──
+  const openCreateLevelModal = () => { setError(null); setEditingLevelId(null); setLevelModalOpen(true); };
+  const openEditLevelModal = (id: string) => { setError(null); setEditingLevelId(id); setLevelModalOpen(true); };
+  const closeLevelModal = () => { if (savingLevel) return; setLevelModalOpen(false); setEditingLevelId(null); };
+
+  // ── Level create / update ──
+  const handleLevelSubmit = async (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    if (!schoolId) { setError('Το προφίλ σας δεν είναι συνδεδεμένο με σχολείο.'); return; }
+    setSavingLevel(true); setError(null);
+    try {
+      if (editingLevelId == null) {
+        const data = await callEdgeFunction('levels-create', { name: trimmed });
+        setLevels((prev) => [...prev, data.item as LevelRow].sort((a, b) => a.name.localeCompare(b.name, 'el')));
+        closeLevelModal();
+      } else {
+        const data = await callEdgeFunction('levels-update', { level_id: editingLevelId, name: trimmed });
+        setLevels((prev) => prev.map((lvl) => (lvl.id === editingLevelId ? (data.item as LevelRow) : lvl)));
+        closeLevelModal();
+      }
+    } catch (err) {
+      console.error(err);
+      setError(editingLevelId == null ? 'Αποτυχία δημιουργίας επιπέδου.' : 'Αποτυχία ενημέρωσης επιπέδου.');
+    } finally {
+      setSavingLevel(false);
+    }
+  };
+
+  // ── Level delete ──
+  const askDeleteLevel = (row: LevelRow) => { setError(null); setDeleteLevelTarget(row); };
+  const handleConfirmDeleteLevel = async () => {
+    if (!deleteLevelTarget) return;
+    setDeletingLevel(true); setError(null);
+    try {
+      await callEdgeFunction('levels-delete', { level_id: deleteLevelTarget.id });
+      setLevels((prev) => prev.filter((lvl) => lvl.id !== deleteLevelTarget.id));
+      setDeleteLevelTarget(null);
+    } catch (err) {
+      console.error(err);
+      setError('Αποτυχία διαγραφής επιπέδου.');
+    } finally {
+      setDeletingLevel(false);
+    }
+  };
+
   // ── Filtering ──
   const levelNameById = useMemo(() => {
     const m = new Map<string, string>();
@@ -178,6 +235,8 @@ export default function SubjectsPage() {
       return normalizeText([subj.name, levelName].join(' ')).includes(q);
     });
   }, [subjects, levelNameById, search]);
+
+  const initialLevelName = editingLevelId ? (levels.find((l) => l.id === editingLevelId)?.name ?? '') : '';
 
   // ── Style classes ──
   const searchInputCls = isDark
@@ -219,6 +278,14 @@ export default function SubjectsPage() {
           </div>
           <button
             type="button"
+            onClick={openCreateLevelModal}
+            className="btn-ghost h-9 gap-2 px-4 font-semibold active:scale-[0.98]"
+          >
+            <Layers className="h-3.5 w-3.5" />
+            Προσθήκη επιπέδου
+          </button>
+          <button
+            type="button"
             onClick={openCreateModal}
             className="btn-primary h-9 gap-2 px-4 font-semibold shadow-sm hover:brightness-110 active:scale-[0.98]"
           >
@@ -229,7 +296,7 @@ export default function SubjectsPage() {
       </div>
 
       {/* ── Alerts ── */}
-      {error && !modalOpen && !deleteTarget && (
+      {error && !modalOpen && !deleteTarget && !levelModalOpen && !deleteLevelTarget && (
         <div className="flex items-start gap-3 rounded-xl border border-red-500/40 bg-red-950/40 px-4 py-3 text-xs text-red-200 backdrop-blur">
           <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-red-400" />{error}
         </div>
@@ -247,6 +314,7 @@ export default function SubjectsPage() {
         levels={levels}
         subjects={subjects}
         filteredSubjects={filteredSubjects}
+        isFiltering={!!search.trim()}
         tutorsBySubject={tutorsBySubject}
         allTutors={allTutors}
         isDark={isDark}
@@ -254,6 +322,8 @@ export default function SubjectsPage() {
         onEditSubject={openEditModal}
         onDeleteSubject={(s) => { setError(null); setDeleteTarget(s); }}
         onTutorsChanged={() => setReloadTutorsFlag((x) => x + 1)}
+        onEditLevel={openEditLevelModal}
+        onDeleteLevel={askDeleteLevel}
       />
 
       {/* ── Modals ── */}
@@ -266,6 +336,23 @@ export default function SubjectsPage() {
         saving={saving}
         onClose={closeModal}
         onSubmit={handleSubmit}
+      />
+
+      <LevelFormModal
+        open={levelModalOpen}
+        editingId={editingLevelId}
+        initialName={initialLevelName}
+        error={error}
+        saving={savingLevel}
+        onClose={closeLevelModal}
+        onSubmit={handleLevelSubmit}
+      />
+
+      <LevelDeleteModal
+        deleteTarget={deleteLevelTarget}
+        deleting={deletingLevel}
+        onCancel={() => { if (!deletingLevel) setDeleteLevelTarget(null); }}
+        onConfirm={handleConfirmDeleteLevel}
       />
 
       <SubjectDeleteModal

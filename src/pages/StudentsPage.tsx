@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Users, Search, UserPlus, ChevronLeft, ChevronRight,
-  Loader2, Trash2, Copy, Check,
+  Loader2, Trash2, Copy, Check, IdCard,
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient.ts';
 import { useAuth } from '../auth.tsx';
@@ -470,7 +470,14 @@ export default function StudentsPage() {
                       </td>
                     ))}
                     <td className="px-5 py-3.5">
-                      <div className="flex items-center justify-end gap-1">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button type="button" onClick={(e) => { e.stopPropagation(); navigate(`/students/${s.id}`); }}
+                          title="Άνοιγμα κάρτας μαθητή"
+                          className="flex items-center gap-1.5 text-xs font-semibold transition hover:underline"
+                          style={{ color: 'var(--color-accent)' }}>
+                          <IdCard className="h-3.5 w-3.5" />
+                          Καρτέλα μαθητή
+                        </button>
                         <button type="button" onClick={(e) => { e.stopPropagation(); setError(null); setDeleteTarget(s); }}
                           className={deleteBtnCls}
                           title="Διαγραφή">
