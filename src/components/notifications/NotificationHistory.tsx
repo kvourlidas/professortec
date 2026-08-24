@@ -44,9 +44,9 @@ function RecipientsModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
+        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--ch-divider)' }}>
           <div>
-            <p className="text-xs font-semibold" style={{ color: 'var(--ch-text)' }}>
+            <p className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--ch-text)' }}>
               Παραλήπτες
             </p>
             <p className="text-[10px] mt-0.5" style={{ color: 'var(--ch-text-muted)' }}>
@@ -209,14 +209,14 @@ export function NotificationHistory({
       >
       <div className={cardCls}>
         {/* Header */}
-        <div className="flex shrink-0 items-center justify-between gap-3 px-5 py-3" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
+        <div className="flex shrink-0 items-center justify-between gap-3 px-5 py-3" style={{ borderBottom: '1px solid var(--ch-divider)' }}>
           <div className="flex items-center gap-2.5">
             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
               style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
               <History className="h-3.5 w-3.5" style={{ color: 'var(--ch-icon)' }} />
             </div>
             <div>
-              <span className="text-xs font-semibold" style={{ color: 'var(--ch-text)' }}>
+              <span className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--ch-text)' }}>
                 Ιστορικό αποστολών
               </span>
               <p className="text-[10px]" style={{ color: 'var(--ch-text-muted)' }}>

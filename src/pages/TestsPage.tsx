@@ -234,42 +234,61 @@ export default function TestsPage() {
     if (isPrivateLessons) {
       if (form.studentAssignments.length === 0) { setError('Επιλέξτε τουλάχιστον έναν μαθητή.'); return; }
       if (!form.subjectId) { setError('Επιλέξτε μάθημα.'); return; }
-    } else if (!form.classId) { setError('Επιλέξτε τμήμα.'); return; }
+    } else if (form.classIds.length === 0) { setError('Επιλέξτε τουλάχιστον ένα τμήμα.'); return; }
     if (!form.date) { setError('Επιλέξτε ημερομηνία.'); return; }
     const testDateISO = parseDateDisplayToISO(form.date);
     if (!testDateISO) { setError('Μη έγκυρη ημερομηνία.'); return; }
     if (!form.startTime || !form.endTime) { setError('Συμπληρώστε ώρες.'); return; }
     setSaving(true); setError(null);
-    try {
-      const data = await callEdgeFunction('tests-create', {
-        class_id: isPrivateLessons ? null : form.classId,
-        level_id: null,
-        subject_id: form.subjectId,
-        test_date: testDateISO,
-        start_time: form.startTime,
-        end_time: form.endTime,
-        title: form.title || null,
-        description: null,
-        student_assignments: isPrivateLessons
-          ? form.studentAssignments.map((a) => ({ student_id: a.studentId, subject_id: form.subjectId }))
-          : null,
-      });
-      const item = data.item as TestRow & { test_results?: { test_id: string; student_id: string; subject_id: string | null }[] };
-      setTests((prev) => [...prev, item]);
-      if (isPrivateLessons && item.test_results) {
-        setTestAssignments((prev) => ({ ...prev, [item.id]: item.test_results!.map((r) => ({ studentId: r.student_id, subjectId: r.subject_id ?? null })) }));
+    const classIds = isPrivateLessons ? [null] : form.classIds;
+    type CreatedTest = TestRow & { test_results?: { test_id: string; student_id: string; subject_id: string | null }[] };
+    const createdItems: CreatedTest[] = [];
+    const failures: string[] = [];
+    for (const classId of classIds) {
+      try {
+        const data = await callEdgeFunction('tests-create', {
+          class_id: classId,
+          level_id: null,
+          subject_id: form.subjectId,
+          test_date: testDateISO,
+          start_time: form.startTime,
+          end_time: form.endTime,
+          title: form.title || null,
+          description: null,
+          student_assignments: isPrivateLessons
+            ? form.studentAssignments.map((a) => ({ student_id: a.studentId, subject_id: form.subjectId }))
+            : null,
+        });
+        createdItems.push(data.item);
+      } catch (err) {
+        console.error(err);
+        const className = classId ? (classById.get(classId)?.title ?? classId) : null;
+        failures.push(className ? `${className}: ${err instanceof Error ? err.message : 'σφάλμα'}` : (err instanceof Error ? err.message : 'σφάλμα'));
       }
-      if (isPrivateLessons && schoolId) {
-        await persistTestCharges(item.id, form.studentAssignments, item.title);
-        await reloadTestCharges(schoolId, [...tests.map((t) => t.id), item.id]);
-      }
-      setModalOpen(false);
-    } catch (err) {
-      console.error(err);
-      setError(err instanceof Error ? err.message : 'Αποτυχία δημιουργίας διαγωνίσματος.');
-    } finally {
-      setSaving(false);
     }
+    if (createdItems.length > 0) {
+      setTests((prev) => [...prev, ...createdItems]);
+      if (isPrivateLessons) {
+        const item = createdItems[0];
+        if (item.test_results) {
+          setTestAssignments((prev) => ({ ...prev, [item.id]: item.test_results!.map((r) => ({ studentId: r.student_id, subjectId: r.subject_id ?? null })) }));
+        }
+        if (schoolId) {
+          await persistTestCharges(item.id, form.studentAssignments, item.title);
+          await reloadTestCharges(schoolId, [...tests.map((t) => t.id), item.id]);
+        }
+      }
+    }
+    if (failures.length > 0) {
+      setError(
+        createdItems.length > 0
+          ? `Αποτυχία δημιουργίας για: ${failures.join(', ')}. Τα υπόλοιπα τμήματα δημιουργήθηκαν κανονικά.`
+          : `Αποτυχία δημιουργίας διαγωνίσματος: ${failures.join(', ')}`,
+      );
+    } else {
+      setModalOpen(false);
+    }
+    setSaving(false);
   };
 
   // Edit handlers
@@ -291,7 +310,7 @@ export default function TestsPage() {
     }
 
     setEditForm({
-      id: t.id, classId: t.class_id, levelId: t.level_id ?? null, subjectId: commonSubjectId,
+      id: t.id, classId: t.class_id, classIds: t.class_id ? [t.class_id] : [], levelId: t.level_id ?? null, subjectId: commonSubjectId,
       date: formatDateDisplay(t.test_date), startTime: t.start_time?.slice(0, 5) ?? '', endTime: t.end_time?.slice(0, 5) ?? '',
       title: t.title ?? '',
       studentAssignments: isPrivateLessons ? assignments.map((a) => ({ ...a, subjectId: commonSubjectId, chargeAmount: chargeByStudent.get(a.studentId) ?? '' })) : [],

@@ -200,7 +200,7 @@ export function SubscriptionTableRow({ row, rowNumber, isDark, packageById, onGo
           <button type="button" onClick={() => onGoToStudent(row)}
             title="Οι πληρωμές καταχωρούνται μόνο από την καρτέλα του μαθητή"
             className="flex h-8 items-center justify-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition active:scale-95"
-            style={{ background: 'var(--color-accent)', color: 'var(--ch-icon)' }}>
+            style={{ background: 'var(--color-accent)', color: 'var(--color-on-accent)' }}>
             <IdCard className="h-3.5 w-3.5" />
             Καρτέλα μαθητή
           </button>

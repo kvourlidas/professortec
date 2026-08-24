@@ -7,22 +7,29 @@
 
 
 @layer base {
-  /* ─── DARK MODE (navy blue theme) ─── */
+  /* ─── DARK MODE (near-black, slate sidebar/navbar, purple accent) ─── */
   :root,
   .dark {
     --color-background: #0F1117;
     --color-surface: #161A23;
-    --color-primary: #3B82F6;
-    --color-primary-hover: #60A5FA;
-    --color-primary-active: #2563EB;
+    --color-primary: #A78BFA;
+    --color-primary-hover: #C4B5FD;
+    --color-primary-active: #8B5CF6;
     --color-primary-soft: color-mix(in srgb, var(--color-primary) 25%, var(--color-background));
     --color-accent: var(--color-primary);
     --color-accent-hover: var(--color-primary-hover);
     --color-accent-active: var(--color-primary-active);
-    --color-butter: #1A2234;
-    --color-butter-hover: #1E2A3F;
-    --color-on-accent: #ffffff;
+    --color-purple: #8B5CF6;
+    --color-success: #10B981;
+    --color-warning: #F59E0B;
+    --color-danger: #EF4444;
+    --color-info: #06B6D4;
+    --color-butter: #241B36;
+    --color-butter-hover: #2D2147;
+    --color-on-accent: #1E1330;
+    --color-accent-on-white: #6D28D9;
     --color-input-bg: #1C2130;
+    --color-input-border: #2A2F3A;
 
     --color-button-bg: var(--color-accent);
     --color-button-text: var(--color-on-accent);
@@ -30,23 +37,28 @@
     --color-text-main: #E5E7EB;
     --color-text-td: #E5E7EB;
     --color-text-muted: #9CA3AF;
+    --color-text-faint: #6B7280;
 
     --color-sidebar: #161A23;
     --color-sidebar-muted: #0D1018;
     --color-sidebar-border: #2A2F3A;
+    --color-sidebar-hover: rgba(167,139,250,0.14);
+    --color-sidebar-active: rgba(167,139,250,0.22);
+    --color-sidebar-active-dot: #A78BFA;
 
     --color-header-bg: rgba(15, 17, 23, 0.93);
-    --color-sidebar-bg: #0D1018;
+    --color-sidebar-bg: #15102B;
+    --color-navbar-bg: #241B40;
     --color-border: #2A2F3A;
     --color-border-soft: rgba(42, 47, 58, 0.55);
 
-    /* Card header (dark mode = dark surface, subtle blue accent on icon) */
+    /* Card header (dark mode = dark surface, subtle purple accent on icon) */
     --ch-bg: #1A2035;
-    --ch-text: #E5E7EB;
+    --ch-text: #FFFFFF;
     --ch-text-muted: #9CA3AF;
-    --ch-icon-bg: rgba(59, 130, 246, 0.14);
-    --ch-icon-border: rgba(59, 130, 246, 0.22);
-    --ch-icon: #60A5FA;
+    --ch-icon-bg: color-mix(in srgb, var(--color-accent) 14%, transparent);
+    --ch-icon-border: color-mix(in srgb, var(--color-accent) 22%, transparent);
+    --ch-icon: var(--color-accent);
     --ch-btn-bg: rgba(255, 255, 255, 0.07);
     --ch-btn-border: rgba(255, 255, 255, 0.12);
     --ch-btn-text: #E5E7EB;
@@ -59,52 +71,65 @@
     --fc-neutral-text-color: var(--color-text-main);
   }
 
-  /* ─── LIGHT MODE (white, blue accent) ─── */
+  /* ─── LIGHT MODE (off-white, slate sidebar/navbar, purple accent) ─── */
   :root:not(.dark) {
-    --color-background: #ffffff;
-    --color-surface: #ffffff;
-    --color-primary: #2563eb;
-    --color-primary-hover: #1d4ed8;
-    --color-primary-active: #1e40af;
+    --color-background: #F5F6F8;
+    --color-surface: #FFFFFF;
+    --color-primary: #8B5CF6;
+    --color-primary-hover: #7C3AED;
+    --color-primary-active: #6D28D9;
     --color-primary-soft: color-mix(in srgb, var(--color-primary) 30%, var(--color-background));
     --color-accent: var(--color-primary);
     --color-accent-hover: var(--color-primary-hover);
     --color-accent-active: var(--color-primary-active);
-    --color-butter: #dbeafe;
-    --color-butter-hover: #bfdbfe;
+    --color-purple: #8B5CF6;
+    --color-success: #10B981;
+    --color-warning: #F59E0B;
+    --color-danger: #EF4444;
+    --color-info: #06B6D4;
+    --color-butter: #EDE9FE;
+    --color-butter-hover: #DDD6FE;
     --color-on-accent: #ffffff;
-    --color-input-bg: #f1f5f9;
+    --color-accent-on-white: var(--color-accent);
+    --color-input-bg: #F3F4F6;
+    --color-input-border: #D1D5DB;
 
     --color-button-bg: var(--color-accent);
     --color-button-text: var(--color-on-accent);
 
-    --color-text-main: #1e293b;
-    --color-text-td: #1e293b;
-    --color-text-muted: #64748b;
+    --color-text-main: #111827;
+    --color-text-td: #111827;
+    --color-text-muted: #6B7280;
+    --color-text-faint: #9CA3AF;
+    --color-icon: #475569;
 
     --color-sidebar: #ffffff;
-    --color-sidebar-muted: #f1f5f9;
-    --color-sidebar-border: rgba(30,41,59,0.12);
+    --color-sidebar-muted: #F3F4F6;
+    --color-sidebar-border: #E5E7EB;
 
-    --color-header-bg: rgba(255, 255, 255, 0.9);
-    --color-sidebar-bg: var(--color-primary);
-    --color-border: rgba(30,41,59,0.14);
-    --color-border-soft: rgba(30,41,59,0.08);
+    --color-header-bg: rgba(245, 246, 248, 0.9);
+    --color-sidebar-bg: #2F274A;
+    --color-navbar-bg: #403463;
+    --color-sidebar-hover: #443672;
+    --color-sidebar-active: #57458C;
+    --color-sidebar-active-dot: #C4B5FD;
+    --color-border: #E5E7EB;
+    --color-border-soft: rgba(229,231,235,0.6);
 
-    /* Card header (light mode = blue accent, white text) */
+    /* Card header (flat: no fill, bold black title, accent-tinted icon chip) */
     --ch-bg: var(--color-accent);
-    --ch-text: var(--color-on-accent);
-    --ch-text-muted: color-mix(in srgb, var(--color-on-accent) 65%, transparent);
-    --ch-icon-bg: color-mix(in srgb, var(--color-on-accent) 10%, transparent);
-    --ch-icon-border: color-mix(in srgb, var(--color-on-accent) 16%, transparent);
-    --ch-icon: var(--color-on-accent);
-    --ch-btn-bg: color-mix(in srgb, var(--color-on-accent) 8%, transparent);
-    --ch-btn-border: color-mix(in srgb, var(--color-on-accent) 16%, transparent);
-    --ch-btn-text: var(--color-on-accent);
-    --ch-divider: color-mix(in srgb, var(--color-on-accent) 10%, transparent);
+    --ch-text: #000000;
+    --ch-text-muted: var(--color-text-muted);
+    --ch-icon-bg: color-mix(in srgb, var(--color-accent) 12%, transparent);
+    --ch-icon-border: color-mix(in srgb, var(--color-accent) 20%, transparent);
+    --ch-icon: var(--color-accent);
+    --ch-btn-bg: var(--color-input-bg);
+    --ch-btn-border: var(--color-border);
+    --ch-btn-text: var(--color-text-muted);
+    --ch-divider: var(--color-border-soft);
 
     /* FullCalendar */
-    --fc-border-color: rgba(30, 41, 59, 0.18);
+    --fc-border-color: var(--color-border);
     --fc-page-bg-color: var(--color-sidebar);
     --fc-neutral-bg-color: var(--color-sidebar);
     --fc-neutral-text-color: var(--color-text-main);
@@ -409,14 +434,14 @@
 
   .form-input {
     @apply w-full rounded-lg border px-3 py-2 text-sm outline-none;
-    border-color: var(--color-border);
+    border-color: var(--color-input-border);
     background-color: var(--color-input-bg);
     color: var(--color-text-main);
   }
 
   .form-textarea {
     @apply w-full rounded-lg border px-3 py-2 text-sm outline-none;
-    border-color: var(--color-border);
+    border-color: var(--color-input-border);
     background-color: var(--color-input-bg);
     color: var(--color-text-main);
   }
@@ -487,9 +512,9 @@
 
   .dashboard-widget--primary {
     background:
-      radial-gradient(circle at top left, rgba(37, 99, 235, 0.22), transparent),
+      radial-gradient(circle at top left, color-mix(in srgb, var(--color-primary) 22%, transparent), transparent),
       var(--color-sidebar);
-    border-color: rgba(37, 99, 235, 0.55);
+    border-color: color-mix(in srgb, var(--color-primary) 55%, transparent);
   }
 
   .dashboard-widget--success {
@@ -501,9 +526,9 @@
 
   .dashboard-widget--warning {
     background:
-      radial-gradient(circle at top left, rgba(234, 179, 8, 0.22), transparent),
+      radial-gradient(circle at top left, rgba(245, 158, 11, 0.22), transparent),
       var(--color-sidebar);
-    border-color: rgba(234, 179, 8, 0.55);
+    border-color: rgba(245, 158, 11, 0.55);
   }
 }
 

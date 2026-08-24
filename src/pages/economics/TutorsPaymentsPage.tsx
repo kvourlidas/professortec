@@ -6,9 +6,11 @@ import { useTheme } from '../../context/ThemeContext';
 import {
   Loader2, Save, HandCoins, Plus, Ban, History,
   Pencil, ChevronRight, ChevronLeft, Search, X,
-  ChevronDown, User, Check,
+  ChevronDown, User, Check, Euro, CalendarDays,
 } from 'lucide-react';
 import ConfirmActionModal from '../../components/ui/ConfirmActionModal';
+import { ModalFormField, ModalFieldIcon, modalInputCls } from '../../components/ui/ModalField';
+import StyledSelect from '../../components/ui/StyledSelect';
 
 type TutorRow = { id: string; school_id: string; full_name: string | null };
 type TutorPaymentProfileRow = { id: string; school_id: string; tutor_id: string; base_gross: number; base_net: number; currency: string; updated_at: string; updated_by: string | null };
@@ -16,6 +18,11 @@ type TutorPaymentRow = { id: string; school_id: string; tutor_id: string; period
 
 function normalizeText(value: string|null|undefined): string { if (!value) return ''; return value.toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(); }
 function clampNumber(v: string): number { const n=Number(v); return (Number.isNaN(n)||!Number.isFinite(n))?0:Math.max(0,n); }
+function autoResizeTextarea(el: HTMLTextAreaElement | null) {
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
+}
 const CURRENCY_CODE='EUR', CURRENCY_SYMBOL='€', PAGE_SIZE=8;
 function money(n: number) { return (Number(n)||0).toFixed(2); }
 function isoToday() { return new Date().toISOString().slice(0,10); }
@@ -68,6 +75,10 @@ export default function TutorsPaymentsPage() {
     ? 'h-10 w-full rounded-xl border border-slate-700/60 bg-slate-900/70 px-3.5 text-sm text-slate-100 placeholder-slate-500 outline-none transition-all focus:border-[color:var(--color-accent)] focus:ring-2 focus:ring-[color:var(--color-accent)]/20'
     : 'h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-sm text-slate-800 placeholder-slate-400 outline-none transition-all focus:border-[color:var(--color-accent)] focus:bg-white focus:ring-2 focus:ring-[color:var(--color-accent)]/15';
 
+  const textareaCls = isDark
+    ? 'w-full resize-none rounded-xl border border-slate-700/60 bg-slate-900/70 px-3.5 py-2.5 text-sm leading-tight text-slate-100 placeholder-slate-500 outline-none transition-all focus:border-[color:var(--color-accent)] focus:ring-2 focus:ring-[color:var(--color-accent)]/20'
+    : 'w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm leading-tight text-slate-800 placeholder-slate-400 outline-none transition-all focus:border-[color:var(--color-accent)] focus:bg-white focus:ring-2 focus:ring-[color:var(--color-accent)]/15';
+
   const paginationBtnCls = isDark
     ? 'flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-800 hover:text-slate-200 disabled:opacity-25'
     : 'flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:opacity-25';
@@ -75,11 +86,15 @@ export default function TutorsPaymentsPage() {
   // History table (minimal — no card chrome, accent-underline header, faint dividers)
   const histColDivider = isDark ? 'border-r border-slate-800/60' : 'border-r border-slate-200';
   const histDivideCls = isDark ? 'divide-y divide-slate-800/60' : 'divide-y divide-slate-200';
-  const histRowHoverCls = isDark ? 'transition-colors hover:bg-blue-500/[0.12]' : 'transition-colors hover:bg-blue-50';
+  const histRowHoverCls = isDark ? 'transition-colors hover:bg-[color:var(--color-accent)]/[0.12]' : 'transition-colors hover:bg-[color:var(--color-accent)]/10';
 
   const cancelBtnCls = isDark
     ? 'btn border border-slate-700/60 bg-slate-800/60 px-4 py-2 text-sm text-slate-300 hover:bg-slate-700/60 disabled:opacity-50'
     : 'btn border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 disabled:opacity-50';
+
+  // Underline-style fields used only inside the "Edit payment" modal below.
+  const editModalInputCls = modalInputCls(isDark);
+  const editModalInputClsNoIcon = editModalInputCls.replace('pl-7', 'pl-3');
 
   const FieldLabel = ({ children }: { children: React.ReactNode }) => (
     <div className={`mb-1.5 text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{children}</div>
@@ -117,12 +132,14 @@ export default function TutorsPaymentsPage() {
   const [baseGross, setBaseGross] = useState(0);
   const [baseNet, setBaseNet] = useState(0);
   const [paymentDesc, setPaymentDesc] = useState('');
+  const paymentDescRef = useRef<HTMLTextAreaElement | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; payment: TutorPaymentRow } | null>(null);
 
   // Bonus form
   const [bonusKind, setBonusKind] = useState<'percent' | 'amount'>('percent');
   const [bonusValue, setBonusValue] = useState(0);
   const [bonusDesc, setBonusDesc] = useState('');
+  const bonusDescRef = useRef<HTMLTextAreaElement | null>(null);
 
   // History
   const [payments, setPayments] = useState<TutorPaymentRow[]>([]);
@@ -163,6 +180,8 @@ export default function TutorsPaymentsPage() {
   }, [selectedTutorId, profilesMap]);
 
   useEffect(() => { setHistoryPage(p => Math.min(p, Math.max(0, totalPages - 1))); }, [totalPages]);
+  useEffect(() => { autoResizeTextarea(paymentDescRef.current); }, [paymentDesc]);
+  useEffect(() => { autoResizeTextarea(bonusDescRef.current); }, [bonusDesc]);
 
   // ── Data loading ─────────────────────────────────────────────────────────
   async function loadTutorsAndProfiles() {
@@ -403,7 +422,7 @@ export default function TutorsPaymentsPage() {
                     type="button"
                     onClick={() => { setSelectedTutorId(t.id); setDropOpen(false); setDropSearch(''); }}
                     className={`relative flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors ${
-                      isDark ? 'hover:bg-blue-500/[0.12]' : 'hover:bg-blue-50'
+                      isDark ? 'hover:bg-[color:var(--color-accent)]/[0.12]' : 'hover:bg-[color:var(--color-accent)]/10'
                     }`}
                   >
                     {active && <span className="absolute inset-y-0 left-0 w-[3px]" style={{ background: 'var(--color-accent)' }} />}
@@ -461,20 +480,20 @@ export default function TutorsPaymentsPage() {
               </button>
             </div>
 
-            <div className="space-y-6 pt-5">
+            <div className="grid grid-cols-1 gap-y-6 pt-5 lg:grid-cols-2 lg:items-start lg:gap-x-0 lg:divide-x divide-slate-200 dark:divide-slate-800 [&>*:first-child]:lg:pr-8 [&>*:last-child]:lg:pl-8">
 
               {/* ── Base pay ── */}
               <div>
                 <SectionDivider label="Βασική Αμοιβή" />
-                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div>
+                <div className="mt-4 flex flex-wrap gap-4">
+                  <div className="w-full max-w-[180px]">
                     <FieldLabel>Καθαρά</FieldLabel>
                     <div className="relative">
                       <input value={baseNet} onChange={e => setBaseNet(clampNumber(e.target.value))} className={inputCls} inputMode="decimal" />
                       <span className={`pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{CURRENCY_SYMBOL}</span>
                     </div>
                   </div>
-                  <div>
+                  <div className="w-full max-w-[180px]">
                     <FieldLabel>Μικτά</FieldLabel>
                     <div className="relative">
                       <input value={baseGross} onChange={e => setBaseGross(clampNumber(e.target.value))} className={inputCls} inputMode="decimal" />
@@ -483,9 +502,10 @@ export default function TutorsPaymentsPage() {
                   </div>
                 </div>
                 <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
-                  <div className="flex-1">
+                  <div className="w-full max-w-sm">
                     <FieldLabel>Περιγραφή πληρωμής</FieldLabel>
-                    <input value={paymentDesc} onChange={e => setPaymentDesc(e.target.value)} className={inputCls} placeholder="π.χ. Δεκέμβριος / extra ώρες / παρατηρήσεις" />
+                    <textarea ref={paymentDescRef} rows={1} value={paymentDesc} onChange={e => setPaymentDesc(e.target.value)}
+                      className={`${textareaCls} min-h-[40px] max-h-[200px] overflow-y-auto`} placeholder="π.χ. Δεκέμβριος / extra ώρες / παρατηρήσεις" />
                   </div>
                   <button type="button" onClick={recordPaymentToday} disabled={busy}
                     className="btn-primary flex shrink-0 items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold shadow-lg transition-all hover:brightness-110 active:scale-[0.97] disabled:opacity-50"
@@ -504,15 +524,16 @@ export default function TutorsPaymentsPage() {
               {/* ── Bonus ── */}
               <div>
                 <SectionDivider label="Μπόνους" />
-                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-12">
-                  <div className="sm:col-span-3">
+                <div className="mt-4 flex flex-wrap items-end gap-4">
+                  <div className="w-full max-w-[160px]">
                     <FieldLabel>Τύπος</FieldLabel>
-                    <select value={bonusKind} onChange={e => setBonusKind(e.target.value as any)} className={inputCls}>
-                      <option value="percent">Ποσοστό (%)</option>
-                      <option value="amount">Ποσό (€)</option>
-                    </select>
+                    <StyledSelect
+                      isDark={isDark} className={`${inputCls} pr-8`} showChevron
+                      value={bonusKind} onChange={(v) => setBonusKind(v as any)}
+                      options={[{ value: 'percent', label: 'Ποσοστό (%)' }, { value: 'amount', label: 'Ποσό (€)' }]}
+                    />
                   </div>
-                  <div className="sm:col-span-3">
+                  <div className="w-full max-w-[140px]">
                     <FieldLabel>Τιμή</FieldLabel>
                     <div className="relative">
                       <input value={bonusValue} onChange={e => setBonusValue(clampNumber(e.target.value))} className={inputCls} inputMode="decimal" placeholder={bonusKind === 'percent' ? 'π.χ. 10' : 'π.χ. 50'} />
@@ -521,14 +542,15 @@ export default function TutorsPaymentsPage() {
                       </span>
                     </div>
                   </div>
-                  <div className="sm:col-span-4">
+                  <div className="w-full max-w-xs">
                     <FieldLabel>Περιγραφή</FieldLabel>
-                    <input value={bonusDesc} onChange={e => setBonusDesc(e.target.value)} className={inputCls} placeholder="π.χ. Extra ώρες / επίδοση" />
+                    <textarea ref={bonusDescRef} rows={1} value={bonusDesc} onChange={e => setBonusDesc(e.target.value)}
+                      className={`${textareaCls} min-h-[40px] max-h-[200px] overflow-y-auto`} placeholder="π.χ. Extra ώρες / επίδοση" />
                   </div>
-                  <div className="sm:col-span-2">
+                  <div>
                     <FieldLabel>&nbsp;</FieldLabel>
                     <button type="button" onClick={addBonus} disabled={busy || (Number(bonusValue) || 0) <= 0}
-                      className="btn-primary flex h-10 w-full items-center justify-center gap-1.5 rounded-xl text-sm font-semibold transition-all hover:brightness-110 active:scale-[0.97] disabled:opacity-40">
+                      className="btn-primary flex h-10 items-center justify-center gap-1.5 rounded-xl px-5 text-sm font-semibold transition-all hover:brightness-110 active:scale-[0.97] disabled:opacity-40">
                       {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-4 w-4" />}
                       Προσθήκη
                     </button>
@@ -603,12 +625,11 @@ export default function TutorsPaymentsPage() {
                 {/* Table header */}
                 <div className="grid grid-cols-12 text-xs font-bold uppercase tracking-wide" style={{ borderBottom: '2px solid var(--color-accent)' }}>
                   <div style={{ width: '1%' }} className={`col-span-1 whitespace-nowrap px-3 pb-3 ${histColDivider} ${isDark ? 'text-white' : 'text-black'}`}>#</div>
-                  <div className={`col-span-2 px-3 pb-3 ${histColDivider} ${isDark ? 'text-white' : 'text-black'}`}>Ημερομηνία</div>
+                  <div className={`col-span-3 px-3 pb-3 ${histColDivider} ${isDark ? 'text-white' : 'text-black'}`}>Ημερομηνία</div>
                   <div className={`col-span-2 px-3 pb-3 ${histColDivider} ${isDark ? 'text-white' : 'text-black'}`}>Καθαρά</div>
                   <div className={`col-span-2 px-3 pb-3 ${histColDivider} ${isDark ? 'text-white' : 'text-black'}`}>Μικτά</div>
                   <div className={`col-span-2 px-3 pb-3 ${histColDivider} ${isDark ? 'text-white' : 'text-black'}`}>Μπόνους</div>
-                  <div className={`col-span-2 px-3 pb-3 ${histColDivider} ${isDark ? 'text-white' : 'text-black'}`}>Κατάσταση</div>
-                  <div className={`col-span-1 px-3 pb-3 ${isDark ? 'text-white' : 'text-black'}`} />
+                  <div className={`col-span-2 px-3 pb-3 ${isDark ? 'text-white' : 'text-black'}`} />
                 </div>
 
                 {/* Rows */}
@@ -622,7 +643,7 @@ export default function TutorsPaymentsPage() {
                         <div className={`col-span-1 whitespace-nowrap px-3 tabular-nums ${histColDivider} ${isDark ? 'text-slate-600' : 'text-slate-300'}`}>
                           {historyPage * PAGE_SIZE + i + 1}
                         </div>
-                        <div className={`col-span-2 px-3 tabular-nums text-[11px] ${histColDivider} ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        <div className={`col-span-3 px-3 tabular-nums text-[11px] ${histColDivider} ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                           {isoDateFromTs(p.paid_on ?? p.created_at)}
                         </div>
                         <div className={`col-span-2 px-3 font-semibold tabular-nums ${histColDivider} ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
@@ -637,15 +658,9 @@ export default function TutorsPaymentsPage() {
                             : <span className={isDark ? 'text-slate-700' : 'text-slate-300'}>—</span>
                           }
                         </div>
-                        <div className={`col-span-2 px-3 ${histColDivider}`}>
-                          <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${isDark ? 'border-emerald-700/40 bg-emerald-950/40 text-emerald-400' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}`}>
-                            <span className={`h-1.5 w-1.5 rounded-full ${isDark ? 'bg-emerald-400' : 'bg-emerald-500'}`} />
-                            Πληρώθηκε
-                          </span>
-                        </div>
-                        <div className="col-span-1 flex justify-end px-3">
+                        <div className="col-span-2 flex justify-end px-3">
                           <button type="button" onClick={() => openEditPayment(p)} disabled={busy}
-                            className={`flex h-7 w-7 items-center justify-center rounded-lg transition disabled:opacity-30 ${isDark ? 'text-slate-500 hover:bg-blue-500/10 hover:text-blue-400' : 'text-slate-400 hover:bg-blue-50 hover:text-blue-600'}`}>
+                            className={`flex h-7 w-7 items-center justify-center rounded-lg transition disabled:opacity-30 ${isDark ? 'text-slate-500 hover:bg-[color:var(--color-accent)]/10 hover:text-[color:var(--color-accent-hover)]' : 'text-slate-400 hover:bg-[color:var(--color-accent)]/10 hover:text-[color:var(--color-accent)]'}`}>
                             <Pencil className="h-3 w-3" />
                           </button>
                         </div>
@@ -718,14 +733,14 @@ export default function TutorsPaymentsPage() {
       {editOpen && editingPayment && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
           <div className={`relative w-full max-w-lg overflow-hidden rounded-2xl shadow-2xl ${isDark ? 'border border-slate-700/60 bg-slate-900' : 'border border-slate-200 bg-white'}`}>
-            <div className="flex items-center justify-between px-6 py-4" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
+            <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--ch-divider)' }}>
               <div className="flex items-center gap-3">
                 <div className="flex h-8 w-8 items-center justify-center rounded-xl"
                   style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
                   <Pencil className="h-4 w-4" style={{ color: 'var(--ch-icon)' }} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold" style={{ color: 'var(--ch-text)' }}>Επεξεργασία Πληρωμής</h3>
+                  <h3 className="text-sm font-bold uppercase tracking-wide" style={{ color: 'var(--ch-text)' }}>Επεξεργασία Πληρωμής</h3>
                   <p className="mt-0.5 text-[11px]" style={{ color: 'var(--ch-text-muted)' }}>{isoDateFromTs(editingPayment.paid_on ?? editingPayment.created_at)}</p>
                 </div>
               </div>
@@ -737,25 +752,26 @@ export default function TutorsPaymentsPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-4 px-6 py-5 sm:grid-cols-2">
-              <div>
-                <FieldLabel>Καθαρά</FieldLabel>
-                <div className="relative"><input value={editNet} onChange={e => setEditNet(clampNumber(e.target.value))} className={inputCls} inputMode="decimal" /><span className={`pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold ${isDark?'text-slate-500':'text-slate-400'}`}>{CURRENCY_SYMBOL}</span></div>
-              </div>
-              <div>
-                <FieldLabel>Μικτά</FieldLabel>
-                <div className="relative"><input value={editGross} onChange={e => setEditGross(clampNumber(e.target.value))} className={inputCls} inputMode="decimal" /><span className={`pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold ${isDark?'text-slate-500':'text-slate-400'}`}>{CURRENCY_SYMBOL}</span></div>
-              </div>
-              <div>
-                <FieldLabel>Μπόνους</FieldLabel>
-                <div className="relative"><input value={editBonusTotal} onChange={e => setEditBonusTotal(clampNumber(e.target.value))} className={inputCls} inputMode="decimal" /><span className={`pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold ${isDark?'text-slate-500':'text-slate-400'}`}>{CURRENCY_SYMBOL}</span></div>
-              </div>
-              <div>
-                <FieldLabel>Ημερομηνία πληρωμής</FieldLabel>
-                <input type="date" value={editPaidOn} onChange={e => setEditPaidOn(e.target.value)} className={inputCls} />
-              </div>
+              <ModalFormField label="Καθαρά" isDark={isDark}>
+                <ModalFieldIcon icon={Euro} isDark={isDark} />
+                <input value={editNet} onChange={e => setEditNet(clampNumber(e.target.value))} className={editModalInputCls} inputMode="decimal" />
+              </ModalFormField>
+              <ModalFormField label="Μικτά" isDark={isDark}>
+                <ModalFieldIcon icon={Euro} isDark={isDark} />
+                <input value={editGross} onChange={e => setEditGross(clampNumber(e.target.value))} className={editModalInputCls} inputMode="decimal" />
+              </ModalFormField>
+              <ModalFormField label="Μπόνους" isDark={isDark}>
+                <ModalFieldIcon icon={Euro} isDark={isDark} />
+                <input value={editBonusTotal} onChange={e => setEditBonusTotal(clampNumber(e.target.value))} className={editModalInputCls} inputMode="decimal" />
+              </ModalFormField>
+              <ModalFormField label="Ημερομηνία πληρωμής" isDark={isDark}>
+                <ModalFieldIcon icon={CalendarDays} isDark={isDark} />
+                <input type="date" value={editPaidOn} onChange={e => setEditPaidOn(e.target.value)} className={editModalInputCls} />
+              </ModalFormField>
               <div className="sm:col-span-2">
-                <FieldLabel>Σημειώσεις</FieldLabel>
-                <input value={editNotes} onChange={e => setEditNotes(e.target.value)} className={inputCls} placeholder="π.χ. παρατηρήσεις πληρωμής" />
+                <ModalFormField label="Σημειώσεις" isDark={isDark}>
+                  <input value={editNotes} onChange={e => setEditNotes(e.target.value)} className={editModalInputClsNoIcon} placeholder="π.χ. παρατηρήσεις πληρωμής" />
+                </ModalFormField>
               </div>
             </div>
 

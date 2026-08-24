@@ -1,6 +1,8 @@
-import { CalendarDays, ChevronDown, Loader2, Package, Plus, RefreshCw, Search, X } from 'lucide-react';
+import { AlertCircle, CalendarDays, ChevronDown, Loader2, Package, Plus, RefreshCw, Search, X } from 'lucide-react';
 import { useMemo } from 'react';
 import AppDatePicker from '../../ui/AppDatePicker';
+import { ModalErrorBox, ModalSelectChevron, modalInputCls, modalSelectCls } from '../../ui/ModalField';
+import StyledSelect from '../../ui/StyledSelect';
 import { typeColors } from './constants';
 import { CURRENCY_SYMBOL } from './constants';
 import { resolvePackageType, money, typeLabel } from './utils';
@@ -9,6 +11,7 @@ import type { DiscountScope, PackageRow, StudentRow } from './types';
 interface Props {
   open: boolean;
   isRenew: boolean;
+  studentLocked?: boolean;
   saving: boolean;
   assignError: string | null;
   isDark: boolean;
@@ -61,7 +64,7 @@ interface Props {
 }
 
 export function AssignRenewModal({
-  open, isRenew, saving, assignError, isDark,
+  open, isRenew, studentLocked, saving, assignError, isDark,
   selStudent, allStudents, studentQ, setStudentQ, studentDrop, setStudentDrop, onStudentSelect,
   selPackage, packages, packageQ, setPackageQ, packageDrop, setPackageDrop, onPackageSelect,
   customPrice, setCustomPrice: _setCustomPrice, discountPct, setDiscountPct, discountMode, setDiscountMode,
@@ -88,6 +91,8 @@ export function AssignRenewModal({
 
   if (!open) return null;
 
+  const lockStudent = studentLocked ?? isRenew;
+
   const filtStudents = allStudents.filter(s => (s.full_name ?? '').toLowerCase().includes(studentQ.toLowerCase()));
   const filtPackages = packages.filter(p => p.name.toLowerCase().includes(packageQ.toLowerCase()));
 
@@ -100,11 +105,11 @@ export function AssignRenewModal({
   const isCustom  = !!(selPackage?.is_custom);
 
   // ── Styles ────────────────────────────────────────────────────────────────
-  const inputCls = isDark
-    ? 'rounded-lg border border-slate-700/60 bg-slate-800/50 px-3 py-2 text-sm text-slate-100 placeholder-slate-600 outline-none transition focus:border-[color:var(--color-accent)]/70 focus:bg-slate-800/80'
-    : 'rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)]/60 focus:bg-white';
+  // Underline-style fields (no left icon on these) — see ../../ui/ModalField.tsx
+  const inputCls = modalInputCls(isDark).replace('pl-7', 'pl-3');
+  const selectCls = modalSelectCls(isDark).replace('pl-7', 'pl-3');
 
-  const labelCls = `mb-1.5 block text-xs font-semibold uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`;
+  const labelCls = `mb-1.5 block text-[11px] font-bold uppercase tracking-widest ${isDark ? 'text-white' : 'text-black'}`;
 
   const triggerCls = isDark
     ? 'flex w-full items-center gap-2 rounded-lg border border-slate-700/60 bg-slate-800/50 px-3 py-2 text-left text-xs transition hover:border-slate-600'
@@ -159,20 +164,22 @@ export function AssignRenewModal({
         <div style={{ overflow: 'visible' }}>
 
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
+          <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--ch-divider)' }}>
             <div className="flex items-center gap-3">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
                 style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
                 {isRenew ? <RefreshCw className="h-3.5 w-3.5" style={{ color: 'var(--ch-icon)' }} /> : <Package className="h-3.5 w-3.5" style={{ color: 'var(--ch-icon)' }} />}
               </div>
               <div>
-                <h3 className="text-sm font-semibold" style={{ color: 'var(--ch-text)' }}>
+                <h3 className="text-sm font-bold uppercase tracking-wide" style={{ color: 'var(--ch-text)' }}>
                   {isRenew ? 'Ανανέωση συνδρομής' : 'Ανάθεση πακέτου'}
                 </h3>
                 <p className="mt-0.5 text-[11px]" style={{ color: 'var(--ch-text-muted)' }}>
                   {isRenew
                     ? `Ανανέωση για ${selStudent?.full_name ?? ''} — πακέτο, τιμή και νέα περίοδος.`
-                    : 'Επίλεξε μαθητή, πακέτο, τιμή και περίοδο.'}
+                    : lockStudent
+                      ? `Ανάθεση πακέτου σε ${selStudent?.full_name ?? ''} — πακέτο, τιμή και περίοδος.`
+                      : 'Επίλεξε μαθητή, πακέτο, τιμή και περίοδο.'}
                 </p>
               </div>
             </div>
@@ -184,9 +191,9 @@ export function AssignRenewModal({
           </div>
 
           {assignError && (
-            <div className="mx-6 mb-2 rounded-lg border border-red-500/30 bg-red-950/20 px-3 py-2 text-xs text-red-400">
-              {assignError}
-            </div>
+            <ModalErrorBox isDark={isDark}>
+              <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />{assignError}
+            </ModalErrorBox>
           )}
 
           {/* Body */}
@@ -196,7 +203,7 @@ export function AssignRenewModal({
               {/* Student */}
               <div className="col-span-2">
                 <label className={labelCls}>Μαθητής *</label>
-                {isRenew ? (
+                {lockStudent ? (
                   <div className={lockedRowCls}>
                     <span className={`text-xs font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>{selStudent?.full_name}</span>
                     <span className={lockedBadgeCls}>κλειδωμένο</span>
@@ -375,7 +382,7 @@ export function AssignRenewModal({
                                     ? (isDark ? 'border-transparent text-black' : 'border-transparent text-white')
                                     : (isDark ? 'border-slate-700/60 text-slate-400 hover:border-slate-600' : 'border-slate-200 text-slate-500 hover:border-slate-300')
                                 }`}
-                                style={checked ? { background: isDark ? accentVar : '#2563eb' } : {}}>
+                                style={checked ? { background: accentVar } : {}}>
                                 <input type="checkbox" className="hidden" checked={checked} onChange={() => toggleDiscountMonth(key)} />
                                 {label}
                               </label>
@@ -416,8 +423,8 @@ export function AssignRenewModal({
                     {/* Custom package — always uses date range */}
                     {isCustom && (
                       <div className="flex flex-col gap-2">
-                        <AppDatePicker value={assignStartsOn} onChange={setAssignStartsOn} />
-                        <AppDatePicker value={assignEndsOn} onChange={setAssignEndsOn} />
+                        <AppDatePicker value={assignStartsOn} onChange={setAssignStartsOn} variant="underline" />
+                        <AppDatePicker value={assignEndsOn} onChange={setAssignEndsOn} variant="underline" />
                       </div>
                     )}
 
@@ -427,23 +434,31 @@ export function AssignRenewModal({
                         <div>
                           <span className={`mb-1 block text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Μήνας έναρξης</span>
                           <div className="flex gap-2">
-                            <select value={assignMonthNum} onChange={e => setAssignMonthNum(e.target.value)} className={`flex-1 ${inputCls}`}>
-                              {monthOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                            </select>
-                            <select value={assignYear} onChange={e => setAssignYear(e.target.value)} className={`w-20 ${inputCls}`}>
-                              {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
-                            </select>
+                            <div className="relative flex-1">
+                              <StyledSelect isDark={isDark} className={selectCls} value={assignMonthNum} onChange={setAssignMonthNum}
+                                options={monthOptions.map(o => ({ value: o.value, label: o.label }))} />
+                              <ModalSelectChevron isDark={isDark} />
+                            </div>
+                            <div className="relative w-20">
+                              <StyledSelect isDark={isDark} className={selectCls} value={assignYear} onChange={setAssignYear}
+                                options={yearOptions.map(y => ({ value: y, label: y }))} />
+                              <ModalSelectChevron isDark={isDark} />
+                            </div>
                           </div>
                         </div>
                         <div>
                           <span className={`mb-1 block text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Μήνας λήξης</span>
                           <div className="flex gap-2">
-                            <select value={assignEndMonthNum} onChange={e => setAssignEndMonthNum(e.target.value)} className={`flex-1 ${inputCls}`}>
-                              {monthOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                            </select>
-                            <select value={assignEndYear} onChange={e => setAssignEndYear(e.target.value)} className={`w-20 ${inputCls}`}>
-                              {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
-                            </select>
+                            <div className="relative flex-1">
+                              <StyledSelect isDark={isDark} className={selectCls} value={assignEndMonthNum} onChange={setAssignEndMonthNum}
+                                options={monthOptions.map(o => ({ value: o.value, label: o.label }))} />
+                              <ModalSelectChevron isDark={isDark} />
+                            </div>
+                            <div className="relative w-20">
+                              <StyledSelect isDark={isDark} className={selectCls} value={assignEndYear} onChange={setAssignEndYear}
+                                options={yearOptions.map(y => ({ value: y, label: y }))} />
+                              <ModalSelectChevron isDark={isDark} />
+                            </div>
                           </div>
                         </div>
                       </div>

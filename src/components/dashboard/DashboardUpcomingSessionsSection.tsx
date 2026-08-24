@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../context/ThemeContext';
-import { Loader2, Clock, CalendarClock } from 'lucide-react';
+import { Loader2, Clock, CalendarClock, DoorOpen } from 'lucide-react';
 
 /* ------------ Types ------------ */
 type ClassRow = { id: string; title: string; subject: string | null; subject_id: string | null; tutor_id: string | null };
@@ -12,6 +12,7 @@ type ProgramItemRow = {
   id: string; program_id: string; class_id: string | null; student_id: string | null; day_of_week: string;
   start_time: string | null; end_time: string | null;
   start_date: string | null; end_date: string | null; subject_id: string | null; tutor_id: string | null;
+  room: string | null;
 };
 type StudentRow = { id: string; full_name: string | null };
 type ProgramItemOverrideRow = {
@@ -29,7 +30,7 @@ type TestRow = {
 };
 type LevelRow = { id: string; name: string };
 type UpcomingSession = {
-  id: string; classTitle: string; subjectName: string | null; tutorName: string | null;
+  id: string; classTitle: string; subjectName: string | null; tutorName: string | null; room: string | null;
   date: Date; startTime: Date; endTime: Date; dateStr: string; isCurrent: boolean;
   sessionType: 'class' | 'test'; testTitle: string | null;
 };
@@ -108,7 +109,7 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
         const { data: pr } = await supabase.from('programs').select('id').eq('school_id', schoolId).order('created_at', { ascending: true }).limit(1);
         const program = (pr?.[0] as ProgramRow) ?? null;
         if (!program) { setLoading(false); return; }
-        const { data: id_ } = await supabase.from('program_items').select('*').eq('program_id', program.id);
+        const { data: id_ } = await supabase.from('program_items').select('id, program_id, class_id, student_id, day_of_week, start_time, end_time, start_date, end_date, subject_id, tutor_id, room').eq('program_id', program.id);
         const items = (id_ ?? []) as ProgramItemRow[];
         setProgramItems(items);
         if (items.length > 0) {
@@ -153,6 +154,7 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
         id, classTitle: title,
         subjectName: sid ? (sMap.get(sid) ?? cls?.subject ?? null) : cls?.subject ?? null,
         tutorName: (item.tutor_id ? tMap.get(item.tutor_id) : null) ?? (sid ? tBySubj.get(sid) : null) ?? (cls?.tutor_id ? tMap.get(cls.tutor_id) : null) ?? null,
+        room: item.room ?? null,
         date: new Date(dateObj), startTime, endTime, dateStr: ds,
         isCurrent: now >= startTime && now < endTime,
         sessionType: 'class', testTitle: null,
@@ -218,6 +220,7 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
         id: `test-${test.id}`, classTitle: cls?.title ?? level?.name ?? '',
         subjectName: sid ? (sMap.get(sid) ?? null) : null,
         tutorName: (sid ? tBySubj.get(sid) : null) ?? null,
+        room: null,
         date: testDate, startTime, endTime, dateStr: test.test_date,
         isCurrent: now >= startTime && now < endTime,
         sessionType: 'test', testTitle: test.title ?? null,
@@ -265,7 +268,7 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
     const details = [s.subjectName, s.tutorName].filter(Boolean).join(' · ');
     const isGreen = variant === 'current';
     const barColor = isGreen ? (isDark ? '#34d399' : '#10b981') : 'var(--color-accent)';
-    const rowCls = `relative py-2.5 pl-3 pr-1 transition-colors ${isDark ? 'hover:bg-blue-500/[0.12]' : 'hover:bg-blue-50'}`;
+    const rowCls = `relative py-2.5 pl-3 pr-1 transition-colors ${isDark ? 'hover:bg-[color:var(--color-accent)]/[0.12]' : 'hover:bg-[color:var(--color-accent)]/10'}`;
 
     if (compact) {
       return (
@@ -277,6 +280,11 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
               </p>
               <p className={`mt-0.5 truncate text-[13px] font-semibold ${primary}`}>{s.classTitle}</p>
               {details && <p className={`truncate text-[10px] ${sub}`}>{details}</p>}
+              {s.room && (
+                <p className="mt-0.5 flex items-center gap-0.5 truncate text-[10px] font-medium" style={{ color: 'var(--color-accent)' }}>
+                  <DoorOpen className="h-3 w-3 shrink-0" />{s.room}
+                </p>
+              )}
             </div>
             <div className="shrink-0 text-right">
               {s.sessionType === 'test' && <TestBadge />}
@@ -308,6 +316,11 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
           {s.sessionType === 'test' && <TestBadge />}
         </div>
         {details && <p className={`mt-0.5 text-[12px] ${sub}`}>{details}</p>}
+        {s.room && (
+          <p className="mt-1 flex items-center gap-1 text-[12px] font-medium" style={{ color: 'var(--color-accent)' }}>
+            <DoorOpen className="h-3.5 w-3.5 shrink-0" />{s.room}
+          </p>
+        )}
         {isGreen && (
           <div className={`mt-3 h-1 w-full rounded-full overflow-hidden ${isDark ? 'bg-slate-800' : 'bg-emerald-100'}`}>
             <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${progress}%`, background: barColor }} />

@@ -14,6 +14,7 @@ type DatePickerFieldProps = {
   onChange: (value: string) => void;
   placeholder?: string;
   id?: string;
+  variant?: 'boxed' | 'underline';
 };
 
 const pad2 = (n: number) => n.toString().padStart(2, '0');
@@ -36,25 +37,46 @@ function formatDateFromDate(date: Date | null): string {
 type DateInputProps = React.HTMLProps<HTMLInputElement> & {
   displayValue?: string;
   isDark?: boolean;
+  variant?: 'boxed' | 'underline';
 };
 
 const DateInput = forwardRef<HTMLInputElement, DateInputProps>(
-  ({ displayValue, placeholder, onClick, isDark }, ref) => (
-    <div className="relative cursor-pointer" onClick={onClick}>
-      <input
-        ref={ref}
-        readOnly
-        value={displayValue ?? ''}
-        placeholder={placeholder}
-        className={`h-9 w-full rounded-lg border pl-3 pr-9 text-xs outline-none transition cursor-pointer focus:ring-1 focus:ring-[color:var(--color-accent)]/30 focus:border-[color:var(--color-accent)] ${
-          isDark
-            ? 'border-slate-700/70 bg-slate-900/60 text-slate-100 placeholder-slate-500'
-            : 'border-slate-200 bg-slate-50 text-slate-800 placeholder-slate-400'
-        }`}
-      />
-      <CalendarDays className={`pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-    </div>
-  ),
+  ({ displayValue, placeholder, onClick, isDark, variant = 'boxed' }, ref) => {
+    if (variant === 'underline') {
+      return (
+        <div className="relative cursor-pointer" onClick={onClick}>
+          <CalendarDays className={`pointer-events-none absolute left-0 top-1/2 h-3.5 w-3.5 -translate-y-1/2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+          <input
+            ref={ref}
+            readOnly
+            value={displayValue ?? ''}
+            placeholder={placeholder}
+            className={`h-11 w-full cursor-pointer border-b bg-transparent pl-7 pr-2 text-sm outline-none transition-colors duration-200 ${
+              isDark
+                ? 'border-white/15 text-slate-100 placeholder-slate-600 focus:border-[color:var(--color-accent)]'
+                : 'border-slate-300 text-slate-800 placeholder-slate-400 focus:border-[color:var(--color-accent)]'
+            }`}
+          />
+        </div>
+      );
+    }
+    return (
+      <div className="relative cursor-pointer" onClick={onClick}>
+        <input
+          ref={ref}
+          readOnly
+          value={displayValue ?? ''}
+          placeholder={placeholder}
+          className={`h-9 w-full rounded-lg border pl-3 pr-9 text-xs outline-none transition cursor-pointer focus:ring-1 focus:ring-[color:var(--color-accent)]/30 focus:border-[color:var(--color-accent)] ${
+            isDark
+              ? 'border-slate-700/70 bg-slate-900/60 text-slate-100 placeholder-slate-500'
+              : 'border-slate-200 bg-slate-50 text-slate-800 placeholder-slate-400'
+          }`}
+        />
+        <CalendarDays className={`pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+      </div>
+    );
+  },
 );
 DateInput.displayName = 'DateInput';
 
@@ -264,6 +286,7 @@ const DatePickerField: React.FC<DatePickerFieldProps> = ({
   onChange,
   placeholder = 'ΗΗ/ΜΜ/ΕΕΕΕ',
   id,
+  variant = 'boxed',
 }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
@@ -294,7 +317,7 @@ const DatePickerField: React.FC<DatePickerFieldProps> = ({
         onChange={(date) => onChange(formatDateFromDate(date as Date | null))}
         dateFormat="dd/MM/yyyy"
         placeholderText={placeholder}
-        customInput={<DateInput displayValue={value} isDark={isDark} />}
+        customInput={<DateInput displayValue={value} isDark={isDark} variant={variant} />}
         wrapperClassName="w-full"
         calendarClassName="ct-datepicker"
         popperClassName="ct-datepicker-popper"

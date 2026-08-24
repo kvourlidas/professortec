@@ -24,6 +24,7 @@ export default function ClassesPage() {
   const [subjects, setSubjects] = useState<SubjectRow[]>([]);
   const [levels, setLevels] = useState<LevelRow[]>([]);
   const [studentsByClass, setStudentsByClass] = useState<Record<string, StudentRow[]>>({});
+  const [activeSubIds, setActiveSubIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -61,6 +62,19 @@ export default function ClassesPage() {
     setStudentsByClass(map);
   };
 
+  /* ── Load which students currently have an active subscription ── */
+  const loadActiveSubIds = async () => {
+    if (!schoolId) return;
+    await supabase.rpc('run_subscription_expiry', { p_school_id: schoolId });
+    const { data, error: err } = await supabase
+      .from('student_subscriptions_with_totals')
+      .select('student_id')
+      .eq('school_id', schoolId)
+      .eq('status', 'active');
+    if (err) { console.error('Failed to load active subscriptions', err); return; }
+    setActiveSubIds(new Set((data ?? []).map((r: any) => r.student_id)));
+  };
+
   useEffect(() => {
     if (!schoolId) { setLoading(false); return; }
 
@@ -91,7 +105,7 @@ export default function ClassesPage() {
       } catch (err) { console.error('Lookup load error', err); }
     };
 
-    loadClasses(); loadLookups();
+    loadClasses(); loadLookups(); loadActiveSubIds();
   }, [schoolId]);
 
   /* ── Refresh students for a single class after modal saves ── */
@@ -168,6 +182,7 @@ export default function ClassesPage() {
   /* ── Close students modal and refresh that class's students ── */
   const handleStudentsModalClose = () => {
     if (studentsModalClass) refreshClassStudents(studentsModalClass.id);
+    loadActiveSubIds();
     setStudentsModalClass(null);
   };
 
@@ -236,6 +251,7 @@ export default function ClassesPage() {
         subjects={subjects}
         levelNameById={levelNameById}
         studentsByClass={studentsByClass}
+        activeSubIds={activeSubIds}
         isDark={isDark}
         onEditClass={openEditModal}
         onDeleteClass={setDeleteTarget}

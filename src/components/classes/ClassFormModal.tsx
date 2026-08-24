@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
-import { X, GraduationCap, BookOpen, Layers, Loader2, CheckSquare, Square } from 'lucide-react';
+import { X, GraduationCap, BookOpen, Layers, Loader2, CheckSquare, Square, AlertCircle } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import {
+  ModalFormField as FormField, ModalFieldIcon as FieldIcon, ModalSelectChevron,
+  ModalErrorBox, modalInputCls, modalSelectCls,
+} from '../ui/ModalField.tsx';
+import StyledSelect from '../ui/StyledSelect';
 
 type ClassFormState = { title: string; levelId: string; subjectIds: string[] };
 const emptyForm: ClassFormState = { title: '', levelId: '', subjectIds: [] };
@@ -32,7 +37,6 @@ export default function ClassFormModal({ open, mode, editingClass, subjects, lev
   const safeLevels = Array.isArray(levels) ? levels : [];
 
   const handleChangeTitle = (e: ChangeEvent<HTMLInputElement>) => setForm((prev) => ({ ...prev, title: e.target.value }));
-  const handleChangeLevel = (e: ChangeEvent<HTMLSelectElement>) => setForm((prev) => ({ ...prev, levelId: e.target.value, subjectIds: [] }));
   const toggleSubject = (subjectId: string) => setForm((prev) => ({ ...prev, subjectIds: prev.subjectIds.includes(subjectId) ? prev.subjectIds.filter((id) => id !== subjectId) : [...prev.subjectIds, subjectId] }));
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => { e.preventDefault(); await onSubmit(form); };
 
@@ -47,8 +51,8 @@ export default function ClassFormModal({ open, mode, editingClass, subjects, lev
   // Style helpers
   const modalBg = isDark ? 'border-slate-700/60 bg-slate-900' : 'border-slate-200 bg-white';
   const labelCls = `flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`;
-  const inputCls = `h-9 w-full rounded-lg border px-3 text-sm outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 focus:border-[color:var(--color-accent)] ${isDark ? 'border-slate-700/70 bg-slate-900/60 text-slate-100 placeholder-slate-500' : 'border-slate-200 bg-slate-50 text-slate-800 placeholder-slate-400'}`;
-  const selectCls = `h-9 w-full rounded-lg border px-3 text-sm outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 focus:border-[color:var(--color-accent)] ${isDark ? 'border-slate-700/70 bg-slate-900/60 text-slate-100' : 'border-slate-200 bg-slate-50 text-slate-800'}`;
+  const inputCls = modalInputCls(isDark);
+  const selectCls = modalSelectCls(isDark);
   const hintCls = `text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`;
   const emptyBoxCls = `flex h-16 items-center justify-center rounded-xl border border-dashed ${isDark ? 'border-slate-700/60 bg-slate-900/30' : 'border-slate-200 bg-slate-50'}`;
   const subjectListCls = `max-h-44 space-y-1 overflow-y-auto rounded-xl border p-2 ${isDark ? 'border-slate-700/60 bg-slate-900/40' : 'border-slate-200 bg-slate-50'}`;
@@ -59,14 +63,14 @@ export default function ClassFormModal({ open, mode, editingClass, subjects, lev
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className={`relative w-full max-w-lg overflow-hidden rounded-2xl border shadow-2xl ${modalBg}`}>
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
+        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--ch-divider)' }}>
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl"
               style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
               <GraduationCap className="h-4 w-4" style={{ color: 'var(--ch-icon)' }} />
             </div>
             <div>
-              <h2 className="text-sm font-semibold" style={{ color: 'var(--ch-text)' }}>
+              <h2 className="text-sm font-bold uppercase tracking-wide" style={{ color: 'var(--ch-text)' }}>
                 {isCreate ? 'Νέο τμήμα' : 'Επεξεργασία τμήματος'}
               </h2>
               <p className="text-[11px]" style={{ color: 'var(--ch-text-muted)' }}>
@@ -83,10 +87,9 @@ export default function ClassFormModal({ open, mode, editingClass, subjects, lev
 
         {/* Error */}
         {error && (
-          <div className={`mx-6 mb-3 flex items-start gap-2.5 rounded-xl border px-3.5 py-2.5 text-xs ${isDark ? 'border-red-500/30 bg-red-950/40 text-red-200' : 'border-red-200 bg-red-50 text-red-700'}`}>
-            <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />
-            {error}
-          </div>
+          <ModalErrorBox isDark={isDark}>
+            <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />{error}
+          </ModalErrorBox>
         )}
 
         {/* Form */}
@@ -94,28 +97,22 @@ export default function ClassFormModal({ open, mode, editingClass, subjects, lev
           <div className="space-y-4 px-6 pt-4 pb-6">
 
             {/* Title */}
-            <div className="space-y-1.5">
-              <label className={labelCls}>
-                <GraduationCap className="h-3 w-3" />
-                Όνομα τμήματος <span style={{ color: 'var(--color-accent)' }}>*</span>
-              </label>
+            <FormField label="Όνομα τμήματος *" isDark={isDark}>
+              <FieldIcon icon={GraduationCap} isDark={isDark} />
               <input value={form.title} onChange={handleChangeTitle} required placeholder="π.χ. Τμήμα Α1" className={inputCls} />
-            </div>
+            </FormField>
 
             {/* Level */}
-            <div className="space-y-1.5">
-              <label className={labelCls}>
-                <Layers className="h-3 w-3" />
-                Επίπεδο
-              </label>
-              <select value={form.levelId} onChange={handleChangeLevel} className={selectCls}>
-                <option value="">Επιλέξτε επίπεδο…</option>
-                {safeLevels.map((lvl) => (
-                  <option key={lvl.id} value={lvl.id}>{lvl.name}</option>
-                ))}
-              </select>
-              <p className={hintCls}>Πρώτα επιλέξτε επίπεδο για να εμφανιστούν τα διαθέσιμα μαθήματα.</p>
-            </div>
+            <FormField label="Επίπεδο" hint="Πρώτα επιλέξτε επίπεδο για να εμφανιστούν τα διαθέσιμα μαθήματα." isDark={isDark}>
+              <FieldIcon icon={Layers} isDark={isDark} />
+              <StyledSelect
+                isDark={isDark} className={selectCls}
+                value={form.levelId}
+                onChange={(v) => setForm((prev) => ({ ...prev, levelId: v, subjectIds: [] }))}
+                options={[{ value: '', label: 'Επιλέξτε επίπεδο…' }, ...safeLevels.map((lvl) => ({ value: lvl.id, label: lvl.name }))]}
+              />
+              <ModalSelectChevron isDark={isDark} />
+            </FormField>
 
             {/* Subjects */}
             <div className="space-y-1.5">

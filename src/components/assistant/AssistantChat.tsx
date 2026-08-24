@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
-import { Bot, Send, X, User, SquarePen } from 'lucide-react';
+import { Send, X, User, SquarePen } from 'lucide-react';
+import kikaImg from '../../assets/kika-avatar.png';
 import { supabase } from '../../lib/supabaseClient.ts';
 import { useTheme } from '../../context/ThemeContext.tsx';
 
@@ -149,12 +150,14 @@ export default function AssistantChat({ onClose }: Props) {
     <div className={`flex h-full w-full flex-col overflow-hidden border-l shadow-2xl ${isDark ? 'border-slate-700/60 bg-slate-900' : 'border-slate-200 bg-white'}`}>
       <div
         className="flex items-center justify-between gap-2 px-4 py-3"
-        style={{ background: 'linear-gradient(135deg, #FF6B00 0%, #FF9A3C 100%)' }}
+        style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)' }}
       >
         <div className="flex items-center gap-2">
-          <Bot className="h-4 w-4 text-white" />
+          <div className="h-7 w-7 shrink-0 overflow-hidden rounded-full ring-2 ring-white/40">
+            <img src={kikaImg} alt="Kika" className="h-full w-full object-cover" />
+          </div>
           <div className="leading-tight">
-            <p className="text-sm font-semibold text-white">Vela</p>
+            <p className="text-sm font-semibold text-white">Kika</p>
             <p className="text-[10px] text-white/70">AI Βοηθός</p>
           </div>
         </div>
@@ -184,11 +187,11 @@ export default function AssistantChat({ onClose }: Props) {
       <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
         {messages.length === 0 && (
           <div className="flex flex-col items-center gap-3 px-2 py-6 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full" style={{ background: 'linear-gradient(135deg, #FF6B00 0%, #FF9A3C 100%)' }}>
-              <Bot className="h-6 w-6 text-white" />
+            <div className="h-20 w-20 overflow-hidden rounded-full" style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)' }}>
+              <img src={kikaImg} alt="Kika" className="h-full w-full object-cover" />
             </div>
             <div className="space-y-1">
-              <p className={`text-sm font-semibold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>Γεια σου! Είμαι η Vela 👋</p>
+              <p className={`text-sm font-semibold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>Γεια σου! Είμαι η Kika 👋</p>
               <p className={`mx-auto max-w-[260px] text-xs leading-relaxed ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                 Πες μου τι χρειάζεσαι για το φροντιστήριο και θα σε βοηθήσω.
               </p>
@@ -198,8 +201,8 @@ export default function AssistantChat({ onClose }: Props) {
               onClick={() => setInput('Πρόσθεσε νέο μαθητή Γιώργο Παπαδόπουλο, τηλέφωνο 6900000000')}
               className={`mt-1 max-w-full truncate rounded-full border px-3 py-1.5 text-[11px] transition ${
                 isDark
-                  ? 'border-slate-700 bg-slate-800/60 text-slate-400 hover:border-[#FF6B00]/50 hover:text-slate-200'
-                  : 'border-slate-200 bg-slate-50 text-slate-500 hover:border-[#FF6B00]/50 hover:text-slate-700'
+                  ? 'border-slate-700 bg-slate-800/60 text-slate-400 hover:border-[#7C3AED]/50 hover:text-slate-200'
+                  : 'border-slate-200 bg-slate-50 text-slate-500 hover:border-[#7C3AED]/50 hover:text-slate-700'
               }`}
             >
               "Πρόσθεσε νέο μαθητή Γιώργο Παπαδόπουλο, τηλέφωνο 6900000000"
@@ -209,8 +212,8 @@ export default function AssistantChat({ onClose }: Props) {
         {messages.map((m, i) => (
           <div key={i} className={`flex items-end gap-2 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             {m.role === 'assistant' && (
-              <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full" style={{ background: 'linear-gradient(135deg, #FF6B00 0%, #FF9A3C 100%)' }}>
-                <Bot className="h-4 w-4 text-white" />
+              <div className="h-7 w-7 flex-shrink-0 overflow-hidden rounded-full" style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)' }}>
+                <img src={kikaImg} alt="Kika" className="h-full w-full object-cover" />
               </div>
             )}
             <div className={`max-w-[75%] rounded-xl px-3 py-2 text-sm whitespace-pre-wrap ${m.role === 'user' ? bubbleUser : bubbleAssistant}`}>
@@ -225,8 +228,8 @@ export default function AssistantChat({ onClose }: Props) {
         ))}
         {sending && (
           <div className="flex items-end gap-2 justify-start">
-            <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full" style={{ background: 'linear-gradient(135deg, #FF6B00 0%, #FF9A3C 100%)' }}>
-              <Bot className="h-4 w-4 text-white" />
+            <div className="h-7 w-7 flex-shrink-0 overflow-hidden rounded-full" style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)' }}>
+              <img src={kikaImg} alt="Kika" className="h-full w-full object-cover" />
             </div>
             <div className={`flex items-center gap-1 rounded-xl px-3 py-3 ${bubbleAssistant}`}>
               <span className="typing-dot" />
@@ -243,7 +246,7 @@ export default function AssistantChat({ onClose }: Props) {
         <textarea
           ref={textareaRef}
           rows={1}
-          className={`flex-1 resize-none rounded-lg border px-3 py-2 text-sm outline-none transition-colors focus:ring-2 focus:ring-[#FF6B00]/30 focus:border-[#FF6B00] ${isDark ? 'border-[#FF6B00]/40 bg-slate-900/60 text-slate-100 placeholder-slate-500' : 'border-[#FF6B00]/40 bg-slate-50 text-slate-800 placeholder-slate-400'}`}
+          className={`flex-1 resize-none rounded-lg border px-3 py-2 text-sm outline-none transition-colors focus:ring-2 focus:ring-[#7C3AED]/30 focus:border-[#7C3AED] ${isDark ? 'border-[#7C3AED]/40 bg-slate-900/60 text-slate-100 placeholder-slate-500' : 'border-[#7C3AED]/40 bg-slate-50 text-slate-800 placeholder-slate-400'}`}
           style={{ minHeight: '36px', maxHeight: '120px', overflowY: 'auto' }}
           placeholder="Γράψε ένα μήνυμα..."
           value={input}
@@ -256,7 +259,7 @@ export default function AssistantChat({ onClose }: Props) {
           type="submit"
           disabled={sending || !input.trim()}
           className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-white transition-opacity hover:opacity-85 disabled:opacity-40"
-          style={{ background: 'linear-gradient(135deg, #FF6B00 0%, #FF9A3C 100%)' }}
+          style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)' }}
         >
           <Send className="h-4 w-4" />
         </button>

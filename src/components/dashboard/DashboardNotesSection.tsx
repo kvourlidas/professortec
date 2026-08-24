@@ -300,7 +300,7 @@ export default function DashboardNotesSection({ schoolId }: DashboardNotesSectio
                 {pageNotes.map((note) => {
                   const paletteOpenForThis = notePaletteOpenId === note.id;
                   return (
-                    <div key={note.id} className={`group relative py-2.5 pl-3 pr-1 transition-colors ${isDark ? 'bg-amber-500/10 hover:bg-amber-500/15' : 'bg-amber-100/70 hover:bg-amber-100'}`}
+                    <div key={note.id} className={`group relative py-2.5 pl-3 pr-1 transition-colors ${isDark ? 'bg-violet-500/10 hover:bg-violet-500/15' : 'bg-violet-100/70 hover:bg-violet-100'}`}
                       style={{ borderLeftColor: note.color, borderLeftWidth: 3 }}>
                       <div className="flex items-start gap-2">
                         <div className="relative min-w-0 flex-1">

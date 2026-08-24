@@ -1,6 +1,10 @@
 import { useState } from 'react';
-import { HandCoins, X, Loader2, Banknote, CreditCard, Landmark } from 'lucide-react';
+import { HandCoins, X, Loader2, Banknote, CreditCard, Landmark, Euro, AlertCircle } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import {
+  ModalFormField as FormField, ModalFieldIcon as FieldIcon,
+  ModalErrorBox, modalInputCls,
+} from '../ui/ModalField';
 
 interface PrivateLessonPaymentModalProps {
   studentName: string;
@@ -40,11 +44,7 @@ export function PrivateLessonPaymentModal({ studentName, balance, onSubmit, onCl
     }
   };
 
-  const inputCls = `h-9 w-full rounded-lg border px-3 text-sm outline-none transition ${
-    isDark
-      ? 'border-slate-700/70 bg-slate-900/60 text-slate-100 placeholder-slate-500 focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30'
-      : 'border-slate-300 bg-white text-slate-800 placeholder-slate-400 focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30'
-  }`;
+  const inputCls = modalInputCls(isDark);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -54,14 +54,14 @@ export function PrivateLessonPaymentModal({ studentName, balance, onSubmit, onCl
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4"
-          style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
+          style={{ borderBottom: '1px solid var(--ch-divider)' }}>
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl"
               style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
               <HandCoins className="h-4 w-4" style={{ color: 'var(--ch-icon)' }} />
             </div>
             <div>
-              <p className="text-sm font-semibold" style={{ color: 'var(--ch-text)' }}>Καταχώρηση Πληρωμής</p>
+              <p className="text-sm font-bold uppercase tracking-wide" style={{ color: 'var(--ch-text)' }}>Καταχώρηση Πληρωμής</p>
               <p className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{studentName}</p>
             </div>
           </div>
@@ -71,6 +71,13 @@ export function PrivateLessonPaymentModal({ studentName, balance, onSubmit, onCl
             <X className="h-3.5 w-3.5" />
           </button>
         </div>
+
+        {/* Error */}
+        {error && (
+          <ModalErrorBox isDark={isDark}>
+            <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />{error}
+          </ModalErrorBox>
+        )}
 
         <div className="px-6 py-5 space-y-4">
           {/* Balance info */}
@@ -82,10 +89,8 @@ export function PrivateLessonPaymentModal({ studentName, balance, onSubmit, onCl
           )}
 
           {/* Amount */}
-          <div className="space-y-1.5">
-            <label className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              Ποσό (€)
-            </label>
+          <FormField label="Ποσό (€)" isDark={isDark}>
+            <FieldIcon icon={Euro} isDark={isDark} />
             <input
               type="number"
               min="0.01"
@@ -96,7 +101,7 @@ export function PrivateLessonPaymentModal({ studentName, balance, onSubmit, onCl
               placeholder="0.00"
               autoFocus
             />
-          </div>
+          </FormField>
 
           {/* Method */}
           <div className="space-y-1.5">
@@ -125,23 +130,16 @@ export function PrivateLessonPaymentModal({ studentName, balance, onSubmit, onCl
           </div>
 
           {/* Note */}
-          <div className="space-y-1.5">
-            <label className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              Σημείωση (προαιρετικό)
-            </label>
+          <FormField label="Σημείωση (προαιρετικό)" isDark={isDark}>
             <input
               type="text"
-              className={inputCls}
+              className={`${inputCls} pl-3`}
               value={note}
               onChange={e => setNote(e.target.value)}
               placeholder="π.χ. Μαρτίου μηνιαίο"
               maxLength={200}
             />
-          </div>
-
-          {error && (
-            <p className={`text-xs ${isDark ? 'text-rose-400' : 'text-rose-600'}`}>{error}</p>
-          )}
+          </FormField>
         </div>
 
         {/* Footer */}

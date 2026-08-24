@@ -9,7 +9,7 @@ export type TestRow = {
 };
 export type StudentAssignment = { studentId: string; subjectId: string | null; chargeAmount?: string };
 export type AddTestForm = {
-  classId: string | null; levelId: string | null; subjectId: string | null; date: string;
+  classId: string | null; classIds: string[]; levelId: string | null; subjectId: string | null; date: string;
   startTime: string; endTime: string; title: string; studentAssignments: StudentAssignment[];
 };
 export type EditTestForm = AddTestForm & { id: string };
@@ -25,5 +25,5 @@ export type DeleteTarget = {
 };
 
 export const emptyForm: AddTestForm = {
-  classId: null, levelId: null, subjectId: null, date: '', startTime: '', endTime: '', title: '', studentAssignments: [],
+  classId: null, classIds: [], levelId: null, subjectId: null, date: '', startTime: '', endTime: '', title: '', studentAssignments: [],
 };

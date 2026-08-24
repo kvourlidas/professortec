@@ -12,6 +12,7 @@ export type Profile = {
   role: Role;
   school_id: string | null;
   account_type: AccountType;
+  plaintext_password: string | null;
 };
 
 type AuthContextValue = {
@@ -78,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: pData, error: pErr } = await supabase
       .from('profiles')
-      .select('id, full_name, role, school_id, account_type')
+      .select('id, full_name, role, school_id, account_type, plaintext_password')
       .eq('id', u.id)
       .maybeSingle();
 
@@ -146,6 +147,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // No session means email confirmation is required
     if (!data.session) return 'confirm_email';
+
+    // Best-effort: let the user see the password they just chose on their own
+    // info page later. RLS restricts this column to the row owner only.
+    try {
+      await supabase.from('profiles').update({ plaintext_password: password }).eq('id', data.user.id);
+    } catch (e) {
+      console.error('Failed to store plaintext_password on signup', e);
+    }
 
     try {
       const ok = await withTimeout(hydrateFromUser(data.user), BOOT_TIMEOUT_MS, 'hydrateFromUser');

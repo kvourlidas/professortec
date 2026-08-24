@@ -10,6 +10,12 @@ export type TutorRow = {
   notes: string | null;
   created_at: string;
 };
+export type SpecialtyRow = {
+  id: string;
+  school_id: string;
+  name: string;
+  created_at: string;
+};
 export type ModalMode = 'create' | 'edit';
 export type TutorFormState = {
   fullName: string;

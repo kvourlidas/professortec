@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
-import { Search, School, Pencil, Trash2, GraduationCap, BookOpen, GripVertical, UserPlus } from 'lucide-react';
+import { Search, School, Pencil, Trash2, GraduationCap, BookOpen, GripVertical, UserPlus, AlertTriangle } from 'lucide-react';
 import type { ClassRow, SubjectRow } from './types';
 
 export type StudentRow = { id: string; full_name: string | null };
@@ -11,6 +11,7 @@ interface ClassesGridProps {
   subjects: SubjectRow[];
   levelNameById: Map<string, string>;
   studentsByClass: Record<string, StudentRow[]>;
+  activeSubIds: Set<string>;
   isDark: boolean;
   onEditClass: (c: ClassRow) => void;
   onDeleteClass: (target: { id: string; title: string }) => void;
@@ -20,13 +21,13 @@ interface ClassesGridProps {
 
 /* ── Single card ── */
 function ClassCard({
-  cls, subjects, levelNameById, studentsByClass, isDark,
+  cls, subjects, levelNameById, studentsByClass, activeSubIds, isDark,
   onEditClass, onDeleteClass, onViewStudents,
   isDragging, dropSide,
   onDragStart, onDragOver, onDrop, onDragEnd,
 }: {
   cls: ClassRow; subjects: SubjectRow[]; levelNameById: Map<string, string>;
-  studentsByClass: Record<string, StudentRow[]>; isDark: boolean;
+  studentsByClass: Record<string, StudentRow[]>; activeSubIds: Set<string>; isDark: boolean;
   onEditClass: (c: ClassRow) => void;
   onDeleteClass: (t: { id: string; title: string }) => void;
   onViewStudents: (t: { id: string; title: string }) => void;
@@ -41,6 +42,7 @@ function ClassCard({
   const levelName    = subj?.level_id ? levelNameById.get(subj.level_id) ?? null : null;
   const subjectNames = cls.subject ? cls.subject.split(',').map((s) => s.trim()).filter(Boolean) : [];
   const students     = studentsByClass[cls.id] ?? [];
+  const flaggedCount = students.filter((st) => !activeSubIds.has(st.id)).length;
   const cardRef      = useRef<HTMLDivElement>(null);
 
   const getSide = (e: React.DragEvent): 'before' | 'after' => {
@@ -83,12 +85,20 @@ function ClassCard({
               <GripVertical className="h-3.5 w-3.5" />
             </div>
             <p className={`text-sm font-semibold truncate ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>{cls.title}</p>
+            {flaggedCount > 0 && (
+              <span
+                className={`flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold ${isDark ? 'border-amber-500/40 bg-amber-950/30 text-amber-300' : 'border-amber-200 bg-amber-50 text-amber-700'}`}
+                title={`${flaggedCount} ${flaggedCount === 1 ? 'μαθητής χωρίς' : 'μαθητές χωρίς'} ενεργή συνδρομή`}>
+                <AlertTriangle className="h-2.5 w-2.5" />
+                {flaggedCount}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-1 shrink-0">
             <button type="button" onClick={() => onEditClass(cls)} title="Επεξεργασία"
               className={`flex h-7 w-7 items-center justify-center rounded-lg border transition hover:scale-105 active:scale-95 ${
-                isDark ? 'border-slate-700/60 text-slate-500 hover:bg-blue-900/30 hover:border-blue-700/50 hover:text-blue-400'
-                       : 'border-slate-200 text-slate-400 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-500'}`}>
+                isDark ? 'border-slate-700/60 text-slate-500 hover:bg-[color:var(--color-accent)]/15 hover:border-[color:var(--color-accent)]/40 hover:text-[color:var(--color-accent-hover)]'
+                       : 'border-slate-200 text-slate-400 hover:bg-[color:var(--color-accent)]/10 hover:border-[color:var(--color-accent)]/30 hover:text-[color:var(--color-accent)]'}`}>
               <Pencil className="h-3 w-3" />
             </button>
             <button type="button" onClick={() => onDeleteClass({ id: cls.id, title: cls.title })} title="Διαγραφή"
@@ -125,12 +135,8 @@ function ClassCard({
               Μαθητές {students.length > 0 && `(${students.length})`}
             </span>
             <button type="button" onClick={() => onViewStudents({ id: cls.id, title: cls.title })}
-              className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition active:scale-95 ${
-                isDark
-                  ? 'border border-[color:var(--color-accent)]/40 bg-[color:var(--color-accent)]/10 text-[color:var(--color-accent)] hover:bg-[color:var(--color-accent)]/20'
-                  : 'border border-transparent text-white hover:brightness-110'
-              }`}
-              style={isDark ? {} : { background: 'var(--color-accent)' }}>
+              className="flex items-center gap-1.5 text-[11px] font-semibold transition hover:underline"
+              style={{ color: 'var(--color-accent)' }}>
               <UserPlus className="h-3 w-3" />
               Προσθήκη Μαθητών
             </button>
@@ -139,13 +145,20 @@ function ClassCard({
             <p className={`text-xs italic ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>Δεν υπάρχουν μαθητές ακόμα</p>
           ) : (
             <ul className="flex flex-col gap-1.5">
-              {students.map((st) => (
-                <li key={st.id} className="flex items-center gap-2">
-                  <span className={`text-xs truncate ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                    {st.full_name ?? 'Χωρίς όνομα'}
-                  </span>
-                </li>
-              ))}
+              {students.map((st) => {
+                const hasSub = activeSubIds.has(st.id);
+                return (
+                  <li key={st.id} className="flex items-center gap-2">
+                    <span className={`text-xs truncate ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                      {st.full_name ?? 'Χωρίς όνομα'}
+                    </span>
+                    {!hasSub && (
+                      <AlertTriangle className={`h-3 w-3 shrink-0 ${isDark ? 'text-amber-400' : 'text-amber-500'}`}
+                        title="Απαιτείται ενέργεια: δεν έχει ενεργή συνδρομή" />
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
@@ -163,7 +176,7 @@ function ClassCard({
 /* ── Horizontal scrollable row per level ── */
 function LevelSection({
   levelId, levelName, orderedClassIds, classesById,
-  subjects, levelNameById, studentsByClass, isDark,
+  subjects, levelNameById, studentsByClass, activeSubIds, isDark,
   onEditClass, onDeleteClass, onViewStudents, isLast,
   isDraggingLevel, dropPosition,
   onLevelDragStart, onLevelDragOver, onLevelDrop, onLevelDragEnd,
@@ -173,7 +186,7 @@ function LevelSection({
   levelId: string | null; levelName: string;
   orderedClassIds: string[]; classesById: Map<string, ClassRow>;
   subjects: SubjectRow[]; levelNameById: Map<string, string>;
-  studentsByClass: Record<string, StudentRow[]>; isDark: boolean;
+  studentsByClass: Record<string, StudentRow[]>; activeSubIds: Set<string>; isDark: boolean;
   onEditClass: (c: ClassRow) => void;
   onDeleteClass: (t: { id: string; title: string }) => void;
   onViewStudents: (t: { id: string; title: string }) => void;
@@ -243,7 +256,9 @@ function LevelSection({
         </div>
 
         <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg"
-          style={{ background: levelId ? 'var(--color-accent)' : isDark ? '#334155' : '#e2e8f0' }}>
+          style={levelId
+            ? { background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }
+            : { background: isDark ? '#334155' : '#e2e8f0' }}>
           <GraduationCap className="h-3.5 w-3.5"
             style={{ color: levelId ? 'var(--ch-icon)' : isDark ? '#94a3b8' : '#64748b' }} />
         </div>
@@ -269,6 +284,7 @@ function LevelSection({
               subjects={subjects}
               levelNameById={levelNameById}
               studentsByClass={studentsByClass}
+              activeSubIds={activeSubIds}
               isDark={isDark}
               onEditClass={onEditClass}
               onDeleteClass={onDeleteClass}
@@ -290,7 +306,7 @@ function LevelSection({
           <div ref={barRef} className="h-full rounded-full transition-all duration-75"
             style={{ width: '0%', background: isDark
               ? 'linear-gradient(90deg, #fbbf24, #f59e0b)'
-              : 'linear-gradient(90deg, #3b82f6, #60a5fa)' }} />
+              : 'linear-gradient(90deg, var(--color-accent), var(--color-accent-hover))' }} />
         </div>
       )}
 
@@ -312,7 +328,7 @@ function LevelSection({
 ══════════════════════════════════════════ */
 export default function ClassesGrid({
   loading, classes, filteredClasses, subjects, levelNameById,
-  studentsByClass, isDark, onEditClass, onDeleteClass, onViewStudents,
+  studentsByClass, activeSubIds, isDark, onEditClass, onDeleteClass, onViewStudents,
 }: ClassesGridProps) {
 
   /* ── Ordered state ── */
@@ -487,6 +503,7 @@ export default function ClassesGrid({
             subjects={subjects}
             levelNameById={levelNameById}
             studentsByClass={studentsByClass}
+            activeSubIds={activeSubIds}
             isDark={isDark}
             onEditClass={onEditClass}
             onDeleteClass={onDeleteClass}

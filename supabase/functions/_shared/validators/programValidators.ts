@@ -12,6 +12,7 @@ export function validateCreateProgramBody(body: any) {
   const end_time = body?.end_time?.trim?.();
   const start_date = body?.start_date?.trim?.();
   const end_date = body?.end_date?.trim?.();
+  const room = body?.room?.trim?.() || null;
 
   if (!program_id) throw new ValidationError("Missing program_id");
   if (!class_id) throw new ValidationError("Missing class_id");
@@ -33,6 +34,7 @@ export function validateCreateProgramBody(body: any) {
     end_time,
     start_date,
     end_date,
+    room,
   };
 }
 
@@ -47,6 +49,7 @@ export function validateUpdateProgramBody(body: any): UpdateProgramInput {
   const end_time = body?.end_time?.trim?.();
   const start_date = body?.start_date?.trim?.();
   const end_date = body?.end_date?.trim?.();
+  const room = body?.room?.trim?.() || null;
 
   if (!program_item_id) throw new ValidationError("Missing program_item_id");
   if (!class_id && !student_id) throw new ValidationError("Missing class_id");
@@ -66,6 +69,7 @@ export function validateUpdateProgramBody(body: any): UpdateProgramInput {
     end_time,
     start_date,
     end_date,
+    room,
   };
 }
 

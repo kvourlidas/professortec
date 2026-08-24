@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { X, Layers } from 'lucide-react';
+import { X, Layers, AlertCircle } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import {
+  ModalFormField as FormField, ModalFieldIcon as FieldIcon,
+  ModalErrorBox, modalInputCls,
+} from '../ui/ModalField.tsx';
 
 type LevelFormModalProps = {
   open: boolean;
@@ -38,9 +42,7 @@ export default function LevelFormModal({
     await onSubmit(name);
   };
 
-  const inputCls = isDark
-    ? 'h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 text-sm text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30'
-    : 'h-9 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30';
+  const inputCls = modalInputCls(isDark);
 
   const modalCardCls = isDark
     ? 'relative w-full max-w-sm overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl'
@@ -54,21 +56,17 @@ export default function LevelFormModal({
     ? 'btn border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-slate-200 hover:bg-slate-700/60 disabled:opacity-50'
     : 'btn border border-slate-300 bg-white px-4 py-1.5 text-slate-700 hover:bg-slate-100 disabled:opacity-50';
 
-  const formLabelCls = isDark
-    ? 'flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400'
-    : 'flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500';
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className={modalCardCls} style={{ background: 'var(--color-sidebar)' }}>
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
+        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--ch-divider)' }}>
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl"
               style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
               <Layers className="h-4 w-4" style={{ color: 'var(--ch-icon)' }} />
             </div>
-            <h2 className="text-sm font-semibold" style={{ color: 'var(--ch-text)' }}>
+            <h2 className="text-sm font-bold uppercase tracking-wide" style={{ color: 'var(--ch-text)' }}>
               {editingId == null ? 'Νέο επίπεδο' : 'Επεξεργασία επιπέδου'}
             </h2>
           </div>
@@ -81,19 +79,15 @@ export default function LevelFormModal({
 
         {/* Error */}
         {error && (
-          <div className="mx-6 mb-3 flex items-start gap-2.5 rounded-xl border border-red-500/30 bg-red-950/40 px-3.5 py-2.5 text-xs text-red-200">
-            <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />
-            {error}
-          </div>
+          <ModalErrorBox isDark={isDark}>
+            <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />{error}
+          </ModalErrorBox>
         )}
 
         <form onSubmit={handleSubmit}>
           <div className="px-6 pb-2">
-            <div className="space-y-1.5">
-              <label className={formLabelCls}>
-                <span className="opacity-70"><Layers className="h-3 w-3" /></span>
-                Ονομα επιπεδου *
-              </label>
+            <FormField label="Ονομα επιπεδου *" isDark={isDark}>
+              <FieldIcon icon={Layers} isDark={isDark} />
               <input
                 className={inputCls}
                 placeholder="π.χ. B2"
@@ -102,7 +96,7 @@ export default function LevelFormModal({
                 required
                 autoFocus
               />
-            </div>
+            </FormField>
           </div>
 
           <div className={modalFooterCls}>

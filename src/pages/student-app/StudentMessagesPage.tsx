@@ -358,7 +358,7 @@ export default function StudentMessagesPage() {
                     </span>
 
                     {unread > 0 && (
-                      <span className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-blue-500 px-1 text-[9px] font-bold text-white">
+                      <span className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-[color:var(--color-accent)] px-1 text-[9px] font-bold text-white">
                         {unread > 9 ? '9+' : unread}
                       </span>
                     )}

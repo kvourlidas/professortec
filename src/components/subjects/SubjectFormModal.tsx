@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { X, BookOpen, Layers, Loader2 } from 'lucide-react';
+import { X, BookOpen, Layers, Loader2, AlertCircle } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import {
+  ModalFormField as FormField, ModalFieldIcon as FieldIcon, ModalSelectChevron,
+  ModalErrorBox, modalInputCls, modalSelectCls,
+} from '../ui/ModalField.tsx';
+import StyledSelect from '../ui/StyledSelect';
 import type { LevelRow, ModalMode, SubjectRow } from './types';
 
 type SubjectFormModalProps = {
@@ -14,18 +19,6 @@ type SubjectFormModalProps = {
   onClose: () => void;
   onSubmit: (name: string, levelId: string) => Promise<void>;
 };
-
-function FormField({ label, icon, children }: { label: string; icon?: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1.5">
-      <label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400">
-        {icon && <span className="opacity-70">{icon}</span>}
-        {label}
-      </label>
-      {children}
-    </div>
-  );
-}
 
 export default function SubjectFormModal({
   open,
@@ -61,9 +54,8 @@ export default function SubjectFormModal({
     await onSubmit(subjectName, levelId);
   };
 
-  const inputCls = isDark
-    ? 'h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 text-sm text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30'
-    : 'h-9 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30';
+  const inputCls = modalInputCls(isDark);
+  const selectCls = modalSelectCls(isDark);
 
   const modalCardCls = isDark
     ? 'relative w-full max-w-md overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl'
@@ -81,14 +73,14 @@ export default function SubjectFormModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className={modalCardCls} style={{ background: 'var(--color-sidebar)' }}>
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
+        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--ch-divider)' }}>
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl"
               style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
               <BookOpen className="h-4 w-4" style={{ color: 'var(--ch-icon)' }} />
             </div>
             <div>
-              <h2 className="text-sm font-semibold" style={{ color: 'var(--ch-text)' }}>
+              <h2 className="text-sm font-bold uppercase tracking-wide" style={{ color: 'var(--ch-text)' }}>
                 {mode === 'create' ? 'Νέο μάθημα' : 'Επεξεργασία μαθήματος'}
               </h2>
               {mode === 'edit' && editingSubject && (
@@ -107,15 +99,15 @@ export default function SubjectFormModal({
 
         {/* Error */}
         {error && (
-          <div className="mx-6 mb-3 flex items-start gap-2.5 rounded-xl border border-red-500/30 bg-red-950/40 px-3.5 py-2.5 text-xs text-red-200">
-            <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />
-            {error}
-          </div>
+          <ModalErrorBox isDark={isDark}>
+            <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />{error}
+          </ModalErrorBox>
         )}
 
         <form onSubmit={handleSubmit}>
           <div className="space-y-4 px-6 pb-2">
-            <FormField label="ΟΝΟΜΑ ΜΑΘΗΜΑΤΟΣ" icon={<BookOpen className="h-3 w-3" />}>
+            <FormField label="Ονομα μαθηματος" isDark={isDark}>
+              <FieldIcon icon={BookOpen} isDark={isDark} />
               <input
                 className={inputCls}
                 placeholder="π.χ. Αγγλικά"
@@ -125,21 +117,15 @@ export default function SubjectFormModal({
               />
             </FormField>
 
-            <FormField label="ΕΠΙΠΕΔΟ" icon={<Layers className="h-3 w-3" />}>
-              <select
-                className={inputCls}
+            <FormField label="Επιπεδο" hint="Κάθε μάθημα ανήκει σε ένα επίπεδο." isDark={isDark}>
+              <FieldIcon icon={Layers} isDark={isDark} />
+              <StyledSelect
+                isDark={isDark} className={selectCls}
                 value={levelId}
-                onChange={(e) => setLevelId(e.target.value)}
-                required
-              >
-                <option value="">Επιλέξτε επίπεδο…</option>
-                {levels.map((lvl) => (
-                  <option key={lvl.id} value={lvl.id}>{lvl.name}</option>
-                ))}
-              </select>
-              <p className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                Κάθε μάθημα ανήκει σε ένα επίπεδο.
-              </p>
+                onChange={setLevelId}
+                options={[{ value: '', label: 'Επιλέξτε επίπεδο…' }, ...levels.map((lvl) => ({ value: lvl.id, label: lvl.name }))]}
+              />
+              <ModalSelectChevron isDark={isDark} />
             </FormField>
           </div>
 
