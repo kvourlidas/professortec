@@ -148,3 +148,41 @@ export async function deleteStudentService(
   await deleteStudentById(supabase, input.student_id);
   return { success: true };
 }
+
+export type DeleteStudentByNameResult =
+  | { status: "deleted"; student_id: string; full_name: string }
+  | { status: "not_found" }
+  | { status: "ambiguous"; candidates: { id: string; full_name: string; phone: string | null; email: string | null }[] };
+
+/**
+ * Resolves a student by id or by (partial) name, then soft-deletes it.
+ */
+export async function deleteStudentByNameService(
+  supabase: any,
+  schoolId: string,
+  params: { student_id?: string; student_name?: string }
+): Promise<DeleteStudentByNameResult> {
+  let studentId = params.student_id;
+  let fullName: string | undefined;
+
+  if (!studentId) {
+    if (!params.student_name) {
+      throw new ValidationError("Missing student_id or student_name");
+    }
+    const matches = await searchStudentsByName(supabase, schoolId, params.student_name);
+    if (matches.length === 0) return { status: "not_found" };
+    if (matches.length > 1) return { status: "ambiguous", candidates: matches };
+    studentId = matches[0].id;
+    fullName = matches[0].full_name;
+  }
+
+  if (!fullName) {
+    const full = await getStudentFullByIdAndSchoolId(supabase, studentId, schoolId);
+    fullName = full.full_name;
+  } else {
+    await getStudentByIdAndSchoolId(supabase, studentId, schoolId);
+  }
+
+  await deleteStudentById(supabase, studentId);
+  return { status: "deleted", student_id: studentId, full_name: fullName! };
+}
