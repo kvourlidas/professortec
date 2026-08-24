@@ -124,7 +124,7 @@ export default function ClassStudentsModal({ open, onClose, classId, classTitle 
   const cancelBtnCls = `btn border px-4 py-1.5 disabled:opacity-50 ${isDark ? 'border-slate-600/60 bg-slate-800/50 text-slate-200 hover:bg-slate-700/60' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'}`;
   const scrollStyle: React.CSSProperties = { scrollbarWidth: 'thin', scrollbarColor: isDark ? 'rgba(71,85,105,0.35) transparent' : 'rgba(203,213,225,0.7) transparent' };
   const checkboxStyle: React.CSSProperties = { accentColor: 'var(--color-accent)', cursor: 'pointer' };
-  const rowHoverCls = isDark ? 'transition-colors hover:bg-blue-500/[0.12]' : 'transition-colors hover:bg-blue-50';
+  const rowHoverCls = isDark ? 'transition-colors hover:bg-[color:var(--color-accent)]/[0.12]' : 'transition-colors hover:bg-[color:var(--color-accent)]/10';
   const rowCls = `flex items-center gap-2.5 px-2 py-2 cursor-pointer select-none ${rowHoverCls}`;
   const sectionLabelCls = `text-[10px] font-bold uppercase tracking-wide ${isDark ? 'text-white' : 'text-black'}`;
 

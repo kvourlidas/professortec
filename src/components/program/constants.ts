@@ -24,4 +24,5 @@ export const emptyAddSlotForm: AddSlotForm = {
   endTime: '',
   startDate: '',
   endDate: '',
+  room: '',
 };

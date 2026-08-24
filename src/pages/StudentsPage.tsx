@@ -334,7 +334,7 @@ export default function StudentsPage() {
   const theadRowCls = '';
   const tbodyDivideCls = isDark ? 'divide-y divide-slate-800/60' : 'divide-y divide-slate-200';
   const colDivider = isDark ? 'border-r border-slate-800/60' : 'border-r border-slate-200';
-  const trHoverCls = isDark ? 'transition-colors hover:bg-blue-500/[0.12]' : 'transition-colors hover:bg-blue-50';
+  const trHoverCls = isDark ? 'transition-colors hover:bg-[color:var(--color-accent)]/[0.12]' : 'transition-colors hover:bg-[color:var(--color-accent)]/10';
   const modalBg = isDark ? 'border-slate-700/60' : 'border-slate-200';
   const cancelBtnCls = `btn border px-4 py-1.5 disabled:opacity-50 ${isDark ? 'border-slate-600/60 bg-slate-800/50 text-slate-200 hover:bg-slate-700/60' : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'}`;
   const paginationBarCls = 'flex items-center justify-between gap-3 pt-4';

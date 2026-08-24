@@ -177,7 +177,7 @@ export default function ProgramPage() {
   const openAddSlotModal = (classId: string, day: string) => {
     const displayToday = formatDateDisplay(todayISO());
     setError(null);
-    setAddForm({ classId, subjectId: null, tutorId: null, day, startTime: '', endTime: '', startDate: displayToday, endDate: displayToday });
+    setAddForm({ classId, subjectId: null, tutorId: null, day, startTime: '', endTime: '', startDate: displayToday, endDate: displayToday, room: '' });
     setAddModalOpen(true);
   };
 
@@ -224,6 +224,7 @@ export default function ProgramPage() {
         end_time: addForm.endTime,
         start_date: startDateISO,
         end_date: endDateISO,
+        room: addForm.room.trim() || null,
       });
       setProgramItems((prev) => [...prev, data.item as ProgramItemRow]);
       closeAddSlotModal();
@@ -238,7 +239,7 @@ export default function ProgramPage() {
   // ── Edit slot ─────────────────────────────────────────────────────────────
   const openEditSlotModal = (item: ProgramItemRow) => {
     setError(null);
-    setEditForm({ id: item.id, classId: item.class_id, subjectId: item.subject_id ?? null, tutorId: item.tutor_id ?? null, day: item.day_of_week, startTime: item.start_time?.slice(0, 5) ?? '', endTime: item.end_time?.slice(0, 5) ?? '', startDate: item.start_date ? formatDateDisplay(item.start_date) : '', endDate: item.end_date ? formatDateDisplay(item.end_date) : '' });
+    setEditForm({ id: item.id, classId: item.class_id, subjectId: item.subject_id ?? null, tutorId: item.tutor_id ?? null, day: item.day_of_week, startTime: item.start_time?.slice(0, 5) ?? '', endTime: item.end_time?.slice(0, 5) ?? '', startDate: item.start_date ? formatDateDisplay(item.start_date) : '', endDate: item.end_date ? formatDateDisplay(item.end_date) : '', room: item.room ?? '' });
     setEditModalOpen(true);
   };
 
@@ -281,6 +282,7 @@ export default function ProgramPage() {
         end_time: editForm.endTime,
         start_date: startDateISO,
         end_date: endDateISO,
+        room: editForm.room.trim() || null,
       });
       setProgramItems((prev) => prev.map((i) => (i.id === editForm.id ? (data.item as ProgramItemRow) : i)));
       closeEditSlotModal();

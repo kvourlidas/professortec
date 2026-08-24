@@ -1,13 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
-import { X, GraduationCap, User, Hash, Phone, Mail, CreditCard, Loader2, AlertCircle } from 'lucide-react';
+import { X, GraduationCap, User, Hash, Phone, Mail, CreditCard, Loader2, AlertCircle, Tags, ChevronDown, Check } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import DatePickerField from '../ui/AppDatePicker';
 import {
   ModalFormField as FormField, ModalFieldIcon as FieldIcon,
   ModalErrorBox, modalInputCls,
 } from '../ui/ModalField.tsx';
-import type { ModalMode, TutorFormState, TutorRow } from './types';
+import type { ModalMode, SpecialtyRow, TutorFormState, TutorRow } from './types';
 import { emptyForm } from './types';
 import { isoToDisplay } from './utils';
 
@@ -15,16 +15,20 @@ type TutorFormModalProps = {
   open: boolean;
   mode: ModalMode;
   editingTutor: TutorRow | null;
+  allSpecialties: SpecialtyRow[];
+  initialSpecialtyIds: string[];
   error: string | null;
   saving: boolean;
   onClose: () => void;
-  onSubmit: (form: TutorFormState) => Promise<void>;
+  onSubmit: (form: TutorFormState, specialtyIds: string[]) => Promise<void>;
 };
 
 export default function TutorFormModal({
   open,
   mode,
   editingTutor,
+  allSpecialties,
+  initialSpecialtyIds,
   error,
   saving,
   onClose,
@@ -34,6 +38,18 @@ export default function TutorFormModal({
   const isDark = theme === 'dark';
 
   const [form, setForm] = useState<TutorFormState>(emptyForm);
+  const [specialtyIds, setSpecialtyIds] = useState<Set<string>>(new Set());
+  const [specialtiesOpen, setSpecialtiesOpen] = useState(false);
+  const specialtiesRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!specialtiesOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (specialtiesRef.current && !specialtiesRef.current.contains(e.target as Node)) setSpecialtiesOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [specialtiesOpen]);
 
   useEffect(() => {
     if (!open) return;
@@ -50,16 +66,25 @@ export default function TutorFormModal({
     } else {
       setForm(emptyForm);
     }
-  }, [open, mode, editingTutor]);
+    setSpecialtyIds(new Set(initialSpecialtyIds));
+  }, [open, mode, editingTutor, initialSpecialtyIds]);
 
   if (!open) return null;
 
   const handleChange = (field: keyof TutorFormState) => (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
 
+  const toggleSpecialty = (id: string) => {
+    setSpecialtyIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    await onSubmit(form);
+    await onSubmit(form, [...specialtyIds]);
   };
 
   const inputCls = modalInputCls(isDark);
@@ -126,6 +151,57 @@ export default function TutorFormModal({
               <FormField label="Email" isDark={isDark}>
                 <FieldIcon icon={Mail} isDark={isDark} />
                 <input type="email" className={inputCls} placeholder="π.χ. tutor@example.com" value={form.email} onChange={handleChange('email')} />
+              </FormField>
+
+              {/* ── Specialties ── */}
+              <FormField label="Ειδικότητες" isDark={isDark}
+                hint={allSpecialties.length === 0 ? 'Δεν έχουν οριστεί ειδικότητες. Προσθέστε από το κουμπί «Ειδικότητες».' : undefined}>
+                <div ref={specialtiesRef} className="relative">
+                  <FieldIcon icon={Tags} isDark={isDark} />
+                  <button
+                    type="button"
+                    onClick={() => allSpecialties.length > 0 && setSpecialtiesOpen((v) => !v)}
+                    disabled={allSpecialties.length === 0}
+                    className={`${inputCls} flex items-center justify-between gap-2 pr-7 text-left disabled:opacity-60`}
+                  >
+                    <span className="truncate">
+                      {specialtyIds.size === 0
+                        ? <span className={isDark ? 'text-slate-600' : 'text-slate-400'}>Επιλέξτε ειδικότητες</span>
+                        : allSpecialties.filter((s) => specialtyIds.has(s.id)).map((s) => s.name).join(', ')}
+                    </span>
+                  </button>
+                  <ChevronDown className={`pointer-events-none absolute right-0 top-1/2 h-3.5 w-3.5 -translate-y-1/2 transition-transform ${specialtiesOpen ? 'rotate-180' : ''} ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+
+                  {specialtiesOpen && allSpecialties.length > 0 && (
+                    <div className={`absolute left-0 top-full z-50 mt-1.5 w-full max-h-56 overflow-y-auto rounded-xl border shadow-2xl ${
+                      isDark ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-white'
+                    }`}>
+                      {allSpecialties.map((s) => {
+                        const checked = specialtyIds.has(s.id);
+                        return (
+                          <button
+                            key={s.id}
+                            type="button"
+                            onClick={() => toggleSpecialty(s.id)}
+                            className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-[12px] transition-colors ${
+                              isDark ? 'hover:bg-white/[0.05]' : 'hover:bg-slate-50'
+                            }`}
+                          >
+                            <span
+                              className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[4px] border ${
+                                checked ? 'border-transparent' : isDark ? 'border-slate-600' : 'border-slate-300'
+                              }`}
+                              style={checked ? { background: 'var(--color-accent)' } : undefined}
+                            >
+                              {checked && <Check className="h-2 w-2 text-white" strokeWidth={3.5} />}
+                            </span>
+                            <span className={isDark ? 'text-slate-200' : 'text-slate-700'}>{s.name}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </FormField>
 
               {/* ── Divider ── */}

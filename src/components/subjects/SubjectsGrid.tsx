@@ -98,11 +98,11 @@ export default function SubjectsGrid({
   const groupHeaderStyle: React.CSSProperties = { borderBottom: '2px solid var(--color-accent)' };
   const groupTitleCls = `text-xs font-bold uppercase tracking-wide ${isDark ? 'text-white' : 'text-black'}`;
   const rowDivideCls = isDark ? 'divide-y divide-slate-800/60' : 'divide-y divide-slate-200';
-  const rowHoverCls = isDark ? 'transition-colors hover:bg-blue-500/[0.12]' : 'transition-colors hover:bg-blue-50';
+  const rowHoverCls = isDark ? 'transition-colors hover:bg-[color:var(--color-accent)]/[0.12]' : 'transition-colors hover:bg-[color:var(--color-accent)]/10';
   const editBtnCls = `flex h-6 w-6 items-center justify-center rounded-md border transition hover:scale-105 active:scale-95 ${
     isDark
-      ? 'border-slate-700/60 text-slate-500 hover:bg-blue-900/30 hover:border-blue-700/50 hover:text-blue-400'
-      : 'border-slate-200 text-slate-400 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-500'
+      ? 'border-slate-700/60 text-slate-500 hover:bg-[color:var(--color-accent)]/15 hover:border-[color:var(--color-accent)]/40 hover:text-[color:var(--color-accent-hover)]'
+      : 'border-slate-200 text-slate-400 hover:bg-[color:var(--color-accent)]/10 hover:border-[color:var(--color-accent)]/30 hover:text-[color:var(--color-accent)]'
   }`;
   const deleteBtnCls = `flex h-6 w-6 items-center justify-center rounded-md border transition hover:scale-105 active:scale-95 ${
     isDark

@@ -181,8 +181,8 @@ export default function ProgramClassesPanel({
                       onDragEnd={() => onDragEnd(cls.id)}
                       className={`group flex flex-col gap-2 rounded-lg border px-3 py-2.5 cursor-grab active:cursor-grabbing transition-colors active:scale-[0.97] ${
                         isDark
-                          ? 'border-slate-700/50 hover:bg-blue-500/[0.12]'
-                          : 'border-slate-200 hover:bg-blue-50'
+                          ? 'border-slate-700/50 hover:bg-[color:var(--color-accent)]/[0.12]'
+                          : 'border-slate-200 hover:bg-[color:var(--color-accent)]/10'
                       }`}
                     >
                       {/* Top row: grip + title */}

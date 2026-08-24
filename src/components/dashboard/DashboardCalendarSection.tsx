@@ -27,7 +27,7 @@ import {
   ModalFormField, ModalFieldIcon, ModalSelectChevron, ModalErrorBox,
   modalInputCls, modalSelectCls,
 } from '../ui/ModalField';
-import { CalendarDays, Clock, BookOpen, GraduationCap, X, Loader2, Layers, Euro, Ban, ArrowLeftRight, Check, AlertCircle } from 'lucide-react';
+import { CalendarDays, Clock, BookOpen, GraduationCap, X, Loader2, Layers, Euro, Ban, ArrowLeftRight, Check, AlertCircle, DoorOpen } from 'lucide-react';
 
 /* ------------ Types (unchanged) ------------ */
 
@@ -41,7 +41,7 @@ type ProgramItemRow = {
   id: string; program_id: string; class_id: string | null; student_id: string | null; day_of_week: string;
   position: number | null; start_time: string | null; end_time: string | null;
   start_date: string | null; end_date: string | null; subject_id: string | null; tutor_id: string | null;
-  charge_per_session: number | null;
+  charge_per_session: number | null; room: string | null;
 };
 type StudentRow = { id: string; full_name: string | null };
 type ProgramItemOverrideRow = {
@@ -412,7 +412,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
           const titleBase = cls ? cls.title : (student?.full_name ?? 'Μαθητής');
           const title = combinedTest ? `${titleBase} · Διαγώνισμα` : titleBase;
           if (combinedTest) hideStandaloneTestKeys.add(key);
-          out.push({ id: `${item.id}-${dateStr}`, title, start, end, editable: !isInactive, startEditable: !isInactive, durationEditable: !isInactive, classNames: [isInactive ? 'fc-event-inactive' : combinedTest ? 'fc-event-test' : 'fc-event-program'], extendedProps: { kind: 'program', programItemId: item.id, classId: cls?.id ?? null, studentId: student ? item.student_id : null, subjectId: item.subject_id ?? null, subject: (item.subject_id ? subjectById.get(item.subject_id)?.name : null) ?? cls?.subject ?? null, tutorName, overrideDate: dateStr, overrideId, isHoliday, holidayName, isInactive, activeDuringHoliday, testId: combinedTest?.id ?? null, testSubjectId: combinedTest?.subject_id ?? null } });
+          out.push({ id: `${item.id}-${dateStr}`, title, start, end, editable: !isInactive, startEditable: !isInactive, durationEditable: !isInactive, classNames: [isInactive ? 'fc-event-inactive' : combinedTest ? 'fc-event-test' : 'fc-event-program'], extendedProps: { kind: 'program', programItemId: item.id, classId: cls?.id ?? null, studentId: student ? item.student_id : null, subjectId: item.subject_id ?? null, subject: (item.subject_id ? subjectById.get(item.subject_id)?.name : null) ?? cls?.subject ?? null, tutorName, room: item.room ?? null, overrideDate: dateStr, overrideId, isHoliday, holidayName, isInactive, activeDuringHoliday, testId: combinedTest?.id ?? null, testSubjectId: combinedTest?.subject_id ?? null } });
         }
         currentDate = next;
       }
@@ -450,7 +450,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
       const titleBase = cls ? cls.title : (student?.full_name ?? 'Μαθητής');
       const title = combinedTest ? `${titleBase} · Διαγώνισμα` : titleBase;
       if (combinedTest) hideStandaloneTestKeys.add(key);
-      out.push({ id: `${item.id}-${dateStr}-override`, title, start, end, editable: !isInactive, startEditable: !isInactive, durationEditable: !isInactive, classNames: [isInactive ? 'fc-event-inactive' : combinedTest ? 'fc-event-test' : 'fc-event-program'], extendedProps: { kind: 'program', programItemId: item.id, classId: cls?.id ?? null, studentId: student ? item.student_id : null, subjectId: item.subject_id ?? null, subject: (item.subject_id ? subjectById.get(item.subject_id)?.name : null) ?? cls?.subject ?? null, tutorName, overrideDate: dateStr, overrideId: ov.id, isHoliday, holidayName, isInactive, activeDuringHoliday, testId: combinedTest?.id ?? null, testSubjectId: combinedTest?.subject_id ?? null } });
+      out.push({ id: `${item.id}-${dateStr}-override`, title, start, end, editable: !isInactive, startEditable: !isInactive, durationEditable: !isInactive, classNames: [isInactive ? 'fc-event-inactive' : combinedTest ? 'fc-event-test' : 'fc-event-program'], extendedProps: { kind: 'program', programItemId: item.id, classId: cls?.id ?? null, studentId: student ? item.student_id : null, subjectId: item.subject_id ?? null, subject: (item.subject_id ? subjectById.get(item.subject_id)?.name : null) ?? cls?.subject ?? null, tutorName, room: item.room ?? null, overrideDate: dateStr, overrideId: ov.id, isHoliday, holidayName, isInactive, activeDuringHoliday, testId: combinedTest?.id ?? null, testSubjectId: combinedTest?.subject_id ?? null } });
     });
 
     tests.forEach((t) => {
@@ -556,6 +556,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     const kind = event.extendedProps['kind'] as string | undefined;
     const subject = event.extendedProps['subject'] as string | null;
     const tutorName = event.extendedProps['tutorName'] as string | null;
+    const room = event.extendedProps['room'] as string | null;
     const isInactive = !!event.extendedProps['isInactive'];
     const isHoliday = !!event.extendedProps['isHoliday'];
     const holidayName = (event.extendedProps['holidayName'] as string | null) ?? null;
@@ -589,7 +590,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     return (
       <div className="flex flex-col h-full overflow-hidden leading-tight" style={{ gap: '2px' }}>
         {timeRange && (
-          <div className="text-[10px] font-bold" style={{ color: 'var(--color-accent)' }}>{timeRange}</div>
+          <div className="text-[11px] font-bold" style={{ color: 'var(--color-accent)' }}>{timeRange}</div>
         )}
         {(isInactive || (isHoliday && !isInactive)) && (
           <div>
@@ -612,13 +613,19 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
               Διαγώνισμα
             </span>
           )}
-          {mainTitle && <span className="text-[11px] font-semibold truncate">{mainTitle}</span>}
+          {mainTitle && <span className="text-[13px] font-semibold truncate">{mainTitle}</span>}
         </div>
         {kind === 'program' && subject && (
-          <div className="text-[9px] truncate" style={{ opacity: 0.75 }}>{subject}</div>
+          <div className="text-[11px] font-medium truncate" style={{ color: 'var(--color-text-main)' }}>{subject}</div>
         )}
         {kind === 'program' && tutorName && (
-          <div className="text-[9px] truncate" style={{ opacity: 0.6 }}>{tutorName}</div>
+          <div className="text-[11px] truncate" style={{ color: 'var(--color-text-muted)' }}>{tutorName}</div>
+        )}
+        {kind === 'program' && room && (
+          <div className="flex items-center gap-0.5 text-[11px] font-medium truncate" style={{ color: 'var(--color-accent)' }}>
+            <DoorOpen className="h-3 w-3 shrink-0" />
+            {room}
+          </div>
         )}
       </div>
     );
@@ -788,13 +795,13 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
       const item = programItems.find((pi) => pi.id === programItemId);
       let currentItem = item ?? null;
       if (item && classId !== item.class_id) {
-        const result = await callEdgeFunction('program-update', { program_item_id: item.id, class_id: classId, subject_id: item.subject_id ?? null, tutor_id: item.tutor_id ?? null, day_of_week: item.day_of_week, start_time: item.start_time, end_time: item.end_time, start_date: item.start_date, end_date: item.end_date });
+        const result = await callEdgeFunction('program-update', { program_item_id: item.id, class_id: classId, subject_id: item.subject_id ?? null, tutor_id: item.tutor_id ?? null, day_of_week: item.day_of_week, start_time: item.start_time, end_time: item.end_time, start_date: item.start_date, end_date: item.end_date, room: item.room ?? null });
         currentItem = result.item as ProgramItemRow;
         setProgramItems((prev) => prev.map((pi) => (pi.id === programItemId ? currentItem! : pi)));
       }
       const finalSubjectId = subjectId ?? null;
       if (currentItem && finalSubjectId !== (currentItem.subject_id ?? null)) {
-        const result = await callEdgeFunction('program-update', { program_item_id: currentItem.id, class_id: currentItem.class_id, student_id: currentItem.student_id ?? null, subject_id: finalSubjectId, tutor_id: currentItem.tutor_id ?? null, day_of_week: currentItem.day_of_week, start_time: currentItem.start_time, end_time: currentItem.end_time, start_date: currentItem.start_date, end_date: currentItem.end_date });
+        const result = await callEdgeFunction('program-update', { program_item_id: currentItem.id, class_id: currentItem.class_id, student_id: currentItem.student_id ?? null, subject_id: finalSubjectId, tutor_id: currentItem.tutor_id ?? null, day_of_week: currentItem.day_of_week, start_time: currentItem.start_time, end_time: currentItem.end_time, start_date: currentItem.start_date, end_date: currentItem.end_date, room: currentItem.room ?? null });
         currentItem = result.item as ProgramItemRow;
         setProgramItems((prev) => prev.map((pi) => (pi.id === programItemId ? currentItem! : pi)));
       }
@@ -1168,6 +1175,16 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
                   </select>
                   <ModalSelectChevron isDark={isDark} />
                 </ModalFormField>
+
+                {(() => {
+                  const room = programItems.find((pi) => pi.id === eventModal.programItemId)?.room;
+                  return room ? (
+                    <ModalFormField label="Αίθουσα" isDark={isDark}>
+                      <ModalFieldIcon icon={DoorOpen} isDark={isDark} />
+                      <div className={`${inputCls} flex items-center`}>{room}</div>
+                    </ModalFormField>
+                  ) : null;
+                })()}
 
                 <ModalFormField label="Ημερομηνία" isDark={isDark}>
                   <AppDatePicker value={eventModal.date} onChange={(v) => setEventModal((p) => (p ? { ...p, date: v } : p))} placeholder="dd/mm/yyyy" variant="underline" />

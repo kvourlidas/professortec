@@ -18,6 +18,7 @@ export async function insertProgram(
       end_time: input.end_time,
       start_date: input.start_date,
       end_date: input.end_date,
+      room: input.room,
     })
     .select("*")
     .maybeSingle();
@@ -67,6 +68,7 @@ export async function updateProgramById(
       end_time: input.end_time,
       start_date: input.start_date,
       end_date: input.end_date,
+      room: input.room,
     })
     .eq("id", input.program_item_id)
     .select("*")

@@ -52,19 +52,19 @@ export default function Layout({ children }: LayoutProps) {
   const isIdiaiterou = profile?.account_type === 'idiaiterou';
   const activeNav = isIdiaiterou ? idiaiterouNavItems : navItems;
 
-  // Sidebar background is the blue accent color in both themes, so it always needs
-  // white-based text/overlays regardless of light/dark mode.
+  // Sidebar background is a dark teal accent in both themes, so it always needs
+  // white-based text with teal-tinted hover/active states regardless of light/dark mode.
   const sbTextMuted    = 'text-white/75';
   const sbTextFaint    = 'text-white/60';
-  const sbActiveBg     = 'bg-white/15';
+  const sbActiveBg     = 'bg-[color:var(--color-sidebar-active)]';
   const sbActiveText   = 'text-white';
-  const sbHoverBg      = 'hover:bg-white/[0.10]';
+  const sbHoverBg      = 'hover:bg-[color:var(--color-sidebar-hover)]';
   const sbHoverText    = 'hover:text-white';
   const sbIconInactive = 'text-white/70';
   const sbIconActive   = 'text-white';
   const sbIconHover    = 'group-hover:text-white';
   const sbBorderColor  = 'rgba(255,255,255,0.18)';
-  const sbDotColor     = '#ffffff';
+  const sbDotColor     = 'var(--color-sidebar-active-dot)';
 
   const toggleSidebarCollapsed = () => {
     setSidebarCollapsedPref((v) => {

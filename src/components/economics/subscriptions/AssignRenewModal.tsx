@@ -381,7 +381,7 @@ export function AssignRenewModal({
                                     ? (isDark ? 'border-transparent text-black' : 'border-transparent text-white')
                                     : (isDark ? 'border-slate-700/60 text-slate-400 hover:border-slate-600' : 'border-slate-200 text-slate-500 hover:border-slate-300')
                                 }`}
-                                style={checked ? { background: isDark ? accentVar : '#2563eb' } : {}}>
+                                style={checked ? { background: accentVar } : {}}>
                                 <input type="checkbox" className="hidden" checked={checked} onChange={() => toggleDiscountMonth(key)} />
                                 {label}
                               </label>

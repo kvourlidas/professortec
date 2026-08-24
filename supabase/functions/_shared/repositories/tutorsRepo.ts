@@ -62,17 +62,18 @@ export async function updateTutorById(
   supabase: any,
   input: UpdateTutorInput
 ) {
+  const patch: Record<string, unknown> = {};
+  if (input.full_name !== undefined) patch.full_name = input.full_name;
+  if (input.date_of_birth !== undefined) patch.date_of_birth = input.date_of_birth;
+  if (input.afm !== undefined) patch.afm = input.afm;
+  if (input.phone !== undefined) patch.phone = input.phone;
+  if (input.email !== undefined) patch.email = input.email;
+  if (input.iban !== undefined) patch.iban = input.iban;
+  if (input.notes !== undefined) patch.notes = input.notes;
+
   const { data, error } = await supabase
     .from("tutors")
-    .update({
-      full_name: input.full_name,
-      date_of_birth: input.date_of_birth,
-      afm: input.afm,
-      phone: input.phone,
-      email: input.email,
-      iban: input.iban,
-      notes: input.notes,
-    })
+    .update(patch)
     .eq("id", input.tutor_id)
     .select(TUTOR_SELECT)
     .maybeSingle();

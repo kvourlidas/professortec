@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Columns2, Check, RotateCcw, ChevronDown } from 'lucide-react';
 import { triggerCls } from '../students/dropdownTriggerCls';
 
-export type TutorColumnKey = 'full_name' | 'date_of_birth' | 'afm' | 'phone' | 'email' | 'iban' | 'notes';
+export type TutorColumnKey = 'full_name' | 'date_of_birth' | 'afm' | 'phone' | 'email' | 'iban' | 'notes' | 'specialties';
 
 export type TutorColumnDef = {
   key: TutorColumnKey;
@@ -13,6 +13,7 @@ export type TutorColumnDef = {
 
 export const ALL_TUTOR_COLUMNS: TutorColumnDef[] = [
   { key: 'full_name',     label: 'Ονοματεπώνυμο', alwaysVisible: true },
+  { key: 'specialties',   label: 'Ειδικότητες'    },
   { key: 'date_of_birth', label: 'Ημ. Γέννησης'  },
   { key: 'afm',           label: 'ΑΦΜ'            },
   { key: 'phone',         label: 'Τηλέφωνο'       },
@@ -22,7 +23,7 @@ export const ALL_TUTOR_COLUMNS: TutorColumnDef[] = [
 ];
 
 export const DEFAULT_TUTOR_VISIBLE = new Set<TutorColumnKey>([
-  'full_name', 'date_of_birth', 'afm', 'phone', 'email',
+  'full_name', 'date_of_birth', 'afm', 'phone', 'email', 'specialties',
 ]);
 
 type Props = {

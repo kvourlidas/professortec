@@ -7,6 +7,7 @@ import { useTheme } from '../context/ThemeContext';
 import EditDeleteButtons from '../components/ui/EditDeleteButtons';
 import TutorFormModal from '../components/tutors/TutorFormModal';
 import TutorDeleteModal from '../components/tutors/TutorDeleteModal';
+import SpecialtiesCatalogModal from '../components/tutors/SpecialtiesCatalogModal';
 import TutorSortDropdown, {
   DEFAULT_TUTOR_SORT,
   type TutorSortState,
@@ -20,16 +21,16 @@ import TutorColumnFilterDropdown, {
 import PageSizeDropdown, {
   type PageSizeOption,
 } from '../components/students/PageSizeDropdown';
-import type { ModalMode, TutorFormState, TutorRow } from '../components/tutors/types';
+import type { ModalMode, SpecialtyRow, TutorFormState, TutorRow } from '../components/tutors/types';
 import { TUTOR_SELECT } from '../components/tutors/types';
 import { formatDateToGreek, normalizeText, displayToIso } from '../components/tutors/utils';
 import {
   Users, Search, UserPlus, ChevronLeft, ChevronRight,
-  Copy, Check,
+  Copy, Check, Tags,
 } from 'lucide-react';
 
 // ── Storage keys ─────────────────────────────────────────────────────────────
-const COLUMNS_KEY   = 'pt_tutors_visible_columns_v1';
+const COLUMNS_KEY   = 'pt_tutors_visible_columns_v2';
 const SORT_KEY      = 'pt_tutors_sort_v1';
 const PAGE_SIZE_KEY = 'pt_tutors_page_size_v1';
 
@@ -120,6 +121,11 @@ export default function TutorsPage() {
   const [deleteTarget, setDeleteTarget] = useState<TutorRow | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Specialties catalog + per-tutor links
+  const [specialties, setSpecialties] = useState<SpecialtyRow[]>([]);
+  const [tutorSpecialtyMap, setTutorSpecialtyMap] = useState<Map<string, SpecialtyRow[]>>(new Map());
+  const [catalogOpen, setCatalogOpen] = useState(false);
+
   // Search & pagination
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -144,15 +150,30 @@ export default function TutorsPage() {
     try { localStorage.setItem(PAGE_SIZE_KEY, String(next)); } catch { /* ignore */ }
   };
 
-  // Load tutors
+  // Load tutors + specialties catalog + tutor↔specialty links
   useEffect(() => {
     if (!schoolId) { setLoading(false); return; }
     const load = async () => {
       setLoading(true); setError(null);
-      const { data, error } = await supabase
-        .from('tutors').select(TUTOR_SELECT).eq('school_id', schoolId).is('deleted_at', null).order('full_name', { ascending: true });
-      if (error) { console.error(error); setError('Αποτυχία φόρτωσης καθηγητών.'); }
-      else { setTutors((data ?? []) as TutorRow[]); }
+      const [tutorsRes, specialtiesRes, linksRes] = await Promise.all([
+        supabase.from('tutors').select(TUTOR_SELECT).eq('school_id', schoolId).is('deleted_at', null).order('full_name', { ascending: true }),
+        supabase.from('specialties').select('*').eq('school_id', schoolId).order('name', { ascending: true }),
+        supabase.from('tutor_specialties').select('tutor_id, specialties(*)').eq('school_id', schoolId),
+      ]);
+      if (tutorsRes.error) { console.error(tutorsRes.error); setError('Αποτυχία φόρτωσης καθηγητών.'); }
+      else { setTutors((tutorsRes.data ?? []) as TutorRow[]); }
+
+      if (!specialtiesRes.error) setSpecialties((specialtiesRes.data ?? []) as SpecialtyRow[]);
+      if (!linksRes.error) {
+        const map = new Map<string, SpecialtyRow[]>();
+        (linksRes.data ?? []).forEach((row: any) => {
+          if (!row.specialties) return;
+          const arr = map.get(row.tutor_id) ?? [];
+          arr.push(row.specialties as SpecialtyRow);
+          map.set(row.tutor_id, arr);
+        });
+        setTutorSpecialtyMap(map);
+      }
       setLoading(false);
     };
     load();
@@ -171,8 +192,36 @@ export default function TutorsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state, location.pathname, navigate]);
 
+  // ── Sync a tutor's specialty links to match the selected set ──────────────
+  const syncTutorSpecialties = async (tutorId: string, specialtyIds: string[]) => {
+    if (!schoolId) return;
+    const current = tutorSpecialtyMap.get(tutorId) ?? [];
+    const currentIds = new Set(current.map((s) => s.id));
+    const nextIds = new Set(specialtyIds);
+    const toAdd = specialtyIds.filter((id) => !currentIds.has(id));
+    const toRemove = [...currentIds].filter((id) => !nextIds.has(id));
+
+    if (toAdd.length > 0) {
+      const { error: addErr } = await supabase.from('tutor_specialties')
+        .upsert(toAdd.map((specialtyId) => ({ school_id: schoolId, tutor_id: tutorId, specialty_id: specialtyId })),
+          { onConflict: 'tutor_id,specialty_id' });
+      if (addErr) throw addErr;
+    }
+    if (toRemove.length > 0) {
+      const { error: delErr } = await supabase.from('tutor_specialties')
+        .delete().eq('tutor_id', tutorId).in('specialty_id', toRemove);
+      if (delErr) throw delErr;
+    }
+
+    setTutorSpecialtyMap((prev) => {
+      const next = new Map(prev);
+      next.set(tutorId, specialties.filter((s) => nextIds.has(s.id)));
+      return next;
+    });
+  };
+
   // ── Create / Update via edge functions ───────────────────────────────────
-  const handleSubmit = async (form: TutorFormState) => {
+  const handleSubmit = async (form: TutorFormState, specialtyIds: string[]) => {
     if (!schoolId) { setError('Το προφίλ σας δεν είναι συνδεδεμένο με σχολείο.'); return; }
     const fullNameTrimmed = form.fullName.trim();
     if (!fullNameTrimmed) return;
@@ -189,7 +238,9 @@ export default function TutorsPage() {
           iban: form.iban.trim() || null,
           notes: form.notes.trim() || null,
         });
-        setTutors((prev) => [...prev, data.item as TutorRow]);
+        const newTutor = data.item as TutorRow;
+        setTutors((prev) => [...prev, newTutor]);
+        if (specialtyIds.length > 0) await syncTutorSpecialties(newTutor.id, specialtyIds);
         closeModal();
       } else if (modalMode === 'edit' && editingTutor) {
         const data = await callEdgeFunction('tutors-update', {
@@ -203,6 +254,7 @@ export default function TutorsPage() {
           notes: form.notes.trim() || null,
         });
         setTutors((prev) => prev.map((t) => (t.id === editingTutor.id ? (data.item as TutorRow) : t)));
+        await syncTutorSpecialties(editingTutor.id, specialtyIds);
         closeModal();
       }
     } catch (err) {
@@ -234,6 +286,17 @@ export default function TutorsPage() {
     }
   };
 
+  // ── Specialties catalog handlers ──────────────────────────────────────────
+  const handleSpecialtyCreated = (row: SpecialtyRow) => setSpecialties((prev) => [...prev, row].sort((a, b) => a.name.localeCompare(b.name, 'el')));
+  const handleSpecialtyDeleted = (id: string) => {
+    setSpecialties((prev) => prev.filter((s) => s.id !== id));
+    setTutorSpecialtyMap((prev) => {
+      const next = new Map<string, SpecialtyRow[]>();
+      prev.forEach((list, tutorId) => next.set(tutorId, list.filter((s) => s.id !== id)));
+      return next;
+    });
+  };
+
   // ── Pipeline: filter → sort → paginate ──────────────────────────────────
   const filteredTutors = useMemo(() => {
     const q = normalizeText(search.trim());
@@ -242,10 +305,11 @@ export default function TutorsPage() {
       const composite = [
         t.full_name, t.afm, t.phone, t.email, t.iban, t.notes,
         t.date_of_birth, t.date_of_birth ? formatDateToGreek(t.date_of_birth) : '',
+        ...(tutorSpecialtyMap.get(t.id) ?? []).map((s) => s.name),
       ].filter(Boolean).join(' ');
       return normalizeText(composite).includes(q);
     });
-  }, [tutors, search]);
+  }, [tutors, search, tutorSpecialtyMap]);
 
   const sortedTutors = useMemo(() => sortTutors(filteredTutors, sort), [filteredTutors, sort]);
 
@@ -304,6 +368,14 @@ export default function TutorsPage() {
         return t.notes
           ? <span className={`max-w-xs truncate block ${isDark ? 'text-slate-400' : 'text-slate-500'}`} title={t.notes}>{t.notes}</span>
           : empty;
+      case 'specialties': {
+        const list = tutorSpecialtyMap.get(t.id) ?? [];
+        return list.length > 0
+          ? <span className="max-w-xs truncate block font-medium" style={{ color: 'var(--color-accent)' }} title={list.map((s) => s.name).join(', ')}>
+              {list.map((s) => s.name).join(', ')}
+            </span>
+          : empty;
+      }
       default: return empty;
     }
   };
@@ -353,6 +425,13 @@ export default function TutorsPage() {
             <Search className={`pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
             <input className={searchInputCls} placeholder="Αναζήτηση καθηγητή..." value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
+          <button type="button" onClick={() => setCatalogOpen(true)}
+            className={`btn h-9 gap-2 border px-4 font-semibold transition active:scale-[0.98] ${
+              isDark ? 'border-slate-700/70 bg-slate-800/60 text-slate-300 hover:border-slate-600' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+            }`}>
+            <Tags className="h-3.5 w-3.5" />
+            Ειδικότητες
+          </button>
           <button type="button" onClick={openCreateModal}
             className="btn-primary h-9 gap-2 px-4 font-semibold shadow-sm hover:brightness-110 active:scale-[0.98]">
             <UserPlus className="h-3.5 w-3.5" />
@@ -471,6 +550,8 @@ export default function TutorsPage() {
         open={modalOpen}
         mode={modalMode}
         editingTutor={editingTutor}
+        allSpecialties={specialties}
+        initialSpecialtyIds={editingTutor ? (tutorSpecialtyMap.get(editingTutor.id) ?? []).map((s) => s.id) : []}
         error={error}
         saving={saving}
         onClose={closeModal}
@@ -482,6 +563,16 @@ export default function TutorsPage() {
         deleting={deleting}
         onCancel={() => { if (!deleting) setDeleteTarget(null); }}
         onConfirm={handleConfirmDelete}
+      />
+
+      <SpecialtiesCatalogModal
+        open={catalogOpen}
+        schoolId={schoolId}
+        specialties={specialties}
+        isDark={isDark}
+        onClose={() => setCatalogOpen(false)}
+        onCreated={handleSpecialtyCreated}
+        onDeleted={handleSpecialtyDeleted}
       />
     </div>
   );

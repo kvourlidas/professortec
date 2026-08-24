@@ -97,8 +97,8 @@ function ClassCard({
           <div className="flex items-center gap-1 shrink-0">
             <button type="button" onClick={() => onEditClass(cls)} title="Επεξεργασία"
               className={`flex h-7 w-7 items-center justify-center rounded-lg border transition hover:scale-105 active:scale-95 ${
-                isDark ? 'border-slate-700/60 text-slate-500 hover:bg-blue-900/30 hover:border-blue-700/50 hover:text-blue-400'
-                       : 'border-slate-200 text-slate-400 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-500'}`}>
+                isDark ? 'border-slate-700/60 text-slate-500 hover:bg-[color:var(--color-accent)]/15 hover:border-[color:var(--color-accent)]/40 hover:text-[color:var(--color-accent-hover)]'
+                       : 'border-slate-200 text-slate-400 hover:bg-[color:var(--color-accent)]/10 hover:border-[color:var(--color-accent)]/30 hover:text-[color:var(--color-accent)]'}`}>
               <Pencil className="h-3 w-3" />
             </button>
             <button type="button" onClick={() => onDeleteClass({ id: cls.id, title: cls.title })} title="Διαγραφή"
@@ -306,7 +306,7 @@ function LevelSection({
           <div ref={barRef} className="h-full rounded-full transition-all duration-75"
             style={{ width: '0%', background: isDark
               ? 'linear-gradient(90deg, #fbbf24, #f59e0b)'
-              : 'linear-gradient(90deg, #3b82f6, #60a5fa)' }} />
+              : 'linear-gradient(90deg, var(--color-accent), var(--color-accent-hover))' }} />
         </div>
       )}
 

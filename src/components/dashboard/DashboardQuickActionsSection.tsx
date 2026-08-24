@@ -15,11 +15,11 @@ type Props = { schoolId: string | null; actions: ActionKey[] };
 type Counts = Record<CountedActionKey, number | null>;
 
 const ACTION_DEFS: Record<ActionKey, { label: string; path: string; icon: typeof GraduationCap; accent: string }> = {
-  students: { label: 'Μαθητές', path: '/students', icon: GraduationCap, accent: '#3b82f6' },
-  tutors: { label: 'Καθηγητές', path: '/tutors', icon: UserCog, accent: '#8b5cf6' },
-  classes: { label: 'Τμήματα', path: '/classes', icon: BookOpen, accent: '#14b8a6' },
-  tests: { label: 'Διαγωνίσματα', path: '/program/tests', icon: ClipboardList, accent: '#f43f5e' },
-  ai: { label: 'Kika', path: '', icon: Bot, accent: '#FF8A2E' },
+  students: { label: 'Μαθητές', path: '/students', icon: GraduationCap, accent: '#7C3AED' },
+  tutors: { label: 'Καθηγητές', path: '/tutors', icon: UserCog, accent: '#8B5CF6' },
+  classes: { label: 'Τμήματα', path: '/classes', icon: BookOpen, accent: '#6D28D9' },
+  tests: { label: 'Διαγωνίσματα', path: '/program/tests', icon: ClipboardList, accent: '#A855F7' },
+  ai: { label: 'Kika', path: '', icon: Bot, accent: '#9333EA' },
 };
 
 async function fetchCount(key: CountedActionKey, schoolId: string): Promise<number> {

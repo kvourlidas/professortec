@@ -37,16 +37,16 @@ export function validateUpdateTutorBody(body: any): UpdateTutorInput {
     throw new ValidationError("Missing tutor_id");
   }
 
-  return {
-    tutor_id,
-    full_name: body?.full_name?.trim?.() || null,
-    date_of_birth: body?.date_of_birth ?? null,
-    afm: body?.afm?.trim?.() || null,
-    phone: body?.phone?.trim?.() || null,
-    email: body?.email?.trim?.() || null,
-    iban: body?.iban?.trim?.() || null,
-    notes: body?.notes?.trim?.() || null,
-  };
+  const result: UpdateTutorInput = { tutor_id };
+  if (body?.full_name !== undefined) result.full_name = body.full_name?.trim?.() || null;
+  if (body?.date_of_birth !== undefined) result.date_of_birth = body.date_of_birth ?? null;
+  if (body?.afm !== undefined) result.afm = body.afm?.trim?.() || null;
+  if (body?.phone !== undefined) result.phone = body.phone?.trim?.() || null;
+  if (body?.email !== undefined) result.email = body.email?.trim?.() || null;
+  if (body?.iban !== undefined) result.iban = body.iban?.trim?.() || null;
+  if (body?.notes !== undefined) result.notes = body.notes?.trim?.() || null;
+
+  return result;
 }
 
 export function validateDeleteTutorBody(body: any): DeleteTutorInput {

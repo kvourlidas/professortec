@@ -1,5 +1,5 @@
 import type { ChangeEvent } from 'react';
-import { CalendarDays, BookOpen, GraduationCap, Layers } from 'lucide-react';
+import { CalendarDays, BookOpen, GraduationCap, Layers, DoorOpen } from 'lucide-react';
 import DatePickerField from '../ui/AppDatePicker';
 import TimePicker from '../ui/TimePicker';
 import {
@@ -25,6 +25,8 @@ interface SlotFormFieldsProps {
   onStartDateChange: (v: string) => void;
   endDate: string;
   onEndDateChange: (v: string) => void;
+  room: string;
+  onRoomChange: (e: ChangeEvent<HTMLInputElement>) => void;
   subjOptions: SubjectRow[];
   tutorOptions: TutorRow[];
   isEdit: boolean;
@@ -39,6 +41,7 @@ export function SlotFormFields({
   endTime, onEndTimeChange,
   startDate, onStartDateChange,
   endDate, onEndDateChange,
+  room, onRoomChange,
   subjOptions, tutorOptions,
   isEdit, isDark,
 }: SlotFormFieldsProps) {
@@ -98,6 +101,11 @@ export function SlotFormFields({
           <TimePicker value={endTime} onChange={onEndTimeChange} required />
         </FormField>
       </div>
+
+      <FormField label="ΑΙΘΟΥΣΑ" isDark={isDark}>
+        <FieldIcon icon={DoorOpen} isDark={isDark} />
+        <input value={room} onChange={onRoomChange} placeholder="π.χ. Αίθουσα 2" className={inputCls} />
+      </FormField>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <FormField label="ΗΜΕΡΟΜΗΝΙΑ ΕΝΑΡΞΗΣ" isDark={isDark}>

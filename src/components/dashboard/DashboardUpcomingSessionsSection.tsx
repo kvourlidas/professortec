@@ -265,7 +265,7 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
     const details = [s.subjectName, s.tutorName].filter(Boolean).join(' · ');
     const isGreen = variant === 'current';
     const barColor = isGreen ? (isDark ? '#34d399' : '#10b981') : 'var(--color-accent)';
-    const rowCls = `relative py-2.5 pl-3 pr-1 transition-colors ${isDark ? 'hover:bg-blue-500/[0.12]' : 'hover:bg-blue-50'}`;
+    const rowCls = `relative py-2.5 pl-3 pr-1 transition-colors ${isDark ? 'hover:bg-[color:var(--color-accent)]/[0.12]' : 'hover:bg-[color:var(--color-accent)]/10'}`;
 
     if (compact) {
       return (

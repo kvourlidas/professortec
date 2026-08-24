@@ -18,8 +18,8 @@ export default function AssistantWidget() {
         style={{
           width: BUTTON_SIZE,
           height: BUTTON_SIZE,
-          background: '#FF8A2E',
-          boxShadow: '0 4px 10px rgba(255, 138, 46, 0.35)',
+          background: 'linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)',
+          boxShadow: '0 4px 10px rgba(124, 58, 237, 0.35)',
         }}
       >
         <img src={kikaImg} alt="Kika" className="h-full w-full object-cover" />

@@ -45,6 +45,7 @@ export type ProgramItemRow = {
   end_date: string | null;
   subject_id: string | null;
   tutor_id: string | null;
+  room: string | null;
 };
 
 export type ClassSubjectRow = {
@@ -66,6 +67,7 @@ export type AddSlotForm = {
   endTime: string;
   startDate: string;
   endDate: string;
+  room: string;
 };
 
 export type EditSlotForm = {
@@ -78,6 +80,7 @@ export type EditSlotForm = {
   endTime: string;
   startDate: string;
   endDate: string;
+  room: string;
 };
 
 export type DeleteSlotTarget = {

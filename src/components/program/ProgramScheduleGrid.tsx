@@ -1,4 +1,4 @@
-import { CalendarDays, Clock } from 'lucide-react';
+import { CalendarDays, Clock, DoorOpen } from 'lucide-react';
 import { DAY_OPTIONS, DAY_LABEL_BY_VALUE } from './constants';
 import { formatTimeDisplay } from './utils';
 import type { ClassRow, ProgramItemRow, SubjectRow, DeleteSlotTarget } from './types';
@@ -94,7 +94,7 @@ export default function ProgramScheduleGrid({
                       return (
                         <div key={item.id}
                           className={`group relative cursor-pointer overflow-hidden py-1.5 pl-2.5 pr-3 text-[10px] transition-colors ${
-                            isDark ? 'hover:bg-blue-500/[0.12]' : 'hover:bg-blue-50'
+                            isDark ? 'hover:bg-[color:var(--color-accent)]/[0.12]' : 'hover:bg-[color:var(--color-accent)]/10'
                           }`}
                           onClick={() => onEditSlot(item)}
                         >
@@ -126,6 +126,12 @@ export default function ProgramScheduleGrid({
                               style={{ color: 'color-mix(in srgb, var(--color-accent) 70%, transparent)' }}>
                               <Clock className="h-2.5 w-2.5 shrink-0" />
                               {timeRange}
+                            </div>
+                          )}
+                          {item.room && (
+                            <div className={`mt-0.5 flex items-center gap-0.5 text-[9px] truncate ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                              <DoorOpen className="h-2.5 w-2.5 shrink-0" />
+                              {item.room}
                             </div>
                           )}
                         </div>

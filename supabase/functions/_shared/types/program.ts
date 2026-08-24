@@ -9,6 +9,7 @@ export type CreateProgramInput = {
   end_time: string;
   start_date: string;
   end_date: string;
+  room: string | null;
 };
 
 export type UpdateProgramInput = {
@@ -21,6 +22,7 @@ export type UpdateProgramInput = {
   end_time: string;
   start_date: string;
   end_date: string;
+  room: string | null;
 };
 
 export type DeleteProgramInput = {

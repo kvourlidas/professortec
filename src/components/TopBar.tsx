@@ -39,7 +39,7 @@ export default function TopBar({ onOpenMobileMenu }: Props) {
     <div className="sticky top-0 z-20 px-4 pt-4 pb-2">
       <div
         className="mx-auto flex h-20 max-w-6xl items-center gap-4 rounded-full px-5 shadow-lg"
-        style={{ background: 'var(--color-accent)' }}
+        style={{ background: 'var(--color-navbar-bg)' }}
       >
         <button
           type="button"
@@ -83,8 +83,8 @@ export default function TopBar({ onOpenMobileMenu }: Props) {
             aria-expanded={quickAddOpen}
             className={`flex shrink-0 items-center gap-2 rounded-full px-4 py-2.5 text-xs font-bold shadow-sm transition ${
               quickAddOpen
-                ? 'bg-white text-[color:var(--color-accent)]'
-                : 'bg-white text-[color:var(--color-accent)] hover:brightness-105 active:scale-[0.97]'
+                ? 'bg-white text-[color:var(--color-accent-on-white)]'
+                : 'bg-white text-[color:var(--color-accent-on-white)] hover:brightness-105 active:scale-[0.97]'
             }`}
           >
             <Plus className={`h-4 w-4 transition-transform duration-200 ${quickAddOpen ? 'rotate-45' : ''}`} />

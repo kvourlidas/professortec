@@ -85,6 +85,8 @@ export default function ProgramEditSlotModal({
             onStartDateChange={onDateChange('startDate')}
             endDate={form.endDate}
             onEndDateChange={onDateChange('endDate')}
+            room={form.room}
+            onRoomChange={onFieldChange('room')}
             subjOptions={subjOptions}
             tutorOptions={tutorOptions}
             isDark={isDark}

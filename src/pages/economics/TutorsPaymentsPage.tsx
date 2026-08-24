@@ -85,7 +85,7 @@ export default function TutorsPaymentsPage() {
   // History table (minimal — no card chrome, accent-underline header, faint dividers)
   const histColDivider = isDark ? 'border-r border-slate-800/60' : 'border-r border-slate-200';
   const histDivideCls = isDark ? 'divide-y divide-slate-800/60' : 'divide-y divide-slate-200';
-  const histRowHoverCls = isDark ? 'transition-colors hover:bg-blue-500/[0.12]' : 'transition-colors hover:bg-blue-50';
+  const histRowHoverCls = isDark ? 'transition-colors hover:bg-[color:var(--color-accent)]/[0.12]' : 'transition-colors hover:bg-[color:var(--color-accent)]/10';
 
   const cancelBtnCls = isDark
     ? 'btn border border-slate-700/60 bg-slate-800/60 px-4 py-2 text-sm text-slate-300 hover:bg-slate-700/60 disabled:opacity-50'
@@ -421,7 +421,7 @@ export default function TutorsPaymentsPage() {
                     type="button"
                     onClick={() => { setSelectedTutorId(t.id); setDropOpen(false); setDropSearch(''); }}
                     className={`relative flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors ${
-                      isDark ? 'hover:bg-blue-500/[0.12]' : 'hover:bg-blue-50'
+                      isDark ? 'hover:bg-[color:var(--color-accent)]/[0.12]' : 'hover:bg-[color:var(--color-accent)]/10'
                     }`}
                   >
                     {active && <span className="absolute inset-y-0 left-0 w-[3px]" style={{ background: 'var(--color-accent)' }} />}
@@ -658,7 +658,7 @@ export default function TutorsPaymentsPage() {
                         </div>
                         <div className="col-span-2 flex justify-end px-3">
                           <button type="button" onClick={() => openEditPayment(p)} disabled={busy}
-                            className={`flex h-7 w-7 items-center justify-center rounded-lg transition disabled:opacity-30 ${isDark ? 'text-slate-500 hover:bg-blue-500/10 hover:text-blue-400' : 'text-slate-400 hover:bg-blue-50 hover:text-blue-600'}`}>
+                            className={`flex h-7 w-7 items-center justify-center rounded-lg transition disabled:opacity-30 ${isDark ? 'text-slate-500 hover:bg-[color:var(--color-accent)]/10 hover:text-[color:var(--color-accent-hover)]' : 'text-slate-400 hover:bg-[color:var(--color-accent)]/10 hover:text-[color:var(--color-accent)]'}`}>
                             <Pencil className="h-3 w-3" />
                           </button>
                         </div>

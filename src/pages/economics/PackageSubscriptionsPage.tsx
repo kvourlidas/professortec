@@ -161,8 +161,8 @@ export default function PackageSubscriptionsPage() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   const pkgRowCls = isDark
-    ? 'group relative transition-colors hover:bg-blue-500/[0.12]'
-    : 'group relative transition-colors hover:bg-blue-50';
+    ? 'group relative transition-colors hover:bg-[color:var(--color-accent)]/[0.12]'
+    : 'group relative transition-colors hover:bg-[color:var(--color-accent)]/10';
 
   const smallInputCls = isDark
     ? 'rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 py-2 text-xs text-slate-100 outline-none transition focus:border-[color:var(--color-accent)]/70'

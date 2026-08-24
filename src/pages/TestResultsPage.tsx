@@ -249,8 +249,8 @@ export default function TestResultsPage() {
   const colDivideCls = isDark ? 'divide-slate-800' : 'divide-slate-200';
 
   const checkboxStyle: React.CSSProperties = { accentColor: 'var(--color-accent)', cursor: 'pointer' };
-  const rowCls = `flex items-center gap-2.5 px-1 py-2.5 transition cursor-pointer select-none ${isDark ? 'hover:bg-blue-500/[0.12]' : 'hover:bg-blue-50'}`;
-  const rowHoverCls = isDark ? 'hover:bg-blue-500/[0.12]' : 'hover:bg-blue-50';
+  const rowCls = `flex items-center gap-2.5 px-1 py-2.5 transition cursor-pointer select-none ${isDark ? 'hover:bg-[color:var(--color-accent)]/[0.12]' : 'hover:bg-[color:var(--color-accent)]/10'}`;
+  const rowHoverCls = isDark ? 'hover:bg-[color:var(--color-accent)]/[0.12]' : 'hover:bg-[color:var(--color-accent)]/10';
 
   const searchBoxCls = `flex items-center gap-1.5 rounded-lg border px-2 py-1 ${
     isDark ? 'border-slate-700/60 bg-slate-900/60' : 'border-slate-200 bg-white'

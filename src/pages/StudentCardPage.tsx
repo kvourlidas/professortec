@@ -261,7 +261,7 @@ function MonthCalendar({ slots, tests, holidayDates, isDark }: { slots: ProgramS
                 col < 6 ? `border-r ${cellBorder}` : '',
                 row < 5 ? `border-b ${cellBorder}` : '',
                 isSel
-                  ? isDark ? 'bg-[color:var(--color-accent)]/[0.08]' : 'bg-blue-50/60'
+                  ? 'bg-[color:var(--color-accent)]/[0.08]'
                   : isHoliday
                     ? isDark ? 'bg-red-950/20 hover:bg-red-950/30' : 'bg-red-50/60 hover:bg-red-50'
                     : isDark ? 'hover:bg-slate-800/40' : 'hover:bg-slate-50/80',
