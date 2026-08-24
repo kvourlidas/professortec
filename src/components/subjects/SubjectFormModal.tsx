@@ -6,6 +6,7 @@ import {
   ModalFormField as FormField, ModalFieldIcon as FieldIcon, ModalSelectChevron,
   ModalErrorBox, modalInputCls, modalSelectCls,
 } from '../ui/ModalField.tsx';
+import StyledSelect from '../ui/StyledSelect';
 import type { LevelRow, ModalMode, SubjectRow } from './types';
 
 type SubjectFormModalProps = {
@@ -118,17 +119,12 @@ export default function SubjectFormModal({
 
             <FormField label="Επιπεδο" hint="Κάθε μάθημα ανήκει σε ένα επίπεδο." isDark={isDark}>
               <FieldIcon icon={Layers} isDark={isDark} />
-              <select
-                className={selectCls}
+              <StyledSelect
+                isDark={isDark} className={selectCls}
                 value={levelId}
-                onChange={(e) => setLevelId(e.target.value)}
-                required
-              >
-                <option value="">Επιλέξτε επίπεδο…</option>
-                {levels.map((lvl) => (
-                  <option key={lvl.id} value={lvl.id}>{lvl.name}</option>
-                ))}
-              </select>
+                onChange={setLevelId}
+                options={[{ value: '', label: 'Επιλέξτε επίπεδο…' }, ...levels.map((lvl) => ({ value: lvl.id, label: lvl.name }))]}
+              />
               <ModalSelectChevron isDark={isDark} />
             </FormField>
           </div>

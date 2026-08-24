@@ -1,7 +1,9 @@
 import { useMemo } from 'react';
-import { BarChart3, ClipboardCheck, TrendingUp, Trophy } from 'lucide-react';
+import { BarChart3, ClipboardCheck, TrendingUp, Trophy, LayoutGrid, BookOpen } from 'lucide-react';
 import StudentGradesChart from './StudentGradesChart';
 import GradesTable from './GradesTable';
+import StyledSelect from '../ui/StyledSelect';
+import FolderTabs from '../ui/FolderTabs';
 import type { GradeRow, GradesTab, SelectionType, StudentRow, TutorRow } from './types';
 
 interface GradesPanelProps {
@@ -79,28 +81,23 @@ export default function GradesPanel({
         <div className="pt-5 space-y-5">
           {/* Tabs + subject select */}
           <div className="flex items-center justify-between">
-            <div className="flex gap-1.5">
-              {(['overall', 'by-subject'] as GradesTab[]).map((tab) => {
-                const active = activeTab === tab;
-                const label = tab === 'overall' ? 'Γενικά' : 'Ανά μάθημα';
-                return (
-                  <button key={tab} type="button"
-                    onClick={() => { onTabChange(tab); if (tab === 'overall') onSubjectChange(null); }}
-                    className="rounded-lg border px-3 py-1.5 text-xs font-medium transition"
-                    style={active
-                      ? { backgroundColor: 'var(--color-accent)', borderColor: 'var(--color-accent)', color: 'var(--color-input-bg)' }
-                      : { backgroundColor: isDark ? '#1e293b' : '#f8fafc', borderColor: isDark ? '#334155' : 'rgb(203 213 225)', color: isDark ? 'rgb(148 163 184)' : 'rgb(100 116 139)' }
-                    }>
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
+            <FolderTabs
+              isDark={isDark}
+              active={activeTab}
+              onChange={(t) => { onTabChange(t); if (t === 'overall') onSubjectChange(null); }}
+              tabs={[
+                { key: 'overall' as GradesTab, label: 'Γενικά', icon: LayoutGrid },
+                { key: 'by-subject' as GradesTab, label: 'Ανά μάθημα', icon: BookOpen },
+              ]}
+            />
             {activeTab === 'by-subject' && (
               subjectOptions.length > 0
-                ? <select value={selectedSubjectId ?? subjectOptions[0]?.id ?? ''} onChange={(e) => onSubjectChange(e.target.value || null)} className={subjectSelectCls}>
-                    {subjectOptions.map((opt) => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
-                  </select>
+                ? <StyledSelect
+                    isDark={isDark} showChevron className={`${subjectSelectCls} pr-7`}
+                    value={selectedSubjectId ?? subjectOptions[0]?.id ?? ''}
+                    onChange={(v) => onSubjectChange(v || null)}
+                    options={subjectOptions.map((opt) => ({ value: opt.id, label: opt.name }))}
+                  />
                 : <span className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Δεν υπάρχουν μαθήματα με βαθμούς.</span>
             )}
           </div>

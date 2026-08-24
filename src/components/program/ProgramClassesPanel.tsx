@@ -36,6 +36,7 @@ function DayPicker({ classId, isDark, onAddSlot }: {
   onAddSlot: (classId: string, day: string) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [hoveredDay, setHoveredDay] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -79,10 +80,11 @@ function DayPicker({ classId, isDark, onAddSlot }: {
               key={d.value}
               type="button"
               onClick={() => { onAddSlot(classId, d.value); setOpen(false); }}
+              onMouseEnter={() => setHoveredDay(d.value)}
+              onMouseLeave={() => setHoveredDay((h) => (h === d.value ? null : h))}
+              style={hoveredDay === d.value ? { backgroundColor: 'color-mix(in srgb, var(--color-accent) 16%, transparent)' } : undefined}
               className={`flex w-full items-center px-3 py-1.5 text-left text-[11px] font-medium transition-colors ${
-                isDark
-                  ? 'text-slate-300 hover:bg-white/[0.06] hover:text-white'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                isDark ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               {d.label}

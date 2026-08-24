@@ -79,6 +79,7 @@ export default function DashboardMonthlyTestsAvgGradesSection({ schoolId }: Prop
   const [month, setMonth] = useState<number>(currentMonth);
   const [openMonth, setOpenMonth] = useState(false);
   const [openYear, setOpenYear] = useState(false);
+  const [hoveredItemKey, setHoveredItemKey] = useState<string | null>(null);
 
   const [subjects, setSubjects] = useState<SubjectRow[]>([]);
   const [selectedSubjectIds, setSelectedSubjectIds] = useState<string[]>([]);
@@ -161,10 +162,13 @@ export default function DashboardMonthlyTestsAvgGradesSection({ schoolId }: Prop
   }, [rows]);
 
   const listItemCls = (active: boolean) => `w-full flex items-center justify-between gap-2 px-3 py-2 text-[11px] rounded-lg transition cursor-pointer ${
-    active
-      ? isDark ? 'bg-white/10 text-slate-100' : 'bg-slate-100 text-slate-800'
-      : isDark ? 'text-slate-300 hover:bg-white/[0.06] hover:text-slate-100' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'
+    active ? (isDark ? 'text-slate-100' : 'text-slate-800') : (isDark ? 'text-slate-300 hover:text-slate-100' : 'text-slate-600 hover:text-slate-800')
   }`;
+  const listItemProps = (key: string) => ({
+    onMouseEnter: () => setHoveredItemKey(key),
+    onMouseLeave: () => setHoveredItemKey((h: string | null) => (h === key ? null : h)),
+    style: hoveredItemKey === key ? { backgroundColor: 'color-mix(in srgb, var(--color-accent) 16%, transparent)' } : undefined,
+  });
 
   const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)';
   const axisTickColor = isDark ? 'rgba(148,163,184,0.6)' : 'rgba(100,116,139,0.7)';
@@ -217,7 +221,7 @@ export default function DashboardMonthlyTestsAvgGradesSection({ schoolId }: Prop
             <div ref={subjectsWrapRef}>
               <DropdownShell isDark={isDark} label={subjectsLabel} open={openSubjects} onToggle={() => { setOpenMonth(false); setOpenYear(false); setOpenSubjects((v) => !v); }} widthClass="w-[180px]">
                 <div className="dropdown-scrollbar max-h-64 overflow-y-auto p-1.5">
-                  <button type="button" onClick={() => { setSelectedSubjectIds([]); setOpenSubjects(false); }} className={listItemCls(selectedSubjectIds.length === 0)}>
+                  <button type="button" onClick={() => { setSelectedSubjectIds([]); setOpenSubjects(false); }} {...listItemProps('subject-all')} className={listItemCls(selectedSubjectIds.length === 0)}>
                     <span>Όλα τα μαθήματα</span>
                     {selectedSubjectIds.length === 0 && <Check className="h-3 w-3" />}
                   </button>
@@ -227,7 +231,7 @@ export default function DashboardMonthlyTestsAvgGradesSection({ schoolId }: Prop
                   ) : subjects.map((s) => {
                     const active = selectedSubjectIds.includes(s.id);
                     return (
-                      <button key={s.id} type="button" onClick={() => setSelectedSubjectIds((prev) => active ? prev.filter((x) => x !== s.id) : [...prev, s.id])} className={listItemCls(active)}>
+                      <button key={s.id} type="button" onClick={() => setSelectedSubjectIds((prev) => active ? prev.filter((x) => x !== s.id) : [...prev, s.id])} {...listItemProps(`subject-${s.id}`)} className={listItemCls(active)}>
                         <span className="truncate">{(s.name ?? 'Μάθημα').trim() || 'Μάθημα'}</span>
                         {active && <Check className="h-3 w-3 shrink-0" />}
                       </button>
@@ -241,7 +245,7 @@ export default function DashboardMonthlyTestsAvgGradesSection({ schoolId }: Prop
               <DropdownShell isDark={isDark} label={monthLabel} open={openMonth} onToggle={() => { setOpenSubjects(false); setOpenYear(false); setOpenMonth((v) => !v); }} widthClass="w-[140px]">
                 <div className="dropdown-scrollbar max-h-64 overflow-y-auto p-1.5">
                   {MONTHS.map((m) => (
-                    <button key={m.idx} type="button" onClick={() => { setMonth(m.idx); setOpenMonth(false); }} className={listItemCls(m.idx === month)}>
+                    <button key={m.idx} type="button" onClick={() => { setMonth(m.idx); setOpenMonth(false); }} {...listItemProps(`month-${m.idx}`)} className={listItemCls(m.idx === month)}>
                       <span>{m.label}</span>
                       {m.idx === month && <Check className="h-3 w-3" />}
                     </button>
@@ -254,7 +258,7 @@ export default function DashboardMonthlyTestsAvgGradesSection({ schoolId }: Prop
               <DropdownShell isDark={isDark} label={String(year)} open={openYear} onToggle={() => { setOpenSubjects(false); setOpenMonth(false); setOpenYear((v) => !v); }} widthClass="w-[80px]">
                 <div className="dropdown-scrollbar max-h-64 overflow-y-auto p-1.5">
                   {yearOptions.map((y) => (
-                    <button key={y} type="button" onClick={() => { setYear(y); setOpenYear(false); }} className={listItemCls(y === year)}>
+                    <button key={y} type="button" onClick={() => { setYear(y); setOpenYear(false); }} {...listItemProps(`year-${y}`)} className={listItemCls(y === year)}>
                       <span>{y}</span>
                       {y === year && <Check className="h-3 w-3" />}
                     </button>

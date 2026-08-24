@@ -31,6 +31,7 @@ type Props = {
 
 export default function SortDropdown({ sort, onChange, isDark }: Props) {
   const [open, setOpen] = useState(false);
+  const [hoveredField, setHoveredField] = useState<SortField | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -114,10 +115,11 @@ export default function SortDropdown({ sort, onChange, isDark }: Props) {
                       key={opt.field}
                       type="button"
                       onClick={() => selectField(opt.field)}
+                      onMouseEnter={() => setHoveredField(opt.field)}
+                      onMouseLeave={() => setHoveredField((h) => (h === opt.field ? null : h))}
+                      style={hoveredField === opt.field ? { backgroundColor: 'color-mix(in srgb, var(--color-accent) 16%, transparent)' } : undefined}
                       className={`flex w-full items-center gap-2.5 px-3.5 py-[7px] text-[11px] transition-colors duration-100
-                        ${active
-                          ? isDark ? 'bg-white/[0.06] text-white' : 'bg-slate-50 text-slate-900'
-                          : isDark ? 'text-slate-300 hover:bg-white/[0.05]' : 'text-slate-600 hover:bg-slate-50'}`}
+                        ${active ? (isDark ? 'text-white' : 'text-slate-900') : (isDark ? 'text-slate-300' : 'text-slate-600')}`}
                     >
                       <span
                         className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[4px] border transition-all

@@ -40,6 +40,7 @@ export default function TutorFormModal({
   const [form, setForm] = useState<TutorFormState>(emptyForm);
   const [specialtyIds, setSpecialtyIds] = useState<Set<string>>(new Set());
   const [specialtiesOpen, setSpecialtiesOpen] = useState(false);
+  const [hoveredSpecialtyId, setHoveredSpecialtyId] = useState<string | null>(null);
   const specialtiesRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -183,9 +184,10 @@ export default function TutorFormModal({
                             key={s.id}
                             type="button"
                             onClick={() => toggleSpecialty(s.id)}
-                            className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-[12px] transition-colors ${
-                              isDark ? 'hover:bg-white/[0.05]' : 'hover:bg-slate-50'
-                            }`}
+                            onMouseEnter={() => setHoveredSpecialtyId(s.id)}
+                            onMouseLeave={() => setHoveredSpecialtyId((h) => (h === s.id ? null : h))}
+                            style={hoveredSpecialtyId === s.id ? { backgroundColor: 'color-mix(in srgb, var(--color-accent) 16%, transparent)' } : undefined}
+                            className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[12px] transition-colors"
                           >
                             <span
                               className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[4px] border ${

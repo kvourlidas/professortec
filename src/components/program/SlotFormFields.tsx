@@ -6,6 +6,7 @@ import {
   ModalFormField as FormField, ModalFieldIcon as FieldIcon, ModalSelectChevron,
   modalInputCls, modalSelectCls,
 } from '../ui/ModalField';
+import StyledSelect from '../ui/StyledSelect';
 import { DAY_OPTIONS, DAY_LABEL_BY_VALUE } from './constants';
 import type { SubjectRow, TutorRow } from './types';
 
@@ -59,9 +60,12 @@ export function SlotFormFields({
           {isEdit && onDayChange ? (
             <>
               <FieldIcon icon={CalendarDays} isDark={isDark} />
-              <select className={selectCls} value={dayValue} onChange={onDayChange}>
-                {DAY_OPTIONS.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
-              </select>
+              <StyledSelect
+                isDark={isDark} className={selectCls}
+                value={dayValue}
+                onChange={(v) => onDayChange?.({ target: { value: v } } as unknown as ChangeEvent<HTMLSelectElement>)}
+                options={DAY_OPTIONS.map((d) => ({ value: d.value, label: d.label }))}
+              />
               <ModalSelectChevron isDark={isDark} />
             </>
           ) : (
@@ -77,18 +81,30 @@ export function SlotFormFields({
         <FormField label="ΜΑΘΗΜΑ" isDark={isDark}
           hint={subjOptions.length === 0 ? 'Ρυθμίστε τα μαθήματα στη σελίδα «Τμήματα».' : undefined}>
           <FieldIcon icon={BookOpen} isDark={isDark} />
-          <select className={`${selectCls} disabled:opacity-60`} value={subjectId ?? ''} onChange={onSubjectChange} disabled={subjOptions.length === 0}>
-            <option value="">{subjOptions.length === 0 ? 'Δεν έχουν οριστεί μαθήματα' : 'Επιλέξτε μάθημα'}</option>
-            {subjOptions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
+          <StyledSelect
+            isDark={isDark} className={`${selectCls} disabled:opacity-60`}
+            value={subjectId ?? ''}
+            onChange={(v) => onSubjectChange({ target: { value: v } } as unknown as ChangeEvent<HTMLSelectElement>)}
+            disabled={subjOptions.length === 0}
+            options={[
+              { value: '', label: subjOptions.length === 0 ? 'Δεν έχουν οριστεί μαθήματα' : 'Επιλέξτε μάθημα' },
+              ...subjOptions.map((s) => ({ value: s.id, label: s.name })),
+            ]}
+          />
           <ModalSelectChevron isDark={isDark} />
         </FormField>
         <FormField label="ΚΑΘΗΓΗΤΗΣ" isDark={isDark}>
           <FieldIcon icon={Layers} isDark={isDark} />
-          <select className={`${selectCls} disabled:opacity-60`} value={tutorId ?? ''} onChange={onTutorChange} disabled={!subjectId || tutorOptions.length === 0}>
-            <option value="">{tutorOptions.length === 0 ? 'Δεν έχουν οριστεί καθηγητές' : 'Επιλέξτε (προαιρετικό)'}</option>
-            {tutorOptions.map((t) => <option key={t.id} value={t.id}>{t.full_name}</option>)}
-          </select>
+          <StyledSelect
+            isDark={isDark} className={`${selectCls} disabled:opacity-60`}
+            value={tutorId ?? ''}
+            onChange={(v) => onTutorChange({ target: { value: v } } as unknown as ChangeEvent<HTMLSelectElement>)}
+            disabled={!subjectId || tutorOptions.length === 0}
+            options={[
+              { value: '', label: tutorOptions.length === 0 ? 'Δεν έχουν οριστεί καθηγητές' : 'Επιλέξτε (προαιρετικό)' },
+              ...tutorOptions.map((t) => ({ value: t.id, label: t.full_name })),
+            ]}
+          />
           <ModalSelectChevron isDark={isDark} />
         </FormField>
       </div>

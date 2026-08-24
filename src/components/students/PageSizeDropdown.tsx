@@ -14,6 +14,7 @@ type Props = {
 
 export default function PageSizeDropdown({ value, onChange, isDark }: Props) {
   const [open, setOpen] = useState(false);
+  const [hoveredOpt, setHoveredOpt] = useState<PageSizeOption | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -51,10 +52,11 @@ export default function PageSizeDropdown({ value, onChange, isDark }: Props) {
                 key={opt}
                 type="button"
                 onClick={() => { onChange(opt); setOpen(false); }}
+                onMouseEnter={() => setHoveredOpt(opt)}
+                onMouseLeave={() => setHoveredOpt((h) => (h === opt ? null : h))}
+                style={hoveredOpt === opt ? { backgroundColor: 'color-mix(in srgb, var(--color-accent) 16%, transparent)' } : undefined}
                 className={`flex w-full items-center justify-between px-3 py-2 text-[11px] transition-colors duration-100
-                  ${active
-                    ? isDark ? 'bg-white/[0.06] text-white' : 'bg-slate-50 text-slate-900'
-                    : isDark ? 'text-slate-300 hover:bg-white/[0.05]' : 'text-slate-600 hover:bg-slate-50'}`}
+                  ${active ? (isDark ? 'text-white' : 'text-slate-900') : (isDark ? 'text-slate-300' : 'text-slate-600')}`}
               >
                 <span className="font-medium">{opt}</span>
                 {active && (

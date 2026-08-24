@@ -34,6 +34,7 @@ type Props = {
 
 export default function TutorColumnFilterDropdown({ visible, onChange, isDark }: Props) {
   const [open, setOpen] = useState(false);
+  const [hoveredKey, setHoveredKey] = useState<TutorColumnKey | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -100,8 +101,11 @@ export default function TutorColumnFilterDropdown({ visible, onChange, isDark }:
                 type="button"
                 disabled={locked}
                 onClick={() => toggle(col.key, col.alwaysVisible)}
+                onMouseEnter={() => !locked && setHoveredKey(col.key)}
+                onMouseLeave={() => setHoveredKey((h) => (h === col.key ? null : h))}
+                style={!locked && hoveredKey === col.key ? { backgroundColor: 'color-mix(in srgb, var(--color-accent) 16%, transparent)' } : undefined}
                 className={`flex w-full items-center gap-2.5 px-3.5 py-[7px] text-[11px] transition-colors duration-100
-                  ${locked ? 'cursor-default opacity-35' : isDark ? 'hover:bg-white/[0.05]' : 'hover:bg-slate-50'}`}
+                  ${locked ? 'cursor-default opacity-35' : ''}`}
               >
                 <span
                   className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[4px] border transition-all

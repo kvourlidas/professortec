@@ -8,6 +8,7 @@ import {
   ModalFormField as FormField, ModalFieldIcon as FieldIcon, ModalSelectChevron,
   ModalErrorBox, modalInputCls, modalSelectCls,
 } from '../ui/ModalField';
+import StyledSelect from '../ui/StyledSelect';
 import type { AddTestForm, ClassRow, ClassSubjectRow, EditTestForm, StudentRow, SubjectRow } from './types';
 import { emptyForm } from './types';
 import { parseDateDisplayToISO } from './utils';
@@ -273,10 +274,16 @@ export default function TestFormModal({
                   <FormField label="Μάθημα *" isDark={isDark}
                     hint={sortedSubjects.length === 0 ? 'Δεν έχουν οριστεί μαθήματα.' : undefined}>
                     <FieldIcon icon={Tag} isDark={isDark} />
-                    <select className={selectCls} value={form.subjectId ?? ''} onChange={handleCommonSubjectChange} disabled={sortedSubjects.length === 0}>
-                      <option value="">{sortedSubjects.length === 0 ? 'Δεν έχουν οριστεί μαθήματα' : 'Επιλέξτε μάθημα'}</option>
-                      {sortedSubjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                    </select>
+                    <StyledSelect
+                      isDark={isDark} className={selectCls}
+                      value={form.subjectId ?? ''}
+                      onChange={(v) => handleCommonSubjectChange({ target: { value: v } } as unknown as ChangeEvent<HTMLSelectElement>)}
+                      disabled={sortedSubjects.length === 0}
+                      options={[
+                        { value: '', label: sortedSubjects.length === 0 ? 'Δεν έχουν οριστεί μαθήματα' : 'Επιλέξτε μάθημα' },
+                        ...sortedSubjects.map((s) => ({ value: s.id, label: s.name })),
+                      ]}
+                    />
                     <ModalSelectChevron isDark={isDark} />
                   </FormField>
                 </>
@@ -285,10 +292,12 @@ export default function TestFormModal({
                   {mode === 'edit' ? (
                     <FormField label="Τμήμα *" isDark={isDark}>
                       <FieldIcon icon={BookOpen} isDark={isDark} />
-                      <select className={selectCls} value={form.classId ?? ''} onChange={handleFieldChange('classId')} required>
-                        <option value="">Επιλέξτε τμήμα</option>
-                        {classes.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
-                      </select>
+                      <StyledSelect
+                        isDark={isDark} className={selectCls}
+                        value={form.classId ?? ''}
+                        onChange={(v) => handleFieldChange('classId')({ target: { value: v } } as unknown as ChangeEvent<HTMLSelectElement>)}
+                        options={[{ value: '', label: 'Επιλέξτε τμήμα' }, ...classes.map((c) => ({ value: c.id, label: c.title }))]}
+                      />
                       <ModalSelectChevron isDark={isDark} />
                     </FormField>
                   ) : (
@@ -330,10 +339,16 @@ export default function TestFormModal({
                   )}
                   <FormField label="Μάθημα *" isDark={isDark} hint={subOpts.length === 0 && hasClassSelection ? 'Ρυθμίστε τα μαθήματα στη σελίδα «Μαθήματα».' : undefined}>
                     <FieldIcon icon={Tag} isDark={isDark} />
-                    <select className={selectCls} value={form.subjectId ?? ''} onChange={handleFieldChange('subjectId')} disabled={subOpts.length === 0 || !hasClassSelection}>
-                      <option value="">{subOpts.length === 0 ? 'Δεν έχουν οριστεί μαθήματα' : 'Επιλέξτε μάθημα'}</option>
-                      {subOpts.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                    </select>
+                    <StyledSelect
+                      isDark={isDark} className={selectCls}
+                      value={form.subjectId ?? ''}
+                      onChange={(v) => handleFieldChange('subjectId')({ target: { value: v } } as unknown as ChangeEvent<HTMLSelectElement>)}
+                      disabled={subOpts.length === 0 || !hasClassSelection}
+                      options={[
+                        { value: '', label: subOpts.length === 0 ? 'Δεν έχουν οριστεί μαθήματα' : 'Επιλέξτε μάθημα' },
+                        ...subOpts.map((s) => ({ value: s.id, label: s.name })),
+                      ]}
+                    />
                     <ModalSelectChevron isDark={isDark} />
                   </FormField>
                 </>

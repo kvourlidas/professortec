@@ -14,6 +14,7 @@ import { useAuth } from '../auth.tsx';
 import { useTheme } from '../context/ThemeContext.tsx';
 import { useToast } from '../context/ToastContext.tsx';
 import DatePickerField from '../components/ui/AppDatePicker.tsx';
+import StyledSelect from '../components/ui/StyledSelect';
 import {
   ModalFormField, ModalFieldIcon, ModalErrorBox, modalInputCls,
 } from '../components/ui/ModalField.tsx';
@@ -1576,10 +1577,11 @@ export default function StudentCardPage() {
                 <div className="grid gap-2.5 sm:grid-cols-2">
                   <EditField label="Ονοματεπώνυμο" icon={<User className="h-3 w-3" />} isDark={isDark}><input className={inputCls} value={fullName} onChange={e => setFullName(e.target.value)} autoFocus /></EditField>
                   <EditField label="Επίπεδο" icon={<Layers className="h-3 w-3" />} isDark={isDark}>
-                    <select className={inputCls} value={levelId} onChange={e => setLevelId(e.target.value)}>
-                      <option value="">Χωρίς επίπεδο</option>
-                      {levels.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-                    </select>
+                    <StyledSelect
+                      isDark={isDark} className={`${inputCls} pr-8`} showChevron
+                      value={levelId} onChange={setLevelId}
+                      options={[{ value: '', label: 'Χωρίς επίπεδο' }, ...levels.map(l => ({ value: l.id, label: l.name }))]}
+                    />
                   </EditField>
                   <EditField label="Ημ. Γέννησης" icon={<Calendar className="h-3 w-3" />} isDark={isDark}><DatePickerField label="" value={dateOfBirth} onChange={setDateOfBirth} placeholder="24/12/2010" id="card-dob" /></EditField>
                   <EditField label="Τηλέφωνο" icon={<Phone className="h-3 w-3" />} isDark={isDark}><input className={inputCls} value={phone} onChange={e => setPhone(e.target.value)} /></EditField>
@@ -2023,16 +2025,14 @@ export default function StudentCardPage() {
           {!isIdiaiterou && <DashCard title="Γενικοί Βαθμοί Τριμήνου" icon={<Award className="h-3.5 w-3.5" />} isDark={isDark}>
             {/* Year selector */}
             <div className="mb-3 flex items-center justify-between gap-2">
-              <select
+              <StyledSelect
+                isDark={isDark} showChevron
                 value={trimesterYear}
-                onChange={e => setTrimesterYear(e.target.value)}
+                onChange={setTrimesterYear}
                 disabled={trimesterSaving}
-                className={`h-7 rounded-lg border px-2 text-xs outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 focus:border-[color:var(--color-accent)] ${isDark ? 'border-slate-700/70 bg-slate-900/60 text-slate-200' : 'border-slate-200 bg-slate-50 text-slate-700'}`}
-              >
-                {getSchoolYearOptions(schoolCreatedAt).map(y => (
-                  <option key={y} value={y}>{y}</option>
-                ))}
-              </select>
+                className={`h-7 w-28 rounded-lg border pl-2 pr-7 text-xs outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 focus:border-[color:var(--color-accent)] ${isDark ? 'border-slate-700/70 bg-slate-900/60 text-slate-200' : 'border-slate-200 bg-slate-50 text-slate-700'}`}
+                options={getSchoolYearOptions(schoolCreatedAt).map(y => ({ value: y, label: y }))}
+              />
               {trimesterDirty && (
                 <button
                   type="button"

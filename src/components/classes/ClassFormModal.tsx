@@ -6,6 +6,7 @@ import {
   ModalFormField as FormField, ModalFieldIcon as FieldIcon, ModalSelectChevron,
   ModalErrorBox, modalInputCls, modalSelectCls,
 } from '../ui/ModalField.tsx';
+import StyledSelect from '../ui/StyledSelect';
 
 type ClassFormState = { title: string; levelId: string; subjectIds: string[] };
 const emptyForm: ClassFormState = { title: '', levelId: '', subjectIds: [] };
@@ -36,7 +37,6 @@ export default function ClassFormModal({ open, mode, editingClass, subjects, lev
   const safeLevels = Array.isArray(levels) ? levels : [];
 
   const handleChangeTitle = (e: ChangeEvent<HTMLInputElement>) => setForm((prev) => ({ ...prev, title: e.target.value }));
-  const handleChangeLevel = (e: ChangeEvent<HTMLSelectElement>) => setForm((prev) => ({ ...prev, levelId: e.target.value, subjectIds: [] }));
   const toggleSubject = (subjectId: string) => setForm((prev) => ({ ...prev, subjectIds: prev.subjectIds.includes(subjectId) ? prev.subjectIds.filter((id) => id !== subjectId) : [...prev.subjectIds, subjectId] }));
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => { e.preventDefault(); await onSubmit(form); };
 
@@ -105,12 +105,12 @@ export default function ClassFormModal({ open, mode, editingClass, subjects, lev
             {/* Level */}
             <FormField label="Επίπεδο" hint="Πρώτα επιλέξτε επίπεδο για να εμφανιστούν τα διαθέσιμα μαθήματα." isDark={isDark}>
               <FieldIcon icon={Layers} isDark={isDark} />
-              <select value={form.levelId} onChange={handleChangeLevel} className={selectCls}>
-                <option value="">Επιλέξτε επίπεδο…</option>
-                {safeLevels.map((lvl) => (
-                  <option key={lvl.id} value={lvl.id}>{lvl.name}</option>
-                ))}
-              </select>
+              <StyledSelect
+                isDark={isDark} className={selectCls}
+                value={form.levelId}
+                onChange={(v) => setForm((prev) => ({ ...prev, levelId: v, subjectIds: [] }))}
+                options={[{ value: '', label: 'Επιλέξτε επίπεδο…' }, ...safeLevels.map((lvl) => ({ value: lvl.id, label: lvl.name }))]}
+              />
               <ModalSelectChevron isDark={isDark} />
             </FormField>
 

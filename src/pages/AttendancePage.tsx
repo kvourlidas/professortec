@@ -6,6 +6,7 @@ import { useToast } from '../context/ToastContext';
 import { ClipboardCheck, History } from 'lucide-react';
 import AttendanceLessonCard from '../components/attendance/AttendanceLessonCard';
 import AttendanceHistoryPanel from '../components/attendance/AttendanceHistoryPanel';
+import FolderTabs from '../components/ui/FolderTabs';
 import { DAY_LABEL_BY_VALUE } from '../components/program/constants';
 import { formatDateDisplayLong, formatTimeDisplay, todayISO, weekdayOf } from '../components/attendance/utils';
 import type {
@@ -351,24 +352,20 @@ export default function AttendancePage() {
     ? 'h-9 rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 text-xs text-slate-100 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30'
     : 'h-9 rounded-lg border border-slate-300 bg-white px-3 text-xs text-slate-800 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30';
 
-  const tabBtnCls = 'flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition';
-  const tabBtnStyle = (active: boolean): React.CSSProperties => active
-    ? { backgroundColor: 'var(--color-accent)', borderColor: 'var(--color-accent)', color: 'var(--color-input-bg)' }
-    : { backgroundColor: isDark ? '#1e293b' : '#f8fafc', borderColor: isDark ? '#334155' : 'rgb(203 213 225)', color: isDark ? 'rgb(148 163 184)' : 'rgb(100 116 139)' };
-
   return (
     <div className="space-y-6 px-1">
 
       {/* ── Header ── */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex gap-1.5">
-          <button type="button" onClick={() => setTab('today')} className={tabBtnCls} style={tabBtnStyle(tab === 'today')}>
-            <ClipboardCheck className="h-3.5 w-3.5" />Σημερινά μαθήματα
-          </button>
-          <button type="button" onClick={() => setTab('history')} className={tabBtnCls} style={tabBtnStyle(tab === 'history')}>
-            <History className="h-3.5 w-3.5" />Ιστορικό
-          </button>
-        </div>
+        <FolderTabs
+          isDark={isDark}
+          active={tab}
+          onChange={setTab}
+          tabs={[
+            { key: 'today', label: 'Σημερινά μαθήματα', icon: ClipboardCheck },
+            { key: 'history', label: 'Ιστορικό', icon: History },
+          ]}
+        />
 
         {tab === 'today' && (
           <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className={dateInputCls} />
@@ -394,13 +391,13 @@ export default function AttendancePage() {
             <div className={`h-7 w-7 animate-spin rounded-full border-2 border-t-transparent ${isDark ? 'border-slate-600' : 'border-slate-300'}`} />
           </div>
         ) : pendingSessions.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-3 px-6 py-20 text-center">
-            <ClipboardCheck className={`h-10 w-10 ${isDark ? 'text-slate-700' : 'text-slate-300'}`} />
+          <div className="flex flex-col items-center justify-center gap-4 px-6 py-24 text-center">
+            <ClipboardCheck className="h-20 w-20" style={{ color: 'color-mix(in srgb, var(--color-accent) 55%, transparent)' }} />
             <div>
-              <p className={`text-sm font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+              <p className={`text-lg font-semibold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
                 {lessonSessions.length === 0 ? 'Δεν υπάρχουν προγραμματισμένα μαθήματα' : 'Όλες οι παρουσίες καταχωρήθηκαν'}
               </p>
-              <p className={`mt-1 text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+              <p className={`mt-1.5 text-sm ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                 {DAY_LABEL_BY_VALUE[weekdayOf(selectedDate)]} · {formatDateDisplayLong(selectedDate)}
               </p>
             </div>

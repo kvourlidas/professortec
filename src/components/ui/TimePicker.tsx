@@ -21,6 +21,7 @@ export default function TimePicker({ value, onChange, required }: Props) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const [open, setOpen] = useState(false);
+  const [hoveredTime, setHoveredTime] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -108,14 +109,17 @@ export default function TimePicker({ value, onChange, required }: Props) {
                 key={t}
                 data-selected={isSelected}
                 onClick={() => { onChange(t); setOpen(false); }}
+                onMouseEnter={() => setHoveredTime(t)}
+                onMouseLeave={() => setHoveredTime((h) => (h === t ? null : h))}
+                style={!isSelected && hoveredTime === t ? { backgroundColor: 'color-mix(in srgb, var(--color-accent) 16%, transparent)' } : undefined}
                 className={`px-4 py-2 text-base font-semibold cursor-pointer transition-colors
                   ${isDark
                     ? isSelected
                       ? 'bg-[color:var(--color-accent)]/20 text-[color:var(--color-accent)]'
-                      : 'text-slate-100 hover:bg-slate-800'
+                      : 'text-slate-100'
                     : isSelected
                       ? 'bg-[color:var(--color-accent)]/10 text-[color:var(--color-accent)]'
-                      : 'text-slate-800 hover:bg-slate-50'
+                      : 'text-slate-800'
                   }`}
               >
                 {t}

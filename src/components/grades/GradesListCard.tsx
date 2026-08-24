@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Search, Users, GraduationCap } from 'lucide-react';
+import FolderTabs from '../ui/FolderTabs';
 
 interface GradesListCardProps<S extends { id: string; full_name: string }, T extends { id: string; full_name: string }> {
   studentSearch: string;
@@ -45,48 +46,23 @@ export default function GradesListCard<
     : (onSelectTutor as (item: S | T) => void);
   const selectedId = isStudents ? selectedStudentId : selectedTutorId;
 
-  const tabs: { key: Tab; label: string; icon: React.ReactNode; count: number }[] = [
-    { key: 'students', label: 'Μαθητές',   icon: <Users className="h-3.5 w-3.5" />,         count: students.length },
-    { key: 'tutors',   label: 'Καθηγητές', icon: <GraduationCap className="h-3.5 w-3.5" />, count: tutors.length  },
-  ];
-
   return (
     <div className={`overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-md ring-1 ring-inset ${
       isDark
         ? 'border-slate-700/50 bg-slate-950/40 ring-white/[0.04]'
         : 'border-slate-200 bg-white/80 ring-black/[0.02]'
     }`}>
-      {/* Tab row — solid accent header */}
-      <div className="grid grid-cols-2" style={{ background: 'var(--ch-bg)', borderBottom: '1px solid var(--ch-divider)' }}>
-        {tabs.map(({ key, label, icon, count }) => {
-          const active = tab === key;
-          return (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setTab(key)}
-              className="relative flex items-center justify-center gap-2 px-4 py-3 text-[12px] font-semibold transition-colors duration-150"
-              style={{
-                color: active ? 'var(--ch-text)' : 'var(--ch-text-muted)',
-                background: active ? 'var(--ch-icon-bg)' : 'transparent',
-              }}
-            >
-              <span style={{ color: active ? 'var(--ch-icon)' : 'var(--ch-text-muted)' }}>{icon}</span>
-              <span>{label}</span>
-              {count > 0 && (
-                <span className="rounded-full px-1.5 py-px text-[10px] tabular-nums font-medium"
-                  style={{ background: 'var(--ch-icon-bg)', color: 'var(--ch-text)' }}>
-                  {count}
-                </span>
-              )}
-              <span
-                className="absolute bottom-0 left-0 right-0 h-[2px]"
-                style={{ background: active ? 'var(--ch-text)' : 'transparent' }}
-              />
-            </button>
-          );
-        })}
-      </div>
+      <FolderTabs
+        isDark={isDark}
+        active={tab}
+        onChange={setTab}
+        fill
+        activeBg={isDark ? 'rgba(2,6,23,0.2)' : '#ffffff'}
+        tabs={[
+          { key: 'students' as Tab, label: 'Μαθητές', icon: Users, count: students.length },
+          { key: 'tutors' as Tab, label: 'Καθηγητές', icon: GraduationCap, count: tutors.length },
+        ]}
+      />
 
       {/* Search */}
       <div className={`px-3 pt-3 pb-2 ${isDark ? 'bg-slate-950/20' : 'bg-white'}`}>

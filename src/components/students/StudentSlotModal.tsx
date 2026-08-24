@@ -8,6 +8,7 @@ import {
   ModalFormField as FormField, ModalFieldIcon as FieldIcon, ModalSelectChevron,
   ModalErrorBox, modalInputCls, modalSelectCls,
 } from '../ui/ModalField';
+import StyledSelect from '../ui/StyledSelect';
 import { displayToIso } from './types';
 
 interface SubjectRow { id: string; name: string; }
@@ -139,17 +140,20 @@ export function StudentSlotModal({ studentId, levelId, onClose, onCreated }: Stu
           <div className="grid gap-3 sm:grid-cols-2">
             <FormField label="ΗΜΕΡΑ" isDark={isDark}>
               <FieldIcon icon={CalendarDays} isDark={isDark} />
-              <select className={selectCls} value={dayOfWeek} onChange={e => setDayOfWeek(e.target.value)}>
-                {DAYS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
-              </select>
+              <StyledSelect
+                isDark={isDark} className={selectCls}
+                value={dayOfWeek} onChange={setDayOfWeek}
+                options={DAYS.map(d => ({ value: d.value, label: d.label }))}
+              />
               <ModalSelectChevron isDark={isDark} />
             </FormField>
             <FormField label="ΜΑΘΗΜΑ" isDark={isDark}>
               <FieldIcon icon={BookOpen} isDark={isDark} />
-              <select className={selectCls} value={subjectId} onChange={e => setSubjectId(e.target.value)}>
-                <option value="">Επιλέξτε μάθημα (προαιρετικό)</option>
-                {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
+              <StyledSelect
+                isDark={isDark} className={selectCls}
+                value={subjectId} onChange={setSubjectId}
+                options={[{ value: '', label: 'Επιλέξτε μάθημα (προαιρετικό)' }, ...subjects.map(s => ({ value: s.id, label: s.name }))]}
+              />
               <ModalSelectChevron isDark={isDark} />
             </FormField>
           </div>

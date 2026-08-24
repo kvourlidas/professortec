@@ -2,6 +2,7 @@ import { AlertCircle, CalendarDays, ChevronDown, Loader2, Package, Plus, Refresh
 import { useMemo } from 'react';
 import AppDatePicker from '../../ui/AppDatePicker';
 import { ModalErrorBox, ModalSelectChevron, modalInputCls, modalSelectCls } from '../../ui/ModalField';
+import StyledSelect from '../../ui/StyledSelect';
 import { typeColors } from './constants';
 import { CURRENCY_SYMBOL } from './constants';
 import { resolvePackageType, money, typeLabel } from './utils';
@@ -434,15 +435,13 @@ export function AssignRenewModal({
                           <span className={`mb-1 block text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Μήνας έναρξης</span>
                           <div className="flex gap-2">
                             <div className="relative flex-1">
-                              <select value={assignMonthNum} onChange={e => setAssignMonthNum(e.target.value)} className={selectCls}>
-                                {monthOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                              </select>
+                              <StyledSelect isDark={isDark} className={selectCls} value={assignMonthNum} onChange={setAssignMonthNum}
+                                options={monthOptions.map(o => ({ value: o.value, label: o.label }))} />
                               <ModalSelectChevron isDark={isDark} />
                             </div>
                             <div className="relative w-20">
-                              <select value={assignYear} onChange={e => setAssignYear(e.target.value)} className={selectCls}>
-                                {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
-                              </select>
+                              <StyledSelect isDark={isDark} className={selectCls} value={assignYear} onChange={setAssignYear}
+                                options={yearOptions.map(y => ({ value: y, label: y }))} />
                               <ModalSelectChevron isDark={isDark} />
                             </div>
                           </div>
@@ -451,15 +450,13 @@ export function AssignRenewModal({
                           <span className={`mb-1 block text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Μήνας λήξης</span>
                           <div className="flex gap-2">
                             <div className="relative flex-1">
-                              <select value={assignEndMonthNum} onChange={e => setAssignEndMonthNum(e.target.value)} className={selectCls}>
-                                {monthOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                              </select>
+                              <StyledSelect isDark={isDark} className={selectCls} value={assignEndMonthNum} onChange={setAssignEndMonthNum}
+                                options={monthOptions.map(o => ({ value: o.value, label: o.label }))} />
                               <ModalSelectChevron isDark={isDark} />
                             </div>
                             <div className="relative w-20">
-                              <select value={assignEndYear} onChange={e => setAssignEndYear(e.target.value)} className={selectCls}>
-                                {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
-                              </select>
+                              <StyledSelect isDark={isDark} className={selectCls} value={assignEndYear} onChange={setAssignEndYear}
+                                options={yearOptions.map(y => ({ value: y, label: y }))} />
                               <ModalSelectChevron isDark={isDark} />
                             </div>
                           </div>

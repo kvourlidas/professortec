@@ -4,6 +4,7 @@ import { useAuth } from '../auth';
 import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../lib/supabaseClient';
 import { HelpCircle, Mail, Phone, User, MessageSquare, ChevronDown, Send, CheckCircle2 } from 'lucide-react';
+import StyledSelect from '../components/ui/StyledSelect';
 
 const CATEGORIES = [
   'Τεχνικό πρόβλημα',
@@ -169,18 +170,15 @@ export default function HelpSupportPage() {
                 Κατηγορία
               </label>
               <div className="relative">
-                <select
+                <StyledSelect
+                  isDark={isDark}
                   value={category}
-                  onChange={e => setCategory(e.target.value)}
-                  required
+                  onChange={setCategory}
+                  placeholder="Επιλέξτε κατηγορία…"
                   className={`${inputCls} appearance-none pr-9 cursor-pointer`}
                   style={{ background: isDark ? undefined : 'rgb(248 250 252)' }}
-                >
-                  <option value="" disabled>Επιλέξτε κατηγορία…</option>
-                  {CATEGORIES.map(c => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
+                  options={CATEGORIES.map(c => ({ value: c, label: c }))}
+                />
                 <ChevronDown className={`pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
               </div>
             </div>

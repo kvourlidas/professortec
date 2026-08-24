@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import ConfirmActionModal from '../../components/ui/ConfirmActionModal';
 import { ModalFormField, ModalFieldIcon, modalInputCls } from '../../components/ui/ModalField';
+import StyledSelect from '../../components/ui/StyledSelect';
 
 type TutorRow = { id: string; school_id: string; full_name: string | null };
 type TutorPaymentProfileRow = { id: string; school_id: string; tutor_id: string; base_gross: number; base_net: number; currency: string; updated_at: string; updated_by: string | null };
@@ -526,10 +527,11 @@ export default function TutorsPaymentsPage() {
                 <div className="mt-4 flex flex-wrap items-end gap-4">
                   <div className="w-full max-w-[160px]">
                     <FieldLabel>Τύπος</FieldLabel>
-                    <select value={bonusKind} onChange={e => setBonusKind(e.target.value as any)} className={inputCls}>
-                      <option value="percent">Ποσοστό (%)</option>
-                      <option value="amount">Ποσό (€)</option>
-                    </select>
+                    <StyledSelect
+                      isDark={isDark} className={`${inputCls} pr-8`} showChevron
+                      value={bonusKind} onChange={(v) => setBonusKind(v as any)}
+                      options={[{ value: 'percent', label: 'Ποσοστό (%)' }, { value: 'amount', label: 'Ποσό (€)' }]}
+                    />
                   </div>
                   <div className="w-full max-w-[140px]">
                     <FieldLabel>Τιμή</FieldLabel>

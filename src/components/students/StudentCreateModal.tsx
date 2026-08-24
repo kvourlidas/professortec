@@ -12,6 +12,8 @@ import {
   ModalFormField as FormField, ModalFieldIcon as FieldIcon, ModalSelectChevron,
   ModalToggleEyeBtn as ToggleEyeBtn, ModalErrorBox, modalInputCls, modalSelectCls,
 } from '../ui/ModalField.tsx';
+import StyledSelect from '../ui/StyledSelect';
+import FolderTabs from '../ui/FolderTabs';
 import type { StudentRow, LevelRow } from './types.ts';
 import { displayToIso } from './types.ts';
 
@@ -147,21 +149,17 @@ export default function StudentCreateModal({ schoolId, levels, onCreated, onClos
         </div>
 
         {/* Tabs */}
-        <div className="flex items-center gap-6 px-6 pt-4 pb-0 mb-3 border-b" style={{ borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgb(226 232 240)' }}>
-          {(['student', 'parents'] as TabKey[]).map((t) => {
-            const active = tab === t;
-            const label = t === 'student' ? 'Μαθητής' : 'Γονείς';
-            const Icon = t === 'student' ? User : UserCheck;
-            return (
-              <button key={t} type="button" onClick={() => setTab(t)}
-                className="relative flex items-center gap-1.5 pb-2.5 text-xs font-bold tracking-tight transition-colors duration-150"
-                style={{ color: active ? (isDark ? '#fff' : '#000') : (isDark ? 'rgb(100 116 139)' : 'rgb(148 163 184)') }}>
-                <Icon className="h-3.5 w-3.5" />{label}
-                <span className="absolute -bottom-px left-0 right-0 h-[2px] rounded-full transition-opacity duration-200"
-                  style={{ background: 'var(--color-accent)', opacity: active ? 1 : 0 }} />
-              </button>
-            );
-          })}
+        <div className="px-6 pt-4 mb-3">
+          <FolderTabs
+            isDark={isDark}
+            active={tab}
+            onChange={setTab}
+            activeBg={isDark ? '#0f172a' : '#ffffff'}
+            tabs={[
+              { key: 'student' as TabKey, label: 'Μαθητής', icon: User },
+              { key: 'parents' as TabKey, label: 'Γονείς', icon: UserCheck },
+            ]}
+          />
         </div>
 
         {/* Error */}
@@ -181,10 +179,11 @@ export default function StudentCreateModal({ schoolId, levels, onCreated, onClos
                 </FormField>
                 <FormField label="Επίπεδο" isDark={isDark}>
                   <FieldIcon icon={Layers} isDark={isDark} />
-                  <select className={selectCls} value={levelId} onChange={(e) => setLevelId(e.target.value)}>
-                    <option value="">Χωρίς επίπεδο</option>
-                    {levels.map((lvl) => <option key={lvl.id} value={lvl.id}>{lvl.name}</option>)}
-                  </select>
+                  <StyledSelect
+                    isDark={isDark} className={selectCls}
+                    value={levelId} onChange={setLevelId}
+                    options={[{ value: '', label: 'Χωρίς επίπεδο' }, ...levels.map((lvl) => ({ value: lvl.id, label: lvl.name }))]}
+                  />
                   <ModalSelectChevron isDark={isDark} />
                 </FormField>
                 <FormField label="Ημερομηνία γέννησης" isDark={isDark}>

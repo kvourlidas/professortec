@@ -34,6 +34,8 @@ export function EconomicsFilterBar({
 }: EconomicsFilterBarProps) {
   const [openMonth, setOpenMonth] = useState(false);
   const [openYear, setOpenYear] = useState(false);
+  const [hoveredMonth, setHoveredMonth] = useState<number | null>(null);
+  const [hoveredYear, setHoveredYear] = useState<number | null>(null);
   const monthWrapRef = useRef<HTMLDivElement | null>(null);
   const yearWrapRef = useRef<HTMLDivElement | null>(null);
   useOutsideClose([monthWrapRef, yearWrapRef], () => { setOpenMonth(false); setOpenYear(false); }, openMonth || openYear);
@@ -52,13 +54,10 @@ export function EconomicsFilterBar({
   const dropdownItemCls = (active: boolean) => [
     'group flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-[13px] transition-all duration-100',
     active
-      ? isDark
-        ? 'bg-[color:var(--color-accent)]/15 text-white font-semibold'
-        : 'bg-[color:var(--color-accent)]/10 text-slate-900 font-semibold'
-      : isDark
-      ? 'text-slate-300 hover:bg-white/[0.06] hover:text-white'
-      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
+      ? (isDark ? 'text-white font-semibold' : 'text-slate-900 font-semibold')
+      : (isDark ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-slate-900'),
   ].join(' ');
+  const dropdownItemStyle = (hovered: boolean) => (hovered ? { backgroundColor: 'color-mix(in srgb, var(--color-accent) 16%, transparent)' } : undefined);
 
   const DropdownShell = ({
     label, open, onToggle, children, widthClass,
@@ -103,7 +102,11 @@ export function EconomicsFilterBar({
           <div ref={monthWrapRef}>
             <DropdownShell label={monthLabelEl(month)} open={openMonth} onToggle={() => { setOpenYear(false); setOpenMonth(v => !v); }} widthClass="w-[152px]">
               {monthsOptions.map(m => (
-                <button key={m.value} type="button" role="option" aria-selected={m.value === month} onClick={() => { onMonthChange(m.value); setOpenMonth(false); }} className={dropdownItemCls(m.value === month)}>
+                <button key={m.value} type="button" role="option" aria-selected={m.value === month}
+                  onClick={() => { onMonthChange(m.value); setOpenMonth(false); }}
+                  onMouseEnter={() => setHoveredMonth(m.value)} onMouseLeave={() => setHoveredMonth(h => (h === m.value ? null : h))}
+                  style={dropdownItemStyle(hoveredMonth === m.value)}
+                  className={dropdownItemCls(m.value === month)}>
                   {m.label}{m.value === month && <Check size={13} className="shrink-0 text-[color:var(--color-accent)]" />}
                 </button>
               ))}
@@ -112,7 +115,11 @@ export function EconomicsFilterBar({
           <div ref={yearWrapRef}>
             <DropdownShell label={String(year)} open={openYear} onToggle={() => { setOpenMonth(false); setOpenYear(v => !v); }} widthClass="w-[90px]">
               {yearsOptions.map(y => (
-                <button key={y.value} type="button" role="option" aria-selected={y.value === year} onClick={() => { onYearChange(y.value); setOpenYear(false); }} className={dropdownItemCls(y.value === year)}>
+                <button key={y.value} type="button" role="option" aria-selected={y.value === year}
+                  onClick={() => { onYearChange(y.value); setOpenYear(false); }}
+                  onMouseEnter={() => setHoveredYear(y.value)} onMouseLeave={() => setHoveredYear(h => (h === y.value ? null : h))}
+                  style={dropdownItemStyle(hoveredYear === y.value)}
+                  className={dropdownItemCls(y.value === year)}>
                   {y.label}{y.value === year && <Check size={13} className="shrink-0 text-[color:var(--color-accent)]" />}
                 </button>
               ))}
