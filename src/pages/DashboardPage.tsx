@@ -4,6 +4,8 @@ import DashboardNotesSection from '../components/dashboard/DashboardNotesSection
 import DashboardUpcomingSessionsSection from '../components/dashboard/DashboardUpcomingSessionsSection.tsx';
 import DashboardQuickActionsSection from '../components/dashboard/DashboardQuickActionsSection.tsx';
 import DashboardSubscriptionAlertsSection from '../components/dashboard/DashboardSubscriptionAlertsSection.tsx';
+import DashboardAttendanceTodaySection from '../components/dashboard/DashboardAttendanceTodaySection.tsx';
+import DashboardUpcomingTestsSection from '../components/dashboard/DashboardUpcomingTestsSection.tsx';
 
 export default function DashboardPage() {
   const { profile } = useAuth();
@@ -29,6 +31,12 @@ export default function DashboardPage() {
 
       {/* Quick actions */}
       <DashboardQuickActionsSection schoolId={schoolId} actions={[...quickActions]} />
+
+      {/* Attendance today + upcoming tests — same tile size as quick actions */}
+      <div className={`grid gap-3 ${isFrontistirio ? 'sm:grid-cols-4' : 'sm:grid-cols-3'}`}>
+        {isFrontistirio && <DashboardAttendanceTodaySection schoolId={schoolId} />}
+        <DashboardUpcomingTestsSection schoolId={schoolId} />
+      </div>
 
       {/* Subscription alerts (frontistirio only) */}
       {isFrontistirio && (

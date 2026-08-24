@@ -1,10 +1,11 @@
 // src/pages/TestsPage.tsx
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
 import { useTheme } from '../context/ThemeContext';
 import EditDeleteButtons from '../components/ui/EditDeleteButtons';
+import AppDatePicker from '../components/ui/AppDatePicker';
 import TestFormModal from '../components/tests/TestFormModal';
 import TestDeleteModal from '../components/tests/TestDeleteModal';
 import type {
@@ -15,11 +16,105 @@ import {
   formatDateDisplay, formatTimeDisplay, parseDateDisplayToISO,
 } from '../components/tests/utils';
 import {
-  Search, ClipboardList, Users,
+  Search, ClipboardList, Users, X,
   ChevronLeft, ChevronRight,
 } from 'lucide-react';
 
 const PAGE_SIZE = 10;
+
+function normalizeText(value: string): string {
+  return value.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+
+// ── Search-to-filter input: type to narrow, click a result to filter by it ──
+type SearchOption = { id: string; label: string };
+
+function SearchFilterInput({ items, value, onChange, placeholder, isDark, className }: {
+  items: SearchOption[]; value: string; onChange: (v: string) => void; placeholder: string; isDark: boolean; className?: string;
+}) {
+  const selectedLabel = items.find((i) => i.id === value)?.label ?? '';
+  const [query, setQuery] = useState(selectedLabel);
+  const [open, setOpen] = useState(false);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { setQuery(selectedLabel); }, [selectedLabel]);
+
+  useEffect(() => {
+    if (!open) return;
+    const h = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) { setOpen(false); setQuery(selectedLabel); }
+    };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [open, selectedLabel]);
+
+  const filtered = useMemo(() => {
+    const q = normalizeText(query.trim());
+    if (!q) return items;
+    return items.filter((i) => normalizeText(i.label).includes(q));
+  }, [items, query]);
+
+  const handleSelect = (item: SearchOption | null) => {
+    onChange(item?.id ?? '');
+    setQuery(item?.label ?? '');
+    setOpen(false);
+  };
+
+  const inputCls = isDark
+    ? 'h-9 w-full rounded-lg border border-slate-700/70 bg-slate-900/60 pl-9 pr-8 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30'
+    : 'h-9 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-8 text-xs text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30';
+
+  return (
+    <div className={`relative ${className ?? ''}`} ref={ref}>
+      <Search className={`pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+      <input
+        value={query}
+        onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+        onFocus={() => { setOpen(true); setQuery(''); }}
+        placeholder={placeholder}
+        className={inputCls}
+      />
+      {(value || query) && (
+        <button
+          type="button"
+          onClick={() => handleSelect(null)}
+          className={`absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-0.5 transition ${isDark ? 'text-slate-500 hover:bg-white/10 hover:text-slate-200' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'}`}
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      )}
+
+      {open && (
+        <div
+          className={`absolute left-0 top-full z-50 mt-1.5 max-h-64 w-full min-w-[13rem] overflow-y-auto rounded-xl border shadow-2xl
+            ${isDark ? 'border-white/10 bg-slate-900/95 shadow-black/60' : 'border-slate-200/80 bg-white/95 shadow-slate-300/50'}`}
+          style={{ backdropFilter: 'blur(20px)' }}
+        >
+          {filtered.length === 0 ? (
+            <div className={`px-3 py-2.5 text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Δεν βρέθηκαν αποτελέσματα</div>
+          ) : filtered.map((item) => {
+            const active = item.id === value;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => handleSelect(item)}
+                onMouseEnter={() => setHoveredId(item.id)}
+                onMouseLeave={() => setHoveredId((h) => (h === item.id ? null : h))}
+                style={hoveredId === item.id ? { backgroundColor: 'color-mix(in srgb, var(--color-accent) 16%, transparent)' } : undefined}
+                className={`flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-medium transition-colors duration-100
+                  ${active ? (isDark ? 'text-white' : 'text-slate-900') : (isDark ? 'text-slate-300' : 'text-slate-600')}`}
+              >
+                <span className="truncate">{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ── Edge function helper ──────────────────────────────────────────────────────
 async function callEdgeFunction(name: string, body: Record<string, unknown>) {
@@ -81,10 +176,15 @@ export default function TestsPage() {
   const [deleting, setDeleting] = useState(false);
 
 
-  // Search & pagination
+  // Search, filters & pagination
   const [searchTerm, setSearchTerm] = useState('');
+  const [dateFilter, setDateFilter] = useState(''); // yyyy-mm-dd
+  const [classFilterId, setClassFilterId] = useState('');
+  const [subjectFilterId, setSubjectFilterId] = useState('');
   const [page, setPage] = useState(1);
-  useEffect(() => { setPage(1); }, [searchTerm]);
+  useEffect(() => { setPage(1); }, [searchTerm, dateFilter, classFilterId, subjectFilterId]);
+  const hasActiveFilters = !!(dateFilter || classFilterId || subjectFilterId);
+  const clearFilters = () => { setDateFilter(''); setClassFilterId(''); setSubjectFilterId(''); };
 
   // Load data
   useEffect(() => {
@@ -105,7 +205,7 @@ export default function TestsPage() {
           supabase.from('subjects').select('id, school_id, name, level_id').eq('school_id', schoolId).order('name', { ascending: true }),
           supabase.from('class_subjects').select('class_id, subject_id, school_id').eq('school_id', schoolId),
           supabase.from('students').select('id, school_id, full_name').eq('school_id', schoolId).is('deleted_at', null).order('full_name', { ascending: true }),
-          supabase.from('tests').select('id, school_id, class_id, level_id, subject_id, test_date, start_time, end_time, title, description').eq('school_id', schoolId).order('test_date', { ascending: true }).order('start_time', { ascending: true }),
+          supabase.from('tests').select('id, school_id, class_id, level_id, subject_id, test_date, start_time, end_time, title, description').eq('school_id', schoolId).order('test_date', { ascending: false }).order('start_time', { ascending: false }),
         ]);
         if (classErr) throw classErr; if (levelErr) throw levelErr; if (subjErr) throw subjErr; if (classSubjErr) throw classSubjErr; if (studentsErr) throw studentsErr; if (testsErr) throw testsErr;
         setClasses((classData ?? []) as ClassRow[]);
@@ -144,7 +244,7 @@ export default function TestsPage() {
   const levelById = useMemo(() => { const m = new Map<string, LevelRow>(); levels.forEach((l) => m.set(l.id, l)); return m; }, [levels]);
   const studentById = useMemo(() => { const m = new Map<string, StudentRow>(); students.forEach((s) => m.set(s.id, s)); return m; }, [students]);
 
-  const testsWithDisplay = useMemo(() => tests.map((t) => {
+  const testsWithDisplay = useMemo(() => [...tests].sort((a, b) => b.test_date.localeCompare(a.test_date) || (b.start_time ?? '').localeCompare(a.start_time ?? '')).map((t) => {
     const assignments = testAssignments[t.id] ?? [];
     const timeRange = t.start_time && t.end_time ? `${formatTimeDisplay(t.start_time)} – ${formatTimeDisplay(t.end_time)}` : '';
     const chargeTotal = testCharges[t.id] ?? null;
@@ -160,9 +260,15 @@ export default function TestsPage() {
   }), [tests, classById, levelById, subjectById, isPrivateLessons, testAssignments, studentById, testCharges]);
 
   const filteredTests = useMemo(() => {
-    const q = searchTerm.trim().toLowerCase(); if (!q) return testsWithDisplay;
-    return testsWithDisplay.filter((t) => [t.dateDisplay, t.timeRange, t.classTitle, t.subjectName, t.title ?? ''].some((v) => v.toLowerCase().includes(q)));
-  }, [testsWithDisplay, searchTerm]);
+    const q = searchTerm.trim().toLowerCase();
+    return testsWithDisplay.filter((t) => {
+      if (dateFilter && t.test_date !== dateFilter) return false;
+      if (classFilterId && t.class_id !== classFilterId) return false;
+      if (subjectFilterId && t.subject_id !== subjectFilterId) return false;
+      if (q && ![t.dateDisplay, t.timeRange, t.classTitle, t.subjectName, t.title ?? ''].some((v) => v.toLowerCase().includes(q))) return false;
+      return true;
+    });
+  }, [testsWithDisplay, searchTerm, dateFilter, classFilterId, subjectFilterId]);
 
   const pageCount = useMemo(() => Math.max(1, Math.ceil(filteredTests.length / PAGE_SIZE)), [filteredTests.length]);
   useEffect(() => { setPage((p) => Math.min(Math.max(1, p), pageCount)); }, [pageCount]);
@@ -422,7 +528,7 @@ export default function TestsPage() {
             <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] ${isDark ? 'border-slate-700/60 bg-slate-800/50 text-slate-300' : 'border-slate-200 bg-slate-100 text-slate-600'}`}>
               <ClipboardList className={`h-3 w-3 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />{tests.length} σύνολο
             </span>
-            {searchTerm.trim() && (
+            {(searchTerm.trim() || hasActiveFilters) && (
               <span className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px]"
                 style={{ borderColor: 'color-mix(in srgb, var(--color-accent) 40%, transparent)', background: 'color-mix(in srgb, var(--color-accent) 10%, transparent)', color: 'var(--color-accent)' }}>
                 <Search className="h-3 w-3" />{filteredTests.length} αποτελέσματα
@@ -439,6 +545,31 @@ export default function TestsPage() {
             <ClipboardList className="h-3.5 w-3.5" />Προσθήκη διαγωνίσματος
           </button>
         </div>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center">
+        <div className="sm:w-40">
+          <AppDatePicker value={formatDateDisplay(dateFilter)} onChange={(v) => setDateFilter(parseDateDisplayToISO(v) ?? '')} />
+        </div>
+        {!isPrivateLessons && (
+          <SearchFilterInput
+            items={classes.map((c) => ({ id: c.id, label: c.title }))}
+            value={classFilterId} onChange={setClassFilterId}
+            placeholder="Αναζήτηση τμήματος..." isDark={isDark} className="sm:w-52"
+          />
+        )}
+        <SearchFilterInput
+          items={subjects.map((s) => ({ id: s.id, label: s.name }))}
+          value={subjectFilterId} onChange={setSubjectFilterId}
+          placeholder="Αναζήτηση μαθήματος..." isDark={isDark} className="sm:w-52"
+        />
+        {hasActiveFilters && (
+          <button type="button" onClick={clearFilters}
+            className={`text-[11px] font-medium underline-offset-2 hover:underline ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            Καθαρισμός φίλτρων
+          </button>
+        )}
       </div>
 
       {/* Alerts */}

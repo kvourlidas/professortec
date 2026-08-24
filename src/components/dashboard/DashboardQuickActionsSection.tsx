@@ -15,11 +15,11 @@ type Props = { schoolId: string | null; actions: ActionKey[] };
 type Counts = Record<CountedActionKey, number | null>;
 
 const ACTION_DEFS: Record<ActionKey, { label: string; path: string; icon: typeof GraduationCap; accent: string }> = {
-  students: { label: 'Μαθητές', path: '/students', icon: GraduationCap, accent: '#7C3AED' },
-  tutors: { label: 'Καθηγητές', path: '/tutors', icon: UserCog, accent: '#8B5CF6' },
-  classes: { label: 'Τμήματα', path: '/classes', icon: BookOpen, accent: '#6D28D9' },
-  tests: { label: 'Διαγωνίσματα', path: '/program/tests', icon: ClipboardList, accent: '#A855F7' },
-  ai: { label: 'Kika', path: '', icon: Bot, accent: '#9333EA' },
+  students: { label: 'Μαθητές', path: '/students', icon: GraduationCap, accent: '#2E1065' },
+  tutors: { label: 'Καθηγητές', path: '/tutors', icon: UserCog, accent: '#3B0764' },
+  classes: { label: 'Τμήματα', path: '/classes', icon: BookOpen, accent: '#4C1D95' },
+  tests: { label: 'Διαγωνίσματα', path: '/program/tests', icon: ClipboardList, accent: '#581C87' },
+  ai: { label: 'Kika', path: '', icon: Bot, accent: '#D2AFFF' },
 };
 
 async function fetchCount(key: CountedActionKey, schoolId: string): Promise<number> {
@@ -90,9 +90,9 @@ export default function DashboardQuickActionsSection({ schoolId, actions }: Prop
                   <Icon className="h-10 w-10 shrink-0 text-white" />
                 )}
                 <div className="min-w-0">
-                  <p className="truncate text-lg font-bold leading-none text-white">{label}</p>
+                  <p className={`truncate text-lg font-bold leading-none ${isAi ? 'text-[#2E1065]' : 'text-white'}`}>{label}</p>
                   {isAi ? (
-                    <p className="mt-2 truncate text-sm font-medium text-white/80">Λειτουργίες AI</p>
+                    <p className="mt-2 truncate text-sm font-medium text-[#2E1065]/70">Λειτουργίες AI</p>
                   ) : (
                     <p className="mt-2 text-2xl font-bold leading-none tabular-nums text-white">
                       {loading ? <Loader2 className="h-5 w-5 animate-spin text-white/70" /> : counts[key] ?? '—'}
@@ -101,7 +101,7 @@ export default function DashboardQuickActionsSection({ schoolId, actions }: Prop
                 </div>
               </div>
 
-              <ChevronRight className="h-5 w-5 shrink-0 text-white/70 opacity-0 transition-all duration-200 group-hover:translate-x-0.5 group-hover:opacity-100" />
+              <ChevronRight className={`h-5 w-5 shrink-0 opacity-0 transition-all duration-200 group-hover:translate-x-0.5 group-hover:opacity-100 ${isAi ? 'text-[#2E1065]/60' : 'text-white/70'}`} />
             </button>
           );
         })}

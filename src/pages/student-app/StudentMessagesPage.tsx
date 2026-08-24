@@ -287,7 +287,7 @@ export default function StudentMessagesPage() {
         <div className={[
           'flex w-64 shrink-0 flex-col border-r',
           divider,
-          isDark ? 'bg-slate-900' : 'bg-slate-50',
+          isDark ? 'bg-[var(--color-sidebar)]' : 'bg-slate-50',
         ].join(' ')}>
 
           <div className={`border-b px-4 py-3 ${divider}`}>
@@ -306,7 +306,7 @@ export default function StudentMessagesPage() {
                 className={[
                   'h-7 w-full rounded-lg pl-7 pr-3 text-[11px] outline-none transition',
                   isDark
-                    ? 'bg-slate-900/80 text-slate-200 placeholder-slate-600 focus:ring-1 focus:ring-[color:var(--color-accent)]/20'
+                    ? 'border border-slate-700/60 bg-slate-900/60 text-slate-200 placeholder-slate-600 focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/20'
                     : 'border border-slate-200 bg-white text-slate-700 placeholder-slate-400 focus:ring-1 focus:ring-[color:var(--color-accent)]/20',
                 ].join(' ')}
               />
@@ -342,7 +342,7 @@ export default function StudentMessagesPage() {
                       style={
                         active
                           ? { background: 'var(--color-accent)', color: isDark ? '#000' : '#fff' }
-                          : { background: isDark ? '#1a2234' : '#e2e8f0', color: isDark ? '#64748b' : '#94a3b8' }
+                          : { background: isDark ? '#1e293b' : '#e2e8f0', color: isDark ? '#64748b' : '#94a3b8' }
                       }
                     >
                       {initial}
@@ -370,7 +370,7 @@ export default function StudentMessagesPage() {
         </div>
 
         {/* ── Chat panel ──────────────────────────────────────────────── */}
-        <div className={`flex flex-1 flex-col ${isDark ? 'bg-[#1C1F17]' : 'bg-white'}`}>
+        <div className={`flex flex-1 flex-col ${isDark ? 'bg-[var(--color-background)]' : 'bg-white'}`}>
 
           <div className={`flex h-11 shrink-0 items-center justify-between border-b px-5 ${divider}`}>
             {activeStudent ? (
@@ -463,7 +463,7 @@ export default function StudentMessagesPage() {
                                 mine
                                   ? 'rounded-br-sm'
                                   : isDark
-                                  ? 'rounded-bl-sm bg-slate-900 text-slate-200'
+                                  ? 'rounded-bl-sm bg-slate-800 text-slate-200'
                                   : 'rounded-bl-sm bg-slate-100 text-slate-700',
                               ].join(' ')}
                               style={mine ? { background: 'var(--color-accent)', color: isDark ? '#000' : '#fff' } : {}}
@@ -505,7 +505,7 @@ export default function StudentMessagesPage() {
                 className={[
                   'flex-1 resize-none rounded-xl px-3.5 py-2.5 text-[13px] leading-relaxed outline-none transition disabled:cursor-not-allowed disabled:opacity-30',
                   isDark
-                    ? 'bg-slate-900 text-slate-100 placeholder-slate-500 focus:ring-1 focus:ring-[color:var(--color-accent)]/20'
+                    ? 'border border-slate-700/60 bg-slate-800/60 text-slate-100 placeholder-slate-500 focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/20'
                     : 'border border-slate-200 bg-slate-50 text-slate-800 placeholder-slate-400 focus:ring-1 focus:ring-[color:var(--color-accent)]/20',
                 ].join(' ')}
                 onKeyDown={(e) => {
@@ -552,7 +552,7 @@ export default function StudentMessagesPage() {
                 disabled={!canSend}
                 className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
                 style={{
-                  background: canSend ? 'var(--color-accent)' : isDark ? '#1a2234' : '#e2e8f0',
+                  background: canSend ? 'var(--color-accent)' : isDark ? '#1e293b' : '#e2e8f0',
                 }}
               >
                 {sending

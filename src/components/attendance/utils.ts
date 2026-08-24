@@ -19,6 +19,13 @@ export function formatDateDisplay(iso: string | null): string {
   return `${d}/${m}/${y}`;
 }
 
+// Inverse of formatDateDisplay — dd/mm/yyyy (as produced by AppDatePicker) back to yyyy-mm-dd.
+export function displayToISO(display: string): string {
+  const [d, m, y] = display.split('/');
+  if (!d || !m || !y) return '';
+  return `${y}-${m}-${d}`;
+}
+
 export function formatDateDisplayLong(iso: string): string {
   const [y, m, d] = iso.split('-').map(Number);
   return new Date(y, m - 1, d).toLocaleDateString('el-GR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });

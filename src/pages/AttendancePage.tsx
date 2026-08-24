@@ -7,8 +7,9 @@ import { ClipboardCheck, History } from 'lucide-react';
 import AttendanceLessonCard from '../components/attendance/AttendanceLessonCard';
 import AttendanceHistoryPanel from '../components/attendance/AttendanceHistoryPanel';
 import FolderTabs from '../components/ui/FolderTabs';
+import AppDatePicker from '../components/ui/AppDatePicker';
 import { DAY_LABEL_BY_VALUE } from '../components/program/constants';
-import { formatDateDisplayLong, formatTimeDisplay, todayISO, weekdayOf } from '../components/attendance/utils';
+import { displayToISO, formatDateDisplay, formatDateDisplayLong, formatTimeDisplay, todayISO, weekdayOf } from '../components/attendance/utils';
 import type {
   AttendanceRow, AttendanceStatus, ClassRow, HolidayRow, LessonSession,
   ProgramItemOverrideRow, ProgramItemRow, StudentRow, SubjectRow, TestRow, TutorRow,
@@ -348,10 +349,6 @@ export default function AttendancePage() {
     }
   };
 
-  const dateInputCls = isDark
-    ? 'h-9 rounded-lg border border-slate-700/70 bg-slate-900/60 px-3 text-xs text-slate-100 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30'
-    : 'h-9 rounded-lg border border-slate-300 bg-white px-3 text-xs text-slate-800 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30';
-
   return (
     <div className="space-y-6 px-1">
 
@@ -368,7 +365,9 @@ export default function AttendancePage() {
         />
 
         {tab === 'today' && (
-          <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className={dateInputCls} />
+          <div className="w-40">
+            <AppDatePicker value={formatDateDisplay(selectedDate)} onChange={(v) => setSelectedDate(displayToISO(v))} />
+          </div>
         )}
       </div>
 

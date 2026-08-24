@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { ChevronLeft, ChevronRight, Loader2, Search, X } from 'lucide-react';
-import { formatDateDisplay, normalizeText } from './utils';
+import AppDatePicker from '../ui/AppDatePicker';
+import { displayToISO, formatDateDisplay, normalizeText } from './utils';
 import type { AttendanceRow, ClassRow, SubjectRow } from './types';
 
-const PAGE_SIZE = 15;
+const PAGE_SIZE = 20;
 const UNFILTERED_LIMIT = 300;
 
 function ClassFilterSelect({ classes, value, onChange, isDark, className }: {
@@ -204,7 +205,9 @@ export default function AttendanceHistoryPanel({ schoolId, classes, studentNameB
     <div className="space-y-4">
       {/* Filters */}
       <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center">
-        <input type="date" value={dateFilter} onChange={(e) => handleDateChange(e.target.value)} className={`${inputCls} sm:w-44`} />
+        <div className="sm:w-44">
+          <AppDatePicker value={dateFilter ? formatDateDisplay(dateFilter) : ''} onChange={(v) => handleDateChange(v ? displayToISO(v) : '')} />
+        </div>
         <ClassFilterSelect classes={classes} value={classFilter} onChange={handleClassChange} isDark={isDark} className="sm:w-52" />
         <div className="relative">
           <Search className={`pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />

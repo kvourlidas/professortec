@@ -96,8 +96,7 @@ export default function AttendanceLessonCard({ session, attendanceByStudent, isC
             Όλες οι παρουσίες καταχωρήθηκαν.
           </span>
           <button type="button" onClick={onConfirmDone}
-            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-semibold transition active:scale-95"
-            style={{ background: 'var(--color-accent)', color: 'var(--ch-icon)' }}>
+            className="btn-primary gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-semibold shadow-sm hover:brightness-110 active:scale-95">
             Μετάβαση στο ιστορικό
             <ArrowRight className="h-3.5 w-3.5" />
           </button>

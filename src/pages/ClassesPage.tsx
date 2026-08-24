@@ -59,6 +59,7 @@ export default function ClassesPage() {
       if (!map[cid]) map[cid] = [];
       map[cid].push(st);
     });
+    Object.values(map).forEach((list) => list.sort((a, b) => (a.full_name ?? '').localeCompare(b.full_name ?? '', 'el')));
     setStudentsByClass(map);
   };
 
@@ -116,7 +117,8 @@ export default function ClassesPage() {
       .eq('school_id', schoolId)
       .eq('class_id', classId);
     if (err) { console.error(err); return; }
-    const students: StudentRow[] = (data ?? []).map((row: any) => row.student).filter(Boolean);
+    const students: StudentRow[] = (data ?? []).map((row: any) => row.student).filter(Boolean)
+      .sort((a, b) => (a.full_name ?? '').localeCompare(b.full_name ?? '', 'el'));
     setStudentsByClass((prev) => ({ ...prev, [classId]: students }));
   };
 

@@ -10,9 +10,10 @@ import {
   Loader2, Mail, Lock, AlertCircle, Eye, EyeOff,
   User, Building2, GraduationCap, CheckCircle2, Check,
   MapPin, Phone, ArrowLeft, Gift, CalendarDays, Sparkles,
-  ClipboardList, Wallet, Users,
+  ClipboardList, Wallet, Users, LogIn, UserPlus,
 } from 'lucide-react';
 import edraLogo from '../assets/edra-logo.png';
+import FolderTabs from '../components/ui/FolderTabs';
 
 type Mode = 'login' | 'signup';
 type SignupStep = 1 | 2 | 3 | 4;
@@ -223,24 +224,17 @@ export default function LoginPage() {
           mode === 'signup' && signupStep === 4 ? 'max-w-[760px]' : 'max-w-[480px]'
         }`}>
 
-          {/* Tab switcher — underline text toggle */}
-          <div className="mb-10 flex items-center gap-8 border-b" style={{ borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgb(226 232 240)' }}>
-            {(['login', 'signup'] as Mode[]).map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => switchMode(m)}
-                className="relative pb-3.5 text-base font-bold tracking-tight transition-colors duration-150"
-                style={{ color: mode === m ? 'var(--color-text-main)' : 'var(--color-text-muted)' }}
-              >
-                {m === 'login' ? 'Σύνδεση' : 'Εγγραφή'}
-                <span
-                  className="absolute -bottom-px left-0 right-0 h-[2px] rounded-full transition-opacity duration-200"
-                  style={{ background: 'var(--color-accent)', opacity: mode === m ? 1 : 0 }}
-                />
-              </button>
-            ))}
-          </div>
+          {/* Tab switcher */}
+          <FolderTabs
+            className="mb-10"
+            isDark={isDark}
+            active={mode}
+            onChange={switchMode}
+            tabs={[
+              { key: 'login', label: 'Σύνδεση', icon: LogIn },
+              { key: 'signup', label: 'Εγγραφή', icon: UserPlus },
+            ]}
+          />
 
             {/* ── LOGIN ── */}
             {mode === 'login' && (
