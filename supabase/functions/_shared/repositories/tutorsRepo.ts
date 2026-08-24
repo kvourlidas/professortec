@@ -42,7 +42,7 @@ export async function getTutorByIdAndSchoolId(
 ) {
   const { data, error } = await supabase
     .from("tutors")
-    .select("id, school_id")
+    .select("id, school_id, full_name")
     .eq("id", tutorId)
     .eq("school_id", schoolId)
     .maybeSingle();
@@ -56,6 +56,26 @@ export async function getTutorByIdAndSchoolId(
   }
 
   return data;
+}
+
+export async function searchTutorsByName(
+  supabase: any,
+  schoolId: string,
+  query: string
+) {
+  const { data, error } = await supabase
+    .from("tutors")
+    .select("id, full_name, phone, email")
+    .eq("school_id", schoolId)
+    .is("deleted_at", null)
+    .ilike("full_name", `%${query}%`)
+    .limit(10);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data ?? [];
 }
 
 export async function updateTutorById(

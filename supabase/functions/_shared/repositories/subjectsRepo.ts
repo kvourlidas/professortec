@@ -30,7 +30,7 @@ export async function getSubjectByIdAndSchoolId(
 ) {
   const { data, error } = await supabase
     .from("subjects")
-    .select("id, school_id")
+    .select("id, school_id, name, level_id")
     .eq("id", subjectId)
     .eq("school_id", schoolId)
     .maybeSingle();
@@ -44,6 +44,30 @@ export async function getSubjectByIdAndSchoolId(
   }
 
   return data;
+}
+
+export async function searchSubjectsByName(
+  supabase: any,
+  schoolId: string,
+  query: string
+) {
+  const { data, error } = await supabase
+    .from("subjects")
+    .select("id, name, level_id, levels(name)")
+    .eq("school_id", schoolId)
+    .ilike("name", `%${query}%`)
+    .limit(10);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data ?? []).map((row: any) => ({
+    id: row.id as string,
+    name: row.name as string,
+    level_id: (row.level_id as string) ?? null,
+    level_name: (row.levels?.name as string) ?? null,
+  }));
 }
 
 export async function updateSubjectById(

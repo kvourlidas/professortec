@@ -45,25 +45,6 @@ export async function getLevelByIdAndSchoolId(
   return data;
 }
 
-export async function searchLevelsByName(
-  supabase: any,
-  schoolId: string,
-  query: string
-) {
-  const { data, error } = await supabase
-    .from("levels")
-    .select("id, name")
-    .eq("school_id", schoolId)
-    .ilike("name", `%${query}%`)
-    .limit(10);
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return data ?? [];
-}
-
 export async function updateLevelById(
   supabase: any,
   input: UpdateLevelInput

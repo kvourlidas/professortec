@@ -15,7 +15,9 @@ export const updateStudentTool: AssistantTool = {
       "Ενημερώνει στοιχεία υπάρχοντος μαθητή. Χρησιμοποίησε student_id αν είναι ήδη γνωστό " +
       "(π.χ. από προηγούμενη αναζήτηση σε αυτή τη συνομιλία), αλλιώς δώσε student_name για " +
       "αναζήτηση με βάση το όνομα. Δώσε ΜΟΝΟ τα πεδία που πρέπει να αλλάξουν — όσα δεν δίνονται " +
-      "παραμένουν όπως είναι.",
+      "παραμένουν όπως είναι. Αν ο χρήστης θέλει να αλλάξει το επίπεδο (level) του μαθητή, βάλε " +
+      "change_level: true — ΜΗΝ ρωτήσεις ή μαντέψεις ποιο επίπεδο, αυτό το επιλέγει ο χρήστης μέσα " +
+      "από την εφαρμογή αφού καλέσεις το tool.",
     input_schema: {
       type: "object",
       properties: {
@@ -27,9 +29,9 @@ export const updateStudentTool: AssistantTool = {
           type: "string",
           description: "Το όνομα (ή μέρος του ονόματος) του μαθητή προς αναζήτηση.",
         },
-        level_name: {
-          type: "string",
-          description: "Το όνομα του επιπέδου (level) στο οποίο θα μετακινηθεί ο μαθητής, αν αλλάζει.",
+        change_level: {
+          type: "boolean",
+          description: "true αν ο χρήστης θέλει να αλλάξει το επίπεδο του μαθητή (ανεξάρτητα από το αν είπε ποιο).",
         },
         full_name: { type: "string", description: "Νέο ονοματεπώνυμο, αν αλλάζει." },
         date_of_birth: { type: "string", description: "Νέα ημερομηνία γέννησης (YYYY-MM-DD), αν αλλάζει." },
@@ -58,12 +60,12 @@ export const updateStudentTool: AssistantTool = {
       throw new ValidationError("Missing student_id or student_name");
     }
 
-    const level_name = str(input?.level_name);
+    const change_level = input?.change_level === true;
 
     const result = await updateStudentByNameService(supabase, schoolId, {
       student_id,
       student_name,
-      level_name,
+      change_level,
       updates: {
         full_name: str(input?.full_name),
         date_of_birth: str(input?.date_of_birth),
@@ -104,26 +106,14 @@ export const updateStudentTool: AssistantTool = {
       };
     }
 
-    if (result.status === "level_not_found") {
+    if (result.status === "needs_level_selection") {
       return {
         content: {
-          success: false,
-          error: "level_not_found",
-          message: "Δεν βρέθηκε επίπεδο (level) με αυτό το όνομα. Ρώτησε τον χρήστη να διορθώσει το όνομα ή να επιβεβαιώσει ότι υπάρχει.",
+          success: true,
+          awaiting_selection: true,
+          message: "Ο χρήστης θα επιλέξει τώρα το νέο επίπεδο μέσα από την εφαρμογή.",
         },
-      };
-    }
-
-    if (result.status === "level_ambiguous") {
-      return {
-        content: {
-          success: false,
-          error: "level_ambiguous",
-          candidates: result.candidates,
-          message:
-            "Βρέθηκαν περισσότερα από ένα επίπεδα με αυτό το όνομα. Παράθεσε τις επιλογές στον " +
-            "χρήστη και ζήτησέ του να διευκρινίσει ποιο εννοεί.",
-        },
+        action: { type: "student_update_needs_level_selection", item: result.merged },
       };
     }
 

@@ -80,6 +80,25 @@ export async function updateClassById(supabase: any, input: UpdateClassInput) {
   return data;
 }
 
+export async function searchClassesByTitle(
+  supabase: any,
+  schoolId: string,
+  query: string
+) {
+  const { data, error } = await supabase
+    .from("classes")
+    .select("id, title, subject")
+    .eq("school_id", schoolId)
+    .ilike("title", `%${query}%`)
+    .limit(10);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data ?? [];
+}
+
 export async function deleteClassById(supabase: any, classId: string) {
   const { error } = await supabase
     .from("classes")
