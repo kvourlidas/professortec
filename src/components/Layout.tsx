@@ -87,7 +87,7 @@ export default function Layout({ children }: LayoutProps) {
   useEffect(() => {
     const path = location.pathname;
     const match = activeNav.find(
-      (it) => it.children?.some((ch) => ch.to && (path === ch.to || path.startsWith(ch.to + '/')))
+      (it) => it.children?.some((ch) => ch.to && path === ch.to)
     );
     if (match?.label) setOpenGroup(match.label);
     setMobileOpen(false);
@@ -131,7 +131,7 @@ export default function Layout({ children }: LayoutProps) {
     const Icon = item.icon;
     const isOpen = openGroup === item.label;
     const hasActiveChild = item.children?.some(
-      (ch) => location.pathname === ch.to || location.pathname.startsWith(ch.to + '/')
+      (ch) => location.pathname === ch.to
     );
 
     return (

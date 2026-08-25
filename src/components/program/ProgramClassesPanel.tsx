@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Search, Plus, GripVertical, BookOpen, ChevronDown } from 'lucide-react';
 import { DAY_OPTIONS } from './constants';
 import type { ClassRow, SubjectRow } from './types';
@@ -37,20 +38,45 @@ function DayPicker({ classId, isDark, onAddSlot }: {
 }) {
   const [open, setOpen] = useState(false);
   const [hoveredDay, setHoveredDay] = useState<string | null>(null);
-  const ref = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    const PANEL_HEIGHT_ESTIMATE = 240;
+    const updateCoords = () => {
+      const r = btnRef.current?.getBoundingClientRect();
+      if (!r) return;
+      const fitsBelow = window.innerHeight - r.bottom >= PANEL_HEIGHT_ESTIMATE;
+      const top = fitsBelow ? r.bottom + 6 : Math.max(6, r.top - PANEL_HEIGHT_ESTIMATE - 6);
+      const left = Math.min(r.left, window.innerWidth - 120);
+      setCoords({ top, left });
     };
+    updateCoords();
+
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (btnRef.current?.contains(target) || panelRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+    // Any scroll on an ancestor (e.g. the classes list) invalidates the popover's
+    // position, since it's portalled to <body> and no longer moves with its trigger.
+    const closeOnScroll = () => setOpen(false);
     document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    window.addEventListener('scroll', closeOnScroll, true);
+    window.addEventListener('resize', closeOnScroll);
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      window.removeEventListener('scroll', closeOnScroll, true);
+      window.removeEventListener('resize', closeOnScroll);
+    };
   }, [open]);
 
   return (
-    <div ref={ref} className="relative shrink-0">
+    <div className="relative shrink-0">
       <button
+        ref={btnRef}
         type="button"
         onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
         title="Προσθήκη σε μέρα"
@@ -69,12 +95,12 @@ function DayPicker({ classId, isDark, onAddSlot }: {
         <ChevronDown className={`h-3 w-3 shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </button>
 
-      {open && (
-        <div className={`day-picker-animate absolute left-0 top-full z-50 mt-1.5 min-w-[110px] overflow-hidden rounded-xl border py-1 shadow-md ${
+      {open && coords && createPortal(
+        <div ref={panelRef} className={`day-picker-animate fixed z-[200] min-w-[110px] overflow-hidden rounded-xl border py-1 shadow-md ${
           isDark
             ? 'border-slate-700/60 bg-slate-900'
             : 'border-slate-200 bg-white'
-        }`}>
+        }`} style={{ top: coords.top, left: coords.left }}>
           {DAY_OPTIONS.map((d) => (
             <button
               key={d.value}
@@ -90,7 +116,8 @@ function DayPicker({ classId, isDark, onAddSlot }: {
               {d.label}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

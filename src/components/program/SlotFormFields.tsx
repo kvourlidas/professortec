@@ -1,5 +1,5 @@
-import type { ChangeEvent } from 'react';
-import { CalendarDays, BookOpen, GraduationCap, Layers, DoorOpen } from 'lucide-react';
+import { useState, type ChangeEvent } from 'react';
+import { CalendarDays, BookOpen, GraduationCap, Layers, DoorOpen, Plus } from 'lucide-react';
 import DatePickerField from '../ui/AppDatePicker';
 import TimePicker from '../ui/TimePicker';
 import {
@@ -48,6 +48,13 @@ export function SlotFormFields({
 }: SlotFormFieldsProps) {
   const inputCls = modalInputCls(isDark);
   const selectCls = modalSelectCls(isDark);
+  const [overridingPeriod, setOverridingPeriod] = useState(false);
+
+  const startPeriodOverride = () => {
+    onStartDateChange('');
+    onEndDateChange('');
+    setOverridingPeriod(true);
+  };
 
   return (
     <div className="space-y-4">
@@ -133,14 +140,28 @@ export function SlotFormFields({
         </div>
       </FormField>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <FormField label="ΗΜΕΡΟΜΗΝΙΑ ΕΝΑΡΞΗΣ" isDark={isDark}>
-          <DatePickerField label="" value={startDate} onChange={onStartDateChange} placeholder="π.χ. 12/05/2025" id="slot-start-date" variant="underline" />
-        </FormField>
-        <FormField label="ΗΜΕΡΟΜΗΝΙΑ ΛΗΞΗΣ" isDark={isDark}>
-          <DatePickerField label="" value={endDate} onChange={onEndDateChange} placeholder="π.χ. 12/05/2025" id="slot-end-date" variant="underline" />
-        </FormField>
-      </div>
+      {overridingPeriod ? (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <FormField label="ΗΜΕΡΟΜΗΝΙΑ ΕΝΑΡΞΗΣ" isDark={isDark}>
+            <DatePickerField label="" value={startDate} onChange={onStartDateChange} placeholder="π.χ. 12/05/2025" id="slot-start-date" variant="underline" />
+          </FormField>
+          <FormField label="ΗΜΕΡΟΜΗΝΙΑ ΛΗΞΗΣ" isDark={isDark}>
+            <DatePickerField label="" value={endDate} onChange={onEndDateChange} placeholder="π.χ. 12/05/2025" id="slot-end-date" variant="underline" />
+          </FormField>
+        </div>
+      ) : (
+        <>
+          <FormField label="ΠΕΡΙΟΔΟΣ" isDark={isDark}>
+            <FieldIcon icon={CalendarDays} isDark={isDark} />
+            <input disabled value={startDate && endDate ? `${startDate} – ${endDate}` : 'Δεν έχει οριστεί περίοδος'} className={`${inputCls} disabled:opacity-60`} />
+          </FormField>
+          <button type="button" onClick={startPeriodOverride}
+            className="flex items-center gap-1 text-[11px] font-semibold transition hover:underline"
+            style={{ color: 'var(--color-accent)' }}>
+            <Plus className="h-3 w-3" />Περίοδος εξαίρεσης
+          </button>
+        </>
+      )}
     </div>
   );
 }

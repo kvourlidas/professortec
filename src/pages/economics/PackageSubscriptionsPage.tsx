@@ -6,21 +6,23 @@ import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
 import {
   Loader2, Plus, Save, Trash2, Package,
-  CalendarDays, Repeat, CheckCircle2, XCircle, ChevronDown, X, Pencil,
+  CalendarDays, Repeat, CheckCircle2, XCircle, X, Pencil,
 } from 'lucide-react';
-import AppDatePicker from '../../components/ui/AppDatePicker';
+import StyledSelect from '../../components/ui/StyledSelect';
 
 type PackageType = 'monthly' | 'yearly';
+type SchoolYearOption = { id: string; name: string; start_date: string; end_date: string; is_current: boolean };
 type PackageRow = {
   id: string; school_id: string; name: string; price: number; currency: string;
   is_active: boolean; sort_order: number; package_type: PackageType | null;
-  starts_on: string | null; ends_on: string | null;
+  school_year_id: string | null; starts_on: string | null; ends_on: string | null;
   avatar_color?: string | null; is_custom?: boolean | null;
 };
 type FormRow = {
   id: string; name: string; price: string; currency: string; is_active: boolean;
   sort_order: number; package_type: PackageType;
-  starts_on: string; ends_on: string; avatar_color: string; is_custom: boolean;
+  school_year_id: string | null; starts_on: string; ends_on: string;
+  avatar_color: string; is_custom: boolean;
 };
 
 function moneyStr(n: number | null | undefined) { if (n === null || n === undefined) return '0.00'; return Number(n).toFixed(2); }
@@ -145,14 +147,13 @@ export default function PackageSubscriptionsPage() {
   const [error,    setError]    = useState<string | null>(null);
   const [initial,  setInitial]  = useState<FormRow[] | null>(null);
   const [rows,     setRows]     = useState<FormRow[] | null>(null);
-  const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set());
+  const [schoolYears, setSchoolYears] = useState<SchoolYearOption[]>([]);
 
   const [addOpen,        setAddOpen]        = useState(false);
   const [newName,        setNewName]        = useState('');
   const [newPrice,       setNewPrice]       = useState('');
   const [newActive,      setNewActive]      = useState(true);
-  const [newStartsOn,    setNewStartsOn]    = useState('');
-  const [newEndsOn,      setNewEndsOn]      = useState('');
+  const [newSchoolYearId, setNewSchoolYearId] = useState<string>('');
   const [newAvatarColor, setNewAvatarColor] = useState(AVATAR_COLORS[0].value);
   const [addError,       setAddError]       = useState<string | null>(null);
   const [editingId,      setEditingId]      = useState<string | null>(null);
@@ -184,7 +185,7 @@ export default function PackageSubscriptionsPage() {
       return a.id !== r.id || a.name !== r.name || a.price !== r.price ||
         a.currency !== r.currency || a.is_active !== r.is_active ||
         a.sort_order !== r.sort_order || a.package_type !== r.package_type ||
-        a.starts_on !== r.starts_on || a.ends_on !== r.ends_on ||
+        a.school_year_id !== r.school_year_id ||
         a.avatar_color !== r.avatar_color;
     });
   }, [initial, rows]);
@@ -192,18 +193,27 @@ export default function PackageSubscriptionsPage() {
   const load = async () => {
     if (!schoolId) { setLoading(false); setError('Δεν βρέθηκε school_id στο προφίλ.'); return; }
     setLoading(true); setError(null);
-    const { data, error } = await supabase
-      .from('packages')
-      .select('id,school_id,name,price,currency,is_active,sort_order,package_type,starts_on,ends_on,avatar_color,is_custom')
-      .eq('school_id', schoolId)
-      .order('sort_order', { ascending: true })
-      .order('created_at', { ascending: true });
+    const [{ data, error }, { data: syData }] = await Promise.all([
+      supabase
+        .from('packages')
+        .select('id,school_id,name,price,currency,is_active,sort_order,package_type,school_year_id,starts_on,ends_on,avatar_color,is_custom')
+        .eq('school_id', schoolId)
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true }),
+      supabase
+        .from('school_years')
+        .select('id,name,start_date,end_date,is_current')
+        .eq('school_id', schoolId)
+        .order('start_date', { ascending: false }),
+    ]);
     if (error) { setError(error.message); setLoading(false); return; }
+    setSchoolYears((syData ?? []) as SchoolYearOption[]);
     const formRows: FormRow[] = ((data ?? []) as PackageRow[]).map(r => ({
       id: r.id, name: r.name ?? '', price: moneyStr(r.price),
       currency: r.currency ?? 'EUR', is_active: !!r.is_active,
       sort_order: r.sort_order ?? 0,
       package_type: (r.package_type ?? 'monthly') as PackageType,
+      school_year_id: r.school_year_id ?? null,
       starts_on: isoToDisplay(r.starts_on),
       ends_on:   isoToDisplay(r.ends_on),
       avatar_color: r.avatar_color ?? AVATAR_COLORS[0].value,
@@ -219,11 +229,14 @@ export default function PackageSubscriptionsPage() {
     setRows(rows.map(r => r.id === id ? { ...r, ...patch } : r));
   };
 
-  const toggleDateExpand = (id: string) => {
-    setExpandedDates(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
+  const yearById = (id: string | null) => schoolYears.find(y => y.id === id) ?? null;
+
+  const setRowSchoolYear = (id: string, yearId: string) => {
+    const y = yearById(yearId);
+    updateRow(id, {
+      school_year_id: yearId || null,
+      starts_on: y ? isoToDisplay(y.start_date) : '',
+      ends_on: y ? isoToDisplay(y.end_date) : '',
     });
   };
 
@@ -240,6 +253,7 @@ export default function PackageSubscriptionsPage() {
         price: Number(safePrice.toFixed(2)), currency: r.currency || 'EUR',
         is_active: r.is_active, sort_order: r.sort_order ?? 0,
         package_type: type, hours: null,
+        school_year_id: type === 'yearly' ? r.school_year_id : null,
         starts_on: type === 'yearly' ? (displayToIso(r.starts_on) ?? null) : null,
         ends_on:   type === 'yearly' ? (displayToIso(r.ends_on)   ?? null) : null,
         avatar_color: r.avatar_color ?? AVATAR_COLORS[0].value,
@@ -264,7 +278,7 @@ export default function PackageSubscriptionsPage() {
 
   const openAdd = () => {
     setNewName(''); setNewPrice(''); setNewActive(true);
-    setNewStartsOn(''); setNewEndsOn('');
+    setNewSchoolYearId(schoolYears.find(y => y.is_current)?.id ?? schoolYears[0]?.id ?? '');
     setNewAvatarColor(AVATAR_COLORS[0].value);
     setAddError(null); setAddOpen(true);
   };
@@ -275,9 +289,11 @@ export default function PackageSubscriptionsPage() {
     if (!schoolId) return;
     const name = newName.trim();
     if (!name) { setAddError('Δώσε όνομα πακέτου.'); return; }
+    if (!newSchoolYearId) { setAddError('Επίλεξε σχολικό έτος.'); return; }
     const pn = Number(newPrice.trim().replace(',', '.').replace(/[^0-9.]/g, ''));
     const safePrice = Number.isFinite(pn) ? Math.max(0, pn) : 0;
     const nextOrder = rows && rows.length ? Math.max(...rows.map(r => r.sort_order ?? 0)) + 1 : 1;
+    const newYear = yearById(newSchoolYearId);
 
     setSaving(true); setAddError(null);
     try {
@@ -289,8 +305,9 @@ export default function PackageSubscriptionsPage() {
         sort_order: nextOrder,
         package_type: 'yearly',
         hours: null,
-        starts_on: displayToIso(newStartsOn) ?? null,
-        ends_on:   displayToIso(newEndsOn)   ?? null,
+        school_year_id: newSchoolYearId,
+        starts_on: newYear?.start_date ?? null,
+        ends_on:   newYear?.end_date ?? null,
         avatar_color: newAvatarColor,
         is_custom: true,
       });
@@ -367,8 +384,7 @@ export default function PackageSubscriptionsPage() {
               <div className={`divide-y ${isDark ? 'divide-slate-800/60' : 'divide-slate-100'}`}>
               {rows.map(r => {
                 const colors = tc(r.package_type);
-                const dateExpanded = expandedDates.has(r.id);
-                const hasDateRange = !!(r.starts_on || r.ends_on);
+                const rowYear = yearById(r.school_year_id);
                 const isEditing = editingId === r.id;
 
                 if (r.is_custom && isEditing) {
@@ -387,10 +403,15 @@ export default function PackageSubscriptionsPage() {
                         </div>
 
                         <div className="flex flex-wrap items-center gap-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-36"><AppDatePicker value={r.starts_on} onChange={v => updateRow(r.id, { starts_on: v })} /></div>
-                            <span className={isDark ? 'text-slate-600' : 'text-slate-400'}>—</span>
-                            <div className="w-36"><AppDatePicker value={r.ends_on} onChange={v => updateRow(r.id, { ends_on: v })} /></div>
+                          <div className="flex items-center gap-1.5">
+                            <CalendarDays className={`h-3.5 w-3.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+                            <StyledSelect
+                              isDark={isDark} showChevron
+                              value={r.school_year_id ?? ''}
+                              onChange={(v) => setRowSchoolYear(r.id, v)}
+                              className={`h-9 w-40 rounded-lg border pl-2 pr-7 text-xs outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 focus:border-[color:var(--color-accent)] ${isDark ? 'border-slate-700/70 bg-slate-900/60 text-slate-200' : 'border-slate-200 bg-slate-50 text-slate-700'}`}
+                              options={[{ value: '', label: 'Επιλέξτε έτος' }, ...schoolYears.map(y => ({ value: y.id, label: y.name }))]}
+                            />
                           </div>
 
                           <div className="flex items-center gap-1.5">
@@ -452,19 +473,20 @@ export default function PackageSubscriptionsPage() {
                               <span className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{r.currency}</span>
                             </div>
                             {r.package_type === 'yearly' && (
-                              <button type="button" onClick={() => toggleDateExpand(r.id)}
-                                className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold transition ${dateExpanded ? (isDark ? 'border-amber-500/30 bg-amber-500/10 text-amber-300' : 'border-amber-300 bg-amber-50 text-amber-600') : (isDark ? 'border-slate-700/60 bg-slate-900/30 text-slate-400' : 'border-slate-200 bg-white text-slate-500')}`}>
-                                <CalendarDays className="h-3 w-3" />
-                                {hasDateRange && !dateExpanded ? `${r.starts_on} – ${r.ends_on}` : 'Διάστημα'}
-                                <ChevronDown className={`h-3 w-3 transition-transform ${dateExpanded ? 'rotate-180' : ''}`} />
-                              </button>
+                              <StyledSelect
+                                isDark={isDark} showChevron
+                                value={r.school_year_id ?? ''}
+                                onChange={(v) => setRowSchoolYear(r.id, v)}
+                                className={`h-8 w-36 rounded-lg border pl-2 pr-7 text-[11px] outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 focus:border-[color:var(--color-accent)] ${isDark ? 'border-slate-700/60 bg-slate-900/30 text-slate-300' : 'border-slate-200 bg-white text-slate-600'}`}
+                                options={[{ value: '', label: 'Επιλέξτε έτος' }, ...schoolYears.map(y => ({ value: y.id, label: y.name }))]}
+                              />
                             )}
                           </div>
                         ) : (
                           <div className="flex items-center gap-2">
-                            {r.package_type === 'yearly' && hasDateRange && (
+                            {r.package_type === 'yearly' && rowYear && (
                               <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] ${isDark ? 'border-slate-700/60 text-slate-400' : 'border-slate-200 text-slate-500'}`}>
-                                <CalendarDays className="h-2.5 w-2.5" />{r.starts_on} – {r.ends_on}
+                                <CalendarDays className="h-2.5 w-2.5" />{rowYear.name}
                               </span>
                             )}
                             <span className={`text-sm font-semibold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>€{r.price}</span>
@@ -484,23 +506,6 @@ export default function PackageSubscriptionsPage() {
                         )}
                       </div>
                     </div>
-
-                    {r.package_type === 'yearly' && dateExpanded && isEditing && (
-                      <div className={`border-t px-5 py-3 ${isDark ? 'border-slate-800/60 bg-slate-900/20' : 'border-slate-100 bg-slate-50/60'}`}>
-                        <p className={`mb-2.5 text-[10px] font-semibold uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Διάστημα ετήσιας συνδρομής</p>
-                        <div className="flex flex-wrap items-center gap-3">
-                          <div className="flex items-center gap-2">
-                            <span className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Έναρξη</span>
-                            <div className="w-44"><AppDatePicker value={r.starts_on} onChange={v => updateRow(r.id, { starts_on: v })} /></div>
-                          </div>
-                          <span className={isDark ? 'text-slate-600' : 'text-slate-300'}>—</span>
-                          <div className="flex items-center gap-2">
-                            <span className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Λήξη</span>
-                            <div className="w-44"><AppDatePicker value={r.ends_on} onChange={v => updateRow(r.id, { ends_on: v })} /></div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 );
               })}
@@ -520,10 +525,17 @@ export default function PackageSubscriptionsPage() {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-36"><AppDatePicker value={newStartsOn} onChange={setNewStartsOn} /></div>
-                        <span className={isDark ? 'text-slate-600' : 'text-slate-400'}>—</span>
-                        <div className="w-36"><AppDatePicker value={newEndsOn} onChange={setNewEndsOn} /></div>
+                      <div className="flex items-center gap-1.5">
+                        <CalendarDays className={`h-3.5 w-3.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+                        <StyledSelect
+                          isDark={isDark} showChevron
+                          value={newSchoolYearId}
+                          onChange={setNewSchoolYearId}
+                          className={`h-9 w-40 rounded-lg border pl-2 pr-7 text-xs outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 focus:border-[color:var(--color-accent)] ${isDark ? 'border-slate-700/70 bg-slate-900/60 text-slate-200' : 'border-slate-200 bg-slate-50 text-slate-700'}`}
+                          options={schoolYears.length > 0
+                            ? [{ value: '', label: 'Επιλέξτε έτος' }, ...schoolYears.map(y => ({ value: y.id, label: y.name }))]
+                            : [{ value: '', label: 'Χωρίς σχολικά έτη' }]}
+                        />
                       </div>
 
                       <div className="flex items-center gap-1.5">

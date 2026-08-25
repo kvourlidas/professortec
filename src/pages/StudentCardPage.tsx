@@ -56,27 +56,9 @@ const DAY_LABEL: Record<string, string> = {
   thursday: 'Πέμπτη', friday: 'Παρασκευή', saturday: 'Σάββατο', sunday: 'Κυριακή',
 };
 
-type TrimesterGradeRow = { id: string; student_id: string; school_year: string; trimester: 1 | 2 | 3; grade: number | null };
+type TrimesterGradeRow = { id: string; student_id: string; school_year_id: string; trimester: 1 | 2 | 3; grade: number | null };
 type TrimesterInputs = { 1: string; 2: string; 3: string };
-
-function getCurrentSchoolYear(): string {
-  const now = new Date();
-  const y = now.getFullYear();
-  return now.getMonth() >= 8 ? `${y}-${y + 1}` : `${y - 1}-${y}`;
-}
-function getSchoolYearOptions(schoolCreatedAt: string | null): string[] {
-  const cur = getCurrentSchoolYear();
-  const curStart = Number(cur.split('-')[0]);
-  let firstStart = curStart;
-  if (schoolCreatedAt) {
-    const d = new Date(schoolCreatedAt);
-    const y = d.getFullYear();
-    firstStart = d.getMonth() >= 8 ? y : y - 1;
-  }
-  const years: string[] = [];
-  for (let y = curStart; y >= firstStart; y--) years.push(`${y}-${y + 1}`);
-  return years;
-}
+type SchoolYearOption = { id: string; name: string; is_current: boolean };
 
 type PaymentRow = { id: string; subscription_id: string; amount: number; created_at: string | null; payment_method?: string | null; cancelled_at?: string | null; notes?: string | null };
 
@@ -559,9 +541,9 @@ export default function StudentCardPage() {
   const [holidayDates, setHolidayDates] = useState<Set<string>>(new Set());
   const [grades, setGrades] = useState<StudentGradeRow[]>([]);
   const [gradesLoading, setGradesLoading] = useState(false);
-  const [schoolCreatedAt, setSchoolCreatedAt] = useState<string | null>(null);
   const [_trimesterGrades, setTrimesterGrades] = useState<TrimesterGradeRow[]>([]);
-  const [trimesterYear, setTrimesterYear] = useState(getCurrentSchoolYear());
+  const [schoolYears, setSchoolYears] = useState<SchoolYearOption[]>([]);
+  const [trimesterYearId, setTrimesterYearId] = useState<string | null>(null);
   const [trimesterInputs, setTrimesterInputs] = useState<TrimesterInputs>({ 1: '', 2: '', 3: '' });
   const [trimesterDirty, setTrimesterDirty] = useState(false);
   const [trimesterSaving, setTrimesterSaving] = useState(false);
@@ -960,24 +942,35 @@ export default function StudentCardPage() {
         setExtraChargePayments((ecpData ?? []) as ExtraChargePaymentRow[]);
       }
 
-      const { data: schoolData } = await supabase
-        .from('schools').select('created_at').eq('id', schoolId).maybeSingle();
-      if (schoolData?.created_at) setSchoolCreatedAt(schoolData.created_at);
-
       setLoading(false);
     };
     load();
   }, [id, schoolId]);
 
   useEffect(() => {
-    if (!id || !schoolId) return;
+    if (!schoolId) return;
+    const loadSchoolYears = async () => {
+      const { data } = await supabase
+        .from('school_years')
+        .select('id, name, is_current')
+        .eq('school_id', schoolId)
+        .order('start_date', { ascending: false });
+      const years = (data ?? []) as SchoolYearOption[];
+      setSchoolYears(years);
+      setTrimesterYearId((prev) => prev ?? years.find((y) => y.is_current)?.id ?? years[0]?.id ?? null);
+    };
+    loadSchoolYears();
+  }, [schoolId]);
+
+  useEffect(() => {
+    if (!id || !schoolId || !trimesterYearId) return;
     const loadTrimester = async () => {
       const { data } = await supabase
         .from('student_trimester_grades')
-        .select('id, student_id, school_year, trimester, grade')
+        .select('id, student_id, school_year_id, trimester, grade')
         .eq('school_id', schoolId)
         .eq('student_id', id)
-        .eq('school_year', trimesterYear);
+        .eq('school_year_id', trimesterYearId);
       const rows = (data ?? []) as TrimesterGradeRow[];
       setTrimesterGrades(rows);
       const inputs: TrimesterInputs = { 1: '', 2: '', 3: '' };
@@ -986,10 +979,10 @@ export default function StudentCardPage() {
       setTrimesterDirty(false);
     };
     loadTrimester();
-  }, [id, schoolId, trimesterYear]);
+  }, [id, schoolId, trimesterYearId]);
 
   const saveTrimesterGrades = async () => {
-    if (!schoolId || !id) return;
+    if (!schoolId || !id || !trimesterYearId) return;
     setTrimesterSaving(true);
     try {
       const upserts = ([1, 2, 3] as const).map(t => {
@@ -998,13 +991,13 @@ export default function StudentCardPage() {
         return {
           school_id: schoolId,
           student_id: id,
-          school_year: trimesterYear,
+          school_year_id: trimesterYearId,
           trimester: t,
           grade: raw === '' || isNaN(gradeVal as number) ? null : gradeVal,
           updated_at: new Date().toISOString(),
         };
       });
-      await supabase.from('student_trimester_grades').upsert(upserts, { onConflict: 'school_id,student_id,school_year,trimester' });
+      await supabase.from('student_trimester_grades').upsert(upserts, { onConflict: 'school_id,student_id,school_year_id,trimester' });
       setTrimesterDirty(false);
     } catch (err) {
       console.error('Error saving trimester grades', err);
@@ -2025,14 +2018,20 @@ export default function StudentCardPage() {
           {!isIdiaiterou && <DashCard title="Γενικοί Βαθμοί Τριμήνου" icon={<Award className="h-3.5 w-3.5" />} isDark={isDark}>
             {/* Year selector */}
             <div className="mb-3 flex items-center justify-between gap-2">
-              <StyledSelect
-                isDark={isDark} showChevron
-                value={trimesterYear}
-                onChange={setTrimesterYear}
-                disabled={trimesterSaving}
-                className={`h-7 w-28 rounded-lg border pl-2 pr-7 text-xs outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 focus:border-[color:var(--color-accent)] ${isDark ? 'border-slate-700/70 bg-slate-900/60 text-slate-200' : 'border-slate-200 bg-slate-50 text-slate-700'}`}
-                options={getSchoolYearOptions(schoolCreatedAt).map(y => ({ value: y, label: y }))}
-              />
+              {schoolYears.length > 0 ? (
+                <StyledSelect
+                  isDark={isDark} showChevron
+                  value={trimesterYearId ?? ''}
+                  onChange={setTrimesterYearId}
+                  disabled={trimesterSaving}
+                  className={`h-7 w-36 rounded-lg border pl-2 pr-7 text-xs outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 focus:border-[color:var(--color-accent)] ${isDark ? 'border-slate-700/70 bg-slate-900/60 text-slate-200' : 'border-slate-200 bg-slate-50 text-slate-700'}`}
+                  options={schoolYears.map(y => ({ value: y.id, label: y.name }))}
+                />
+              ) : (
+                <p className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                  Δεν έχει οριστεί σχολικό έτος (Πληροφορίες Σχολείου).
+                </p>
+              )}
               {trimesterDirty && (
                 <button
                   type="button"
@@ -2060,7 +2059,7 @@ export default function StudentCardPage() {
                       setTrimesterInputs(prev => ({ ...prev, [t]: v }));
                       setTrimesterDirty(true);
                     }}
-                    disabled={trimesterSaving}
+                    disabled={trimesterSaving || !trimesterYearId}
                     placeholder="—"
                     className={`h-9 w-full rounded-lg border text-center text-sm font-bold outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 focus:border-[color:var(--color-accent)] disabled:opacity-50 ${isDark ? 'border-slate-700/70 bg-slate-800/60 text-slate-100 placeholder-slate-600' : 'border-slate-200 bg-white text-slate-800 placeholder-slate-300'}`}
                     style={trimesterInputs[t] ? { color: 'var(--color-accent)' } : undefined}

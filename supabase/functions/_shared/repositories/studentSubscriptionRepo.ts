@@ -53,11 +53,25 @@ export async function getSubscriptionByIdAndSchoolId(
   return data;
 }
 
+export async function getCurrentSchoolYearId(
+  supabase: any,
+  schoolId: string
+): Promise<string | null> {
+  const { data } = await supabase
+    .from("school_years")
+    .select("id")
+    .eq("school_id", schoolId)
+    .eq("is_current", true)
+    .maybeSingle();
+  return data?.id ?? null;
+}
+
 export async function insertStudentSubscription(
   supabase: any,
   schoolId: string,
   input: CreateStudentSubscriptionInput
 ) {
+  const schoolYearId = await getCurrentSchoolYearId(supabase, schoolId);
   const { data, error } = await supabase
     .from("student_subscriptions")
     .insert({
@@ -71,6 +85,7 @@ export async function insertStudentSubscription(
       starts_on: input.starts_on,
       ends_on: input.ends_on,
       discount_reason: input.discount_reason,
+      school_year_id: schoolYearId,
     })
     .select("*")
     .maybeSingle();
@@ -110,6 +125,7 @@ export async function insertStudentSubscriptionPlan(
   schoolId: string,
   input: CreateStudentSubscriptionPlanInput
 ) {
+  const schoolYearId = await getCurrentSchoolYearId(supabase, schoolId);
   const { data, error } = await supabase
     .from("student_subscription_plans")
     .insert({
@@ -127,6 +143,7 @@ export async function insertStudentSubscriptionPlan(
       discount_months: input.discount_months,
       discount_reason: input.discount_reason,
       status: "active",
+      school_year_id: schoolYearId,
     })
     .select("*")
     .maybeSingle();

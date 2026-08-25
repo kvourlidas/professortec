@@ -18,27 +18,33 @@ interface EconomicsFilterBarProps {
   onRangeEndChange: (v: string) => void;
   monthsOptions: { value: number; label: string }[];
   yearsOptions: { value: number; label: string }[];
+  schoolYearId: string;
+  onSchoolYearIdChange: (id: string) => void;
+  schoolYearsOptions: { value: string; label: string }[];
   isDark: boolean;
 }
 
 const MODES: { value: Mode; label: string }[] = [
   { value: 'month', label: 'Μήνας' },
   { value: 'year', label: 'Έτος' },
+  { value: 'schoolYear', label: 'Σχολικό έτος' },
   { value: 'range', label: 'Εύρος' },
 ];
 
 export function EconomicsFilterBar({
   mode, onModeChange, month, onMonthChange, year, onYearChange,
   rangeStart, onRangeStartChange, rangeEnd, onRangeEndChange,
-  monthsOptions, yearsOptions, isDark,
+  monthsOptions, yearsOptions, schoolYearId, onSchoolYearIdChange, schoolYearsOptions, isDark,
 }: EconomicsFilterBarProps) {
   const [openMonth, setOpenMonth] = useState(false);
   const [openYear, setOpenYear] = useState(false);
+  const [openSchoolYear, setOpenSchoolYear] = useState(false);
   const [hoveredMonth, setHoveredMonth] = useState<number | null>(null);
   const [hoveredYear, setHoveredYear] = useState<number | null>(null);
   const monthWrapRef = useRef<HTMLDivElement | null>(null);
   const yearWrapRef = useRef<HTMLDivElement | null>(null);
-  useOutsideClose([monthWrapRef, yearWrapRef], () => { setOpenMonth(false); setOpenYear(false); }, openMonth || openYear);
+  const schoolYearWrapRef = useRef<HTMLDivElement | null>(null);
+  useOutsideClose([monthWrapRef, yearWrapRef, schoolYearWrapRef], () => { setOpenMonth(false); setOpenYear(false); setOpenSchoolYear(false); }, openMonth || openYear || openSchoolYear);
 
   const dropdownBtnCls = (open: boolean) => [
     'inline-flex items-center justify-between gap-2 rounded-xl px-3.5 py-2.5 text-[13px] font-medium transition-all duration-150',
@@ -134,6 +140,23 @@ export function EconomicsFilterBar({
             {yearsOptions.map(y => (
               <button key={y.value} type="button" role="option" aria-selected={y.value === year} onClick={() => { onYearChange(y.value); setOpenYear(false); }} className={dropdownItemCls(y.value === year)}>
                 {y.label}{y.value === year && <Check size={13} className="shrink-0 text-[color:var(--color-accent)]" />}
+              </button>
+            ))}
+          </DropdownShell>
+        </div>
+      )}
+
+      {mode === 'schoolYear' && (
+        <div ref={schoolYearWrapRef}>
+          <DropdownShell
+            label={schoolYearsOptions.find(y => y.value === schoolYearId)?.label ?? 'Επιλέξτε έτος'}
+            open={openSchoolYear} onToggle={() => { setOpenMonth(false); setOpenYear(false); setOpenSchoolYear(v => !v); }} widthClass="w-[160px]">
+            {schoolYearsOptions.length === 0 && (
+              <p className={`px-3 py-2 text-[12px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Χωρίς σχολικά έτη</p>
+            )}
+            {schoolYearsOptions.map(y => (
+              <button key={y.value} type="button" role="option" aria-selected={y.value === schoolYearId} onClick={() => { onSchoolYearIdChange(y.value); setOpenSchoolYear(false); }} className={dropdownItemCls(y.value === schoolYearId)}>
+                {y.label}{y.value === schoolYearId && <Check size={13} className="shrink-0 text-[color:var(--color-accent)]" />}
               </button>
             ))}
           </DropdownShell>

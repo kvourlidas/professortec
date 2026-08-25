@@ -7,6 +7,7 @@ export type CreatePackageInput = {
   is_active: boolean;
   sort_order: number;
   package_type: PackageType;
+  school_year_id: string | null;
   starts_on: string | null;
   ends_on: string | null;
   avatar_color: string;
@@ -22,6 +23,7 @@ export type UpdatePackageInput = {
     is_active: boolean;
     sort_order: number;
     package_type: PackageType;
+    school_year_id: string | null;
     starts_on: string | null;
     ends_on: string | null;
     avatar_color: string;

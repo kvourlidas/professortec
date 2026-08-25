@@ -8,6 +8,7 @@ import { Building2, MapPin, Phone, Mail, Loader2, Pencil, X } from 'lucide-react
 import type { SchoolForm, SchoolRow } from '../components/school-info/types';
 import { emptyForm } from '../components/school-info/types';
 import LoginCredentialsSection from '../components/school-info/LoginCredentialsSection';
+import SchoolYearsSection from '../components/school-info/SchoolYearsSection';
 
 // ── Edge function helper ──────────────────────────────────────────────────────
 async function callEdgeFunction(name: string, body: Record<string, unknown>) {
@@ -246,6 +247,11 @@ export default function SchoolInfoPage() {
           </form>
         )}
       </section>
+
+      <div className="border-t" style={{ borderColor: 'var(--color-border)' }} />
+
+      {/* ── School years ── */}
+      <SchoolYearsSection />
 
       <div className="border-t" style={{ borderColor: 'var(--color-border)' }} />
 

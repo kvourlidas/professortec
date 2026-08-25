@@ -58,6 +58,8 @@ export default function EconomicsAnalysisPage() {
 
   const [rangeStart, setRangeStart] = useState(startOfMonthISO(currentYear, currentMonth));
   const [rangeEnd, setRangeEnd] = useState(isoToday());
+  const [schoolYears, setSchoolYears] = useState<{ id: string; name: string; start_date: string; end_date: string; is_current: boolean }[]>([]);
+  const [schoolYearId, setSchoolYearId] = useState('');
   const [expName, setExpName] = useState('');
   const [expAmount, setExpAmount] = useState<number>(0);
   const [expDate, setExpDate] = useState(isoToday());
@@ -88,11 +90,25 @@ export default function EconomicsAnalysisPage() {
   function getBounds() {
     if (mode === 'month') return { start: startOfMonthISO(year, month), end: endOfMonthISO(year, month) };
     if (mode === 'year') return { start: startOfYearISO(year), end: endOfYearISO(year) };
+    if (mode === 'schoolYear') {
+      const sy = schoolYears.find(y => y.id === schoolYearId);
+      return { start: sy?.start_date ?? isoToday(), end: sy?.end_date ?? isoToday() };
+    }
     return { start: rangeStart || isoToday(), end: rangeEnd || isoToday() };
   }
-  const bounds = useMemo(() => getBounds(), [mode, month, year, rangeStart, rangeEnd]);
+  const bounds = useMemo(() => getBounds(), [mode, month, year, rangeStart, rangeEnd, schoolYearId, schoolYears]);
 
-  useEffect(() => { setCatPage(1); setTxPage(1); }, [schoolId, mode, month, year, rangeStart, rangeEnd]);
+  useEffect(() => { setCatPage(1); setTxPage(1); }, [schoolId, mode, month, year, rangeStart, rangeEnd, schoolYearId]);
+
+  useEffect(() => {
+    if (!schoolId) return;
+    supabase.from('school_years').select('id,name,start_date,end_date,is_current').eq('school_id', schoolId).order('start_date', { ascending: false })
+      .then(({ data }) => {
+        const years = (data ?? []) as typeof schoolYears;
+        setSchoolYears(years);
+        setSchoolYearId((prev) => prev || years.find(y => y.is_current)?.id || years[0]?.id || '');
+      });
+  }, [schoolId]);
 
   async function safeTutorPayments(start: string, end: string) {
     let res: any = await supabase.from('tutor_payments').select('id,school_id,tutor_id,net_total,paid_on,notes,created_at,status,tutors(full_name)').eq('school_id', schoolId!).neq('status', 'canceled').gte('paid_on', start).lte('paid_on', end).order('paid_on', { ascending: false }).limit(500);
@@ -195,7 +211,7 @@ export default function EconomicsAnalysisPage() {
     finally { setLoading(false); }
   }
 
-  useEffect(() => { loadAll(); }, [schoolId, mode, month, year, rangeStart, rangeEnd]);
+  useEffect(() => { loadAll(); }, [schoolId, mode, month, year, rangeStart, rangeEnd, schoolYearId]);
 
   const incomeTotal = useMemo(() => txRows.filter(r => r.kind === 'income' && !r.cancelled).reduce((s, r) => s + (Number(r.amount) || 0), 0), [txRows]);
   const expenseTotal = useMemo(() => txRows.filter(r => r.kind === 'expense' && !r.cancelled).reduce((s, r) => s + (Number(r.amount) || 0), 0), [txRows]);
@@ -329,6 +345,8 @@ export default function EconomicsAnalysisPage() {
         rangeEnd={rangeEnd} onRangeEndChange={setRangeEnd}
         monthsOptions={Array.from({ length: 12 }, (_, i) => ({ value: i + 1, label: ['Ιανουάριος','Φεβρουάριος','Μάρτιος','Απρίλιος','Μάιος','Ιούνιος','Ιούλιος','Αύγουστος','Σεπτέμβριος','Οκτώβριος','Νοέμβριος','Δεκέμβριος'][i]! }))}
         yearsOptions={(() => { const base = new Date().getFullYear(); return Array.from({ length: 21 }, (_, i) => ({ value: base - 10 + i, label: String(base - 10 + i) })); })()}
+        schoolYearId={schoolYearId} onSchoolYearIdChange={setSchoolYearId}
+        schoolYearsOptions={schoolYears.map(y => ({ value: y.id, label: y.name }))}
         isDark={isDark}
       />
       </div>

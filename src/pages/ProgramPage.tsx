@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
 import { useTheme } from '../context/ThemeContext';
-import { Loader2 } from 'lucide-react';
+import { Loader2, CalendarRange, CopyPlus } from 'lucide-react';
 import type { ClassRow, SubjectRow, LevelRow, TutorRow, ProgramRow, ProgramItemRow, ClassSubjectRow, SubjectTutorRow, AddSlotForm, EditSlotForm, DeleteSlotTarget } from '../components/program/types';
 import { DAY_OPTIONS, emptyAddSlotForm } from '../components/program/constants';
 import { formatDateDisplay, parseDateDisplayToISO, timeToMinutes, todayISO, normalizeText } from '../components/program/utils';
@@ -11,6 +11,10 @@ import ProgramEditSlotModal from '../components/program/ProgramEditSlotModal';
 import ProgramDeleteSlotModal from '../components/program/ProgramDeleteSlotModal';
 import ProgramClassesPanel from '../components/program/ProgramClassesPanel';
 import ProgramScheduleGrid from '../components/program/ProgramScheduleGrid';
+import StyledSelect from '../components/ui/StyledSelect';
+import ProgramCloneModal from '../components/program/ProgramCloneModal';
+
+type SchoolYearOption = { id: string; name: string; start_date: string; end_date: string; is_current: boolean; is_summer: boolean };
 
 // ── Edge function helper ──────────────────────────────────────────────────────
 async function callEdgeFunction(name: string, body: Record<string, unknown>) {
@@ -45,6 +49,9 @@ export default function ProgramPage() {
   const [error, setError] = useState<string | null>(null);
   const [dragClassId, setDragClassId] = useState<string | null>(null);
   const [classSearch, setClassSearch] = useState('');
+  const [schoolYears, setSchoolYears] = useState<SchoolYearOption[]>([]);
+  const [selectedYearId, setSelectedYearId] = useState<string>('');
+  const [cloneModalOpen, setCloneModalOpen] = useState(false);
 
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [addForm, setAddForm] = useState<AddSlotForm>(emptyAddSlotForm);
@@ -73,10 +80,30 @@ export default function ProgramPage() {
     });
   }, [classes, classSearch, subjectById, levelNameById, tutorNameById]);
 
+  const selectedYear = useMemo(() => schoolYears.find((y) => y.id === selectedYearId) ?? null, [schoolYears, selectedYearId]);
+
+  // Target year used to auto-fill a *new* slot's date range — always the current main
+  // (non-summer) academic year, independent of whatever the page's view-filter shows.
+  const mainYearForAdd = useMemo(() => {
+    return schoolYears.find((y) => y.is_current && !y.is_summer)
+      ?? schoolYears.find((y) => !y.is_summer)
+      ?? schoolYears[0]
+      ?? null;
+  }, [schoolYears]);
+
+  const yearFilteredItems = useMemo(() => {
+    if (!selectedYear) return programItems;
+    return programItems.filter((item) => {
+      const itemStart = item.start_date ?? '0001-01-01';
+      const itemEnd = item.end_date ?? '9999-12-31';
+      return itemStart <= selectedYear.end_date && itemEnd >= selectedYear.start_date;
+    });
+  }, [programItems, selectedYear]);
+
   const itemsByDay = useMemo(() => {
     const map: Record<string, ProgramItemRow[]> = {};
     DAY_OPTIONS.forEach((d) => { map[d.value] = []; });
-    programItems.forEach((item) => {
+    yearFilteredItems.forEach((item) => {
       if (!map[item.day_of_week]) map[item.day_of_week] = [];
       map[item.day_of_week].push(item);
     });
@@ -88,7 +115,7 @@ export default function ProgramPage() {
       });
     });
     return map;
-  }, [programItems]);
+  }, [yearFilteredItems]);
 
   // ── Load ──
   useEffect(() => {
@@ -112,12 +139,14 @@ export default function ProgramPage() {
           { data: levelData, error: lvlErr },
           { data: tutorData, error: tutorErr },
           { data: itemData, error: itemErr },
+          { data: syData },
         ] = await Promise.all([
           supabase.from('classes').select('id, school_id, title, subject, subject_id, tutor_id').eq('school_id', schoolId).order('title', { ascending: true }),
           supabase.from('subjects').select('id, school_id, name, level_id').eq('school_id', schoolId).order('name', { ascending: true }),
           supabase.from('levels').select('id, school_id, name').eq('school_id', schoolId).order('name', { ascending: true }),
           supabase.from('tutors').select('id, school_id, full_name').eq('school_id', schoolId).is('deleted_at', null).order('full_name', { ascending: true }),
           supabase.from('program_items').select('*').eq('program_id', activeProgram.id).order('day_of_week', { ascending: true }).order('position', { ascending: true }),
+          supabase.from('school_years').select('id,name,start_date,end_date,is_current,is_summer').eq('school_id', schoolId).order('start_date', { ascending: false }),
         ]);
 
         if (classErr) throw classErr; if (subjErr) throw subjErr; if (lvlErr) throw lvlErr; if (tutorErr) throw tutorErr; if (itemErr) throw itemErr;
@@ -127,6 +156,9 @@ export default function ProgramPage() {
         setLevels((levelData ?? []) as LevelRow[]);
         setTutors((tutorData ?? []) as TutorRow[]);
         setProgramItems((itemData ?? []) as ProgramItemRow[]);
+        const years = (syData ?? []) as SchoolYearOption[];
+        setSchoolYears(years);
+        setSelectedYearId((prev) => prev || years.find((y) => y.is_current)?.id || years[0]?.id || '');
 
         try {
           const { data: csData, error: csErr } = await supabase.from('class_subjects').select('class_id, subject_id');
@@ -176,13 +208,14 @@ export default function ProgramPage() {
   // ── Add slot ──────────────────────────────────────────────────────────────
   const openAddSlotModal = (classId: string, day: string) => {
     const displayToday = formatDateDisplay(todayISO());
+    const startDate = mainYearForAdd ? formatDateDisplay(mainYearForAdd.start_date) : displayToday;
+    const endDate = mainYearForAdd ? formatDateDisplay(mainYearForAdd.end_date) : displayToday;
     setError(null);
-    setAddForm({ classId, subjectId: null, tutorId: null, day, startTime: '', endTime: '', startDate: displayToday, endDate: displayToday, room: '' });
+    setAddForm({ classId, subjectId: null, tutorId: null, day, startTime: '', endTime: '', startDate, endDate, room: '' });
     setAddModalOpen(true);
   };
 
   const closeAddSlotModal = () => { setAddModalOpen(false); setAddForm(emptyAddSlotForm); setSavingSlot(false); };
-
 
   const handleAddFieldChange = (field: keyof AddSlotForm) => (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const value = e.target.value;
@@ -349,6 +382,23 @@ export default function ProgramPage() {
         </div>
       ) : (
         <div className="flex flex-col gap-4">
+          {schoolYears.length > 0 && (
+            <div className="flex items-center justify-end gap-2">
+              <button type="button" onClick={() => setCloneModalOpen(true)}
+                className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition ${isDark ? 'border-slate-700/60 bg-slate-900/30 text-slate-300 hover:bg-slate-800/50' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}>
+                <CopyPlus className="h-3.5 w-3.5" />Αντιγραφή από άλλο έτος
+              </button>
+              <CalendarRange className={`h-3.5 w-3.5 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+              <StyledSelect
+                isDark={isDark} showChevron
+                value={selectedYearId}
+                onChange={setSelectedYearId}
+                className={`h-8 w-44 rounded-lg border pl-2 pr-7 text-xs outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 focus:border-[color:var(--color-accent)] ${isDark ? 'border-slate-700/70 bg-slate-900/60 text-slate-200' : 'border-slate-200 bg-slate-50 text-slate-700'}`}
+                options={schoolYears.map((y) => ({ value: y.id, label: y.name }))}
+              />
+            </div>
+          )}
+
           <ProgramClassesPanel
             classes={classes}
             filteredClasses={filteredClasses}
@@ -420,6 +470,20 @@ export default function ProgramPage() {
         isDark={isDark}
         onCancel={() => { if (!deletingSlot) setDeleteSlotTarget(null); }}
         onConfirm={handleConfirmDeleteSlot}
+      />
+
+      <ProgramCloneModal
+        open={cloneModalOpen}
+        schoolId={schoolId}
+        schoolYears={schoolYears}
+        isDark={isDark}
+        onClose={() => setCloneModalOpen(false)}
+        onCloned={async () => {
+          setCloneModalOpen(false);
+          if (!schoolId || !program) return;
+          const { data } = await supabase.from('program_items').select('*').eq('program_id', program.id).order('day_of_week', { ascending: true }).order('position', { ascending: true });
+          setProgramItems((data ?? []) as ProgramItemRow[]);
+        }}
       />
     </div>
   );
