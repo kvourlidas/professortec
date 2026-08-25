@@ -119,8 +119,18 @@ export function SlotFormFields({
       </div>
 
       <FormField label="ΑΙΘΟΥΣΑ" isDark={isDark}>
-        <FieldIcon icon={DoorOpen} isDark={isDark} />
-        <input value={room} onChange={onRoomChange} placeholder="π.χ. Αίθουσα 2" className={inputCls} />
+        <div className={`flex h-11 items-center gap-1.5 border-b transition-colors duration-200 ${
+          isDark ? 'border-white/15 focus-within:border-[color:var(--color-accent)]' : 'border-slate-300 focus-within:border-[color:var(--color-accent)]'
+        }`}>
+          <DoorOpen className={`h-3.5 w-3.5 shrink-0 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+          <span className={`shrink-0 text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Αίθουσα</span>
+          <input
+            value={room}
+            onChange={onRoomChange}
+            placeholder="π.χ. 2"
+            className={`h-full w-full bg-transparent text-sm outline-none ${isDark ? 'text-slate-100 placeholder-slate-600' : 'text-slate-800 placeholder-slate-400'}`}
+          />
+        </div>
       </FormField>
 
       <div className="grid gap-3 sm:grid-cols-2">

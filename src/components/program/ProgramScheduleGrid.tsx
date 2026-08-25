@@ -131,7 +131,7 @@ export default function ProgramScheduleGrid({
                           {item.room && (
                             <div className={`mt-0.5 flex items-center gap-0.5 text-[9px] truncate ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                               <DoorOpen className="h-2.5 w-2.5 shrink-0" />
-                              {item.room}
+                              Αίθουσα {item.room}
                             </div>
                           )}
                         </div>

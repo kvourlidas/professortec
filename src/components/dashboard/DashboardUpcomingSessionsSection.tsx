@@ -282,13 +282,20 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
               {details && <p className={`truncate text-[10px] ${sub}`}>{details}</p>}
               {s.room && (
                 <p className="mt-0.5 flex items-center gap-0.5 truncate text-[10px] font-medium" style={{ color: 'var(--color-accent)' }}>
-                  <DoorOpen className="h-3 w-3 shrink-0" />{s.room}
+                  <DoorOpen className="h-3 w-3 shrink-0" />Αίθουσα {s.room}
                 </p>
               )}
             </div>
-            <div className="shrink-0 text-right">
+            <div className="shrink-0 flex flex-col items-end gap-1">
               {s.sessionType === 'test' && <TestBadge />}
-              {!isGreen && <p className={`mt-0.5 text-[9px] font-semibold uppercase tracking-wide ${muted}`}>{dayLabel(s.date)}</p>}
+              {!isGreen && (
+                <span
+                  className="inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold tabular-nums"
+                  style={{ background: 'color-mix(in srgb, var(--color-accent) 16%, transparent)', color: 'var(--color-accent)' }}
+                >
+                  {formatDMY(s.date)}
+                </span>
+              )}
             </div>
           </div>
           {isGreen && (
@@ -307,8 +314,17 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
             {formatTime(s.startTime)}<span className={`mx-1 text-base font-normal ${muted}`}>–</span>{formatTime(s.endTime)}
           </p>
           <div className="shrink-0 text-right">
-            <p className={`text-[10px] font-bold uppercase tracking-wide ${isGreen ? (isDark ? 'text-emerald-300' : 'text-emerald-600') : muted}`}>{isGreen ? 'Τώρα' : dayLabel(s.date)}</p>
-            <p className={`text-[10px] tabular-nums ${muted}`}>{formatDMY(s.date)}</p>
+            {isGreen ? (
+              <p className={`text-[10px] font-bold uppercase tracking-wide ${isDark ? 'text-emerald-300' : 'text-emerald-600'}`}>Τώρα</p>
+            ) : (
+              <span
+                className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold tabular-nums"
+                style={{ background: 'color-mix(in srgb, var(--color-accent) 16%, transparent)', color: 'var(--color-accent)' }}
+              >
+                {formatDMY(s.date)}
+              </span>
+            )}
+            <p className={`mt-1 text-[10px] uppercase tracking-wide ${muted}`}>{dayLabel(s.date)}</p>
           </div>
         </div>
         <div className="mt-2 flex items-center gap-2 flex-wrap">
@@ -318,7 +334,7 @@ export default function DashboardUpcomingSessionsSection({ schoolId }: Props) {
         {details && <p className={`mt-0.5 text-[12px] ${sub}`}>{details}</p>}
         {s.room && (
           <p className="mt-1 flex items-center gap-1 text-[12px] font-medium" style={{ color: 'var(--color-accent)' }}>
-            <DoorOpen className="h-3.5 w-3.5 shrink-0" />{s.room}
+            <DoorOpen className="h-3.5 w-3.5 shrink-0" />Αίθουσα {s.room}
           </p>
         )}
         {isGreen && (

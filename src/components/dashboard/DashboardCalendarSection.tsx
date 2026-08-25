@@ -625,7 +625,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
         {kind === 'program' && room && (
           <div className="flex items-center gap-0.5 text-[11px] font-medium truncate" style={{ color: 'var(--color-accent)' }}>
             <DoorOpen className="h-3 w-3 shrink-0" />
-            {room}
+            Αίθουσα {room}
           </div>
         )}
       </div>
