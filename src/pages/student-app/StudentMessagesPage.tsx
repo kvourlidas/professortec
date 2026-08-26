@@ -276,50 +276,58 @@ export default function StudentMessagesPage() {
     scrollbarColor: isDark ? 'rgba(71,85,105,0.35) transparent' : 'rgba(203,213,225,0.7) transparent',
   };
 
+  // The sidebar is styled to match the app's eggplant nav sidebar exactly
+  // (same --color-sidebar-bg / hover / active tokens) so it stays visually
+  // constant across light/dark mode instead of switching to generic slate.
+  const sidebarScrollStyle: React.CSSProperties = {
+    scrollbarWidth: 'thin',
+    scrollbarColor: 'rgba(255,255,255,0.25) transparent',
+  };
+
   const divider = isDark ? 'border-slate-700/50' : 'border-slate-100';
 
   return (
     <div
-      className={`flex overflow-hidden ${isDark ? 'bg-slate-900' : 'bg-white'}`}
-      style={{ margin: '-24px -16px', height: 'calc(100vh - 0px)', maxHeight: '100vh' }}
+      className="flex overflow-hidden"
+      style={{
+        // Pulls past the page-shell wrapper's own padding (py-6/px-4) *and* the
+        // sticky TopBar's rendered height (pt-4 + h-20 + pb-2 = 6.5rem) so this
+        // panel starts at the very top of the scroll container instead of
+        // leaving a gap under the bar. The TopBar (position: sticky, z-20)
+        // then renders on top of it, which is the intended look here.
+        margin: 'calc(-6.5rem - 24px) -16px -24px',
+        height: '100vh',
+        background: 'color-mix(in srgb, var(--color-accent) 3%, var(--color-background))',
+      }}
     >
         {/* ── Sidebar ─────────────────────────────────────────────────── */}
-        <div className={[
-          'flex w-64 shrink-0 flex-col border-r',
-          divider,
-          isDark ? 'bg-[var(--color-sidebar)]' : 'bg-slate-50',
-        ].join(' ')}>
+        <div className="flex w-64 shrink-0 flex-col border-r" style={{ background: 'var(--color-sidebar-bg)', borderColor: 'rgba(255,255,255,0.12)' }}>
 
-          <div className={`border-b px-4 py-3 ${divider}`}>
-            <p className={`text-[11px] font-semibold uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+          <div className="border-b px-4 py-3" style={{ borderColor: 'rgba(255,255,255,0.12)' }}>
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-white/50">
               Μηνύματα
             </p>
           </div>
 
-          <div className={`border-b px-3 py-2 ${divider}`}>
+          <div className="border-b px-3 py-2" style={{ borderColor: 'rgba(255,255,255,0.12)' }}>
             <div className="relative">
-              <Search className={`pointer-events-none absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-white/40" />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Αναζήτηση…"
-                className={[
-                  'h-7 w-full rounded-lg pl-7 pr-3 text-[11px] outline-none transition',
-                  isDark
-                    ? 'border border-slate-700/60 bg-slate-900/60 text-slate-200 placeholder-slate-600 focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/20'
-                    : 'border border-slate-200 bg-white text-slate-700 placeholder-slate-400 focus:ring-1 focus:ring-[color:var(--color-accent)]/20',
-                ].join(' ')}
+                className="h-7 w-full rounded-lg border border-white/10 bg-white/5 pl-7 pr-3 text-[11px] text-white placeholder-white/40 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]"
               />
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto py-1" style={scrollStyle}>
+          <div className="flex-1 overflow-y-auto py-1" style={sidebarScrollStyle}>
             {loadingStudents ? (
               <div className="flex justify-center py-10">
-                <Loader2 className={`h-3.5 w-3.5 animate-spin ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-white/40" />
               </div>
             ) : sortedStudents.length === 0 ? (
-              <p className={`py-10 text-center text-[11px] ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>Δεν βρέθηκαν</p>
+              <p className="py-10 text-center text-[11px] text-white/40">Δεν βρέθηκαν</p>
             ) : (
               sortedStudents.map((s) => {
                 const active = activeStudent?.id === s.id;
@@ -330,35 +338,28 @@ export default function StudentMessagesPage() {
                   <button
                     key={s.id}
                     onClick={() => openStudentChat(s)}
-                    className={[
-                      'flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors',
-                      active
-                        ? isDark ? 'bg-white/[0.05]' : 'bg-white'
-                        : isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-white/80',
-                    ].join(' ')}
+                    className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors"
+                    style={active ? { background: 'var(--color-sidebar-active)' } : undefined}
+                    onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = 'var(--color-sidebar-hover)'; }}
+                    onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = 'transparent'; }}
                   >
                     <div
                       className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
                       style={
                         active
-                          ? { background: 'var(--color-accent)', color: isDark ? '#000' : '#fff' }
-                          : { background: isDark ? '#1e293b' : '#e2e8f0', color: isDark ? '#64748b' : '#94a3b8' }
+                          ? { background: 'var(--color-accent)', color: 'var(--color-on-accent)' }
+                          : { background: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.75)' }
                       }
                     >
                       {initial}
                     </div>
 
-                    <span className={[
-                      'flex-1 truncate text-[12px]',
-                      active
-                        ? isDark ? 'font-semibold text-slate-100' : 'font-semibold text-slate-800'
-                        : isDark ? 'text-slate-500' : 'text-slate-500',
-                    ].join(' ')}>
+                    <span className={`flex-1 truncate text-[12px] ${active ? 'font-semibold text-white' : 'text-white/60'}`}>
                       {s.full_name ?? '—'}
                     </span>
 
                     {unread > 0 && (
-                      <span className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-[color:var(--color-accent)] px-1 text-[9px] font-bold text-white">
+                      <span className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-[color:var(--color-accent)] px-1 text-[9px] font-bold" style={{ color: 'var(--color-on-accent)' }}>
                         {unread > 9 ? '9+' : unread}
                       </span>
                     )}
@@ -370,14 +371,14 @@ export default function StudentMessagesPage() {
         </div>
 
         {/* ── Chat panel ──────────────────────────────────────────────── */}
-        <div className={`flex flex-1 flex-col ${isDark ? 'bg-[var(--color-background)]' : 'bg-white'}`}>
+        <div className="flex flex-1 flex-col" style={{ background: 'color-mix(in srgb, var(--color-accent) 4%, var(--color-background))' }}>
 
           <div className={`flex h-11 shrink-0 items-center justify-between border-b px-5 ${divider}`}>
             {activeStudent ? (
               <div className="flex items-center gap-2.5">
                 <div
                   className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
-                  style={{ background: 'var(--color-accent)', color: isDark ? '#000' : '#fff' }}
+                  style={{ background: 'var(--color-accent)', color: 'var(--color-on-accent)' }}
                 >
                   {(activeStudent.full_name?.trim()?.[0] ?? 'Μ').toUpperCase()}
                 </div>
@@ -443,7 +444,7 @@ export default function StudentMessagesPage() {
                               {isLastInRun ? (
                                 <div
                                   className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold"
-                                  style={{ background: isDark ? '#1e293b' : '#e2e8f0', color: isDark ? '#94a3b8' : '#64748b' }}
+                                  style={{ background: 'color-mix(in srgb, var(--color-accent) 16%, transparent)', color: 'var(--color-accent)' }}
                                 >
                                   {(activeStudent?.full_name?.trim()?.[0] ?? 'Μ').toUpperCase()}
                                 </div>
@@ -458,15 +459,10 @@ export default function StudentMessagesPage() {
                               </span>
                             )}
                             <div
-                              className={[
-                                'max-w-[340px] break-words rounded-2xl px-3.5 py-2 text-[13px] leading-relaxed',
-                                mine
-                                  ? 'rounded-br-sm'
-                                  : isDark
-                                  ? 'rounded-bl-sm bg-slate-800 text-slate-200'
-                                  : 'rounded-bl-sm bg-slate-100 text-slate-700',
-                              ].join(' ')}
-                              style={mine ? { background: 'var(--color-accent)', color: isDark ? '#000' : '#fff' } : {}}
+                              className={`max-w-[340px] break-words rounded-2xl px-3.5 py-2 text-[13px] leading-relaxed ${mine ? 'rounded-br-sm' : 'rounded-bl-sm'}`}
+                              style={mine
+                                ? { background: 'var(--color-accent)', color: 'var(--color-on-accent)' }
+                                : { background: 'var(--color-butter)', color: 'var(--color-text-main)' }}
                             >
                               {m.body}
                             </div>
@@ -477,7 +473,7 @@ export default function StudentMessagesPage() {
                               {isLastInRun ? (
                                 <div
                                   className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold"
-                                  style={{ background: isDark ? '#1e293b' : '#e2e8f0', color: 'var(--color-accent)' }}
+                                  style={{ background: 'color-mix(in srgb, var(--color-accent) 16%, transparent)', color: 'var(--color-accent)' }}
                                 >
                                   {(schoolName?.trim()?.[0] ?? 'Σ').toUpperCase()}
                                 </div>
@@ -503,11 +499,14 @@ export default function StudentMessagesPage() {
                 disabled={!activeThread}
                 rows={2}
                 className={[
-                  'flex-1 resize-none rounded-xl px-3.5 py-2.5 text-[13px] leading-relaxed outline-none transition disabled:cursor-not-allowed disabled:opacity-30',
-                  isDark
-                    ? 'border border-slate-700/60 bg-slate-800/60 text-slate-100 placeholder-slate-500 focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/20'
-                    : 'border border-slate-200 bg-slate-50 text-slate-800 placeholder-slate-400 focus:ring-1 focus:ring-[color:var(--color-accent)]/20',
+                  'flex-1 resize-none rounded-xl border px-3.5 py-2.5 text-[13px] leading-relaxed outline-none transition disabled:cursor-not-allowed disabled:opacity-30',
+                  'focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]',
+                  isDark ? 'text-slate-100 placeholder-slate-500' : 'text-slate-800 placeholder-slate-400',
                 ].join(' ')}
+                style={{
+                  background: 'color-mix(in srgb, var(--color-accent) 7%, var(--color-input-bg))',
+                  borderColor: 'color-mix(in srgb, var(--color-accent) 20%, transparent)',
+                }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
@@ -518,11 +517,11 @@ export default function StudentMessagesPage() {
               <div className="relative shrink-0" ref={emojiPickerRef}>
                 {showEmojiPicker && (
                   <div
-                    className={[
-                      'absolute bottom-full right-0 mb-2 z-50 rounded-xl p-2 shadow-xl overflow-y-auto',
-                      isDark ? 'bg-slate-900 border border-slate-700/50' : 'bg-white border border-slate-200',
-                    ].join(' ')}
-                    style={{ width: 292, maxHeight: 260, overflowX: 'hidden', display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 2 }}
+                    className={`absolute bottom-full right-0 mb-2 z-50 rounded-xl border p-2 shadow-xl overflow-y-auto ${isDark ? 'bg-slate-900' : 'bg-white'}`}
+                    style={{
+                      width: 292, maxHeight: 260, overflowX: 'hidden', display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: 2,
+                      borderColor: `color-mix(in srgb, var(--color-accent) ${isDark ? 20 : 15}%, transparent)`,
+                    }}
                   >
                     {EMOJIS.map((emoji) => (
                       <button
@@ -552,12 +551,12 @@ export default function StudentMessagesPage() {
                 disabled={!canSend}
                 className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
                 style={{
-                  background: canSend ? 'var(--color-accent)' : isDark ? '#1e293b' : '#e2e8f0',
+                  background: canSend ? 'var(--color-accent)' : 'color-mix(in srgb, var(--color-accent) 12%, transparent)',
                 }}
               >
                 {sending
-                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" style={{ color: isDark ? '#475569' : '#94a3b8' }} />
-                  : <Send className="h-3.5 w-3.5" style={{ color: canSend ? (isDark ? '#000' : '#fff') : isDark ? '#334155' : '#94a3b8' }} />
+                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" style={{ color: 'var(--color-accent)' }} />
+                  : <Send className="h-3.5 w-3.5" style={{ color: canSend ? 'var(--color-on-accent)' : 'var(--color-accent)' }} />
                 }
               </button>
             </div>

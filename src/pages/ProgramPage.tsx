@@ -13,8 +13,9 @@ import ProgramClassesPanel from '../components/program/ProgramClassesPanel';
 import ProgramScheduleGrid from '../components/program/ProgramScheduleGrid';
 import StyledSelect from '../components/ui/StyledSelect';
 import ProgramCloneModal from '../components/program/ProgramCloneModal';
+import { isSchoolYearCurrent } from '../components/school-info/types';
 
-type SchoolYearOption = { id: string; name: string; start_date: string; end_date: string; is_current: boolean; is_summer: boolean };
+type SchoolYearOption = { id: string; name: string; start_date: string; end_date: string; is_summer: boolean };
 
 // ── Edge function helper ──────────────────────────────────────────────────────
 async function callEdgeFunction(name: string, body: Record<string, unknown>) {
@@ -85,7 +86,7 @@ export default function ProgramPage() {
   // Target year used to auto-fill a *new* slot's date range — always the current main
   // (non-summer) academic year, independent of whatever the page's view-filter shows.
   const mainYearForAdd = useMemo(() => {
-    return schoolYears.find((y) => y.is_current && !y.is_summer)
+    return schoolYears.find((y) => isSchoolYearCurrent(y) && !y.is_summer)
       ?? schoolYears.find((y) => !y.is_summer)
       ?? schoolYears[0]
       ?? null;
@@ -146,7 +147,7 @@ export default function ProgramPage() {
           supabase.from('levels').select('id, school_id, name').eq('school_id', schoolId).order('name', { ascending: true }),
           supabase.from('tutors').select('id, school_id, full_name').eq('school_id', schoolId).is('deleted_at', null).order('full_name', { ascending: true }),
           supabase.from('program_items').select('*').eq('program_id', activeProgram.id).order('day_of_week', { ascending: true }).order('position', { ascending: true }),
-          supabase.from('school_years').select('id,name,start_date,end_date,is_current,is_summer').eq('school_id', schoolId).order('start_date', { ascending: false }),
+          supabase.from('school_years').select('id,name,start_date,end_date,is_summer').eq('school_id', schoolId).order('start_date', { ascending: false }),
         ]);
 
         if (classErr) throw classErr; if (subjErr) throw subjErr; if (lvlErr) throw lvlErr; if (tutorErr) throw tutorErr; if (itemErr) throw itemErr;
@@ -158,7 +159,7 @@ export default function ProgramPage() {
         setProgramItems((itemData ?? []) as ProgramItemRow[]);
         const years = (syData ?? []) as SchoolYearOption[];
         setSchoolYears(years);
-        setSelectedYearId((prev) => prev || years.find((y) => y.is_current)?.id || years[0]?.id || '');
+        setSelectedYearId((prev) => prev || years.find((y) => isSchoolYearCurrent(y))?.id || years[0]?.id || '');
 
         try {
           const { data: csData, error: csErr } = await supabase.from('class_subjects').select('class_id, subject_id');

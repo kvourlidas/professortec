@@ -12,6 +12,12 @@ export function weekdayOf(iso: string): string {
   return WEEKDAYS[new Date(y, m - 1, d).getDay()];
 }
 
+export function addDaysISO(iso: string, delta: number): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  const date = new Date(y, m - 1, d + delta);
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+}
+
 export function formatDateDisplay(iso: string | null): string {
   if (!iso) return '—';
   const [y, m, d] = iso.split('-');

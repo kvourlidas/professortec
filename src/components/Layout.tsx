@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { navItems, idiaiterouNavItems, type NavItem } from '../_nav';
 import { ChevronRight, ChevronLeft, Building2, User, HelpCircle } from 'lucide-react';
-import edraLogo from '../assets/edra-logo.png';
+import edraLogo from '../assets/logoedra.png';
 import logoMark from '../assets/edra-webtab.png';
 import TopBar from './TopBar.tsx';
 

@@ -3,7 +3,7 @@ import { CopyPlus, X, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import StyledSelect from '../ui/StyledSelect';
 
-type SchoolYearOption = { id: string; name: string; start_date: string; end_date: string; is_current: boolean; is_summer: boolean };
+type SchoolYearOption = { id: string; name: string; start_date: string; end_date: string; is_summer: boolean };
 
 interface ProgramCloneModalProps {
   open: boolean;

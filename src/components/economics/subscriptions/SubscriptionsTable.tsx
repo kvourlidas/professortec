@@ -17,12 +17,12 @@ interface Props {
   onOpenAssign: () => void;
   onGoToStudent: (row: StudentViewRow) => void;
   onRenew: (row: StudentViewRow) => void;
-  onDelete: (row: StudentViewRow) => void;
+  onCancel: (row: StudentViewRow) => void;
 }
 
 export function SubscriptionsTable({
   rows, loading, totalCount, page, pageCount, showingFrom, showingTo, isDark, packageById,
-  variant, onPageChange, onOpenAssign, onGoToStudent, onRenew, onDelete,
+  variant, onPageChange, onOpenAssign, onGoToStudent, onRenew, onCancel,
 }: Props) {
   const isExpiredVariant = variant === 'expired';
 
@@ -99,7 +99,7 @@ export function SubscriptionsTable({
                   packageById={packageById}
                   onGoToStudent={onGoToStudent}
                   onRenew={onRenew}
-                  onDelete={onDelete}
+                  onCancel={onCancel}
                 />
               ))}
             </tbody>

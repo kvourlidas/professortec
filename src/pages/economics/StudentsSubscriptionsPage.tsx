@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSubscriptionsPage } from '../../components/economics/subscriptions/useSubscriptionsPage';
 import { SubscriptionsTable } from '../../components/economics/subscriptions/SubscriptionsTable';
 import { AssignRenewModal } from '../../components/economics/subscriptions/AssignRenewModal';
-import { DeleteSubscriptionModal } from '../../components/economics/subscriptions/DeleteSubscriptionModal';
+import { CancelSubscriptionModal } from '../../components/economics/subscriptions/CancelSubscriptionModal';
 import type { StudentViewRow } from '../../components/economics/subscriptions/types';
 
 export default function StudentsSubscriptionsPage() {
@@ -59,7 +59,7 @@ export default function StudentsSubscriptionsPage() {
           onOpenAssign={p.openAssign}
           onGoToStudent={goToStudent}
           onRenew={p.openRenew}
-          onDelete={p.setDeleteTarget}
+          onCancel={p.setCancelTarget}
         />
 
         {/* Assign / Renew modal */}
@@ -117,13 +117,13 @@ export default function StudentsSubscriptionsPage() {
           onSubmit={p.submitAssign}
         />
 
-        {/* Delete modal */}
-        <DeleteSubscriptionModal
-          target={p.deleteTarget}
-          deleting={p.deleting}
+        {/* Cancel subscription modal */}
+        <CancelSubscriptionModal
+          target={p.cancelTarget}
+          cancelling={p.cancelling}
           isDark={p.isDark}
-          onCancel={() => p.setDeleteTarget(null)}
-          onConfirm={p.confirmDelete}
+          onCancel={() => p.setCancelTarget(null)}
+          onConfirm={p.confirmCancel}
         />
 
       </div>

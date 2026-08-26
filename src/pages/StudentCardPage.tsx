@@ -7,7 +7,7 @@ import {
   Users, BookOpen, UserCheck, ChevronLeft, ChevronRight,
   GraduationCap, TrendingUp, Wallet, Receipt, BarChart3, HandCoins,
   Banknote, CreditCard, Landmark, Tag, Ban, Plus, Trash2,
-  Copy, Check, Award, Package, AlertTriangle, AlertCircle, X,
+  Copy, Check, Award, Package, AlertTriangle, AlertCircle, X, ClipboardCheck,
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient.ts';
 import { useAuth } from '../auth.tsx';
@@ -24,6 +24,7 @@ import type { StudentGradeRow } from '../components/grades/types.ts';
 import { StudentSlotModal } from '../components/students/StudentSlotModal';
 import { computeAccruedCharges, type ChargeOverrideRow } from '../components/students/chargeUtils';
 import { AssignRenewModal } from '../components/economics/subscriptions/AssignRenewModal';
+import { isSchoolYearCurrent } from '../components/school-info/types';
 import type { PackageRow, DiscountScope } from '../components/economics/subscriptions/types';
 import {
   isoToDisplayDate, displayToISODate, monthKeyList, monthKeyToRange, pad2, parseMoney, resolvePackageType, round2, todayLocalISODate,
@@ -58,7 +59,10 @@ const DAY_LABEL: Record<string, string> = {
 
 type TrimesterGradeRow = { id: string; student_id: string; school_year_id: string; trimester: 1 | 2 | 3; grade: number | null };
 type TrimesterInputs = { 1: string; 2: string; 3: string };
-type SchoolYearOption = { id: string; name: string; is_current: boolean };
+type SchoolYearOption = { id: string; name: string; start_date: string; end_date: string };
+
+type AttendanceMode = 'month' | 'year' | 'total';
+type AttendanceSummaryRow = { status: 'present' | 'absent'; session_date: string };
 
 type PaymentRow = { id: string; subscription_id: string; amount: number; created_at: string | null; payment_method?: string | null; cancelled_at?: string | null; notes?: string | null };
 
@@ -490,10 +494,10 @@ function DashCard({ title, icon, isDark, onEdit, editing, onAdd, children }: {
 
 // ── Stat tile ──────────────────────────────────────────────────────────────
 
-function StatTile({ label, value, color, isDark, solid }: { label: string; value: string; color: 'green' | 'red' | 'blue' | 'neutral'; isDark: boolean; solid?: boolean }) {
-  const bg = { green: isDark ? 'border-emerald-500/30 bg-emerald-950/30' : 'border-emerald-200 bg-emerald-50', red: isDark ? 'border-rose-500/30 bg-rose-950/30' : 'border-rose-200 bg-rose-50', blue: isDark ? 'border-blue-500/30 bg-blue-950/20' : 'border-blue-200 bg-blue-50', neutral: isDark ? 'border-slate-700/50 bg-slate-900/30' : 'border-slate-200 bg-slate-50' };
-  const vc = { green: isDark ? 'text-emerald-300' : 'text-emerald-700', red: isDark ? 'text-rose-300' : 'text-rose-700', blue: isDark ? 'text-blue-300' : 'text-blue-700', neutral: isDark ? 'text-slate-200' : 'text-slate-700' };
-  const solidBg = { green: 'border-emerald-600 bg-emerald-600', red: 'border-rose-600 bg-rose-600', blue: 'border-blue-600 bg-blue-600', neutral: 'border-slate-600 bg-slate-600' };
+function StatTile({ label, value, color, isDark, solid }: { label: string; value: string; color: 'green' | 'red' | 'blue' | 'purple' | 'neutral'; isDark: boolean; solid?: boolean }) {
+  const bg = { green: isDark ? 'border-emerald-500/30 bg-emerald-950/30' : 'border-emerald-200 bg-emerald-50', red: isDark ? 'border-rose-500/30 bg-rose-950/30' : 'border-rose-200 bg-rose-50', blue: isDark ? 'border-blue-500/30 bg-blue-950/20' : 'border-blue-200 bg-blue-50', purple: isDark ? 'border-purple-500/30 bg-purple-950/20' : 'border-purple-200 bg-purple-50', neutral: isDark ? 'border-slate-700/50 bg-slate-900/30' : 'border-slate-200 bg-slate-50' };
+  const vc = { green: isDark ? 'text-emerald-300' : 'text-emerald-700', red: isDark ? 'text-rose-300' : 'text-rose-700', blue: isDark ? 'text-blue-300' : 'text-blue-700', purple: isDark ? 'text-purple-300' : 'text-purple-700', neutral: isDark ? 'text-slate-200' : 'text-slate-700' };
+  const solidBg = { green: 'border-emerald-600 bg-emerald-600', red: 'border-rose-600 bg-rose-600', blue: 'border-blue-600 bg-blue-600', purple: 'border-purple-600 bg-purple-600', neutral: 'border-slate-600 bg-slate-600' };
   if (solid) {
     return (
       <div className={`rounded-xl border px-3 py-2 ${solidBg[color]}`}>
@@ -547,6 +551,11 @@ export default function StudentCardPage() {
   const [trimesterInputs, setTrimesterInputs] = useState<TrimesterInputs>({ 1: '', 2: '', 3: '' });
   const [trimesterDirty, setTrimesterDirty] = useState(false);
   const [trimesterSaving, setTrimesterSaving] = useState(false);
+  const [attendanceMode, setAttendanceMode] = useState<AttendanceMode>('month');
+  const [attendanceMonthKey, setAttendanceMonthKey] = useState(() => { const d = new Date(); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`; });
+  const [attendanceYearId, setAttendanceYearId] = useState<string | null>(null);
+  const [attendanceRows, setAttendanceRows] = useState<AttendanceSummaryRow[]>([]);
+  const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -952,12 +961,13 @@ export default function StudentCardPage() {
     const loadSchoolYears = async () => {
       const { data } = await supabase
         .from('school_years')
-        .select('id, name, is_current')
+        .select('id, name, start_date, end_date')
         .eq('school_id', schoolId)
         .order('start_date', { ascending: false });
       const years = (data ?? []) as SchoolYearOption[];
       setSchoolYears(years);
-      setTrimesterYearId((prev) => prev ?? years.find((y) => y.is_current)?.id ?? years[0]?.id ?? null);
+      setTrimesterYearId((prev) => prev ?? years.find((y) => isSchoolYearCurrent(y))?.id ?? years[0]?.id ?? null);
+      setAttendanceYearId((prev) => prev ?? years.find((y) => isSchoolYearCurrent(y))?.id ?? years[0]?.id ?? null);
     };
     loadSchoolYears();
   }, [schoolId]);
@@ -980,6 +990,41 @@ export default function StudentCardPage() {
     };
     loadTrimester();
   }, [id, schoolId, trimesterYearId]);
+
+  useEffect(() => {
+    if (!id || !schoolId) return;
+    if (attendanceMode === 'year' && !attendanceYearId) { setAttendanceRows([]); return; }
+    let cancelled = false;
+    const loadAttendance = async () => {
+      setAttendanceLoading(true);
+      let query = supabase.from('class_attendance').select('status, session_date')
+        .eq('school_id', schoolId).eq('student_id', id);
+      if (attendanceMode === 'month') {
+        const range = monthKeyToRange(attendanceMonthKey);
+        if (range) query = query.gte('session_date', range.startISO).lte('session_date', range.endISO);
+      } else if (attendanceMode === 'year') {
+        const year = schoolYears.find(y => y.id === attendanceYearId);
+        if (year) query = query.gte('session_date', year.start_date).lte('session_date', year.end_date);
+      }
+      const { data, error } = await query;
+      if (cancelled) return;
+      if (error) { console.error('Error loading attendance summary', error); setAttendanceRows([]); }
+      else setAttendanceRows((data ?? []) as AttendanceSummaryRow[]);
+      setAttendanceLoading(false);
+    };
+    loadAttendance();
+    return () => { cancelled = true; };
+  }, [id, schoolId, attendanceMode, attendanceMonthKey, attendanceYearId, schoolYears]);
+
+  const shiftAttendanceMonth = (delta: number) => {
+    setAttendanceMonthKey(k => {
+      const [yStr, mStr] = k.split('-');
+      let y = Number(yStr), m = Number(mStr) + delta;
+      while (m < 1) { m += 12; y -= 1; }
+      while (m > 12) { m -= 12; y += 1; }
+      return `${y}-${pad2(m)}`;
+    });
+  };
 
   const saveTrimesterGrades = async () => {
     if (!schoolId || !id || !trimesterYearId) return;
@@ -1787,7 +1832,7 @@ export default function StudentCardPage() {
                 {/* Stats + independent pay button */}
                 <div className="flex items-stretch gap-3">
                   <div className="grid flex-1 grid-cols-3 gap-2">
-                    <StatTile label="Χρεωση" value={`${totalChargedCombined.toFixed(2)}€`} color="blue" isDark={isDark} solid />
+                    <StatTile label="Συνολική Χρέωση" value={`${totalChargedCombined.toFixed(2)}€`} color="purple" isDark={isDark} solid />
                     <StatTile label="Πληρωμενο" value={`${totalPaidCombined.toFixed(2)}€`} color="green" isDark={isDark} solid />
                     <StatTile label="Υπολοιπο" value={`${totalBalanceCombined.toFixed(2)}€`} color={totalBalanceCombined > 0 ? 'red' : 'green'} isDark={isDark} solid />
                   </div>
@@ -2153,6 +2198,85 @@ export default function StudentCardPage() {
                 </div>
               </>
             )}
+          </DashCard>
+
+          {/* ── Attendance ── */}
+          <DashCard title="Παρουσιολόγιο" icon={<ClipboardCheck className="h-3.5 w-3.5" />} isDark={isDark}>
+            <div className="mb-3 flex flex-wrap items-center gap-1.5">
+              {([['month', 'Μήνας'], ['year', 'Σχολικό Έτος'], ['total', 'Σύνολο']] as const).map(([mode, label]) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setAttendanceMode(mode)}
+                  className={`rounded-lg border px-2.5 py-1 text-[11px] font-medium transition ${
+                    attendanceMode === mode
+                      ? 'text-white'
+                      : isDark ? 'border-slate-700 bg-slate-800/60 text-slate-300 hover:bg-slate-700/60' : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
+                  }`}
+                  style={attendanceMode === mode ? { background: 'var(--color-accent)', borderColor: 'var(--color-accent)' } : undefined}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {attendanceMode === 'month' && (
+              <div className={`mb-3 flex items-center justify-center gap-3 rounded-xl border py-1.5 ${isDark ? 'border-slate-700/60 bg-slate-900/40' : 'border-slate-200 bg-slate-50'}`}>
+                <button type="button" onClick={() => shiftAttendanceMonth(-1)}
+                  className={`flex h-6 w-6 items-center justify-center rounded-lg transition ${isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-slate-200' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}>
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </button>
+                <span className={`min-w-[9rem] text-center text-xs font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                  {MONTH_NAMES[Number(attendanceMonthKey.split('-')[1]) - 1]} {attendanceMonthKey.split('-')[0]}
+                </span>
+                <button type="button" onClick={() => shiftAttendanceMonth(1)}
+                  className={`flex h-6 w-6 items-center justify-center rounded-lg transition ${isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-slate-200' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'}`}>
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
+
+            {attendanceMode === 'year' && (
+              schoolYears.length > 0 ? (
+                <div className="mb-3">
+                  <StyledSelect
+                    isDark={isDark} showChevron
+                    value={attendanceYearId ?? ''}
+                    onChange={setAttendanceYearId}
+                    className={`h-8 w-full rounded-lg border pl-2 pr-7 text-xs outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 focus:border-[color:var(--color-accent)] ${isDark ? 'border-slate-700/70 bg-slate-900/60 text-slate-200' : 'border-slate-200 bg-slate-50 text-slate-700'}`}
+                    options={schoolYears.map(y => ({ value: y.id, label: y.name }))}
+                  />
+                </div>
+              ) : (
+                <p className={`mb-3 text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                  Δεν έχει οριστεί σχολικό έτος (Πληροφορίες Σχολείου).
+                </p>
+              )
+            )}
+
+            {(() => {
+              if (attendanceLoading) {
+                return (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className={`h-5 w-5 animate-spin ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+                  </div>
+                );
+              }
+              const presentCount = attendanceRows.filter(r => r.status === 'present').length;
+              const absentCount = attendanceRows.filter(r => r.status === 'absent').length;
+              const total = presentCount + absentCount;
+              const pct = total > 0 ? (presentCount / total) * 100 : null;
+              if (total === 0) {
+                return <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Δεν υπάρχουν καταχωρημένες παρουσίες για αυτήν την περίοδο.</p>;
+              }
+              return (
+                <div className="grid grid-cols-3 gap-2">
+                  <StatTile label="Παρουσιες" value={String(presentCount)} color="green" isDark={isDark} />
+                  <StatTile label="Απουσιες" value={String(absentCount)} color="red" isDark={isDark} />
+                  <StatTile label="Ποσοστο Παρουσιας" value={pct !== null ? `${pct.toFixed(0)}%` : '—'} color="blue" isDark={isDark} />
+                </div>
+              );
+            })()}
           </DashCard>
 
         </div>

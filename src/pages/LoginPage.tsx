@@ -12,7 +12,7 @@ import {
   MapPin, Phone, ArrowLeft, CalendarDays,
   ClipboardList, Wallet, Users, LogIn, UserPlus,
 } from 'lucide-react';
-import edraLogo from '../assets/edra-logo.png';
+import edraLogo from '../assets/logoedra.png';
 import FolderTabs from '../components/ui/FolderTabs';
 
 type Mode = 'login' | 'signup';
@@ -162,7 +162,7 @@ export default function LoginPage() {
         <div className="pointer-events-none absolute -left-20 bottom-0 h-64 w-64 rounded-full" style={{ background: 'rgba(255,255,255,0.06)' }} />
 
         <div className="relative z-10 hidden lg:block">
-          <img src={edraLogo} alt="Edra" className="h-28 w-auto object-contain xl:h-36" draggable={false} />
+          <img src={edraLogo} alt="Edra" className="h-40 w-auto object-contain xl:h-52" draggable={false} />
           <h2 className="mt-9 text-[34px] font-bold leading-tight text-white xl:text-[40px]">
             Η διαχείριση του φροντιστηρίου σου, απλοποιημένη.
           </h2>

@@ -87,7 +87,7 @@ function ClassCard({
             <p className={`text-sm font-semibold truncate ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>{cls.title}</p>
             {flaggedCount > 0 && (
               <span
-                className={`flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold ${isDark ? 'border-amber-500/40 bg-amber-950/30 text-amber-300' : 'border-amber-200 bg-amber-50 text-amber-700'}`}
+                className={`flex shrink-0 items-center gap-1 text-[10px] font-semibold ${isDark ? 'text-amber-300' : 'text-amber-700'}`}
                 title={`${flaggedCount} ${flaggedCount === 1 ? 'μαθητής χωρίς' : 'μαθητές χωρίς'} ενεργή συνδρομή`}>
                 <AlertTriangle className="h-2.5 w-2.5" />
                 {flaggedCount}

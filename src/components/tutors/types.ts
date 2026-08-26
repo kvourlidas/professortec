@@ -3,6 +3,7 @@ export type TutorRow = {
   school_id: string;
   full_name: string;
   date_of_birth: string | null;
+  hire_date: string | null;
   afm: string | null;
   phone: string | null;
   email: string | null;
@@ -20,6 +21,7 @@ export type ModalMode = 'create' | 'edit';
 export type TutorFormState = {
   fullName: string;
   dateOfBirth: string;
+  hireDate: string;
   afm: string;
   phone: string;
   email: string;
@@ -29,6 +31,7 @@ export type TutorFormState = {
 export const emptyForm: TutorFormState = {
   fullName: '',
   dateOfBirth: '',
+  hireDate: '',
   afm: '',
   phone: '',
   email: '',
@@ -36,4 +39,4 @@ export const emptyForm: TutorFormState = {
   notes: '',
 };
 export const TUTOR_SELECT =
-  'id, school_id, full_name, date_of_birth, afm, phone, email, iban, notes, created_at';
+  'id, school_id, full_name, date_of_birth, hire_date, afm, phone, email, iban, notes, created_at';

@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { ArrowUpDown, Check, ChevronDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { triggerCls } from '../students/dropdownTriggerCls';
 
-export type TutorSortField = 'full_name' | 'date_of_birth' | 'afm' | 'phone' | 'email';
+export type TutorSortField = 'full_name' | 'date_of_birth' | 'hire_date' | 'afm' | 'phone' | 'email';
 export type SortDir = 'asc' | 'desc';
 export interface TutorSortState { field: TutorSortField; dir: SortDir; }
 export const DEFAULT_TUTOR_SORT: TutorSortState = { field: 'full_name', dir: 'asc' };
@@ -14,6 +14,7 @@ const SORT_OPTIONS: { field: TutorSortField; label: string; group: string }[] = 
   { field: 'email',         label: 'Email',           group: 'Αλφαβητικά' },
   { field: 'phone',         label: 'Τηλέφωνο',       group: 'Αλφαβητικά' },
   { field: 'date_of_birth', label: 'Ημ. Γέννησης',   group: 'Χρονολογικά' },
+  { field: 'hire_date',     label: 'Ημ. Πρόσληψης',  group: 'Χρονολογικά' },
 ];
 
 const GROUPS = ['Αλφαβητικά', 'Χρονολογικά'];
@@ -36,7 +37,7 @@ export default function TutorSortDropdown({ sort, onChange, isDark }: Props) {
     if (sort.field === field) {
       onChange({ field, dir: sort.dir === 'asc' ? 'desc' : 'asc' });
     } else {
-      const defaultDir: SortDir = field === 'date_of_birth' ? 'desc' : 'asc';
+      const defaultDir: SortDir = field === 'date_of_birth' || field === 'hire_date' ? 'desc' : 'asc';
       onChange({ field, dir: defaultDir });
     }
     setOpen(false);

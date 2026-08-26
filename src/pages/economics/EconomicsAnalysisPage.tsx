@@ -18,6 +18,7 @@ import type { SeriesId } from '../../components/economics/analysis/MultiSeriesCh
 import { IncomeExpenseDonut } from '../../components/economics/analysis/IncomeExpenseDonut';
 import { EconomicsFilterBar } from '../../components/economics/analysis/EconomicsFilterBar';
 import { EconomicsExtraExpenseForm } from '../../components/economics/analysis/EconomicsExtraExpenseForm';
+import { isSchoolYearCurrent } from '../../components/school-info/types';
 import { EconomicsEditExpenseModal } from '../../components/economics/analysis/EconomicsEditExpenseModal';
 import { EconomicsCategoryBreakdown } from '../../components/economics/analysis/EconomicsCategoryBreakdown';
 import { EconomicsTransactionsCard } from '../../components/economics/analysis/EconomicsTransactionsCard';
@@ -58,7 +59,7 @@ export default function EconomicsAnalysisPage() {
 
   const [rangeStart, setRangeStart] = useState(startOfMonthISO(currentYear, currentMonth));
   const [rangeEnd, setRangeEnd] = useState(isoToday());
-  const [schoolYears, setSchoolYears] = useState<{ id: string; name: string; start_date: string; end_date: string; is_current: boolean }[]>([]);
+  const [schoolYears, setSchoolYears] = useState<{ id: string; name: string; start_date: string; end_date: string }[]>([]);
   const [schoolYearId, setSchoolYearId] = useState('');
   const [expName, setExpName] = useState('');
   const [expAmount, setExpAmount] = useState<number>(0);
@@ -102,11 +103,11 @@ export default function EconomicsAnalysisPage() {
 
   useEffect(() => {
     if (!schoolId) return;
-    supabase.from('school_years').select('id,name,start_date,end_date,is_current').eq('school_id', schoolId).order('start_date', { ascending: false })
+    supabase.from('school_years').select('id,name,start_date,end_date').eq('school_id', schoolId).order('start_date', { ascending: false })
       .then(({ data }) => {
         const years = (data ?? []) as typeof schoolYears;
         setSchoolYears(years);
-        setSchoolYearId((prev) => prev || years.find(y => y.is_current)?.id || years[0]?.id || '');
+        setSchoolYearId((prev) => prev || years.find(y => isSchoolYearCurrent(y))?.id || years[0]?.id || '');
       });
   }, [schoolId]);
 

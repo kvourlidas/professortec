@@ -1,4 +1,4 @@
-import { AlertCircle, CalendarDays, IdCard, RefreshCw, Tag, Trash2 } from 'lucide-react';
+import { AlertCircle, Ban, CalendarDays, IdCard, RefreshCw, Tag } from 'lucide-react';
 import { CURRENCY_SYMBOL, typeColors } from './constants';
 import { TypeIcon } from './TypeIcon';
 import { formatMonthRangeGreek, money, monthKeyList, packageTypeFromName, periodSummary, resolvePackageType, round2 } from './utils';
@@ -11,10 +11,10 @@ interface Props {
   packageById: Map<string, PackageRow>;
   onGoToStudent: (row: StudentViewRow) => void;
   onRenew: (row: StudentViewRow) => void;
-  onDelete: (row: StudentViewRow) => void;
+  onCancel: (row: StudentViewRow) => void;
 }
 
-export function SubscriptionTableRow({ row, rowNumber, isDark, packageById, onGoToStudent, onRenew, onDelete }: Props) {
+export function SubscriptionTableRow({ row, rowNumber, isDark, packageById, onGoToStudent, onRenew, onCancel }: Props) {
   const sub        = row.sub!;
   const pkgName    = sub.package_name ?? '';
   const pkg        = sub.package_id ? packageById.get(sub.package_id) : undefined;
@@ -204,10 +204,10 @@ export function SubscriptionTableRow({ row, rowNumber, isDark, packageById, onGo
             <IdCard className="h-3.5 w-3.5" />
             Καρτέλα μαθητή
           </button>
-          <button type="button" onClick={() => onDelete(row)}
+          <button type="button" onClick={() => onCancel(row)}
             className={`flex h-7 w-7 items-center justify-center rounded-lg transition ${isDark ? 'text-slate-500 hover:bg-red-500/10 hover:text-red-400' : 'text-slate-400 hover:bg-red-50 hover:text-red-500'}`}
-            title="Διαγραφή">
-            <Trash2 className="h-3.5 w-3.5" />
+            title="Ακύρωση συνδρομής">
+            <Ban className="h-3.5 w-3.5" />
           </button>
         </div>
       </td>

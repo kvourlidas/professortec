@@ -58,6 +58,7 @@ export default function TutorFormModal({
       setForm({
         fullName: editingTutor.full_name ?? '',
         dateOfBirth: editingTutor.date_of_birth ? isoToDisplay(editingTutor.date_of_birth) : '',
+        hireDate: editingTutor.hire_date ? isoToDisplay(editingTutor.hire_date) : '',
         afm: editingTutor.afm ?? '',
         phone: editingTutor.phone ?? '',
         email: editingTutor.email ?? '',
@@ -140,6 +141,9 @@ export default function TutorFormModal({
               </FormField>
               <FormField label="Ημερομηνια γεννησης" isDark={isDark}>
                 <DatePickerField label="" value={form.dateOfBirth} onChange={(value) => setForm((prev) => ({ ...prev, dateOfBirth: value }))} placeholder="π.χ. 24/12/1985" id="tutor-dob" variant="underline" />
+              </FormField>
+              <FormField label="Ημερομηνια προσληψης" isDark={isDark}>
+                <DatePickerField label="" value={form.hireDate} onChange={(value) => setForm((prev) => ({ ...prev, hireDate: value }))} placeholder="π.χ. 01/09/2024" id="tutor-hire-date" variant="underline" />
               </FormField>
               <FormField label="ΑΦΜ" isDark={isDark}>
                 <FieldIcon icon={Hash} isDark={isDark} />

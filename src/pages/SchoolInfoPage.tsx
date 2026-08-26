@@ -4,7 +4,7 @@ import type { ChangeEvent, FormEvent } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
 import { useToast } from '../context/ToastContext';
-import { Building2, MapPin, Phone, Mail, Loader2, Pencil, X } from 'lucide-react';
+import { Building2, MapPin, Phone, Mail, Calendar, Loader2, Pencil, X } from 'lucide-react';
 import type { SchoolForm, SchoolRow } from '../components/school-info/types';
 import { emptyForm } from '../components/school-info/types';
 import LoginCredentialsSection from '../components/school-info/LoginCredentialsSection';
@@ -31,6 +31,7 @@ export default function SchoolInfoPage() {
 
   const [form, setForm] = useState<SchoolForm>(emptyForm);
   const [saved, setSaved] = useState<SchoolForm>(emptyForm);
+  const [signupDate, setSignupDate] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -43,7 +44,7 @@ export default function SchoolInfoPage() {
       setLoading(true);
       const { data, error } = await supabase
         .from('schools')
-        .select('id, name, address, phone, email')
+        .select('id, name, address, phone, email, created_at')
         .eq('id', schoolId)
         .maybeSingle();
       if (!error && data) {
@@ -56,6 +57,7 @@ export default function SchoolInfoPage() {
         };
         setForm(loaded);
         setSaved(loaded);
+        setSignupDate(row.created_at ?? null);
       }
       setLoading(false);
     };
@@ -106,6 +108,12 @@ export default function SchoolInfoPage() {
           <div>
             <h1 className="text-sm font-semibold" style={{ color: 'var(--color-text-main)' }}>Πληροφορίες Σχολείου</h1>
             <p className="mt-0.5 text-xs" style={{ color: 'var(--color-text-muted)' }}>Στοιχεία επικοινωνίας του φροντιστηρίου</p>
+            {signupDate && (
+              <p className="mt-1.5 flex items-center gap-1.5 text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                <Calendar className="h-3.5 w-3.5 opacity-60" />
+                Εγγραφή στο σύστημα: {new Date(signupDate).toLocaleDateString('el-GR', { day: 'numeric', month: 'long', year: 'numeric' })}
+              </p>
+            )}
           </div>
           {!loading && !editing && (
             <button

@@ -5,6 +5,7 @@ import type { DeleteTutorInput } from "../types/tutors.ts";
 export function validateCreateTutorBody(body: any) {
   const full_name = body?.full_name?.trim?.();
   const date_of_birth = body?.date_of_birth ?? null;
+  const hire_date = body?.hire_date ?? null;
   const afm = body?.afm?.trim?.() || null;
   const phone = body?.phone?.trim?.() || null;
   const email = body?.email?.trim?.() || null;
@@ -22,6 +23,7 @@ export function validateCreateTutorBody(body: any) {
   return {
     full_name,
     date_of_birth,
+    hire_date,
     afm,
     phone,
     email,
@@ -40,6 +42,7 @@ export function validateUpdateTutorBody(body: any): UpdateTutorInput {
   const result: UpdateTutorInput = { tutor_id };
   if (body?.full_name !== undefined) result.full_name = body.full_name?.trim?.() || null;
   if (body?.date_of_birth !== undefined) result.date_of_birth = body.date_of_birth ?? null;
+  if (body?.hire_date !== undefined) result.hire_date = body.hire_date ?? null;
   if (body?.afm !== undefined) result.afm = body.afm?.trim?.() || null;
   if (body?.phone !== undefined) result.phone = body.phone?.trim?.() || null;
   if (body?.email !== undefined) result.email = body.email?.trim?.() || null;

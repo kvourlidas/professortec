@@ -145,8 +145,8 @@ export function useSubscriptionsPage() {
   const [allStudents, setAllStudents] = useState<StudentRow[]>([]);
 
   // ── Delete ─────────────────────────────────────────────────────────────────
-  const [deleteTarget, setDeleteTarget] = useState<StudentViewRow | null>(null);
-  const [deleting,     setDeleting]     = useState(false);
+  const [cancelTarget, setCancelTarget] = useState<StudentViewRow | null>(null);
+  const [cancelling,   setCancelling]   = useState(false);
 
   // ── Assign / Renew modal ───────────────────────────────────────────────────
   const [assignOpen,       setAssignOpen]       = useState(false);
@@ -317,7 +317,7 @@ export function useSubscriptionsPage() {
       .from('student_subscriptions_with_totals')
       .select('id,school_id,student_id,package_id,package_name,price,currency,status,starts_on,ends_on,created_at,charge_amount,paid_amount,balance,plan_id', { count: 'exact' })
       .eq('school_id', schoolId)
-      .in('status', ['completed', 'expired', 'renewed']) // completed = expired by date/hours; renewed = manually renewed
+      .in('status', ['completed', 'expired', 'renewed', 'canceled']) // completed = expired by date/hours; renewed = manually renewed
       .order('created_at', { ascending: false });
     if (ids !== null) q = q.in('student_id', ids);
     if (payFilter === 'settled') q = (q as any).lte('balance', 0);
@@ -340,14 +340,20 @@ export function useSubscriptionsPage() {
   useEffect(() => { loadExpired(); }, [schoolId, expiredPage, search, payFilter]);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
-  const confirmDelete = async () => {
-    if (!deleteTarget?.sub) return;
-    setDeleting(true); setError(null); setInfo(null);
+  // Mirrors StudentCardPage.cancelActiveSubscription — same status flip on the
+  // same row, so a subscription cancelled from either page is cancelled on both.
+  const confirmCancel = async () => {
+    if (!cancelTarget?.sub) return;
+    setCancelling(true); setError(null); setInfo(null);
     try {
-      await callEdgeFunction('student-subscription-delete', { subscription_id: deleteTarget.sub.id });
-      setDeleteTarget(null); setInfo('Διαγράφηκε η συνδρομή.'); await load();
-    } catch (err: any) { setError(err.message ?? 'Αποτυχία διαγραφής συνδρομής.'); }
-    setDeleting(false);
+      if (cancelTarget.sub.plan_id) {
+        await callEdgeFunction('student-subscription-plan-cancel', { plan_id: cancelTarget.sub.plan_id });
+      }
+      const { error } = await supabase.from('student_subscriptions').update({ status: 'canceled' }).eq('id', cancelTarget.sub.id);
+      if (error) throw error;
+      setCancelTarget(null); setInfo('Η συνδρομή ακυρώθηκε.'); await load();
+    } catch (err: any) { setError(err.message ?? 'Αποτυχία ακύρωσης συνδρομής.'); }
+    setCancelling(false);
   };
 
   const resetModal = () => {
@@ -530,8 +536,8 @@ export function useSubscriptionsPage() {
     expiredPage, setExpiredPage, expiredPageCount,
     expiredShowingFrom, expiredShowingTo,
 
-    // delete
-    deleteTarget, setDeleteTarget, deleting, confirmDelete,
+    // cancel
+    cancelTarget, setCancelTarget, cancelling, confirmCancel,
 
     // assign / renew
     assignOpen, setAssignOpen, isRenew, saving, assignError, setAssignError,

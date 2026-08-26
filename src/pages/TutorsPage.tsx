@@ -30,7 +30,7 @@ import {
 } from 'lucide-react';
 
 // ── Storage keys ─────────────────────────────────────────────────────────────
-const COLUMNS_KEY   = 'pt_tutors_visible_columns_v2';
+const COLUMNS_KEY   = 'pt_tutors_visible_columns_v3';
 const SORT_KEY      = 'pt_tutors_sort_v1';
 const PAGE_SIZE_KEY = 'pt_tutors_page_size_v1';
 
@@ -232,6 +232,7 @@ export default function TutorsPage() {
         const data = await callEdgeFunction('tutors-create', {
           full_name: fullNameTrimmed,
           date_of_birth: displayToIso(form.dateOfBirth) || null,
+          hire_date: displayToIso(form.hireDate) || null,
           afm: form.afm.trim() || null,
           phone: form.phone.trim() || null,
           email: form.email.trim() || null,
@@ -247,6 +248,7 @@ export default function TutorsPage() {
           tutor_id: editingTutor.id,
           full_name: fullNameTrimmed,
           date_of_birth: displayToIso(form.dateOfBirth) || null,
+          hire_date: displayToIso(form.hireDate) || null,
           afm: form.afm.trim() || null,
           phone: form.phone.trim() || null,
           email: form.email.trim() || null,
@@ -305,6 +307,7 @@ export default function TutorsPage() {
       const composite = [
         t.full_name, t.afm, t.phone, t.email, t.iban, t.notes,
         t.date_of_birth, t.date_of_birth ? formatDateToGreek(t.date_of_birth) : '',
+        t.hire_date, t.hire_date ? formatDateToGreek(t.hire_date) : '',
         ...(tutorSpecialtyMap.get(t.id) ?? []).map((s) => s.name),
       ].filter(Boolean).join(' ');
       return normalizeText(composite).includes(q);
@@ -349,6 +352,10 @@ export default function TutorsPage() {
       case 'date_of_birth':
         return t.date_of_birth
           ? <span className={`tabular-nums ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{formatDateToGreek(t.date_of_birth)}</span>
+          : empty;
+      case 'hire_date':
+        return t.hire_date
+          ? <span className={`tabular-nums ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{formatDateToGreek(t.hire_date)}</span>
           : empty;
       case 'afm':
         return t.afm

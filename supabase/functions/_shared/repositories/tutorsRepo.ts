@@ -6,6 +6,7 @@ const TUTOR_SELECT = `
   school_id,
   full_name,
   date_of_birth,
+  hire_date,
   afm,
   phone,
   email,
@@ -85,6 +86,7 @@ export async function updateTutorById(
   const patch: Record<string, unknown> = {};
   if (input.full_name !== undefined) patch.full_name = input.full_name;
   if (input.date_of_birth !== undefined) patch.date_of_birth = input.date_of_birth;
+  if (input.hire_date !== undefined) patch.hire_date = input.hire_date;
   if (input.afm !== undefined) patch.afm = input.afm;
   if (input.phone !== undefined) patch.phone = input.phone;
   if (input.email !== undefined) patch.email = input.email;

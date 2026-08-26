@@ -9,9 +9,10 @@ import {
   CalendarDays, Repeat, CheckCircle2, XCircle, X, Pencil,
 } from 'lucide-react';
 import StyledSelect from '../../components/ui/StyledSelect';
+import { isSchoolYearCurrent } from '../../components/school-info/types';
 
 type PackageType = 'monthly' | 'yearly';
-type SchoolYearOption = { id: string; name: string; start_date: string; end_date: string; is_current: boolean };
+type SchoolYearOption = { id: string; name: string; start_date: string; end_date: string };
 type PackageRow = {
   id: string; school_id: string; name: string; price: number; currency: string;
   is_active: boolean; sort_order: number; package_type: PackageType | null;
@@ -202,7 +203,7 @@ export default function PackageSubscriptionsPage() {
         .order('created_at', { ascending: true }),
       supabase
         .from('school_years')
-        .select('id,name,start_date,end_date,is_current')
+        .select('id,name,start_date,end_date')
         .eq('school_id', schoolId)
         .order('start_date', { ascending: false }),
     ]);
@@ -278,7 +279,7 @@ export default function PackageSubscriptionsPage() {
 
   const openAdd = () => {
     setNewName(''); setNewPrice(''); setNewActive(true);
-    setNewSchoolYearId(schoolYears.find(y => y.is_current)?.id ?? schoolYears[0]?.id ?? '');
+    setNewSchoolYearId(schoolYears.find(y => isSchoolYearCurrent(y))?.id ?? schoolYears[0]?.id ?? '');
     setNewAvatarColor(AVATAR_COLORS[0].value);
     setAddError(null); setAddOpen(true);
   };

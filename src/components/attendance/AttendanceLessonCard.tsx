@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { ArrowRight, CalendarDays, CheckCircle2, ClipboardList, Clock, DoorOpen, User, UserCheck, UserX } from 'lucide-react';
+import { AlertTriangle, ArrowRight, CalendarDays, CheckCircle2, ClipboardList, Clock, DoorOpen, User, UserCheck, UserX } from 'lucide-react';
 import type { AttendanceRow, AttendanceStatus, LessonSession } from './types';
+import { formatDateDisplay, todayISO } from './utils';
 
 interface Props {
   session: LessonSession;
@@ -67,6 +68,14 @@ export default function AttendanceLessonCard({ session, attendanceByStudent, isC
                 }`}>
                   <ClipboardList className="h-3 w-3" />
                   {session.testTitle ? `Διαγώνισμα · ${session.testTitle}` : 'Διαγώνισμα'}
+                </span>
+              )}
+              {session.date !== todayISO() && (
+                <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
+                  isDark ? 'border-rose-500/40 bg-rose-500/10 text-rose-400' : 'border-rose-200 bg-rose-50 text-rose-700'
+                }`}>
+                  <AlertTriangle className="h-3 w-3" />
+                  Εκκρεμεί από {formatDateDisplay(session.date)}
                 </span>
               )}
             </div>

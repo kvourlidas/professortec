@@ -53,17 +53,23 @@ export async function getSubscriptionByIdAndSchoolId(
   return data;
 }
 
+// "Current" is never hand-picked any more — it's whichever school year's
+// date range contains today. Prefers a non-summer year when both overlap.
 export async function getCurrentSchoolYearId(
   supabase: any,
   schoolId: string
 ): Promise<string | null> {
+  const today = new Date().toISOString().slice(0, 10);
   const { data } = await supabase
     .from("school_years")
-    .select("id")
+    .select("id, is_summer")
     .eq("school_id", schoolId)
-    .eq("is_current", true)
-    .maybeSingle();
-  return data?.id ?? null;
+    .lte("start_date", today)
+    .gte("end_date", today)
+    .order("is_summer", { ascending: true })
+    .order("start_date", { ascending: false })
+    .limit(1);
+  return data?.[0]?.id ?? null;
 }
 
 export async function insertStudentSubscription(
