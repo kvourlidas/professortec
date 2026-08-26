@@ -25,7 +25,9 @@ type AuthContextValue = {
 
   signInWeb: (email: string, password: string) => Promise<boolean>;
   signUpWeb: (email: string, password: string, fullName: string, accountType: AccountType) => Promise<'ok' | 'confirm_email' | 'error'>;
+  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -171,6 +173,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const signInWithGoogle = async (): Promise<void> => {
+    setAuthError(null);
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/dashboard` },
+    });
+    if (error) setAuthError('Πρόβλημα σύνδεσης με Google. Δοκίμασε ξανά.');
+  };
+
   useEffect(() => {
     let ignore = false;
 
@@ -213,6 +224,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await hardSignOut();
   };
 
+  const refreshProfile = async () => {
+    if (!user) return;
+    await hydrateFromUser(user);
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -223,7 +239,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         clearAuthError,
         signInWeb,
         signUpWeb,
+        signInWithGoogle,
         signOut,
+        refreshProfile,
       }}
     >
       {children}

@@ -9,38 +9,14 @@ import { supabase } from '../lib/supabaseClient';
 import {
   Loader2, Mail, Lock, AlertCircle, Eye, EyeOff,
   User, Building2, GraduationCap, CheckCircle2, Check,
-  MapPin, Phone, ArrowLeft, Gift, CalendarDays, Sparkles,
+  MapPin, Phone, ArrowLeft, CalendarDays,
   ClipboardList, Wallet, Users, LogIn, UserPlus,
 } from 'lucide-react';
 import edraLogo from '../assets/edra-logo.png';
 import FolderTabs from '../components/ui/FolderTabs';
 
 type Mode = 'login' | 'signup';
-type SignupStep = 1 | 2 | 3 | 4;
-type PlanId = 'free' | 'monthly' | 'yearly';
-
-type Plan = {
-  id: PlanId;
-  name: string;
-  price: string;
-  period?: string;
-  label: string;
-  crossedPrice?: string;
-  monthlyEquiv?: string;
-  highlighted?: boolean;
-};
-
-const FRONTISTIRIO_PLANS: Plan[] = [
-  { id: 'free', name: 'Δωρεάν', price: '€0', label: '1 μήνας δωρεάν δοκιμή' },
-  { id: 'monthly', name: 'Μηνιαίο', price: '€29', period: '/μήνα', label: 'Χωρίς δέσμευση' },
-  { id: 'yearly', name: 'Ετήσιο', price: '€290', period: '/έτος', label: '2 μήνες δωρεάν', crossedPrice: '€348', highlighted: true },
-];
-
-const IDIAITEROU_PLANS: Plan[] = [
-  { id: 'free', name: 'Δωρεάν', price: '€0', label: '1 μήνας δωρεάν δοκιμή' },
-  { id: 'monthly', name: 'Μηνιαίο', price: '€20', period: '/μήνα', label: 'Χωρίς δέσμευση' },
-  { id: 'yearly', name: 'Ετήσιο', price: '€216', period: '/έτος', label: 'Μία πληρωμή τον χρόνο' },
-];
+type SignupStep = 1 | 2 | 3;
 
 const FEATURES = [
   { icon: CalendarDays, label: 'Πρόγραμμα & Ημερολόγιο' },
@@ -49,20 +25,12 @@ const FEATURES = [
   { icon: Wallet, label: 'Οικονομική διαχείριση' },
 ];
 
-async function saveSchoolInfo(userId: string, info: { name: string; address: string; phone: string; email: string }) {
-  let schoolId: string | null = null;
-  for (let i = 0; i < 6 && !schoolId; i++) {
-    if (i > 0) await new Promise(r => setTimeout(r, 1000));
-    const { data: prof } = await supabase.from('profiles').select('school_id').eq('user_id', userId).maybeSingle();
-    schoolId = prof?.school_id ?? null;
-  }
-  if (!schoolId) return;
+async function createSignupSchool(info: { name: string; address: string; phone: string; email: string }) {
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token;
   if (!token) return;
-  await supabase.functions.invoke('schoolinfo-update', {
+  await supabase.functions.invoke('signup-school-create', {
     body: {
-      school_id: schoolId,
       name: info.name.trim(),
       address: info.address.trim() || null,
       phone: info.phone.trim() || null,
@@ -76,7 +44,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const redirectTo = (location.state as { from?: string } | null)?.from || '/dashboard';
-  const { user, signInWeb, signUpWeb, authError, clearAuthError } = useAuth();
+  const { user, signInWeb, signUpWeb, signInWithGoogle, authError, clearAuthError } = useAuth();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
@@ -103,13 +71,17 @@ export default function LoginPage() {
   const [infoPhone, setInfoPhone] = useState('');
   const [infoEmail, setInfoEmail] = useState('');
 
-  // signup – step 4
-  const [selectedPlan, setSelectedPlan] = useState<PlanId | null>(null);
-
   const [signupStep, setSignupStep] = useState<SignupStep>(1);
   const [stepError, setStepError] = useState<string | null>(null);
   const [confirmEmail, setConfirmEmail] = useState(false);
   const [pending, setPending] = useState(false);
+  const [googlePending, setGooglePending] = useState(false);
+
+  const onGoogleSignIn = async () => {
+    setGooglePending(true);
+    await signInWithGoogle();
+    setGooglePending(false);
+  };
 
   useEffect(() => {
     if (user) navigate(redirectTo, { replace: true });
@@ -119,7 +91,7 @@ export default function LoginPage() {
     clearAuthError();
     setStepError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [email, pw, signupEmail, signupPw, signupPwConfirm, infoName, accountType, mode, selectedPlan]);
+  }, [email, pw, signupEmail, signupPw, signupPwConfirm, infoName, accountType, mode]);
 
   const onLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -141,26 +113,22 @@ export default function LoginPage() {
       if (signupPw !== signupPwConfirm) { setStepError('Οι κωδικοί δεν ταιριάζουν.'); return; }
       setInfoEmail(prev => prev || signupEmail.trim());
       setSignupStep(3);
-    } else if (signupStep === 3) {
-      if (!infoName.trim()) { setStepError('Το όνομα είναι υποχρεωτικό.'); return; }
-      setSignupStep(4);
     }
   };
 
   const onSignup = async () => {
     if (!accountType) return;
-    if (!selectedPlan) { setStepError('Επίλεξε πλάνο συνδρομής.'); return; }
+    if (!infoName.trim()) { setStepError('Το όνομα είναι υποχρεωτικό.'); return; }
     clearAuthError();
     setStepError(null);
     setPending(true);
     const result = await signUpWeb(signupEmail.trim(), signupPw, infoName.trim(), accountType);
     if (result === 'ok') {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          await saveSchoolInfo(session.user.id, { name: infoName, address: infoAddress, phone: infoPhone, email: infoEmail });
-        }
-      } catch {}
+        await createSignupSchool({ name: infoName, address: infoAddress, phone: infoPhone, email: infoEmail });
+      } catch (e) {
+        console.error('Failed to create school on signup', e);
+      }
       navigate('/dashboard', { replace: true });
     } else if (result === 'confirm_email') {
       setConfirmEmail(true);
@@ -183,7 +151,6 @@ export default function LoginPage() {
   }`;
 
   const isFrontistirio = accountType === 'frontistirio';
-  const plans = isFrontistirio ? FRONTISTIRIO_PLANS : IDIAITEROU_PLANS;
 
   return (
     <div className="flex min-h-screen flex-col lg:flex-row" style={{ background: 'var(--color-background)' }}>
@@ -220,9 +187,7 @@ export default function LoginPage() {
 
       {/* ── Form panel ── */}
       <div className="flex flex-1 items-center justify-center px-6 py-10 sm:px-10 lg:px-16">
-        <div className={`w-full transition-[max-width] duration-300 ease-out ${
-          mode === 'signup' && signupStep === 4 ? 'max-w-[760px]' : 'max-w-[480px]'
-        }`}>
+        <div className="w-full max-w-[480px]">
 
           {/* Tab switcher */}
           <FolderTabs
@@ -258,6 +223,26 @@ export default function LoginPage() {
                     {pending ? <><Loader2 className="h-4 w-4 animate-spin" />Σύνδεση…</> : 'Σύνδεση'}
                   </button>
                 </form>
+
+                <div className="my-5 flex items-center gap-3">
+                  <div className={`h-px flex-1 ${isDark ? 'bg-white/10' : 'bg-slate-200'}`} />
+                  <span className={`text-xs font-medium uppercase tracking-widest ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>ή</span>
+                  <div className={`h-px flex-1 ${isDark ? 'bg-white/10' : 'bg-slate-200'}`} />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={onGoogleSignIn}
+                  disabled={googlePending}
+                  className={`flex h-12 w-full items-center justify-center gap-3 rounded-lg border text-base font-medium transition-all duration-150 active:scale-[0.98] disabled:opacity-60 ${
+                    isDark
+                      ? 'border-white/15 text-slate-100 hover:bg-white/5'
+                      : 'border-slate-300 text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  {googlePending ? <Loader2 className="h-4 w-4 animate-spin" /> : <GoogleIcon className="h-4 w-4" />}
+                  Συνέχεια με Google
+                </button>
               </>
             )}
 
@@ -356,7 +341,7 @@ export default function LoginPage() {
 
                     {/* Step 3 — School / personal info */}
                     {signupStep === 3 && (
-                      <form onSubmit={e => { e.preventDefault(); goNext(); }} className="space-y-4">
+                      <form onSubmit={e => { e.preventDefault(); onSignup(); }} className="space-y-4">
                         <div className="space-y-1">
                           <h1 className="text-xl font-bold tracking-tight text-[color:var(--color-text-main)]">
                             {isFrontistirio ? 'Στοιχεία σχολείου' : 'Στοιχεία σας'}
@@ -397,50 +382,13 @@ export default function LoginPage() {
                           </button>
                           <button
                             type="submit"
-                            className="btn-primary flex-1 h-12 flex items-center justify-center gap-2 rounded-lg text-base font-medium tracking-wide transition-all duration-150 active:scale-[0.98]"
-                          >
-                            Επόμενο
-                          </button>
-                        </div>
-                      </form>
-                    )}
-
-                    {/* Step 4 — Plan selection */}
-                    {signupStep === 4 && (
-                      <div className="space-y-4">
-                        <div className="space-y-1">
-                          <h1 className="text-xl font-bold tracking-tight text-[color:var(--color-text-main)]">Επιλογή πλάνου</h1>
-                          <p className="text-sm text-[color:var(--color-text-muted)]">Επίλεξε το πλάνο που σου ταιριάζει καλύτερα.</p>
-                        </div>
-                        <div className="grid grid-cols-3 gap-3 items-stretch pt-3">
-                          {plans.map(plan => (
-                            <PricingCard
-                              key={plan.id}
-                              isDark={isDark}
-                              plan={plan}
-                              selected={selectedPlan === plan.id}
-                              onClick={() => setSelectedPlan(plan.id)}
-                            />
-                          ))}
-                        </div>
-                        <div className="flex gap-2 pt-1">
-                          <button
-                            type="button"
-                            onClick={() => setSignupStep(3)}
-                            className={`flex h-12 items-center justify-center rounded-lg border px-5 text-base transition active:scale-[0.98] ${isDark ? 'border-white/10 text-slate-400 hover:text-slate-200 hover:border-white/20' : 'border-slate-200 text-slate-500 hover:text-slate-700 hover:border-slate-300'}`}
-                          >
-                            <ArrowLeft className="h-4 w-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={onSignup}
-                            disabled={!selectedPlan || pending}
+                            disabled={pending}
                             className="btn-primary flex-1 h-12 flex items-center justify-center gap-2 rounded-lg text-base font-medium tracking-wide transition-all duration-150 active:scale-[0.98] disabled:opacity-60"
                           >
                             {pending ? <><Loader2 className="h-4 w-4 animate-spin" />Εγγραφή…</> : 'Εγγραφή'}
                           </button>
                         </div>
-                      </div>
+                      </form>
                     )}
                   </>
                 )}
@@ -459,7 +407,7 @@ export default function LoginPage() {
 /* ── helpers ── */
 
 function StepIndicator({ step, isDark }: { step: SignupStep; isDark: boolean }) {
-  const steps = ['Τύπος', 'Λογαριασμός', 'Στοιχεία', 'Πλάνο'];
+  const steps = ['Τύπος', 'Λογαριασμός', 'Στοιχεία'];
   return (
     <div className="flex items-start justify-center mb-8">
       {steps.map((label, i) => {
@@ -505,6 +453,17 @@ function StepIndicator({ step, isDark }: { step: SignupStep; isDark: boolean }) 
         );
       })}
     </div>
+  );
+}
+
+function GoogleIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+      <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/>
+      <path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"/>
+      <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/>
+      <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z"/>
+    </svg>
   );
 }
 
@@ -564,85 +523,3 @@ function AccountTypeCard({
   );
 }
 
-function PricingCard({
-  isDark, plan, selected, onClick,
-}: {
-  isDark: boolean; plan: Plan; selected: boolean; onClick: () => void;
-}) {
-  const isHighlighted = !!plan.highlighted;
-  const Icon = plan.id === 'free' ? Gift : plan.id === 'monthly' ? CalendarDays : Sparkles;
-  const accent = plan.id === 'free' ? '#10b981' : plan.id === 'monthly' ? '#0ea5e9' : 'var(--color-accent)';
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`relative flex h-full flex-col rounded-2xl p-5 text-left transition-all duration-200 active:scale-[0.98] ${
-        isDark ? 'bg-white/[0.03]' : 'bg-white/80'
-      }`}
-      style={{
-        boxShadow: selected
-          ? `0 0 0 2.5px ${accent}, 0 8px 24px color-mix(in srgb, ${accent} 30%, transparent)`
-          : isHighlighted
-            ? '0 0 0 1.5px color-mix(in srgb, var(--color-accent) 40%, transparent), 0 2px 10px color-mix(in srgb, var(--color-accent) 12%, transparent)'
-            : isDark ? '0 0 0 1px rgba(255,255,255,0.08)' : '0 0 0 1px rgba(0,0,0,0.08)',
-      }}
-    >
-      {isHighlighted && (
-        <span
-          className="absolute -top-2.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-widest text-white shadow-sm"
-          style={{ background: 'var(--color-accent)' }}
-        >
-          ★ Best value
-        </span>
-      )}
-      {selected && (
-        <span
-          className="absolute top-3 right-3 flex h-5 w-5 items-center justify-center rounded-full text-white"
-          style={{ background: accent }}
-        >
-          <Check className="h-3 w-3" />
-        </span>
-      )}
-
-      <div
-        className="mb-3.5 flex h-10 w-10 items-center justify-center rounded-xl"
-        style={{ background: `color-mix(in srgb, ${accent} 15%, transparent)`, color: accent }}
-      >
-        <Icon className="h-5 w-5" />
-      </div>
-
-      <span className={`mb-2 text-base font-bold ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
-        {plan.name}
-      </span>
-
-      <div className="mb-0.5 flex flex-wrap items-baseline gap-1.5">
-        {plan.crossedPrice && (
-          <span className={`text-sm line-through ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
-            {plan.crossedPrice}
-          </span>
-        )}
-        <span className={`text-4xl font-extrabold tabular-nums ${
-          isHighlighted ? 'text-[color:var(--color-accent)]' : isDark ? 'text-slate-100' : 'text-slate-800'
-        }`}>
-          {plan.price}
-        </span>
-        {plan.period && (
-          <span className={`text-xs font-medium ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-            {plan.period}
-          </span>
-        )}
-      </div>
-
-      {plan.monthlyEquiv && (
-        <span className={`mb-2 text-xs ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
-          {plan.monthlyEquiv}
-        </span>
-      )}
-
-      <span className={`mt-auto pt-3 text-xs font-medium leading-snug ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-        {plan.label}
-      </span>
-    </button>
-  );
-}

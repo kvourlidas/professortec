@@ -3,6 +3,7 @@ import { Suspense, lazy } from 'react';
 import type { ReactElement } from 'react';
 
 const LoginPage = lazy(() => import('./pages/LoginPage'));
+const OnboardingPage = lazy(() => import('./pages/OnboardingPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const ClassesPage = lazy(() => import('./pages/ClassesPage'));
 const StudentsPage = lazy(() => import('./pages/StudentsPage'));
@@ -51,7 +52,7 @@ function p(path: string) {
 }
 
 function ProtectedRoute({ children }: { children: ReactElement }) {
-  const { user, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -66,7 +67,34 @@ function ProtectedRoute({ children }: { children: ReactElement }) {
     return <Navigate to={p('/login')} replace state={{ from: `${location.pathname}${location.search}` }} />;
   }
 
+  if (profile && !profile.school_id) {
+    return <Navigate to={p('/onboarding')} replace />;
+  }
+
   return <Layout>{children}</Layout>;
+}
+
+function OnboardingRoute({ children }: { children: ReactElement }) {
+  const { user, profile, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-slate-700">
+        Loading...
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to={p('/login')} replace state={{ from: `${location.pathname}${location.search}` }} />;
+  }
+
+  if (profile && profile.school_id) {
+    return <Navigate to={p('/dashboard')} replace />;
+  }
+
+  return children;
 }
 
 function FrontistirioOnly({ children }: { children: ReactElement }) {
@@ -82,6 +110,7 @@ export default function App() {
       <Suspense fallback={<RouteFallback />}>
       <Routes>
         <Route path={p('/login')} element={<LoginPage />} />
+        <Route path={p('/onboarding')} element={<OnboardingRoute><OnboardingPage /></OnboardingRoute>} />
 
         <Route
           path={p('/dashboard')}

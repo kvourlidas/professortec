@@ -97,7 +97,21 @@
       "Bash(python -c \"import PIL; print\\(PIL.__version__\\)\")",
       "Bash(rm -f src/assets/kika-avatar-crop-preview.png)",
       "Bash(grep -c \"flex items-center justify-between px-6 py-4\\\\\" style={{ background: 'var\\(--ch-bg\\)', borderBottom: '1px solid var\\(--ch-divider\\)' }}\" src/components/classes/ClassDeleteModal.tsx src/components/classes/ClassFormModal.tsx src/components/classes/ClassStudentsModal.tsx src/components/economics/analysis/EconomicsEditExpenseModal.tsx src/components/economics/subscriptions/AssignRenewModal.tsx src/components/economics/subscriptions/DeleteSubscriptionModal.tsx src/components/events/EventDeleteModal.tsx src/components/events/EventFormModal.tsx src/components/grades/GradeEntryModal.tsx src/components/holidays/HolidayDeleteModal.tsx src/components/levels/LevelDeleteModal.tsx src/components/levels/LevelFormModal.tsx src/components/notifications/NotificationHistory.tsx src/components/program/ProgramAddSlotModal.tsx src/components/program/ProgramDeleteSlotModal.tsx src/components/program/ProgramEditSlotModal.tsx src/components/students/PrivateLessonPaymentModal.tsx src/components/students/StudentCreateModal.tsx src/components/students/StudentSlotModal.tsx src/components/subjects/SubjectDeleteModal.tsx src/components/subjects/SubjectFormModal.tsx src/components/subjects/SubjectTutorsModal.tsx src/components/tests/TestDeleteModal.tsx src/components/tests/TestFormModal.tsx src/components/tests/TestResultsModal.tsx src/components/tutors/TutorDeleteModal.tsx src/components/tutors/TutorFormModal.tsx src/components/ui/ConfirmActionModal.tsx src/pages/StudentCardPage.tsx src/pages/StudentsPage.tsx src/pages/economics/PackageSubscriptionsPage.tsx src/pages/economics/TutorsPaymentsPage.tsx)",
-      "Bash(python \"C:\\\\Users\\\\KOSTAS\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-KOSTAS-Desktop-Projects-ProfessorTec-web-app\\\\0a824a03-1265-4665-a9dc-10a04f1d9e01\\\\scratchpad\\\\fix_modals.py\")"
+      "Bash(python \"C:\\\\Users\\\\KOSTAS\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-KOSTAS-Desktop-Projects-ProfessorTec-web-app\\\\0a824a03-1265-4665-a9dc-10a04f1d9e01\\\\scratchpad\\\\fix_modals.py\")",
+      "PowerShell(Get-Command claude -ErrorAction SilentlyContinue)",
+      "PowerShell(npm root -g 2>$null)",
+      "mcp__supabase__list_tables",
+      "mcp__supabase__execute_sql",
+      "mcp__supabase__get_project_url",
+      "mcp__supabase__list_migrations",
+      "Bash(mkdir -p \"d:/Projects/professortec/supabase/functions/signup-school-create\" *)"
+    ],
+    "additionalDirectories": [
+      "d:\\Projects\\professortec\\supabase\\functions"
     ]
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "supabase"
+  ]
 }
