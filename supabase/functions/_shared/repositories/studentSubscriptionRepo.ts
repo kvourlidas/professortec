@@ -91,6 +91,9 @@ export async function insertStudentSubscription(
       starts_on: input.starts_on,
       ends_on: input.ends_on,
       discount_reason: input.discount_reason,
+      original_price: input.original_price,
+      discount_mode: input.discount_mode,
+      discount_value: input.discount_value,
       school_year_id: schoolYearId,
     })
     .select("*")

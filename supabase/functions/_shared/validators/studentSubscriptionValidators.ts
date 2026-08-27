@@ -27,13 +27,23 @@ export function validateCreateStudentSubscriptionBody(body: any): CreateStudentS
   const ends_on = body?.ends_on?.trim?.() || null;
   const discount_reason = body?.discount_reason?.trim?.() || null;
   const renew_from_sub_id = body?.renew_from_sub_id?.trim?.() || null;
+  const discount_mode = ["none", "pct", "amount"].includes(body?.discount_mode) ? body.discount_mode : null;
+  const original_price = typeof body?.original_price === "number" ? body.original_price
+    : (body?.original_price != null ? parseFloat(body.original_price) : null);
+  const discount_value = typeof body?.discount_value === "number" ? body.discount_value
+    : (body?.discount_value != null ? parseFloat(body.discount_value) : null);
 
   if (!student_id) throw new ValidationError("Missing student_id");
   if (!package_id) throw new ValidationError("Missing package_id");
   if (!package_name) throw new ValidationError("Missing package_name");
   if (isNaN(price) || price < 0) throw new ValidationError("Invalid price");
+  if (original_price != null && (isNaN(original_price) || original_price < 0)) throw new ValidationError("Invalid original_price");
+  if (discount_value != null && (isNaN(discount_value) || discount_value < 0)) throw new ValidationError("Invalid discount_value");
 
-  return { student_id, package_id, package_name, price, currency, starts_on, ends_on, discount_reason, renew_from_sub_id };
+  return {
+    student_id, package_id, package_name, price, currency, starts_on, ends_on, discount_reason,
+    original_price, discount_mode, discount_value, renew_from_sub_id,
+  };
 }
 
 export function validateDeleteStudentSubscriptionBody(body: any): DeleteStudentSubscriptionInput {

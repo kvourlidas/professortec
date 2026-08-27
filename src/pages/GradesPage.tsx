@@ -3,8 +3,19 @@ import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
 import { useTheme } from '../context/ThemeContext';
 import { Check, ChevronDown, GraduationCap, Search, User, Users, X } from 'lucide-react';
-import type { StudentRow, TutorRow, StudentGradeRow, TutorGradeRow, GradeRow, GradesTab, SelectionType } from '../components/grades/types';
+import type { StudentRow, TutorRow, StudentGradeRow, TutorGradeRow, GradeRow, GradesTab, SelectionType, GradesDateFilterMode, SchoolYearOption } from '../components/grades/types';
 import GradesPanel from '../components/grades/GradesPanel';
+
+function parseDateDisplayToISO(display: string): string | null {
+  const v = display.trim();
+  if (!v) return null;
+  const parts = v.split(/[\/\-.]/);
+  if (parts.length !== 3) return null;
+  const [dStr, mStr, yStr] = parts;
+  const day = Number(dStr); const month = Number(mStr); const year = Number(yStr);
+  if (!day || !month || !year) return null;
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
 
 const STYLE = `
   @keyframes gradesFadeSlide {
@@ -44,6 +55,14 @@ const GradesPage = () => {
   const [activeTab, setActiveTab] = useState<GradesTab>('overall');
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
 
+  // ── Date filter ───────────────────────────────────────────────────────────
+  const [schoolYears, setSchoolYears] = useState<SchoolYearOption[]>([]);
+  const [dateFilterMode, setDateFilterMode] = useState<GradesDateFilterMode>('all');
+  const [filterMonthValue, setFilterMonthValue] = useState<string>('');
+  const [filterYearId, setFilterYearId] = useState<string>('');
+  const [filterRangeStart, setFilterRangeStart] = useState<string>('');
+  const [filterRangeEnd, setFilterRangeEnd] = useState<string>('');
+
   // ── Load lists ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!profile?.school_id) return;
@@ -53,6 +72,12 @@ const GradesPage = () => {
     supabase.from('tutors').select('id, school_id, full_name, email').eq('school_id', profile.school_id).is('deleted_at', null).order('full_name', { ascending: true })
       .then(({ data, error }) => { if (!error) setTutors(data ?? []); });
   }, [profile?.school_id, isPrivateLessons]);
+
+  useEffect(() => {
+    if (!profile?.school_id) return;
+    supabase.from('school_years').select('id,name,start_date,end_date,is_summer').eq('school_id', profile.school_id).order('start_date', { ascending: false })
+      .then(({ data, error }) => { if (!error) setSchoolYears((data ?? []) as SchoolYearOption[]); });
+  }, [profile?.school_id]);
 
   // ── Close dropdown on outside click ──────────────────────────────────────
   useEffect(() => {
@@ -86,6 +111,7 @@ const GradesPage = () => {
     if (!profile?.school_id) return;
     setSelectionType('student'); setSelectedStudent(student); setSelectedTutor(null);
     setActiveTab('overall'); setSelectedSubjectId(null);
+    setDateFilterMode('all'); setFilterMonthValue(''); setFilterYearId(''); setFilterRangeStart(''); setFilterRangeEnd('');
     setLoadingStudentGrades(true); setStudentGrades([]);
     const { data, error } = await supabase.from('student_test_grades')
       .select('id, student_id, test_id, test_name, test_date, start_time, end_time, class_title, subject_id, subject_name, grade, graded_at')
@@ -99,6 +125,7 @@ const GradesPage = () => {
     if (!profile?.school_id) return;
     setSelectionType('tutor'); setSelectedTutor(tutor); setSelectedStudent(null);
     setActiveTab('overall'); setSelectedSubjectId(null);
+    setDateFilterMode('all'); setFilterMonthValue(''); setFilterYearId(''); setFilterRangeStart(''); setFilterRangeEnd('');
     setLoadingTutorGrades(true); setTutorGrades([]);
     const { data, error } = await supabase.from('tutor_test_grades')
       .select('id, school_id, tutor_id, tutor_name, test_id, test_name, test_date, start_time, end_time, class_title, subject_id, subject_name, grade, students_count')
@@ -148,16 +175,55 @@ const GradesPage = () => {
     return currentGrades.filter((g) => g.subject_id === selectedSubjectId);
   }, [currentGrades, activeTab, selectedSubjectId]);
 
+  // ── Month options available for the currently selected student/tutor ──────
+  const monthOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const g of currentGrades) {
+      if (g.test_date) set.add(g.test_date.slice(0, 7));
+    }
+    return Array.from(set).sort((a, b) => b.localeCompare(a));
+  }, [currentGrades]);
+
+  // Effective selection: falls back to the first available option until the
+  // user explicitly picks one, without needing a setState-in-effect sync.
+  const effectiveFilterMonthValue = filterMonthValue || monthOptions[0] || '';
+  const effectiveFilterYearId = filterYearId || schoolYears[0]?.id || '';
+
+  // ── Date-range filter (month / school year / custom range) ────────────────
+  const dateFilteredGrades = useMemo(() => {
+    if (dateFilterMode === 'month') {
+      if (!effectiveFilterMonthValue) return visibleGrades;
+      return visibleGrades.filter((g) => g.test_date?.slice(0, 7) === effectiveFilterMonthValue);
+    }
+    if (dateFilterMode === 'schoolYear') {
+      const year = schoolYears.find((y) => y.id === effectiveFilterYearId);
+      if (!year) return visibleGrades;
+      return visibleGrades.filter((g) => g.test_date && g.test_date >= year.start_date && g.test_date <= year.end_date);
+    }
+    if (dateFilterMode === 'range') {
+      const startISO = parseDateDisplayToISO(filterRangeStart);
+      const endISO = parseDateDisplayToISO(filterRangeEnd);
+      if (!startISO && !endISO) return visibleGrades;
+      return visibleGrades.filter((g) => {
+        if (!g.test_date) return false;
+        if (startISO && g.test_date < startISO) return false;
+        if (endISO && g.test_date > endISO) return false;
+        return true;
+      });
+    }
+    return visibleGrades;
+  }, [visibleGrades, dateFilterMode, effectiveFilterMonthValue, effectiveFilterYearId, schoolYears, filterRangeStart, filterRangeEnd]);
+
   const gradesForChart = useMemo(() =>
-    visibleGrades.map((g) => ({ test_date: g.test_date, grade: g.grade, test_name: g.test_name })),
-    [visibleGrades]);
+    dateFilteredGrades.map((g) => ({ test_date: g.test_date, grade: g.grade, test_name: g.test_name })),
+    [dateFilteredGrades]);
 
   const { avgGrade, gradedCount } = useMemo(() => {
-    const valid = visibleGrades.filter((g) => typeof g.grade === 'number');
+    const valid = dateFilteredGrades.filter((g) => typeof g.grade === 'number');
     if (!valid.length) return { avgGrade: null as number | null, gradedCount: 0 };
     const sum = valid.reduce((acc, g) => acc + (g.grade ?? 0), 0);
     return { avgGrade: sum / valid.length, gradedCount: valid.length };
-  }, [visibleGrades]);
+  }, [dateFilteredGrades]);
 
   return (
     <div className="space-y-5 px-1">
@@ -340,7 +406,19 @@ const GradesPage = () => {
         selectedSubjectId={selectedSubjectId}
         onSubjectChange={setSelectedSubjectId}
         subjectOptions={subjectOptions}
-        grades={visibleGrades}
+        dateFilterMode={dateFilterMode}
+        onDateFilterModeChange={setDateFilterMode}
+        monthOptions={monthOptions}
+        filterMonthValue={effectiveFilterMonthValue}
+        onFilterMonthChange={setFilterMonthValue}
+        schoolYears={schoolYears}
+        filterYearId={effectiveFilterYearId}
+        onFilterYearChange={setFilterYearId}
+        filterRangeStart={filterRangeStart}
+        filterRangeEnd={filterRangeEnd}
+        onFilterRangeStartChange={setFilterRangeStart}
+        onFilterRangeEndChange={setFilterRangeEnd}
+        grades={dateFilteredGrades}
         loading={loadingCurrentGrades}
         avgGrade={avgGrade}
         gradedCount={gradedCount}

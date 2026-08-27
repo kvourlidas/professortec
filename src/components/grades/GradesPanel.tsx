@@ -1,10 +1,12 @@
 import { useMemo } from 'react';
-import { BarChart3, ClipboardCheck, TrendingUp, Trophy, LayoutGrid, BookOpen } from 'lucide-react';
+import { BarChart3, ClipboardCheck, TrendingUp, Trophy, LayoutGrid, BookOpen, CalendarRange } from 'lucide-react';
 import StudentGradesChart from './StudentGradesChart';
 import GradesTable from './GradesTable';
 import StyledSelect from '../ui/StyledSelect';
 import FolderTabs from '../ui/FolderTabs';
-import type { GradeRow, GradesTab, SelectionType, StudentRow, TutorRow } from './types';
+import AppDatePicker from '../ui/AppDatePicker';
+import { formatMonthLabel } from './utils';
+import type { GradeRow, GradesTab, SelectionType, StudentRow, TutorRow, GradesDateFilterMode, SchoolYearOption } from './types';
 
 interface GradesPanelProps {
   selectionType: SelectionType;
@@ -15,6 +17,18 @@ interface GradesPanelProps {
   selectedSubjectId: string | null;
   onSubjectChange: (id: string | null) => void;
   subjectOptions: { id: string; name: string }[];
+  dateFilterMode: GradesDateFilterMode;
+  onDateFilterModeChange: (mode: GradesDateFilterMode) => void;
+  monthOptions: string[];
+  filterMonthValue: string;
+  onFilterMonthChange: (value: string) => void;
+  schoolYears: SchoolYearOption[];
+  filterYearId: string;
+  onFilterYearChange: (id: string) => void;
+  filterRangeStart: string;
+  filterRangeEnd: string;
+  onFilterRangeStartChange: (value: string) => void;
+  onFilterRangeEndChange: (value: string) => void;
   grades: GradeRow[];
   loading: boolean;
   avgGrade: number | null;
@@ -27,6 +41,10 @@ export default function GradesPanel({
   selectionType, selectedStudent, selectedTutor,
   activeTab, onTabChange,
   selectedSubjectId, onSubjectChange, subjectOptions,
+  dateFilterMode, onDateFilterModeChange,
+  monthOptions, filterMonthValue, onFilterMonthChange,
+  schoolYears, filterYearId, onFilterYearChange,
+  filterRangeStart, filterRangeEnd, onFilterRangeStartChange, onFilterRangeEndChange,
   grades, loading,
   avgGrade, gradedCount,
   gradesForChart,
@@ -99,6 +117,53 @@ export default function GradesPanel({
                     options={subjectOptions.map((opt) => ({ value: opt.id, label: opt.name }))}
                   />
                 : <span className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Δεν υπάρχουν μαθήματα με βαθμούς.</span>
+            )}
+          </div>
+
+          {/* Date filter — general / month / school year / range */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            <span className={`flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+              <CalendarRange className="h-3 w-3" />Περίοδος
+            </span>
+            <StyledSelect
+              isDark={isDark} showChevron className={`${subjectSelectCls} pr-7`}
+              value={dateFilterMode}
+              onChange={(v) => onDateFilterModeChange(v as GradesDateFilterMode)}
+              options={[
+                { value: 'all', label: 'Όλες οι περίοδοι' },
+                { value: 'month', label: 'Μήνας' },
+                { value: 'schoolYear', label: 'Σχολικό έτος' },
+                { value: 'range', label: 'Εύρος ημερομηνιών' },
+              ]}
+            />
+
+            {dateFilterMode === 'month' && (
+              monthOptions.length > 0
+                ? <StyledSelect
+                    isDark={isDark} showChevron className={`${subjectSelectCls} pr-7`}
+                    value={filterMonthValue}
+                    onChange={onFilterMonthChange}
+                    options={monthOptions.map((m) => ({ value: m, label: formatMonthLabel(m) }))}
+                  />
+                : <span className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Δεν υπάρχουν βαθμοί.</span>
+            )}
+
+            {dateFilterMode === 'schoolYear' && (
+              schoolYears.length > 0
+                ? <StyledSelect
+                    isDark={isDark} showChevron className={`${subjectSelectCls} pr-7`}
+                    value={filterYearId}
+                    onChange={onFilterYearChange}
+                    options={schoolYears.map((y) => ({ value: y.id, label: y.name }))}
+                  />
+                : <span className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Δεν έχουν οριστεί σχολικά έτη.</span>
+            )}
+
+            {dateFilterMode === 'range' && (
+              <div className="flex items-center gap-2">
+                <div className="w-36"><AppDatePicker value={filterRangeStart} onChange={onFilterRangeStartChange} placeholder="Από" variant="boxed" /></div>
+                <div className="w-36"><AppDatePicker value={filterRangeEnd} onChange={onFilterRangeEndChange} placeholder="Έως" variant="boxed" /></div>
+              </div>
             )}
           </div>
 

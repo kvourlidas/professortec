@@ -209,8 +209,9 @@ export default function ProgramPage() {
   // ── Add slot ──────────────────────────────────────────────────────────────
   const openAddSlotModal = (classId: string, day: string) => {
     const displayToday = formatDateDisplay(todayISO());
-    const startDate = mainYearForAdd ? formatDateDisplay(mainYearForAdd.start_date) : displayToday;
-    const endDate = mainYearForAdd ? formatDateDisplay(mainYearForAdd.end_date) : displayToday;
+    const yearForNewSlot = selectedYear ?? mainYearForAdd;
+    const startDate = yearForNewSlot ? formatDateDisplay(yearForNewSlot.start_date) : displayToday;
+    const endDate = yearForNewSlot ? formatDateDisplay(yearForNewSlot.end_date) : displayToday;
     setError(null);
     setAddForm({ classId, subjectId: null, tutorId: null, day, startTime: '', endTime: '', startDate, endDate, room: '' });
     setAddModalOpen(true);

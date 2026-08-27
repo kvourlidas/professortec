@@ -7,6 +7,9 @@ export type CreateStudentSubscriptionInput = {
   starts_on: string | null;
   ends_on: string | null;
   discount_reason: string | null;
+  original_price: number | null;
+  discount_mode: 'none' | 'pct' | 'amount' | null;
+  discount_value: number | null;
   renew_from_sub_id: string | null;
 };
 

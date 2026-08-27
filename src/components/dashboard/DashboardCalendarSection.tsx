@@ -15,6 +15,7 @@ import type {
   DatesSetArg,
   EventClickArg,
 } from '@fullcalendar/core';
+import type { DateClickArg } from '@fullcalendar/interaction';
 import elLocale from '@fullcalendar/core/locales/el';
 
 import AppDatePicker from '../ui/AppDatePicker';
@@ -75,6 +76,10 @@ type TestModalState = {
   testId: string; classId: string | null; levelId: string | null; subjectId: string | null; date: string;
   startTime: string; endTime: string;
   title: string; activeDuringHoliday: boolean;
+};
+type AddExtraModalState = {
+  date: string; classId: string | null; subjectId: string | null;
+  startTime: string; endTime: string; room: string;
 };
 
 /* ------------ Edge function helper ------------ */
@@ -217,6 +222,10 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
   const [convertingSessionToTest, setConvertingSessionToTest] = useState(false);
   const [convertingTestToSession, setConvertingTestToSession] = useState(false);
   const [showConvertTestConfirm, setShowConvertTestConfirm] = useState(false);
+
+  const [extraModal, setExtraModal] = useState<AddExtraModalState | null>(null);
+  const [extraError, setExtraError] = useState<string | null>(null);
+  const [savingExtra, setSavingExtra] = useState(false);
 
   /* -------- Holidays helpers -------- */
   const holidayDateSet = useMemo(() => new Set(holidays.map((h) => h.date)), [holidays]);
@@ -378,11 +387,10 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
       if ((!cls && !student) || !item.day_of_week || !item.start_time || !item.end_time) return;
       const dow = WEEKDAY_TO_INDEX[item.day_of_week];
       if (dow === undefined) return;
-      // Sessions are shown regardless of the school-year date range they were created under
-      // (item.start_date/end_date), so a slot never disappears from the calendar just because
-      // its recorded range belongs to a past or future school year.
-      const effectiveStart = viewStart;
-      const effectiveEnd = viewEnd;
+      const patternStart = item.start_date ? new Date(item.start_date + 'T00:00:00') : null;
+      const patternEnd = item.end_date ? new Date(item.end_date + 'T23:59:59') : null;
+      const effectiveStart = patternStart && patternStart > viewStart ? patternStart : viewStart;
+      const effectiveEnd = patternEnd && patternEnd < viewEnd ? patternEnd : viewEnd;
       if (effectiveStart > effectiveEnd) return;
       let currentDate = getNextDateForDow(effectiveStart, dow);
       const subjectIdForSlot = item.subject_id ?? cls?.subject_id ?? null;
@@ -738,7 +746,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     const { event } = arg;
     const kind = event.extendedProps['kind'] as 'program' | 'schoolEvent' | 'test' | undefined;
     if (!event.start || !event.end) return;
-    setEventModal(null); setTestModal(null); setShowDeleteConfirm(false); setEventError(null); setTestError(null); setShowConvertTestConfirm(false);
+    setEventModal(null); setTestModal(null); setExtraModal(null); setShowDeleteConfirm(false); setEventError(null); setTestError(null); setShowConvertTestConfirm(false);
     if (kind === 'schoolEvent') { const eventId = event.extendedProps['eventId'] as string | undefined; if (eventId) openEditSchoolEventModal(eventId); return; }
     if (kind === 'test') { openTestModalFromEvent(event); return; }
     if (kind === 'program') {
@@ -756,6 +764,63 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
       const resolvedCharge = resolveChargeForDate(programItemId, dateIso);
       setEventModal({ programItemId, originalDateStr: dateIso, date: formatDateDisplay(dateIso), startTime: start24, endTime: end24, classId: classIdProp ?? null, studentId: studentIdProp, subjectId: prefilledSubjectId, overrideId: overrideId ?? undefined, activeDuringHoliday: !!event.extendedProps['activeDuringHoliday'], chargeAmount: resolvedCharge != null ? String(resolvedCharge) : '' });
       setShowDeleteConfirm(false);
+    }
+  };
+
+  /* -------- Add extra (one-off) class from empty calendar space -------- */
+  const handleDateClick = (arg: DateClickArg) => {
+    setEventModal(null); setTestModal(null); setShowDeleteConfirm(false);
+    const dateIso = formatLocalYMD(arg.date);
+    const hasTime = arg.view.type !== 'dayGridMonth';
+    const startTime = hasTime ? `${pad2(arg.date.getHours())}:${pad2(arg.date.getMinutes())}` : '';
+    setExtraError(null);
+    setExtraModal({ date: formatDateDisplay(dateIso), classId: null, subjectId: null, startTime, endTime: '', room: '' });
+  };
+
+  const closeExtraModal = () => { if (savingExtra) return; setExtraModal(null); setExtraError(null); };
+
+  const handleExtraFieldChange = (field: 'classId' | 'subjectId') => (e: ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    setExtraModal((prev) => {
+      if (!prev) return prev;
+      if (field === 'classId') return { ...prev, classId: value || null, subjectId: null };
+      return { ...prev, subjectId: value || null };
+    });
+  };
+
+  const handleSaveExtraClass = async () => {
+    if (!extraModal || !program) return;
+    if (!extraModal.classId) { setExtraError('Επιλέξτε τμήμα.'); return; }
+    if (!extraModal.subjectId) { setExtraError('Επιλέξτε μάθημα.'); return; }
+    if (!extraModal.startTime || !extraModal.endTime) { setExtraError('Συμπληρώστε τις ώρες έναρξης και λήξης.'); return; }
+    const dateISO = parseDateDisplayToISO(extraModal.date);
+    if (!dateISO) { setExtraError('Μη έγκυρη ημερομηνία.'); return; }
+    const dow = INDEX_TO_WEEKDAY[new Date(`${dateISO}T00:00:00`).getDay()];
+    const itemsForDay = programItems.filter((i) => i.day_of_week === dow && i.program_id === program.id);
+    const maxPos = itemsForDay.reduce((max, i) => Math.max(max, i.position ?? 0), 0);
+
+    setSavingExtra(true); setExtraError(null);
+    try {
+      const data = await callEdgeFunction('program-create', {
+        program_id: program.id,
+        class_id: extraModal.classId,
+        subject_id: extraModal.subjectId,
+        tutor_id: null,
+        day_of_week: dow,
+        position: maxPos + 1,
+        start_time: extraModal.startTime,
+        end_time: extraModal.endTime,
+        start_date: dateISO,
+        end_date: dateISO,
+        room: extraModal.room.trim() || null,
+      });
+      setProgramItems((prev) => [...prev, data.item as ProgramItemRow]);
+      setExtraModal(null);
+    } catch (err) {
+      console.error(err);
+      setExtraError('Αποτυχία προσθήκης έκτακτου μαθήματος.');
+    } finally {
+      setSavingExtra(false);
     }
   };
 
@@ -1036,6 +1101,10 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     if (!eventModal?.classId) return [];
     return getSubjectsForClass(eventModal.classId);
   }, [eventModal?.classId, eventModal?.studentId, classes, classSubjects, subjects, subjectById]);
+  const extraSubjectOptions = useMemo(() => {
+    if (!extraModal?.classId) return [];
+    return getSubjectsForClass(extraModal.classId);
+  }, [extraModal?.classId, classes, classSubjects, subjects, subjectById]);
   const testSubjectOptions = useMemo(() => {
     if (testModal?.levelId) return subjects.filter((s) => s.level_id === testModal.levelId).sort((a, b) => a.name.localeCompare(b.name, 'el-GR'));
     if (!testModal?.classId) return [];
@@ -1103,6 +1172,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
                 eventContent={renderEventContent}
                 datesSet={handleDatesSet}
                 eventClick={handleEventClick}
+                dateClick={handleDateClick}
               />
             </div>
           </div>
@@ -1255,6 +1325,79 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
                 <button type="button" onClick={handleEventModalSave}
                   className="btn-primary gap-1.5 px-4 py-1.5 font-semibold shadow-sm active:scale-[0.97]">
                   <Check className="h-3.5 w-3.5" />Ενημέρωση
+                </button>
+              </div>
+            </ModalShell>
+          )}
+
+          {/* Add extra (one-off) class modal */}
+          {extraModal && (
+            <ModalShell title="Έκτακτο μάθημα" subtitle="Προστίθεται μόνο για αυτή την ημερομηνία" icon={<BookOpen className="h-4 w-4" style={{ color: 'var(--ch-icon)' }} />} onClose={closeExtraModal} maxWidthClass="max-w-2xl">
+              <div className="space-y-4 px-6 pb-2">
+                {extraError && (
+                  <ModalErrorBox isDark={isDark}>
+                    <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />{extraError}
+                  </ModalErrorBox>
+                )}
+
+                <ModalFormField label="Τμήμα" isDark={isDark}>
+                  <ModalFieldIcon icon={GraduationCap} isDark={isDark} />
+                  <StyledSelect
+                    isDark={isDark} className={selectCls}
+                    value={extraModal.classId ?? ''}
+                    onChange={(v) => handleExtraFieldChange('classId')({ target: { value: v } } as unknown as ChangeEvent<HTMLSelectElement>)}
+                    options={[{ value: '', label: 'Επιλέξτε τμήμα' }, ...classes.map((c) => ({ value: c.id, label: c.title }))]}
+                  />
+                  <ModalSelectChevron isDark={isDark} />
+                </ModalFormField>
+
+                <ModalFormField label="Μάθημα" isDark={isDark}>
+                  <ModalFieldIcon icon={Layers} isDark={isDark} />
+                  <StyledSelect
+                    isDark={isDark} className={selectCls}
+                    value={extraModal.subjectId ?? ''}
+                    onChange={(v) => handleExtraFieldChange('subjectId')({ target: { value: v } } as unknown as ChangeEvent<HTMLSelectElement>)}
+                    disabled={!extraModal.classId || extraSubjectOptions.length === 0}
+                    options={[
+                      { value: '', label: extraSubjectOptions.length === 0 ? 'Δεν υπάρχουν μαθήματα' : 'Επιλέξτε μάθημα' },
+                      ...extraSubjectOptions.map((s) => ({ value: s.id, label: s.name })),
+                    ]}
+                  />
+                  <ModalSelectChevron isDark={isDark} />
+                </ModalFormField>
+
+                <ModalFormField label="Ημερομηνία" isDark={isDark}>
+                  <AppDatePicker value={extraModal.date} onChange={(v) => setExtraModal((p) => (p ? { ...p, date: v } : p))} placeholder="dd/mm/yyyy" variant="underline" />
+                </ModalFormField>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <ModalFormField label="Ώρα έναρξης" isDark={isDark}>
+                    <TimePicker value={extraModal.startTime} onChange={(t) => setExtraModal((p) => p ? { ...p, startTime: t } : p)} required />
+                  </ModalFormField>
+                  <ModalFormField label="Ώρα λήξης" isDark={isDark}>
+                    <TimePicker value={extraModal.endTime} onChange={(t) => setExtraModal((p) => p ? { ...p, endTime: t } : p)} required />
+                  </ModalFormField>
+                </div>
+
+                <ModalFormField label="Αίθουσα (προαιρετικό)" isDark={isDark}>
+                  <ModalFieldIcon icon={DoorOpen} isDark={isDark} />
+                  <input
+                    type="text"
+                    className={inputCls}
+                    value={extraModal.room}
+                    onChange={(e) => setExtraModal((p) => (p ? { ...p, room: e.target.value } : p))}
+                    placeholder="π.χ. Αίθουσα 2"
+                  />
+                </ModalFormField>
+              </div>
+
+              <div className={modalFooterCls}>
+                <button type="button" onClick={closeExtraModal} disabled={savingExtra} className={`${cancelBtnCls} disabled:opacity-50`}>
+                  Ακύρωση
+                </button>
+                <button type="button" onClick={handleSaveExtraClass} disabled={savingExtra}
+                  className="btn-primary gap-1.5 px-4 py-1.5 font-semibold shadow-sm active:scale-[0.97] disabled:opacity-60">
+                  {savingExtra ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Προσθήκη…</> : <><Check className="h-3.5 w-3.5" />Προσθήκη</>}
                 </button>
               </div>
             </ModalShell>

@@ -2,29 +2,32 @@ import { AlertCircle, Ban, CalendarDays, IdCard, RefreshCw, Tag } from 'lucide-r
 import { CURRENCY_SYMBOL, typeColors } from './constants';
 import { TypeIcon } from './TypeIcon';
 import { formatMonthRangeGreek, money, monthKeyList, packageTypeFromName, periodSummary, resolvePackageType, round2 } from './utils';
-import type { PackageRow, StudentViewRow } from './types';
+import type { PackageRow, SchoolYearRow, StudentViewRow } from './types';
 
 interface Props {
   row: StudentViewRow;
   rowNumber: number;
   isDark: boolean;
   packageById: Map<string, PackageRow>;
+  schoolYearById: Map<string, SchoolYearRow>;
   onGoToStudent: (row: StudentViewRow) => void;
   onRenew: (row: StudentViewRow) => void;
   onCancel: (row: StudentViewRow) => void;
 }
 
-export function SubscriptionTableRow({ row, rowNumber, isDark, packageById, onGoToStudent, onRenew, onCancel }: Props) {
+export function SubscriptionTableRow({ row, rowNumber, isDark, packageById, schoolYearById, onGoToStudent, onRenew, onCancel }: Props) {
   const sub        = row.sub!;
   const pkgName    = sub.package_name ?? '';
   const pkg        = sub.package_id ? packageById.get(sub.package_id) : undefined;
   const isCustom   = !!(pkg?.is_custom && pkg?.avatar_color);
+  const schoolYearName = pkg?.school_year_id ? (schoolYearById.get(pkg.school_year_id)?.name ?? null) : null;
   const pkgType    = packageTypeFromName(pkgName);
   const colors     = typeColors(pkgType, isDark);
 
   // Price shown here is always the fixed starting price, never the accumulated
   // (monthly-growing) total — that only shows on the student's card page.
   let basePrice = Number(sub.price ?? 0);
+  const finalPrice = Number(sub.price ?? 0); // always the authoritative charged amount
   let discountAmount = 0;
   let discountLabel: string | null = null; // "10%" or "5.00 €", shown in its own unit
   let discountReasonText = sub.discount_reason ?? null;
@@ -46,17 +49,26 @@ export function SubscriptionTableRow({ row, rowNumber, isDark, packageById, onGo
       const discountedMonths = row.plan.discount_months.length;
       if (discountedMonths > 0 && discountedMonths < totalMonths) partialMonths = { discounted: discountedMonths, total: totalMonths };
     }
-  } else if (pkg && !isCustom) {
-    const pkgBase = Number(pkg.price ?? 0);
-    if (pkgBase > basePrice) {
-      discountAmount = round2(pkgBase - basePrice);
+  } else if (sub.discount_mode && sub.discount_mode !== 'none' && Number(sub.discount_value) > 0) {
+    // Stored at the time the subscription was created/renewed — independent of
+    // the package's current catalog price, and works for custom packages too.
+    const original = sub.original_price != null ? Number(sub.original_price) : finalPrice;
+    basePrice = original;
+    if (sub.discount_mode === 'pct') {
+      discountAmount = round2(original * (Number(sub.discount_value) / 100));
+      discountLabel = `${sub.discount_value}%`;
+    } else {
+      discountAmount = Math.min(original, Number(sub.discount_value));
       discountLabel = `${money(discountAmount)} ${CURRENCY_SYMBOL}`;
-      basePrice = pkgBase;
     }
   }
   // Partial-month discounts don't apply to the whole plan, so the starting fee
   // stays as the headline number — only the discount itself is called out.
-  const totalPrice = partialMonths ? basePrice : round2(Math.max(0, basePrice - discountAmount));
+  // For a single-period subscription, the stored price is always the source of
+  // truth for the final total (never recomputed from base − discount).
+  const totalPrice = row.plan
+    ? (partialMonths ? basePrice : round2(Math.max(0, basePrice - discountAmount)))
+    : finalPrice;
 
   // For monthly plans, also total up the full subscription (same per-month
   // logic the server uses to generate each month's charge).
@@ -124,7 +136,7 @@ export function SubscriptionTableRow({ row, rowNumber, isDark, packageById, onGo
       <td className={`px-4 py-4 align-middle ${colDivider}`}>
         <span className={`inline-flex items-center gap-1.5 text-[11px] ${isExpired ? (isDark ? 'text-rose-400' : 'text-rose-600') : (isDark ? 'text-slate-400' : 'text-slate-500')}`}>
           <CalendarDays className="h-3 w-3 opacity-50 shrink-0" />
-          {row.planRange ? formatMonthRangeGreek(row.planRange.start_month, row.planRange.end_month) : periodSummary(sub)}
+          {row.planRange ? formatMonthRangeGreek(row.planRange.start_month, row.planRange.end_month) : schoolYearName ?? periodSummary(sub)}
         </span>
       </td>
 
@@ -136,7 +148,7 @@ export function SubscriptionTableRow({ row, rowNumber, isDark, packageById, onGo
                 <div className={`text-xs tabular-nums ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                   {money(basePrice)} {CURRENCY_SYMBOL} − {discountLabel}
                 </div>
-                <span className={`text-base font-bold tabular-nums ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+                <span className={`text-lg font-bold tabular-nums ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
                   {money(totalPrice)} {CURRENCY_SYMBOL}
                 </span>
               </>
@@ -165,8 +177,8 @@ export function SubscriptionTableRow({ row, rowNumber, isDark, packageById, onGo
                 {money(basePrice)} {CURRENCY_SYMBOL}
               </div>
             )}
-            <span className={`text-base font-bold tabular-nums ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
-              {money(discountLabel ? totalPrice : basePrice)} {CURRENCY_SYMBOL}
+            <span className={`text-lg font-bold tabular-nums ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+              {money(totalPrice)} {CURRENCY_SYMBOL}
             </span>
             {(discountLabel || discountReasonText) && (
               <div className={`mt-1 flex items-center justify-end gap-1.5 text-xs font-medium ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>

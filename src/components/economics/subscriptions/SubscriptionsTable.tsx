@@ -1,6 +1,6 @@
 import { Briefcase, CheckCircle2, ChevronLeft, ChevronRight, Clock, Loader2 } from 'lucide-react';
 import { SubscriptionTableRow } from './SubscriptionTableRow';
-import type { PackageRow, StudentViewRow } from './types';
+import type { PackageRow, SchoolYearRow, StudentViewRow } from './types';
 
 interface Props {
   rows: StudentViewRow[];
@@ -12,6 +12,7 @@ interface Props {
   showingTo: number;
   isDark: boolean;
   packageById: Map<string, PackageRow>;
+  schoolYearById: Map<string, SchoolYearRow>;
   variant: 'active' | 'expired';
   onPageChange: (p: number) => void;
   onOpenAssign: () => void;
@@ -21,7 +22,7 @@ interface Props {
 }
 
 export function SubscriptionsTable({
-  rows, loading, totalCount, page, pageCount, showingFrom, showingTo, isDark, packageById,
+  rows, loading, totalCount, page, pageCount, showingFrom, showingTo, isDark, packageById, schoolYearById,
   variant, onPageChange, onOpenAssign, onGoToStudent, onRenew, onCancel,
 }: Props) {
   const isExpiredVariant = variant === 'expired';
@@ -97,6 +98,7 @@ export function SubscriptionsTable({
                   row={r}
                   isDark={isDark}
                   packageById={packageById}
+                  schoolYearById={schoolYearById}
                   onGoToStudent={onGoToStudent}
                   onRenew={onRenew}
                   onCancel={onCancel}

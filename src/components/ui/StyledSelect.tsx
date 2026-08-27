@@ -22,28 +22,36 @@ type Props = {
   placeholder?: string;
   disabled?: boolean;
   showChevron?: boolean;
+  /** Render with the option panel already open on mount, instead of requiring a click. */
+  defaultOpen?: boolean;
+  /** Render the full option list without the usual max-height/scroll clipping. */
+  expanded?: boolean;
 };
 
 export default function StyledSelect({
   options, value, onChange, isDark, className, style, placeholder = '', disabled = false, showChevron = false,
+  defaultOpen = false, expanded = false,
 }: Props) {
   const selected = options.find((o) => o.value === value) ?? null;
   const selectedLabel = selected?.label ?? '';
-  const [query, setQuery] = useState(selectedLabel);
-  const [open, setOpen] = useState(false);
+  // `query` only ever holds the in-progress filter text while the panel is open;
+  // when closed, the trigger simply displays the selected option's label. This
+  // keeps the display value a pure function of props/state instead of needing an
+  // effect to sync it, which would otherwise fire (and clobber `query`) on every render.
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(defaultOpen);
   const [hoveredValue, setHoveredValue] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => { setQuery(selectedLabel); }, [selectedLabel]);
+  const displayValue = open ? query : selectedLabel;
 
   useEffect(() => {
     if (!open) return;
     const h = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) { setOpen(false); setQuery(selectedLabel); }
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
     document.addEventListener('mousedown', h);
     return () => document.removeEventListener('mousedown', h);
-  }, [open, selectedLabel]);
+  }, [open]);
 
   const filtered = useMemo(() => {
     const q = normalizeText(query.trim());
@@ -54,17 +62,16 @@ export default function StyledSelect({
   const handleSelect = (o: SelectOption) => {
     if (o.disabled) return;
     onChange(o.value);
-    setQuery(o.label);
     setOpen(false);
   };
 
   return (
     <div className="relative" ref={ref}>
       <input
-        value={query}
+        value={displayValue}
         onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
         onFocus={() => { if (!disabled) { setOpen(true); setQuery(''); } }}
-        onKeyDown={(e) => { if (e.key === 'Escape') { setOpen(false); setQuery(selectedLabel); } }}
+        onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false); }}
         placeholder={placeholder}
         disabled={disabled}
         style={style}
@@ -78,7 +85,8 @@ export default function StyledSelect({
 
       {open && !disabled && (
         <div
-          className={`absolute left-0 top-full z-50 mt-1.5 max-h-64 w-full min-w-[10rem] overflow-y-auto rounded-xl border shadow-2xl
+          className={`absolute left-0 top-full z-50 mt-1.5 w-full min-w-[10rem] rounded-xl border shadow-2xl
+            ${expanded ? '' : 'max-h-64 overflow-y-auto'}
             ${isDark ? 'border-white/10 bg-slate-900/95 shadow-black/60' : 'border-slate-200/80 bg-white/95 shadow-slate-300/50'}`}
           style={{ backdropFilter: 'blur(20px)' }}
         >

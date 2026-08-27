@@ -8,6 +8,18 @@ export function formatTime(value: string | null): string {
   return value ? value.slice(0, 5) : '';
 }
 
+const GREEK_MONTHS = [
+  'Ιανουάριος', 'Φεβρουάριος', 'Μάρτιος', 'Απρίλιος', 'Μάιος', 'Ιούνιος',
+  'Ιούλιος', 'Αύγουστος', 'Σεπτέμβριος', 'Οκτώβριος', 'Νοέμβριος', 'Δεκέμβριος',
+];
+
+// value: 'YYYY-MM'
+export function formatMonthLabel(value: string): string {
+  const [y, m] = value.split('-');
+  const idx = Number(m) - 1;
+  return idx >= 0 && idx < 12 ? `${GREEK_MONTHS[idx]} ${y}` : value;
+}
+
 // Kept for call-site compatibility — global scrollbar CSS in index.css now handles styling.
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function getScrollbarStyle(_isDark: boolean): string { return ''; }

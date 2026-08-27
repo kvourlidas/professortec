@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../../lib/supabaseClient';
 import { useAuth } from '../../../auth';
 import { useTheme } from '../../../context/ThemeContext';
-import type { DiscountScope, PackageRow, PaymentRow, StudentRow, StudentViewRow, SubscriptionRow } from './types';
+import type { DiscountScope, PackageRow, PaymentRow, SchoolYearRow, StudentRow, StudentViewRow, SubscriptionRow } from './types';
 import {
   isoToDisplayDate, monthKeyList, monthKeyToRange, pad2, parseMoney, resolvePackageType, round2, todayLocalISODate,
 } from './utils';
@@ -28,14 +28,20 @@ async function buildViewRows(
 ): Promise<StudentViewRow[]> {
   if (subs.length === 0) return [];
 
-  // discount_reason from base table
+  // discount fields from base table (not exposed on the totals view)
   const subIds = subs.map(s => s.id);
   const { data: drData } = await supabase
     .from('student_subscriptions')
-    .select('id,discount_reason')
+    .select('id,discount_reason,original_price,discount_mode,discount_value')
     .in('id', subIds);
-  const drMap = new Map((drData ?? []).map((r: any) => [r.id, r.discount_reason]));
-  for (const sub of subs) (sub as any).discount_reason = drMap.get(sub.id) ?? null;
+  const drMap = new Map((drData ?? []).map((r: any) => [r.id, r]));
+  for (const sub of subs) {
+    const extra = drMap.get(sub.id);
+    sub.discount_reason = extra?.discount_reason ?? null;
+    sub.original_price = extra?.original_price ?? null;
+    sub.discount_mode = extra?.discount_mode ?? null;
+    sub.discount_value = extra?.discount_value ?? null;
+  }
 
   // student names
   const studentIds = [...new Set(subs.map(s => s.student_id))];
@@ -142,6 +148,7 @@ export function useSubscriptionsPage() {
   const [search,       setSearch]       = useState('');
   const [payFilter, setPayFilter] = useState<'all' | 'settled' | 'owes' | 'unpaid'>('all');
   const [packages,    setPackages]    = useState<PackageRow[]>([]);
+  const [schoolYears, setSchoolYears] = useState<SchoolYearRow[]>([]);
   const [allStudents, setAllStudents] = useState<StudentRow[]>([]);
 
   // ── Delete ─────────────────────────────────────────────────────────────────
@@ -187,6 +194,12 @@ export function useSubscriptionsPage() {
     for (const p of packages) m.set(p.id, p);
     return m;
   }, [packages]);
+
+  const schoolYearById = useMemo(() => {
+    const m = new Map<string, SchoolYearRow>();
+    for (const y of schoolYears) m.set(y.id, y);
+    return m;
+  }, [schoolYears]);
 
   const monthOptions = useMemo(() => [
     { value: '01', label: 'Ιανουάριος' }, { value: '02', label: 'Φεβρουάριος' }, { value: '03', label: 'Μάρτιος' },
@@ -245,12 +258,22 @@ export function useSubscriptionsPage() {
     if (!schoolId) return;
     const { data, error } = await supabase
       .from('packages')
-      .select('id,school_id,name,price,currency,is_active,sort_order,created_at,package_type,starts_on,ends_on,is_custom,avatar_color')
+      .select('id,school_id,name,price,currency,is_active,sort_order,created_at,package_type,starts_on,ends_on,school_year_id,is_custom,avatar_color')
       .eq('school_id', schoolId)
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: true });
     if (error) { setError(error.message); return; }
     setPackages((data ?? []) as PackageRow[]);
+  };
+
+  const loadSchoolYears = async () => {
+    if (!schoolId) return;
+    const { data, error } = await supabase
+      .from('school_years')
+      .select('id,name')
+      .eq('school_id', schoolId);
+    if (error) { setError(error.message); return; }
+    setSchoolYears((data ?? []) as SchoolYearRow[]);
   };
 
   const loadAllStudents = async () => {
@@ -335,7 +358,7 @@ export function useSubscriptionsPage() {
     await Promise.all([loadActive(), loadExpired()]);
   };
 
-  useEffect(() => { loadPackages(); loadAllStudents(); }, [schoolId]);
+  useEffect(() => { loadPackages(); loadAllStudents(); loadSchoolYears(); }, [schoolId]);
   useEffect(() => { loadActive(); },  [schoolId, page, search, payFilter]);
   useEffect(() => { loadExpired(); }, [schoolId, expiredPage, search, payFilter]);
 
@@ -481,6 +504,10 @@ export function useSubscriptionsPage() {
       }
     }
 
+    const legacyBase = customPrice.trim() ? parseMoney(customPrice) : Number(pkg.price ?? 0);
+    const legacyDisc = parseMoney(discountPct);
+    const hasLegacyDiscount = legacyDisc > 0;
+
     setSaving(true); setAssignError(null);
     try {
       await callEdgeFunction('student-subscription-create', {
@@ -492,6 +519,9 @@ export function useSubscriptionsPage() {
         starts_on: startsISO,
         ends_on: endsISO,
         discount_reason: discountReason.trim() || null,
+        original_price: hasLegacyDiscount ? legacyBase : null,
+        discount_mode: hasLegacyDiscount ? discountMode : null,
+        discount_value: hasLegacyDiscount ? legacyDisc : null,
         renew_from_sub_id: isRenew && renewFromSubId ? renewFromSubId : null,
       });
       setAssignOpen(false); setInfo(isRenew ? 'Ανανεώθηκε η συνδρομή.' : 'Ανατέθηκε πακέτο.'); await load();
@@ -526,7 +556,7 @@ export function useSubscriptionsPage() {
     error, setError, info, setInfo,
     search, setSearch,
     payFilter, setPayFilter,
-    packages, allStudents, packageById,
+    packages, allStudents, packageById, schoolYearById,
 
     // active table
     loading, rows, totalCount, page, setPage, pageCount, showingFrom, showingTo,

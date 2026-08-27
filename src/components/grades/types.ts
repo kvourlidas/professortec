@@ -49,3 +49,13 @@ export type GradeRow = StudentGradeRow | TutorGradeRow;
 export type GradesTab = 'overall' | 'by-subject';
 
 export type SelectionType = 'student' | 'tutor' | null;
+
+export type GradesDateFilterMode = 'all' | 'month' | 'schoolYear' | 'range';
+
+export type SchoolYearOption = {
+  id: string;
+  name: string;
+  start_date: string;
+  end_date: string;
+  is_summer: boolean;
+};

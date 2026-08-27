@@ -13,8 +13,13 @@ export type PackageRow = {
   package_type: PackageType | null | undefined;
   starts_on: string | null;
   ends_on: string | null;
+  school_year_id?: string | null;
   is_custom?: boolean | null;
   avatar_color?: string | null;
+};
+export type SchoolYearRow = {
+  id: string;
+  name: string;
 };
 export type PaymentMethod = 'cash' | 'card' | 'bank_transfer';
 export type PaymentRow = {
@@ -46,6 +51,9 @@ export type SubscriptionRow = {
   paid_amount?: number | null;
   balance?: number | null;
   discount_pct?: number | null;
+  original_price?: number | null;
+  discount_mode?: 'none' | 'pct' | 'amount' | null;
+  discount_value?: number | null;
   discount_reason?: string | null;
   notes?: string | null;
   plan_id?: string | null;

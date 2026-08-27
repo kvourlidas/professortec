@@ -55,6 +55,7 @@ export default function StudentsSubscriptionsPage() {
           showingTo={p.showingTo}
           isDark={p.isDark}
           packageById={p.packageById}
+          schoolYearById={p.schoolYearById}
           onPageChange={p.setPage}
           onOpenAssign={p.openAssign}
           onGoToStudent={goToStudent}
