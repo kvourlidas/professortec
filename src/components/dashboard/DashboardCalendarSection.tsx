@@ -378,10 +378,11 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
       if ((!cls && !student) || !item.day_of_week || !item.start_time || !item.end_time) return;
       const dow = WEEKDAY_TO_INDEX[item.day_of_week];
       if (dow === undefined) return;
-      const patternStartDate = item.start_date ? new Date(item.start_date + 'T00:00:00') : new Date('1970-01-01T00:00:00');
-      const patternEndDate = item.end_date ? new Date(item.end_date + 'T23:59:59') : new Date('2999-12-31T23:59:59');
-      const effectiveStart = patternStartDate > viewStart ? patternStartDate : viewStart;
-      const effectiveEnd = patternEndDate < viewEnd ? patternEndDate : viewEnd;
+      // Sessions are shown regardless of the school-year date range they were created under
+      // (item.start_date/end_date), so a slot never disappears from the calendar just because
+      // its recorded range belongs to a past or future school year.
+      const effectiveStart = viewStart;
+      const effectiveEnd = viewEnd;
       if (effectiveStart > effectiveEnd) return;
       let currentDate = getNextDateForDow(effectiveStart, dow);
       const subjectIdForSlot = item.subject_id ?? cls?.subject_id ?? null;
