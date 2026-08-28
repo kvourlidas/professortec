@@ -10,6 +10,34 @@ for (let h = 0; h < 24; h++) {
   }
 }
 
+/** Parses free-typed 24-hour input into "HH:MM", or null if invalid.
+ * Accepts "22:00", "9:5", "930" (-> 09:30), "2200" (-> 22:00), "9" (-> 09:00). */
+function parseTimeInput(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+
+  let h: number;
+  let m: number;
+
+  const withColon = trimmed.match(/^(\d{1,2}):(\d{1,2})$/);
+  if (withColon) {
+    h = parseInt(withColon[1], 10);
+    m = parseInt(withColon[2], 10);
+  } else if (/^\d{3,4}$/.test(trimmed)) {
+    const digits = trimmed.padStart(4, '0');
+    h = parseInt(digits.slice(0, 2), 10);
+    m = parseInt(digits.slice(2), 10);
+  } else if (/^\d{1,2}$/.test(trimmed)) {
+    h = parseInt(trimmed, 10);
+    m = 0;
+  } else {
+    return null;
+  }
+
+  if (h < 0 || h > 23 || m < 0 || m > 59) return null;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
 type Props = {
   /** "HH:MM" in 24-hour format, e.g. "08:30" */
   value: string;
@@ -22,10 +50,18 @@ export default function TimePicker({ value, onChange, required }: Props) {
   const isDark = theme === 'dark';
   const [open, setOpen] = useState(false);
   const [hoveredTime, setHoveredTime] = useState<string | null>(null);
+  const [inputValue, setInputValue] = useState(value);
   const containerRef = useRef<HTMLDivElement>(null);
-  const buttonRef = useRef<HTMLButtonElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const [dropPos, setDropPos] = useState({ top: 0, left: 0, width: 0 });
+
+  // Keep the visible text in sync with the committed value, unless the user is actively editing it.
+  useEffect(() => {
+    if (document.activeElement !== inputRef.current) {
+      setInputValue(value);
+    }
+  }, [value]);
 
   // Close on outside click
   useEffect(() => {
@@ -49,19 +85,29 @@ export default function TimePicker({ value, onChange, required }: Props) {
   }, [open, value]);
 
   const handleOpen = () => {
-    if (!open && buttonRef.current) {
-      const r = buttonRef.current.getBoundingClientRect();
+    if (!open && containerRef.current) {
+      const r = containerRef.current.getBoundingClientRect();
       setDropPos({ top: r.bottom + 4, left: r.left, width: r.width });
     }
-    setOpen((v) => !v);
+    setOpen(true);
+  };
+
+  const commitInput = () => {
+    const parsed = parseTimeInput(inputValue);
+    if (parsed) {
+      onChange(parsed);
+      setInputValue(parsed);
+    } else {
+      setInputValue(value);
+    }
   };
 
   const triggerCls = isDark
-    ? `h-9 w-full rounded-lg border px-3 text-sm font-medium outline-none transition flex items-center justify-between cursor-pointer
+    ? `h-9 w-full rounded-lg border px-3 text-sm font-medium outline-none transition flex items-center justify-between cursor-text
        border-slate-700/70 bg-slate-900/60 text-slate-100
        hover:border-[color:var(--color-accent)]/50
        ${open ? 'border-[color:var(--color-accent)]/60 ring-1 ring-[color:var(--color-accent)]/20' : ''}`
-    : `h-9 w-full rounded-lg border px-3 text-sm font-medium outline-none transition flex items-center justify-between cursor-pointer
+    : `h-9 w-full rounded-lg border px-3 text-sm font-medium outline-none transition flex items-center justify-between cursor-text
        border-slate-300 bg-white text-slate-800
        hover:border-[color:var(--color-accent)]/50
        ${open ? 'border-[color:var(--color-accent)]/60 ring-1 ring-[color:var(--color-accent)]/20' : ''}`;
@@ -72,17 +118,27 @@ export default function TimePicker({ value, onChange, required }: Props) {
 
   return (
     <div ref={containerRef} className="relative w-full">
-      <button
-        ref={buttonRef}
-        type="button"
-        onClick={handleOpen}
-        className={triggerCls}
-      >
-        <span className={value ? '' : (isDark ? 'text-slate-500' : 'text-slate-400')}>
-          {value || '--:--'}
-        </span>
+      <div className={triggerCls} onClick={() => { handleOpen(); inputRef.current?.focus(); }}>
+        <input
+          ref={inputRef}
+          type="text"
+          inputMode="numeric"
+          value={inputValue}
+          onChange={(e) => {
+            const digits = e.target.value.replace(/\D/g, '').slice(0, 4);
+            setInputValue(digits.length > 2 ? `${digits.slice(0, 2)}:${digits.slice(2)}` : digits);
+          }}
+          onFocus={handleOpen}
+          onBlur={commitInput}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') { e.preventDefault(); commitInput(); setOpen(false); inputRef.current?.blur(); }
+            else if (e.key === 'Escape') { setInputValue(value); setOpen(false); inputRef.current?.blur(); }
+          }}
+          placeholder="--:--"
+          className={`w-full bg-transparent outline-none ${isDark ? 'placeholder-slate-500' : 'placeholder-slate-400'}`}
+        />
         <Clock className={`h-3.5 w-3.5 shrink-0 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-      </button>
+      </div>
 
       {/* Hidden input for required validation */}
       {required && (
@@ -108,7 +164,8 @@ export default function TimePicker({ value, onChange, required }: Props) {
               <div
                 key={t}
                 data-selected={isSelected}
-                onClick={() => { onChange(t); setOpen(false); }}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => { onChange(t); setInputValue(t); setOpen(false); }}
                 onMouseEnter={() => setHoveredTime(t)}
                 onMouseLeave={() => setHoveredTime((h) => (h === t ? null : h))}
                 style={!isSelected && hoveredTime === t ? { backgroundColor: 'color-mix(in srgb, var(--color-accent) 16%, transparent)' } : undefined}

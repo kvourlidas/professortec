@@ -1,0 +1,217 @@
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { Search, Plus, GripVertical, Users, ChevronDown } from 'lucide-react';
+import { DAY_OPTIONS } from '../program/constants';
+import type { StudentRow } from './types';
+
+interface PrivateProgramStudentsPanelProps {
+  students: StudentRow[];
+  filteredStudents: StudentRow[];
+  studentSearch: string;
+  onSearchChange: (v: string) => void;
+  isDark: boolean;
+  dragStudentId: string | null;
+  onDragStart: (studentId: string) => void;
+  onDragEnd: (studentId: string) => void;
+  onAddSlot: (studentId: string, day: string) => void;
+}
+
+const PICKER_STYLE = `
+  @keyframes pickerFadeIn {
+    from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .day-picker-animate { animation: pickerFadeIn 0.14s cubic-bezier(0.16,1,0.3,1) forwards; }
+  .students-scroll::-webkit-scrollbar { width: 4px; }
+  .students-scroll::-webkit-scrollbar-track { background: transparent; }
+  .students-scroll::-webkit-scrollbar-thumb { border-radius: 9999px; background: rgba(148,163,184,0.35); }
+  .students-scroll::-webkit-scrollbar-thumb:hover { background: rgba(148,163,184,0.6); }
+`;
+
+function DayPicker({ studentId, isDark, onAddSlot }: {
+  studentId: string;
+  isDark: boolean;
+  onAddSlot: (studentId: string, day: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [hoveredDay, setHoveredDay] = useState<string | null>(null);
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const PANEL_HEIGHT_ESTIMATE = 240;
+    const updateCoords = () => {
+      const r = btnRef.current?.getBoundingClientRect();
+      if (!r) return;
+      const fitsBelow = window.innerHeight - r.bottom >= PANEL_HEIGHT_ESTIMATE;
+      const top = fitsBelow ? r.bottom + 6 : Math.max(6, r.top - PANEL_HEIGHT_ESTIMATE - 6);
+      const left = Math.min(r.left, window.innerWidth - 120);
+      setCoords({ top, left });
+    };
+    updateCoords();
+
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (btnRef.current?.contains(target) || panelRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+    const closeOnScroll = () => setOpen(false);
+    document.addEventListener('mousedown', handler);
+    window.addEventListener('scroll', closeOnScroll, true);
+    window.addEventListener('resize', closeOnScroll);
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      window.removeEventListener('scroll', closeOnScroll, true);
+      window.removeEventListener('resize', closeOnScroll);
+    };
+  }, [open]);
+
+  return (
+    <div className="relative shrink-0">
+      <button
+        ref={btnRef}
+        type="button"
+        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+        title="Προσθήκη σε μέρα"
+        className={`flex h-6 items-center gap-1 rounded-md border pl-2 pr-1.5 text-[10px] font-medium transition ${
+          open
+            ? isDark
+              ? 'border-[color:var(--color-accent)]/50 bg-[color:var(--color-accent)]/10 text-[color:var(--color-accent)]'
+              : 'border-[color:var(--color-accent)]/40 bg-[color:var(--color-accent)]/8 text-[color:var(--color-accent)]'
+            : isDark
+              ? 'border-slate-700/60 bg-slate-800/60 text-slate-400 hover:border-slate-600 hover:text-slate-200'
+              : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-700'
+        }`}
+      >
+        <Plus className="h-2.5 w-2.5 shrink-0" />
+        Μέρα
+        <ChevronDown className={`h-3 w-3 shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && coords && createPortal(
+        <div ref={panelRef} className={`day-picker-animate fixed z-[200] min-w-[110px] overflow-hidden rounded-xl border py-1 shadow-md ${
+          isDark ? 'border-slate-700/60 bg-slate-900' : 'border-slate-200 bg-white'
+        }`} style={{ top: coords.top, left: coords.left }}>
+          {DAY_OPTIONS.map((d) => (
+            <button
+              key={d.value}
+              type="button"
+              onClick={() => { onAddSlot(studentId, d.value); setOpen(false); }}
+              onMouseEnter={() => setHoveredDay(d.value)}
+              onMouseLeave={() => setHoveredDay((h) => (h === d.value ? null : h))}
+              style={hoveredDay === d.value ? { backgroundColor: 'color-mix(in srgb, var(--color-accent) 16%, transparent)' } : undefined}
+              className={`flex w-full items-center px-3 py-1.5 text-left text-[11px] font-medium transition-colors ${
+                isDark ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              {d.label}
+            </button>
+          ))}
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+}
+
+export default function PrivateProgramStudentsPanel({
+  students, filteredStudents, studentSearch, onSearchChange,
+  isDark, dragStudentId: _dragStudentId, onDragStart, onDragEnd, onAddSlot,
+}: PrivateProgramStudentsPanelProps) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div>
+      <style>{PICKER_STYLE}</style>
+
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all ${
+          isDark ? 'bg-slate-900 hover:border-slate-600/70' : 'bg-white hover:border-slate-300'
+        } ${open ? 'border-[color:var(--color-accent)]' : isDark ? 'border-slate-700/60' : 'border-slate-200'}`}
+      >
+        <Users className={`h-4 w-4 shrink-0 ${open ? '' : isDark ? 'text-slate-500' : 'text-slate-400'}`}
+          style={open ? { color: 'var(--color-accent)' } : undefined} />
+
+        <div className="flex-1 min-w-0">
+          <div className={`text-sm font-semibold leading-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>
+            Μαθητές
+          </div>
+          <div className={`mt-0.5 text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+            {open ? 'Σύρετε ή επιλέξτε μέρα για προσθήκη' : 'Κλικ για ανάπτυξη'}
+          </div>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2.5">
+          <span className={`rounded-md border px-2.5 py-0.5 text-[10px] font-bold tabular-nums ${isDark ? 'border-slate-700/60 bg-slate-800/60 text-slate-400' : 'border-slate-200 bg-slate-100 text-slate-500'}`}>
+            {filteredStudents.length} / {students.length}
+          </span>
+          <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${open ? 'rotate-180' : ''} ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+        </div>
+      </button>
+
+      <div
+        className="overflow-hidden transition-all duration-300 ease-in-out"
+        style={{ display: 'grid', gridTemplateRows: open ? '1fr' : '0fr' }}
+      >
+        <div className="min-h-0">
+          <div className="pt-4">
+            <div className="relative mb-4">
+              <Search className={`pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+              <input
+                className={`h-8 w-full rounded-xl border pl-9 pr-3 text-xs outline-none transition sm:w-64 ${
+                  isDark
+                    ? 'border-slate-700/70 bg-slate-900/60 text-slate-100 placeholder-slate-500 focus:border-[color:var(--color-accent)]/60 focus:ring-1 focus:ring-[color:var(--color-accent)]/20'
+                    : 'border-slate-200 bg-slate-50 text-slate-800 placeholder-slate-400 focus:border-[color:var(--color-accent)]/60 focus:ring-1 focus:ring-[color:var(--color-accent)]/20'
+                }`}
+                placeholder="Αναζήτηση μαθητή…"
+                value={studentSearch}
+                onChange={(e) => onSearchChange(e.target.value)}
+              />
+            </div>
+
+            {students.length === 0 ? (
+              <p className={`py-6 text-center text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                Δεν υπάρχουν ακόμη μαθητές.
+              </p>
+            ) : filteredStudents.length === 0 ? (
+              <p className={`py-6 text-center text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                Δεν βρέθηκαν μαθητές.
+              </p>
+            ) : (
+              <div className="students-scroll max-h-[298px] overflow-y-auto pr-1">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                  {filteredStudents.map((student) => (
+                    <div
+                      key={student.id}
+                      draggable
+                      onDragStart={() => onDragStart(student.id)}
+                      onDragEnd={() => onDragEnd(student.id)}
+                      className={`group flex flex-col gap-2 rounded-lg border px-3 py-2.5 cursor-grab active:cursor-grabbing transition-colors active:scale-[0.97] ${
+                        isDark
+                          ? 'border-slate-700/50 hover:bg-[color:var(--color-accent)]/[0.12]'
+                          : 'border-slate-200 hover:bg-[color:var(--color-accent)]/10'
+                      }`}
+                    >
+                      <div className="flex items-start gap-1.5 min-w-0">
+                        <GripVertical className={`mt-0.5 h-3 w-3 shrink-0 ${isDark ? 'text-slate-600' : 'text-slate-300'}`} />
+                        <span className={`text-xs font-semibold leading-tight truncate ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                          {student.full_name || 'Μαθητής'}
+                        </span>
+                      </div>
+
+                      <DayPicker studentId={student.id} isDark={isDark} onAddSlot={onAddSlot} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

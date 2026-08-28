@@ -997,7 +997,7 @@ export default function StudentCardPage() {
     let cancelled = false;
     const loadAttendance = async () => {
       setAttendanceLoading(true);
-      let query = supabase.from('class_attendance').select('status, session_date')
+      let query = supabase.from(isIdiaiterou ? 'private_lesson_attendance' : 'class_attendance').select('status, session_date')
         .eq('school_id', schoolId).eq('student_id', id);
       if (attendanceMode === 'month') {
         const range = monthKeyToRange(attendanceMonthKey);

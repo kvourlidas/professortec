@@ -84,3 +84,41 @@ export type LessonSession = {
   testTitle: string | null;
   roster: StudentRow[];
 };
+
+// ── Idiaitera (private lessons) — a slot already belongs to exactly one
+// student, so there's no roster to mark: each session is that one student. ──
+
+export type PrivateProgramItemRow = {
+  id: string;
+  student_id: string;
+  subject_id: string | null;
+  day_of_week: string;
+  start_time: string | null;
+  end_time: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  room: string | null;
+};
+
+export type PrivateAttendanceRow = {
+  id: string;
+  school_id: string;
+  program_item_id: string;
+  student_id: string;
+  session_date: string;
+  status: AttendanceStatus;
+  reason: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PrivateLessonSession = {
+  key: string;
+  programItemId: string;
+  studentId: string;
+  studentName: string;
+  subjectName: string;
+  timeRange: string;
+  room: string | null;
+  date: string;
+};

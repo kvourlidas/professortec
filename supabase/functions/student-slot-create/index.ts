@@ -33,10 +33,6 @@ serve(async (req) => {
     if (!start_date) throw new ValidationError("Missing start_date");
     const end_date = body?.end_date?.trim?.();
     if (!end_date) throw new ValidationError("Missing end_date");
-    const charge_per_session = typeof body?.charge_per_session === "number" && Number.isFinite(body.charge_per_session) && body.charge_per_session > 0
-      ? body.charge_per_session
-      : null;
-
     const charge_per_session = (body?.charge_per_session !== undefined && body?.charge_per_session !== null && body?.charge_per_session !== '')
       ? Number(body.charge_per_session) : null;
     if (charge_per_session !== null && (isNaN(charge_per_session) || charge_per_session < 0)) throw new ValidationError("Invalid charge_per_session");

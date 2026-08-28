@@ -5,6 +5,7 @@ import DashboardUpcomingSessionsSection from '../components/dashboard/DashboardU
 import DashboardQuickActionsSection from '../components/dashboard/DashboardQuickActionsSection.tsx';
 import DashboardSubscriptionAlertsSection from '../components/dashboard/DashboardSubscriptionAlertsSection.tsx';
 import DashboardAttendanceTodaySection from '../components/dashboard/DashboardAttendanceTodaySection.tsx';
+import DashboardPrivateAttendanceTodaySection from '../components/dashboard/DashboardPrivateAttendanceTodaySection.tsx';
 import DashboardUpcomingTestsSection from '../components/dashboard/DashboardUpcomingTestsSection.tsx';
 
 export default function DashboardPage() {
@@ -33,8 +34,8 @@ export default function DashboardPage() {
       <DashboardQuickActionsSection schoolId={schoolId} actions={[...quickActions]} />
 
       {/* Attendance today + upcoming tests — same tile size as quick actions */}
-      <div className={`grid gap-3 ${isFrontistirio ? 'sm:grid-cols-4' : 'sm:grid-cols-3'}`}>
-        {isFrontistirio && <DashboardAttendanceTodaySection schoolId={schoolId} />}
+      <div className="grid gap-3 sm:grid-cols-4">
+        {isFrontistirio ? <DashboardAttendanceTodaySection schoolId={schoolId} /> : <DashboardPrivateAttendanceTodaySection schoolId={schoolId} />}
         <DashboardUpcomingTestsSection schoolId={schoolId} />
       </div>
 

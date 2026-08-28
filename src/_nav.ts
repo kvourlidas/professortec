@@ -39,6 +39,16 @@ export const idiaiterouNavItems: NavItem[] = [
     icon: CalendarDays,
   },
   {
+    label: 'Πρόγραμμα',
+    to: '/program',
+    icon: CalendarDays,
+  },
+  {
+    label: 'Παρουσίες',
+    to: '/attendance',
+    icon: ClipboardCheck,
+  },
+  {
     label: 'Μαθητές',
     to: '/students',
     icon: Users,

@@ -183,6 +183,7 @@ export default function SchoolYearsSection() {
   const confirmClone = async () => {
     if (!schoolId || !cloneTarget) return;
     const { target, source } = cloneTarget;
+    const isIdiaiterou = profile?.account_type === 'idiaiterou';
     setCloning(true); setError(null);
     try {
       const { data: classRows } = await supabase.from('classes').select('id,is_active').eq('school_id', schoolId);
@@ -195,15 +196,23 @@ export default function SchoolYearsSection() {
       if (programId) {
         const { data: itemRows } = await supabase.from('program_items').select('*').eq('program_id', programId);
         const overlapping = ((itemRows ?? []) as any[]).filter((it) => {
-          if (!it.class_id || !activeClassIds.has(it.class_id)) return false;
+          const relevant = isIdiaiterou ? !!it.student_id : (it.class_id && activeClassIds.has(it.class_id));
+          if (!relevant) return false;
           const s = it.start_date ?? '0001-01-01';
           const e = it.end_date ?? '9999-12-31';
           return s <= source.end_date && e >= source.start_date;
         });
         if (overlapping.length > 0) {
+          // Rows sharing a group_id (a multi-student lesson) must keep sharing a
+          // group_id after cloning — but a fresh one, not the source year's, so
+          // editing a cloned lesson never touches the source year's rows.
+          const newGroupIdByOld = new Map<string, string>();
           const payload = overlapping.map((it) => ({
             program_id: programId,
             class_id: it.class_id,
+            group_id: it.group_id
+              ? (newGroupIdByOld.get(it.group_id) ?? (() => { const id = crypto.randomUUID(); newGroupIdByOld.set(it.group_id, id); return id; })())
+              : null,
             subject_id: it.subject_id,
             tutor_id: it.tutor_id,
             student_id: it.student_id,
@@ -222,32 +231,36 @@ export default function SchoolYearsSection() {
         }
       }
 
-      const { data: pkgRows } = await supabase.from('packages').select('*')
-        .eq('school_id', schoolId).eq('school_year_id', source.id).eq('package_type', 'yearly');
-      const pkgs = (pkgRows ?? []) as any[];
       let clonedPackages = 0;
-      if (pkgs.length > 0) {
-        const payload = pkgs.map((p) => ({
-          school_id: schoolId,
-          name: p.name,
-          price: p.price,
-          currency: p.currency,
-          is_active: p.is_active,
-          sort_order: p.sort_order,
-          package_type: 'yearly',
-          period: 'yearly',
-          school_year_id: target.id,
-          starts_on: target.start_date,
-          ends_on: target.end_date,
-          avatar_color: p.avatar_color,
-          is_custom: p.is_custom,
-        }));
-        const { error: pkgErr } = await supabase.from('packages').insert(payload);
-        if (pkgErr) throw pkgErr;
-        clonedPackages = payload.length;
+      if (!isIdiaiterou) {
+        const { data: pkgRows } = await supabase.from('packages').select('*')
+          .eq('school_id', schoolId).eq('school_year_id', source.id).eq('package_type', 'yearly');
+        const pkgs = (pkgRows ?? []) as any[];
+        if (pkgs.length > 0) {
+          const payload = pkgs.map((p) => ({
+            school_id: schoolId,
+            name: p.name,
+            price: p.price,
+            currency: p.currency,
+            is_active: p.is_active,
+            sort_order: p.sort_order,
+            package_type: 'yearly',
+            period: 'yearly',
+            school_year_id: target.id,
+            starts_on: target.start_date,
+            ends_on: target.end_date,
+            avatar_color: p.avatar_color,
+            is_custom: p.is_custom,
+          }));
+          const { error: pkgErr } = await supabase.from('packages').insert(payload);
+          if (pkgErr) throw pkgErr;
+          clonedPackages = payload.length;
+        }
       }
 
-      setCloneNote(`Αντιγράφηκαν ${clonedSlots} ώρες προγράμματος και ${clonedPackages} ετήσια πακέτα στο «${target.name}».`);
+      setCloneNote(isIdiaiterou
+        ? `Αντιγράφηκαν ${clonedSlots} ώρες προγράμματος στο «${target.name}».`
+        : `Αντιγράφηκαν ${clonedSlots} ώρες προγράμματος και ${clonedPackages} ετήσια πακέτα στο «${target.name}».`);
       setCloneTarget(null);
       showToast('Η αντιγραφή ολοκληρώθηκε.');
     } catch (err: any) {

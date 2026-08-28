@@ -7,6 +7,7 @@ import { User, MapPin, Phone, Mail, Loader2, Pencil, X } from 'lucide-react';
 import type { SchoolForm, SchoolRow } from '../components/school-info/types';
 import { emptyForm } from '../components/school-info/types';
 import LoginCredentialsSection from '../components/school-info/LoginCredentialsSection';
+import SchoolYearsSection from '../components/school-info/SchoolYearsSection';
 
 async function callEdgeFunction(name: string, body: Record<string, unknown>) {
   const { data: { session } } = await supabase.auth.getSession();
@@ -240,6 +241,11 @@ export default function TutorInfoPage() {
           </form>
         )}
       </section>
+
+      <div className="border-t" style={{ borderColor: 'var(--color-border)' }} />
+
+      {/* School years */}
+      <SchoolYearsSection />
 
       <div className="border-t" style={{ borderColor: 'var(--color-border)' }} />
 

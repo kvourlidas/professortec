@@ -10,6 +10,8 @@ const StudentsPage = lazy(() => import('./pages/StudentsPage'));
 const StudentCardPage = lazy(() => import('./pages/StudentCardPage'));
 const SubjectsPage = lazy(() => import('./pages/SubjectsPage'));
 const AttendancePage = lazy(() => import('./pages/AttendancePage'));
+const PrivateAttendancePage = lazy(() => import('./pages/PrivateAttendancePage'));
+const PrivateSchedulePage = lazy(() => import('./pages/PrivateSchedulePage'));
 const TutorsPage = lazy(() => import('./pages/TutorsPage'));
 const ProgramPage = lazy(() => import('./pages/ProgramPage'));
 const HolidaysPage = lazy(() => import('./pages/HolidaysPage'));
@@ -103,6 +105,16 @@ function FrontistirioOnly({ children }: { children: ReactElement }) {
   return children;
 }
 
+function AttendanceRoute() {
+  const { profile } = useAuth();
+  return profile?.account_type === 'idiaiterou' ? <PrivateAttendancePage /> : <AttendancePage />;
+}
+
+function ProgramRoute() {
+  const { profile } = useAuth();
+  return profile?.account_type === 'idiaiterou' ? <PrivateSchedulePage /> : <ProgramPage />;
+}
+
 export default function App() {
   return (
     <ThemeProvider>
@@ -123,9 +135,7 @@ export default function App() {
 
         {/* Frontistirio-only routes */}
         <Route path={p('/classes')} element={<ProtectedRoute><FrontistirioOnly><ClassesPage /></FrontistirioOnly></ProtectedRoute>} />
-        <Route path={p('/attendance')} element={<ProtectedRoute><FrontistirioOnly><AttendancePage /></FrontistirioOnly></ProtectedRoute>} />
         <Route path={p('/tutors')} element={<ProtectedRoute><FrontistirioOnly><TutorsPage /></FrontistirioOnly></ProtectedRoute>} />
-        <Route path={p('/program')} element={<ProtectedRoute><FrontistirioOnly><ProgramPage /></FrontistirioOnly></ProtectedRoute>} />
         <Route path={p('/program/events')} element={<ProtectedRoute><FrontistirioOnly><EventsPage /></FrontistirioOnly></ProtectedRoute>} />
         <Route path={p('/school-info')} element={<ProtectedRoute><FrontistirioOnly><SchoolInfoPage /></FrontistirioOnly></ProtectedRoute>} />
         <Route path={p('/tutor-info')} element={<ProtectedRoute><TutorInfoPage /></ProtectedRoute>} />
@@ -135,6 +145,8 @@ export default function App() {
 
         {/* Shared routes (both account types) */}
         <Route path={p('/calendar')} element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
+        <Route path={p('/attendance')} element={<ProtectedRoute><AttendanceRoute /></ProtectedRoute>} />
+        <Route path={p('/program')} element={<ProtectedRoute><ProgramRoute /></ProtectedRoute>} />
         <Route path={p('/students')} element={<ProtectedRoute><StudentsPage /></ProtectedRoute>} />
         <Route path={p('/students/:id')} element={<ProtectedRoute><StudentCardPage /></ProtectedRoute>} />
         <Route path={p('/subjects')} element={<ProtectedRoute><SubjectsPage /></ProtectedRoute>} />
