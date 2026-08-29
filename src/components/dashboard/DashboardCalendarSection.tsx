@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../context/ThemeContext';
+import { useAuth } from '../../auth';
+import type { RosterEntry } from '../private-program/types';
 
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -80,6 +82,7 @@ type TestModalState = {
 type AddExtraModalState = {
   date: string; classId: string | null; subjectId: string | null;
   startTime: string; endTime: string; room: string;
+  roster: RosterEntry[];
 };
 
 /* ------------ Edge function helper ------------ */
@@ -177,6 +180,8 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const navigate = useNavigate();
+  const { profile } = useAuth();
+  const isFrontistirio = profile?.account_type === 'frontistirio';
 
   // Login-page-styled field classes (see ../ui/ModalField.tsx), used by the program/test edit modals below.
   const inputCls = modalInputCls(isDark);
@@ -774,7 +779,7 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     const hasTime = arg.view.type !== 'dayGridMonth';
     const startTime = hasTime ? `${pad2(arg.date.getHours())}:${pad2(arg.date.getMinutes())}` : '';
     setExtraError(null);
-    setExtraModal({ date: formatDateDisplay(dateIso), classId: null, subjectId: null, startTime, endTime: '', room: '' });
+    setExtraModal({ date: formatDateDisplay(dateIso), classId: null, subjectId: null, startTime, endTime: '', room: '', roster: [] });
   };
 
   const closeExtraModal = () => { if (savingExtra) return; setExtraModal(null); setExtraError(null); };
@@ -788,33 +793,59 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     });
   };
 
+  const addStudentToExtraRoster = (studentId: string) =>
+    setExtraModal((prev) => (prev ? { ...prev, roster: [...prev.roster, { studentId, charge: '' }] } : prev));
+  const removeStudentFromExtraRoster = (studentId: string) =>
+    setExtraModal((prev) => (prev ? { ...prev, roster: prev.roster.filter((r) => r.studentId !== studentId) } : prev));
+  const changeExtraRosterCharge = (studentId: string, value: string) =>
+    setExtraModal((prev) => (prev ? { ...prev, roster: prev.roster.map((r) => (r.studentId === studentId ? { ...r, charge: value } : r)) } : prev));
+
   const handleSaveExtraClass = async () => {
-    if (!extraModal || !program) return;
-    if (!extraModal.classId) { setExtraError('Επιλέξτε τμήμα.'); return; }
-    if (!extraModal.subjectId) { setExtraError('Επιλέξτε μάθημα.'); return; }
+    if (!extraModal) return;
     if (!extraModal.startTime || !extraModal.endTime) { setExtraError('Συμπληρώστε τις ώρες έναρξης και λήξης.'); return; }
     const dateISO = parseDateDisplayToISO(extraModal.date);
     if (!dateISO) { setExtraError('Μη έγκυρη ημερομηνία.'); return; }
     const dow = INDEX_TO_WEEKDAY[new Date(`${dateISO}T00:00:00`).getDay()];
-    const itemsForDay = programItems.filter((i) => i.day_of_week === dow && i.program_id === program.id);
-    const maxPos = itemsForDay.reduce((max, i) => Math.max(max, i.position ?? 0), 0);
 
     setSavingExtra(true); setExtraError(null);
     try {
-      const data = await callEdgeFunction('program-create', {
-        program_id: program.id,
-        class_id: extraModal.classId,
-        subject_id: extraModal.subjectId,
-        tutor_id: null,
-        day_of_week: dow,
-        position: maxPos + 1,
-        start_time: extraModal.startTime,
-        end_time: extraModal.endTime,
-        start_date: dateISO,
-        end_date: dateISO,
-        room: extraModal.room.trim() || null,
-      });
-      setProgramItems((prev) => [...prev, data.item as ProgramItemRow]);
+      if (isFrontistirio) {
+        if (!program) { setSavingExtra(false); return; }
+        if (!extraModal.classId) { setExtraError('Επιλέξτε τμήμα.'); setSavingExtra(false); return; }
+        if (!extraModal.subjectId) { setExtraError('Επιλέξτε μάθημα.'); setSavingExtra(false); return; }
+        const itemsForDay = programItems.filter((i) => i.day_of_week === dow && i.program_id === program.id);
+        const maxPos = itemsForDay.reduce((max, i) => Math.max(max, i.position ?? 0), 0);
+        const data = await callEdgeFunction('program-create', {
+          program_id: program.id,
+          class_id: extraModal.classId,
+          subject_id: extraModal.subjectId,
+          tutor_id: null,
+          day_of_week: dow,
+          position: maxPos + 1,
+          start_time: extraModal.startTime,
+          end_time: extraModal.endTime,
+          start_date: dateISO,
+          end_date: dateISO,
+          room: extraModal.room.trim() || null,
+        });
+        setProgramItems((prev) => [...prev, data.item as ProgramItemRow]);
+      } else {
+        if (extraModal.roster.length === 0) { setExtraError('Επιλέξτε τουλάχιστον έναν μαθητή.'); setSavingExtra(false); return; }
+        const data = await callEdgeFunction('private-lesson-create', {
+          subject_id: extraModal.subjectId,
+          day_of_week: dow,
+          start_time: extraModal.startTime,
+          end_time: extraModal.endTime,
+          start_date: dateISO,
+          end_date: dateISO,
+          room: extraModal.room.trim() || null,
+          students: extraModal.roster.map((r) => ({
+            student_id: r.studentId,
+            charge_per_session: r.charge.trim() ? Number(r.charge.replace(',', '.')) : null,
+          })),
+        });
+        setProgramItems((prev) => [...prev, ...(data.items as ProgramItemRow[])]);
+      }
       setExtraModal(null);
     } catch (err) {
       console.error(err);
@@ -1102,9 +1133,14 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
     return getSubjectsForClass(eventModal.classId);
   }, [eventModal?.classId, eventModal?.studentId, classes, classSubjects, subjects, subjectById]);
   const extraSubjectOptions = useMemo(() => {
+    if (!isFrontistirio) return [...subjects].sort((a, b) => a.name.localeCompare(b.name, 'el-GR'));
     if (!extraModal?.classId) return [];
     return getSubjectsForClass(extraModal.classId);
-  }, [extraModal?.classId, classes, classSubjects, subjects, subjectById]);
+  }, [isFrontistirio, extraModal?.classId, classes, classSubjects, subjects, subjectById]);
+  const extraAvailableStudents = useMemo(() => {
+    const taken = new Set((extraModal?.roster ?? []).map((r) => r.studentId));
+    return students.filter((s) => !taken.has(s.id));
+  }, [students, extraModal?.roster]);
   const testSubjectOptions = useMemo(() => {
     if (testModal?.levelId) return subjects.filter((s) => s.level_id === testModal.levelId).sort((a, b) => a.name.localeCompare(b.name, 'el-GR'));
     if (!testModal?.classId) return [];
@@ -1340,16 +1376,61 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
                   </ModalErrorBox>
                 )}
 
-                <ModalFormField label="Τμήμα" isDark={isDark}>
-                  <ModalFieldIcon icon={GraduationCap} isDark={isDark} />
-                  <StyledSelect
-                    isDark={isDark} className={selectCls}
-                    value={extraModal.classId ?? ''}
-                    onChange={(v) => handleExtraFieldChange('classId')({ target: { value: v } } as unknown as ChangeEvent<HTMLSelectElement>)}
-                    options={[{ value: '', label: 'Επιλέξτε τμήμα' }, ...classes.map((c) => ({ value: c.id, label: c.title }))]}
-                  />
-                  <ModalSelectChevron isDark={isDark} />
-                </ModalFormField>
+                {isFrontistirio ? (
+                  <ModalFormField label="Τμήμα" isDark={isDark}>
+                    <ModalFieldIcon icon={GraduationCap} isDark={isDark} />
+                    <StyledSelect
+                      isDark={isDark} className={selectCls}
+                      value={extraModal.classId ?? ''}
+                      onChange={(v) => handleExtraFieldChange('classId')({ target: { value: v } } as unknown as ChangeEvent<HTMLSelectElement>)}
+                      options={[{ value: '', label: 'Επιλέξτε τμήμα' }, ...classes.map((c) => ({ value: c.id, label: c.title }))]}
+                    />
+                    <ModalSelectChevron isDark={isDark} />
+                  </ModalFormField>
+                ) : (
+                  <ModalFormField label="Μαθητές" isDark={isDark}>
+                    <div className="space-y-2">
+                      {extraModal.roster.length === 0 && (
+                        <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Δεν έχουν προστεθεί μαθητές.</p>
+                      )}
+                      {extraModal.roster.map((r, idx) => (
+                        <div key={r.studentId} className="flex items-center gap-2">
+                          <span className={`w-4 shrink-0 text-right text-[11px] tabular-nums ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                            {idx + 1}
+                          </span>
+                          <span className={`flex-1 truncate text-sm ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+                            {studentById.get(r.studentId)?.full_name ?? 'Μαθητής'}
+                          </span>
+                          <input
+                            type="text" inputMode="decimal"
+                            value={r.charge}
+                            onChange={(e) => changeExtraRosterCharge(r.studentId, e.target.value.replace(',', '.').replace(/[^0-9.]/g, ''))}
+                            placeholder="€ (προαιρ.)"
+                            className={`h-8 w-24 rounded-lg border px-2 text-xs outline-none transition ${
+                              isDark ? 'border-slate-700/70 bg-slate-900/60 text-slate-100 placeholder-slate-500 focus:border-[color:var(--color-accent)]' : 'border-slate-300 bg-white text-slate-800 placeholder-slate-400 focus:border-[color:var(--color-accent)]'
+                            }`}
+                          />
+                          <button type="button" onClick={() => removeStudentFromExtraRoster(r.studentId)}
+                            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition ${isDark ? 'text-slate-500 hover:bg-red-500/10 hover:text-red-400' : 'text-slate-400 hover:bg-red-50 hover:text-red-500'}`}>
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    {extraAvailableStudents.length > 0 && (
+                      <div className="relative mt-2.5">
+                        <ModalFieldIcon icon={GraduationCap} isDark={isDark} />
+                        <StyledSelect
+                          isDark={isDark} className={selectCls}
+                          value="" onChange={(v) => { if (v) addStudentToExtraRoster(v); }}
+                          placeholder="Προσθήκη μαθητή…"
+                          options={extraAvailableStudents.map((s) => ({ value: s.id, label: s.full_name ?? 'Μαθητής' }))}
+                        />
+                        <ModalSelectChevron isDark={isDark} />
+                      </div>
+                    )}
+                  </ModalFormField>
+                )}
 
                 <ModalFormField label="Μάθημα" isDark={isDark}>
                   <ModalFieldIcon icon={Layers} isDark={isDark} />
@@ -1357,9 +1438,9 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
                     isDark={isDark} className={selectCls}
                     value={extraModal.subjectId ?? ''}
                     onChange={(v) => handleExtraFieldChange('subjectId')({ target: { value: v } } as unknown as ChangeEvent<HTMLSelectElement>)}
-                    disabled={!extraModal.classId || extraSubjectOptions.length === 0}
+                    disabled={isFrontistirio && (!extraModal.classId || extraSubjectOptions.length === 0)}
                     options={[
-                      { value: '', label: extraSubjectOptions.length === 0 ? 'Δεν υπάρχουν μαθήματα' : 'Επιλέξτε μάθημα' },
+                      { value: '', label: isFrontistirio ? (extraSubjectOptions.length === 0 ? 'Δεν υπάρχουν μαθήματα' : 'Επιλέξτε μάθημα') : 'Επιλέξτε μάθημα (προαιρετικό)' },
                       ...extraSubjectOptions.map((s) => ({ value: s.id, label: s.name })),
                     ]}
                   />
@@ -1379,16 +1460,18 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
                   </ModalFormField>
                 </div>
 
-                <ModalFormField label="Αίθουσα (προαιρετικό)" isDark={isDark}>
-                  <ModalFieldIcon icon={DoorOpen} isDark={isDark} />
-                  <input
-                    type="text"
-                    className={inputCls}
-                    value={extraModal.room}
-                    onChange={(e) => setExtraModal((p) => (p ? { ...p, room: e.target.value } : p))}
-                    placeholder="π.χ. Αίθουσα 2"
-                  />
-                </ModalFormField>
+                {isFrontistirio && (
+                  <ModalFormField label="Αίθουσα (προαιρετικό)" isDark={isDark}>
+                    <ModalFieldIcon icon={DoorOpen} isDark={isDark} />
+                    <input
+                      type="text"
+                      className={inputCls}
+                      value={extraModal.room}
+                      onChange={(e) => setExtraModal((p) => (p ? { ...p, room: e.target.value } : p))}
+                      placeholder="π.χ. Αίθουσα 2"
+                    />
+                  </ModalFormField>
+                )}
               </div>
 
               <div className={modalFooterCls}>

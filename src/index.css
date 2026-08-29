@@ -190,6 +190,14 @@
   animation: typing-bounce 1s ease-in-out infinite;
 }
 
+/* ── Loading screen halo spin ── */
+@keyframes loading-halo-spin {
+  to { transform: rotate(360deg); }
+}
+.animate-loading-halo-spin {
+  animation: loading-halo-spin 7s linear infinite;
+}
+
 /* ── Toast pop-up ── */
 @keyframes toast-in {
   0%   { transform: translateY(-12px); opacity: 0; }

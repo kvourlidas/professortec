@@ -16,6 +16,7 @@ export default function SendNotificationsPage() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const schoolId = profile?.school_id ?? null;
+  const isFrontistirio = profile?.account_type === 'frontistirio';
 
   // ── Form state ───────────────────────────────────────────────────────────
   const [title, setTitle] = useState('');
@@ -60,8 +61,8 @@ export default function SendNotificationsPage() {
     };
 
     loadStudents();
-    loadClasses();
-  }, [schoolId]);
+    if (isFrontistirio) loadClasses();
+  }, [schoolId, isFrontistirio]);
 
   // ── History state ────────────────────────────────────────────────────────
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -209,6 +210,7 @@ export default function SendNotificationsPage() {
         resultMsg={resultMsg}
         onSend={send}
         isDark={isDark}
+        isFrontistirio={isFrontistirio}
       />
 
       <NotificationHistory

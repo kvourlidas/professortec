@@ -23,6 +23,7 @@ interface NotificationSendFormProps {
   resultMsg: string | null;
   onSend: () => void;
   isDark: boolean;
+  isFrontistirio: boolean;
 }
 
 // ── Portal MultiSelect – escapes overflow:hidden on any ancestor ─────────────
@@ -242,7 +243,7 @@ export function NotificationSendForm({
   selectedStudentIds, onSelectedStudentIdsChange,
   selectedClassIds, onSelectedClassIdsChange,
   students, classes, studentsLoading, classesLoading,
-  loadingSend, errorMsg, resultMsg, onSend, isDark,
+  loadingSend, errorMsg, resultMsg, onSend, isDark, isFrontistirio,
 }: NotificationSendFormProps) {
 
   const inputCls = isDark
@@ -258,7 +259,7 @@ export function NotificationSendForm({
   const MODES: { value: RecipientMode; label: string; icon: React.ReactNode }[] = [
     { value: 'all',      label: 'Όλοι',    icon: <Globe className="h-3.5 w-3.5" /> },
     { value: 'students', label: 'Μαθητές', icon: <Users className="h-3.5 w-3.5" /> },
-    { value: 'classes',  label: 'Τμήματα', icon: <GraduationCap className="h-3.5 w-3.5" /> },
+    ...(isFrontistirio ? [{ value: 'classes' as RecipientMode, label: 'Τμήματα', icon: <GraduationCap className="h-3.5 w-3.5" /> }] : []),
   ];
 
   const toggleStudent = (id: string) =>

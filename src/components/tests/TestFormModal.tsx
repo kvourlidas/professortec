@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
-import { X, ClipboardList, BookOpen, Tag, Loader2, Search, Plus, Euro, AlertCircle, CheckSquare, Square } from 'lucide-react';
+import { X, ClipboardList, BookOpen, Tag, Loader2, Plus, Euro, AlertCircle, CheckSquare, Square } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import AppDatePicker from '../ui/AppDatePicker';
 import TimePicker from '../ui/TimePicker';
@@ -35,8 +35,6 @@ export default function TestFormModal({
   const isDark = theme === 'dark';
 
   const [form, setForm] = useState<AddTestForm>(emptyForm);
-  const [studentQuery, setStudentQuery] = useState('');
-  const [studentDropOpen, setStudentDropOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -46,8 +44,6 @@ export default function TestFormModal({
     } else {
       setForm(emptyForm);
     }
-    setStudentQuery('');
-    setStudentDropOpen(false);
   }, [open, mode, editTestData]);
 
   const subjectById = useMemo(() => {
@@ -87,12 +83,6 @@ export default function TestFormModal({
     const assignedIds = new Set(form.studentAssignments.map((a) => a.studentId));
     return (students ?? []).filter((s) => !assignedIds.has(s.id)).sort((a, b) => (a.full_name ?? '').localeCompare(b.full_name ?? '', 'el-GR'));
   }, [students, form.studentAssignments]);
-  const filteredAvailableStudents = useMemo(() => {
-    const q = studentQuery.trim().toLowerCase();
-    if (!q) return availableStudents;
-    return availableStudents.filter((s) => (s.full_name ?? '').toLowerCase().includes(q));
-  }, [availableStudents, studentQuery]);
-
   if (!open) return null;
 
   const handleFieldChange = (field: keyof AddTestForm) => (e: ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
@@ -156,18 +146,6 @@ export default function TestFormModal({
   const chargeInputCls = isDark
     ? 'h-7 w-20 shrink-0 rounded-lg border border-slate-700/70 bg-slate-900/60 px-2 text-xs text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)]'
     : 'h-7 w-20 shrink-0 rounded-lg border border-slate-300 bg-white px-2 text-xs text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)]';
-  const studentDropPanelCls = isDark
-    ? 'relative z-20 mt-1.5 overflow-hidden rounded-xl border border-slate-700/60 bg-slate-900 shadow-2xl'
-    : 'relative z-20 mt-1.5 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl';
-  const studentSearchInputCls = isDark
-    ? 'h-8 w-full rounded-lg border border-slate-700/60 bg-slate-800/70 pl-8 pr-3 text-xs text-slate-200 placeholder-slate-600 outline-none'
-    : 'h-8 w-full rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-3 text-xs text-slate-700 placeholder-slate-400 outline-none';
-  const studentRowOptionCls = isDark
-    ? 'cursor-pointer px-3 py-2 text-xs text-slate-200 transition hover:bg-slate-800/70'
-    : 'cursor-pointer px-3 py-2 text-xs text-slate-700 transition hover:bg-slate-50';
-  const addStudentBtnCls = isDark
-    ? 'flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-700/70 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:border-[color:var(--color-accent)]/60 hover:text-[color:var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-40'
-    : 'flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-xs font-semibold text-slate-500 transition hover:border-[color:var(--color-accent)]/60 hover:text-[color:var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-40';
   const classLabelCls = `flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`;
   const classHintCls = `text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`;
   const classEmptyBoxCls = `flex h-16 items-center justify-center rounded-xl border border-dashed ${isDark ? 'border-slate-700/60 bg-slate-900/30' : 'border-slate-200 bg-slate-50'}`;
@@ -239,35 +217,17 @@ export default function TestFormModal({
                       </div>
                     )}
 
-                    <button type="button" onClick={() => setStudentDropOpen((v) => !v)} disabled={availableStudents.length === 0}
-                      className={addStudentBtnCls}>
-                      <Plus className="h-3.5 w-3.5" />
-                      {availableStudents.length === 0 ? 'Δεν υπάρχουν άλλοι διαθέσιμοι μαθητές' : 'Προσθήκη μαθητή'}
-                    </button>
-
-                    {studentDropOpen && (
-                      <>
-                        <div className="fixed inset-0 z-10" onClick={() => setStudentDropOpen(false)} />
-                        <div className={studentDropPanelCls}>
-                          <div className="border-b p-2" style={{ borderColor: isDark ? 'rgba(148,163,184,0.15)' : 'rgba(203,213,225,0.6)' }}>
-                            <div className="relative">
-                              <Search className={`pointer-events-none absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />
-                              <input autoFocus value={studentQuery} onChange={(e) => setStudentQuery(e.target.value)}
-                                placeholder="Αναζήτηση μαθητή..." className={studentSearchInputCls} />
-                            </div>
-                          </div>
-                          <div className="max-h-40 overflow-y-auto">
-                            {filteredAvailableStudents.length === 0 ? (
-                              <p className={`px-3 py-2.5 text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Δεν βρέθηκαν μαθητές.</p>
-                            ) : filteredAvailableStudents.map((s) => (
-                              <div key={s.id} className={studentRowOptionCls}
-                                onClick={() => { addStudentAssignment(s.id); setStudentDropOpen(false); setStudentQuery(''); }}>
-                                {s.full_name ?? 'Χωρίς όνομα'}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </>
+                    {availableStudents.length > 0 && (
+                      <div className="relative">
+                        <FieldIcon icon={Plus} isDark={isDark} />
+                        <StyledSelect
+                          isDark={isDark} className={selectCls}
+                          value="" onChange={(v) => { if (v) addStudentAssignment(v); }}
+                          placeholder="Προσθήκη μαθητή…"
+                          options={availableStudents.map((s) => ({ value: s.id, label: s.full_name ?? 'Μαθητής' }))}
+                        />
+                        <ModalSelectChevron isDark={isDark} />
+                      </div>
                     )}
                   </FormField>
 

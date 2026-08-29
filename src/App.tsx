@@ -35,15 +35,12 @@ const HelpSupportPage = lazy(() => import('./pages/HelpSupportPage'));
 
 import { useAuth } from './auth';
 import Layout from './components/Layout';
+import LoadingScreen from './components/LoadingScreen';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './context/ToastContext';
 
 function RouteFallback() {
-  return (
-    <div className="flex min-h-screen items-center justify-center text-slate-700">
-      Loading...
-    </div>
-  );
+  return <LoadingScreen />;
 }
 
 const BASE = '';
@@ -58,11 +55,7 @@ function ProtectedRoute({ children }: { children: ReactElement }) {
   const location = useLocation();
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center text-slate-700">
-        Loading...
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (!user) {
@@ -81,11 +74,7 @@ function OnboardingRoute({ children }: { children: ReactElement }) {
   const location = useLocation();
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center text-slate-700">
-        Loading...
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (!user) {

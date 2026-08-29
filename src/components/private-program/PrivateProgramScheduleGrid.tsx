@@ -50,7 +50,7 @@ export default function PrivateProgramScheduleGrid({
                 onDrop={() => onDrop(day.value)}
               >
                 <div className={`border-b px-2 py-2 text-center ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
-                  <span className={`block text-[9px] font-bold uppercase tracking-widest ${
+                  <span className={`block text-[11px] font-bold uppercase tracking-widest ${
                     isWeekend ? (isDark ? 'text-slate-500' : 'text-slate-400') : (isDark ? 'text-slate-300' : 'text-slate-600')
                   }`}>
                     {day.label}
@@ -62,7 +62,7 @@ export default function PrivateProgramScheduleGrid({
                     <div className={`flex h-full min-h-[80px] items-center justify-center border border-dashed m-1.5 rounded-lg ${
                       isDark ? 'border-slate-800' : 'border-slate-300/60'
                     }`}>
-                      <p className={`text-[9px] text-center px-1 ${isDark ? 'text-slate-700' : 'text-slate-300'}`}>
+                      <p className={`text-[11px] text-center px-1 ${isDark ? 'text-slate-700' : 'text-slate-300'}`}>
                         Σύρετε εδώ
                       </p>
                     </div>
@@ -81,7 +81,7 @@ export default function PrivateProgramScheduleGrid({
 
                       return (
                         <div key={group.groupKey}
-                          className={`group relative cursor-pointer overflow-hidden py-1.5 pl-2.5 pr-3 text-[10px] transition-colors ${
+                          className={`group relative cursor-pointer py-2 pl-2.5 pr-3 text-[11px] transition-colors ${
                             isDark ? 'hover:bg-[color:var(--color-accent)]/[0.12]' : 'hover:bg-[color:var(--color-accent)]/10'
                           }`}
                           onClick={() => onEditGroup(group)}
@@ -93,39 +93,43 @@ export default function PrivateProgramScheduleGrid({
                               e.stopPropagation();
                               onDeleteGroup({ programItemId: group.items[0].id, label, dayLabel: day.label, timeRange });
                             }}
-                            className={`absolute right-1 top-1 hidden h-4 w-4 items-center justify-center rounded text-[9px] transition group-hover:flex ${
+                            className={`absolute right-1 top-1 hidden h-4 w-4 items-center justify-center rounded text-[10px] transition group-hover:flex ${
                               isDark ? 'text-slate-500 hover:text-red-400' : 'text-slate-400 hover:text-red-500'
                             }`}
                           >
                             ✕
                           </button>
 
-                          <div className={`font-semibold leading-tight pr-3 ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
-                            {label}
+                          <div className={`text-[13px] font-semibold leading-snug break-words pr-3 ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
+                            {names.map((n) => <div key={n}>{n}</div>)}
                           </div>
                           {subjName && (
-                            <div className={`text-[9px] mt-0.5 truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                            <div className={`mt-0.5 break-words ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                               {subjName}
                             </div>
                           )}
                           {timeRange && (
-                            <div className="mt-1 flex items-center gap-0.5 text-[9px]"
+                            <div className="mt-1 flex items-center gap-1"
                               style={{ color: 'color-mix(in srgb, var(--color-accent) 70%, transparent)' }}>
-                              <Clock className="h-2.5 w-2.5 shrink-0" />
+                              <Clock className="h-3 w-3 shrink-0" />
                               {timeRange}
                             </div>
                           )}
                           {group.room && (
-                            <div className={`mt-0.5 flex items-center gap-0.5 text-[9px] truncate ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                              <DoorOpen className="h-2.5 w-2.5 shrink-0" />
+                            <div className={`mt-0.5 flex items-center gap-1 break-words ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                              <DoorOpen className="h-3 w-3 shrink-0" />
                               Αίθουσα {group.room}
                             </div>
                           )}
                           {fees.some((f) => f !== null) && (
-                            <div className={`mt-0.5 text-[9px] truncate ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                            <div className={`mt-0.5 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
                               {uniqueFees.size <= 1
                                 ? (fees[0] !== null ? `${fees[0]}€ / συνεδρία` : '')
-                                : group.items.map((it) => `${studentById.get(it.student_id)?.full_name ?? '—'}: ${it.charge_per_session ?? 0}€`).join(' · ')}
+                                : group.items.map((it) => (
+                                  <div key={it.id} className="break-words">
+                                    {studentById.get(it.student_id)?.full_name ?? '—'}: {it.charge_per_session ?? 0}€
+                                  </div>
+                                ))}
                             </div>
                           )}
                         </div>

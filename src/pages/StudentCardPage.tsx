@@ -70,6 +70,7 @@ type ExtraChargeRow = { id: string; description: string; amount: number; notes: 
 type ExtraChargePaymentRow = { id: string; charge_id: string; amount: number; payment_method: string; created_at: string; cancelled_at: string | null };
 
 type LessonPaymentRow = { id: string; amount: number; payment_method: string | null; note: string | null; created_at: string; cancelled_at: string | null };
+type BalancePaymentRow = { id: string; amount: number; payment_method: string | null; note: string | null; created_at: string; cancelled_at: string | null };
 type LessonHistoryEntry =
   | { kind: 'charge'; date: string; amount: number; label: string }
   | { kind: 'payment'; date: string; amount: number; label: string; payment: LessonPaymentRow }
@@ -80,7 +81,8 @@ type UnifiedHistoryEntry =
   | { kind: 'sub_charge'; date: string; ts: string; amount: number; label: string; subId: string; subStatus: SubscriptionRow['status'] }
   | { kind: 'extra_charge'; date: string; ts: string; amount: number; label: string; chargeId: string; cancelled: boolean }
   | { kind: 'payment'; source: 'subscription'; date: string; ts: string; amount: number; method: string | null; cancelled: boolean; paymentId: string; notes?: string | null }
-  | { kind: 'payment'; source: 'extra_charge'; date: string; ts: string; amount: number; method: string; cancelled: boolean; paymentId: string; chargeLabel: string };
+  | { kind: 'payment'; source: 'extra_charge'; date: string; ts: string; amount: number; method: string; cancelled: boolean; paymentId: string; chargeLabel: string }
+  | { kind: 'payment'; source: 'balance'; date: string; ts: string; amount: number; method: string | null; cancelled: boolean; paymentId: string; notes?: string | null };
 
 type CalendarTest = {
   id: string;
@@ -562,7 +564,7 @@ export default function StudentCardPage() {
   const [unifiedHistoryPage, setUnifiedHistoryPage] = useState(0);
   const [subHistoryPage, setSubHistoryPage] = useState(0);
 
-  // frontistiria payment modal
+  // frontistiria payment modal — generic, independent of subscription/extra charges
   const [subPayModalOpen, setSubPayModalOpen] = useState(false);
   const [subPayMethod, setSubPayMethod] = useState<'cash' | 'card' | 'bank_transfer'>('cash');
   const [subPayNote, setSubPayNote] = useState('');
@@ -642,6 +644,10 @@ export default function StudentCardPage() {
   // extra charges (all account types)
   const [extraCharges, setExtraCharges] = useState<ExtraChargeRow[]>([]);
   const [extraChargePayments, setExtraChargePayments] = useState<ExtraChargePaymentRow[]>([]);
+
+  // frontistiria: generic payments, not tied to any subscription or extra charge — only affect the overall balance
+  const [balancePayments, setBalancePayments] = useState<BalancePaymentRow[]>([]);
+  const [_cancellingBalancePaymentId, setCancellingBalancePaymentId] = useState<string | null>(null);
   const [addChargeOpen, setAddChargeOpen] = useState(false);
   const [newChargeDesc, setNewChargeDesc] = useState('');
   const [newChargeAmount, setNewChargeAmount] = useState('');
@@ -771,8 +777,9 @@ export default function StudentCardPage() {
     [subscriptions, extraCharges]);
   const totalPaidCombined = useMemo(() =>
     subscriptions.reduce((a, s) => a + Number((s as any).paid_amount ?? 0), 0) +
-    extraChargePayments.filter(p => !p.cancelled_at).reduce((a, p) => a + Number(p.amount), 0),
-    [subscriptions, extraChargePayments]);
+    extraChargePayments.filter(p => !p.cancelled_at).reduce((a, p) => a + Number(p.amount), 0) +
+    balancePayments.filter(p => !p.cancelled_at).reduce((a, p) => a + Number(p.amount), 0),
+    [subscriptions, extraChargePayments, balancePayments]);
   const totalBalanceCombined = useMemo(() => Math.max(0, totalChargedCombined - totalPaidCombined), [totalChargedCombined, totalPaidCombined]);
 
   const unifiedHistory = useMemo<UnifiedHistoryEntry[]>(() => {
@@ -790,6 +797,9 @@ export default function StudentCardPage() {
       const label = extraCharges.find(c => c.id === p.charge_id)?.description ?? 'Πρόσθετη χρέωση';
       entries.push({ kind: 'payment', source: 'extra_charge', date: p.created_at.slice(0, 10), ts: p.created_at, amount: Number(p.amount), method: p.payment_method, cancelled: !!p.cancelled_at, paymentId: p.id, chargeLabel: label });
     });
+    balancePayments.forEach(p => {
+      entries.push({ kind: 'payment', source: 'balance', date: p.created_at.slice(0, 10), ts: p.created_at, amount: Number(p.amount), method: p.payment_method, cancelled: !!p.cancelled_at, paymentId: p.id, notes: p.note });
+    });
     const all = entries.sort((a, b) => a.date !== b.date ? (a.date < b.date ? 1 : -1) : (a.ts < b.ts ? 1 : -1));
     return all.filter(e => {
       if (e.kind === 'sub_charge') return e.subStatus !== 'canceled';
@@ -797,7 +807,7 @@ export default function StudentCardPage() {
       if (e.kind === 'payment') return !e.cancelled;
       return true;
     });
-  }, [subscriptions, extraCharges, payments, extraChargePayments]);
+  }, [subscriptions, extraCharges, payments, extraChargePayments, balancePayments]);
 
   const unifiedHistoryPageCount = Math.max(1, Math.ceil(unifiedHistory.length / ECONOMICS_HISTORY_PER_PAGE));
   const unifiedHistoryPageRows = unifiedHistory.slice(unifiedHistoryPage * ECONOMICS_HISTORY_PER_PAGE, (unifiedHistoryPage + 1) * ECONOMICS_HISTORY_PER_PAGE);
@@ -950,6 +960,14 @@ export default function StudentCardPage() {
           .order('created_at', { ascending: false });
         setExtraChargePayments((ecpData ?? []) as ExtraChargePaymentRow[]);
       }
+
+      // Generic balance payments (frontistiria) — independent of subscriptions/extra charges
+      const { data: bpData } = await supabase
+        .from('student_balance_payments')
+        .select('id, amount, payment_method, note, created_at, cancelled_at')
+        .eq('student_id', id).eq('school_id', schoolId)
+        .order('created_at', { ascending: false });
+      setBalancePayments((bpData ?? []) as BalancePaymentRow[]);
 
       setLoading(false);
     };
@@ -1211,8 +1229,10 @@ export default function StudentCardPage() {
     setAssignSaving(false);
   };
 
+  // Generic payment — same model as idiaitera's private_lesson_payments: not tied to any
+  // subscription or extra charge, it only reduces the student's overall balance.
   const submitPayment = async () => {
-    if (!schoolId || !activeSub) return;
+    if (!schoolId || !id) return;
     const amount = Number(paymentInput.replace(',', '.'));
     if (!paymentInput.trim() || Number.isNaN(amount) || amount <= 0) {
       setPayingError('Συμπληρώστε έγκυρο ποσό.');
@@ -1220,14 +1240,27 @@ export default function StudentCardPage() {
     }
     setPayingLoading(true);
     setPayingError(null);
-    const { error } = await supabase.from('student_subscription_payments')
-      .insert({ school_id: schoolId, subscription_id: activeSub.id, amount: Number(amount.toFixed(2)), payment_method: subPayMethod, notes: subPayNote.trim() || null });
+    const { data, error } = await supabase.from('student_balance_payments')
+      .insert({ school_id: schoolId, student_id: id, amount: Number(amount.toFixed(2)), payment_method: subPayMethod, note: subPayNote.trim() || null })
+      .select('id, amount, payment_method, note, created_at, cancelled_at')
+      .maybeSingle();
     setPayingLoading(false);
-    if (error) { setPayingError('Αποτυχία καταχώρησης πληρωμής.'); return; }
+    if (error || !data) { setPayingError('Αποτυχία καταχώρησης πληρωμής.'); return; }
+    setBalancePayments(prev => [data as BalancePaymentRow, ...prev]);
     setPaymentInput('');
     setSubPayNote('');
     setSubPayModalOpen(false);
-    await reloadSubsAndPayments();
+  };
+
+  const cancelBalancePayment = async (paymentId: string) => {
+    setCancellingBalancePaymentId(paymentId);
+    const { error } = await supabase
+      .from('student_balance_payments')
+      .update({ cancelled_at: new Date().toISOString() })
+      .eq('id', paymentId);
+    setCancellingBalancePaymentId(null);
+    if (error) { setPayingError('Αποτυχία ακύρωσης πληρωμής.'); return; }
+    setBalancePayments(prev => prev.map(p => (p.id === paymentId ? { ...p, cancelled_at: new Date().toISOString() } : p)));
   };
 
   const cancelPayment = async (paymentId: string) => {
@@ -1837,7 +1870,7 @@ export default function StudentCardPage() {
                     <StatTile label="Υπολοιπο" value={`${totalBalanceCombined.toFixed(2)}€`} color={totalBalanceCombined > 0 ? 'red' : 'green'} isDark={isDark} solid />
                   </div>
                   <div className="flex flex-col gap-2 shrink-0">
-                    {activeSub && totalBalanceCombined > 0 && (
+                    {totalBalanceCombined > 0 && (
                       <button type="button"
                         onClick={() => { setSubPayModalOpen(true); setPayingError(null); setPaymentInput(''); setSubPayMethod('cash'); setSubPayNote(''); }}
                         className="btn-primary flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold">
@@ -1927,9 +1960,9 @@ export default function StudentCardPage() {
               <div className="space-y-4 mb-4">
                 <div className="flex items-stretch gap-3">
                   <div className="grid flex-1 grid-cols-3 gap-2">
-                    <StatTile label="Χρεωση" value={`${lessonTotalCharged.toFixed(2)}€`} color="blue" isDark={isDark} />
-                    <StatTile label="Πληρωμενο" value={`${lessonTotalPaid.toFixed(2)}€`} color="green" isDark={isDark} />
-                    <StatTile label="Υπολοιπο" value={`${Math.max(0, lessonBalance).toFixed(2)}€`} color={lessonBalance > 0 ? 'red' : 'green'} isDark={isDark} />
+                    <StatTile label="Χρεωση" value={`${lessonTotalCharged.toFixed(2)}€`} color="purple" isDark={isDark} solid />
+                    <StatTile label="Πληρωμενο" value={`${lessonTotalPaid.toFixed(2)}€`} color="green" isDark={isDark} solid />
+                    <StatTile label="Υπολοιπο" value={`${Math.max(0, lessonBalance).toFixed(2)}€`} color={lessonBalance > 0 ? 'red' : 'green'} isDark={isDark} solid />
                   </div>
                   <div className="flex flex-col gap-2 shrink-0">
                     <button type="button"
@@ -2454,8 +2487,10 @@ export default function StudentCardPage() {
                     if (confirmCancelEntry.kind === 'payment') {
                       if (confirmCancelEntry.source === 'subscription') {
                         await cancelPayment(confirmCancelEntry.paymentId);
-                      } else {
+                      } else if (confirmCancelEntry.source === 'extra_charge') {
                         await cancelExtraChargePayment(confirmCancelEntry.paymentId);
+                      } else {
+                        await cancelBalancePayment(confirmCancelEntry.paymentId);
                       }
                     } else if (confirmCancelEntry.kind === 'extra_charge') {
                       await cancelExtraCharge(confirmCancelEntry.chargeId);
