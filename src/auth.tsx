@@ -34,6 +34,31 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 const BOOT_TIMEOUT_MS = 8000;
 
+// Last known-good profile, cached per user so a reload can render immediately
+// from disk while the network revalidation happens in the background.
+const PROFILE_CACHE_KEY = 'pt_web_profile_v1';
+
+function readCachedProfile(): { userId: string; profile: Profile } | null {
+  try {
+    const raw = localStorage.getItem(PROFILE_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { userId?: string; profile?: Profile };
+    if (!parsed?.userId || !parsed?.profile) return null;
+    return { userId: parsed.userId, profile: parsed.profile };
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedProfile(userId: string, profile: Profile | null) {
+  try {
+    if (!profile) localStorage.removeItem(PROFILE_CACHE_KEY);
+    else localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify({ userId, profile }));
+  } catch {
+    /* ignore */
+  }
+}
+
 function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
   return new Promise((resolve, reject) => {
     const t = setTimeout(() => reject(new Error(`${label} timeout after ${ms}ms`)), ms);
@@ -48,9 +73,12 @@ function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  // Optimistically seed from the cached profile so a reload with a still-valid
+  // local session paints the real UI right away instead of a full-screen spinner.
+  const cached = readCachedProfile();
   const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<Profile | null>(cached?.profile ?? null);
+  const [loading, setLoading] = useState(!cached);
 
   const [authError, setAuthError] = useState<string | null>(null);
   const clearAuthError = () => setAuthError(null);
@@ -63,6 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const clearState = () => {
     setUser(null);
     setProfile(null);
+    writeCachedProfile('', null);
   };
 
   const hardSignOut = async () => {
@@ -100,6 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     setUser(u);
     setProfile(p);
+    writeCachedProfile(u.id, p);
     return true;
   };
 
@@ -184,6 +214,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let ignore = false;
+    let firstEvent = true;
 
     // onAuthStateChange fires INITIAL_SESSION immediately on registration with the
     // locally cached session — no extra getSession() call needed. This prevents the
@@ -201,12 +232,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (hydratingRef.current) return;
       hydratingRef.current = true;
 
+      // On the very first event after a reload, if we already have a cached
+      // profile for this same user we can revalidate silently — the UI is
+      // already usable and shouldn't flash a spinner. Any other case (sign in,
+      // sign out, different user, no cache) blocks with the loading screen.
+      const silent =
+        firstEvent &&
+        !!cached &&
+        !!session?.user &&
+        session.user.id === cached.userId;
+      firstEvent = false;
+
       try {
-        setLoading(true);
+        if (silent && session?.user) {
+          // Keep the app usable (and offline-tolerant) while revalidating.
+          setUser(session.user);
+        } else {
+          setLoading(true);
+        }
         await withTimeout(hydrateFromUser(session?.user ?? null), BOOT_TIMEOUT_MS, 'hydrateFromUser');
       } catch (e) {
         console.error('Auth state change hydrate failed:', e);
-        clearState();
+        if (!silent) clearState();
       } finally {
         hydratingRef.current = false;
         if (!ignore) setLoading(false);
