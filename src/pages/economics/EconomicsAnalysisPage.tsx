@@ -166,9 +166,20 @@ export default function EconomicsAnalysisPage() {
       .limit(800);
   }
 
+  async function safeStudentBalancePayments(start: string, end: string) {
+    return supabase
+      .from('student_balance_payments')
+      .select('id, school_id, student_id, amount, created_at, cancelled_at, payment_method, note, students(full_name)')
+      .eq('school_id', schoolId!)
+      .gte('created_at', startOfDayTs(start))
+      .lte('created_at', endOfDayTs(end))
+      .order('created_at', { ascending: false })
+      .limit(800);
+  }
+
   async function loadForBounds(start: string, end: string) {
     if (!schoolId) return [];
-    const [expRes, tutorRes, studentRes, extraChargeRes, privateLessonRes] = await Promise.all([safeExtraExpenses(start, end), safeTutorPayments(start, end), safeStudentIncomes(start, end), safeExtraChargePayments(start, end), safePrivateLessonPayments(start, end)]);
+    const [expRes, tutorRes, studentRes, extraChargeRes, privateLessonRes, balancePaymentRes] = await Promise.all([safeExtraExpenses(start, end), safeTutorPayments(start, end), safeStudentIncomes(start, end), safeExtraChargePayments(start, end), safePrivateLessonPayments(start, end), safeStudentBalancePayments(start, end)]);
     if (expRes.error) throw expRes.error;
     if (tutorRes.error) throw tutorRes.error;
     if (studentRes.error) throw studentRes.error;
@@ -178,23 +189,38 @@ export default function EconomicsAnalysisPage() {
     const mappedStudent: TxRow[] = ((studentRes.data as any[] | null) ?? []).map((p: any) => ({ id: p.id, kind: 'income', source: 'student_subscription', date: (p.paid_on ?? p.created_at ?? isoToday()).slice(0, 10), ts: p.paid_on ?? p.created_at ?? '', amount: Number(p.amount) || 0, label: `Συνδρομή: ${p?.student_subscriptions?.students?.full_name ?? 'Μαθητής'}`, notes: p.notes ?? null, cancelled: !!p.cancelled_at, payment_method: p.payment_method ?? null }));
     const mappedExtraCharges: TxRow[] = ((extraChargeRes.data as any[] | null) ?? []).map((p: any) => ({ id: p.id, kind: 'income', source: 'extra_charge', date: (p.created_at ?? isoToday()).slice(0, 10), ts: p.created_at ?? '', amount: Number(p.amount) || 0, label: `Πρόσθετη χρέωση: ${p?.students?.full_name ?? 'Μαθητής'}`, notes: null, cancelled: !!p.cancelled_at, payment_method: p.payment_method ?? null }));
     const mappedPrivateLesson: TxRow[] = ((privateLessonRes.data as any[] | null) ?? []).map((p: any) => ({ id: p.id, kind: 'income', source: 'private_lesson_payment', date: (p.created_at ?? isoToday()).slice(0, 10), ts: p.created_at ?? '', amount: Number(p.amount) || 0, label: `Ιδιαίτερο: ${p?.students?.full_name ?? 'Μαθητής'}`, notes: null, cancelled: !!p.cancelled_at, payment_method: p.payment_method ?? null }));
-    return [...mappedStudent, ...mappedExtraCharges, ...mappedPrivateLesson, ...mappedTutor, ...mappedExtra].sort((a, b) => {
+    const mappedBalancePayments: TxRow[] = ((balancePaymentRes.data as any[] | null) ?? []).map((p: any) => ({ id: p.id, kind: 'income', source: 'balance_payment', date: (p.created_at ?? isoToday()).slice(0, 10), ts: p.created_at ?? '', amount: Number(p.amount) || 0, label: `Πληρωμή: ${p?.students?.full_name ?? 'Μαθητής'}`, notes: p.note ?? null, cancelled: !!p.cancelled_at, payment_method: p.payment_method ?? null }));
+    return [...mappedStudent, ...mappedExtraCharges, ...mappedPrivateLesson, ...mappedBalancePayments, ...mappedTutor, ...mappedExtra].sort((a, b) => {
       if (a.date !== b.date) return a.date < b.date ? 1 : -1;
       return a.ts < b.ts ? 1 : -1;
     });
   }
 
+  // Mirrors the per-student "totalBalanceCombined" formula on the student card:
+  // charged (subscriptions of any status + extra charges) minus paid (subscription
+  // payments + extra charge payments + generic balance payments), clamped at 0 per
+  // student so one student's overpayment can't offset another student's debt.
   async function loadOutstandingBalance() {
     if (!schoolId) return;
-    const { data } = await supabase
-      .from('student_subscriptions_with_totals')
-      .select('balance')
-      .eq('school_id', schoolId)
-      .eq('status', 'active');
-    const total = (data ?? []).reduce((sum: number, row: any) => {
-      const b = Number(row.balance ?? 0);
-      return sum + (b > 0 ? b : 0);
-    }, 0);
+    const [subsRes, extraChargesRes, extraChargePaymentsRes, balancePaymentsRes] = await Promise.all([
+      supabase.from('student_subscriptions_with_totals').select('student_id, charge_amount, price, paid_amount').eq('school_id', schoolId),
+      supabase.from('student_extra_charges').select('student_id, amount').eq('school_id', schoolId).is('cancelled_at', null),
+      supabase.from('student_extra_charge_payments').select('student_id, amount').eq('school_id', schoolId).is('cancelled_at', null),
+      supabase.from('student_balance_payments').select('student_id, amount').eq('school_id', schoolId).is('cancelled_at', null),
+    ]);
+    const owedByStudent = new Map<string, number>();
+    const add = (studentId: string | null | undefined, delta: number) => {
+      if (!studentId) return;
+      owedByStudent.set(studentId, (owedByStudent.get(studentId) ?? 0) + delta);
+    };
+    (subsRes.data ?? []).forEach((s: any) => {
+      add(s.student_id, Number(s.charge_amount ?? s.price ?? 0));
+      add(s.student_id, -(Number(s.paid_amount) || 0));
+    });
+    (extraChargesRes.data ?? []).forEach((c: any) => add(c.student_id, Number(c.amount) || 0));
+    (extraChargePaymentsRes.data ?? []).forEach((p: any) => add(p.student_id, -(Number(p.amount) || 0)));
+    (balancePaymentsRes.data ?? []).forEach((p: any) => add(p.student_id, -(Number(p.amount) || 0)));
+    const total = Array.from(owedByStudent.values()).reduce((sum, b) => sum + (b > 0 ? b : 0), 0);
     setOutstandingBalance(total);
   }
 
@@ -306,6 +332,8 @@ export default function EconomicsAnalysisPage() {
         await supabase.from('student_extra_charge_payments').update({ cancelled_at: new Date().toISOString() }).eq('id', row.id);
       } else if (row.source === 'private_lesson_payment') {
         await supabase.from('private_lesson_payments').update({ cancelled_at: new Date().toISOString() }).eq('id', row.id);
+      } else if (row.source === 'balance_payment') {
+        await supabase.from('student_balance_payments').update({ cancelled_at: new Date().toISOString() }).eq('id', row.id);
       }
     } catch (e: any) {
       setError(e?.message ?? 'Αποτυχία ακύρωσης.');

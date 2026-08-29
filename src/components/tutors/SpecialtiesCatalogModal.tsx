@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { supabase } from '../../lib/supabaseClient';
-import { Tags, X, Plus, Trash2, Loader2 } from 'lucide-react';
+import { Tags, X, Trash2, Loader2, AlertCircle } from 'lucide-react';
+import { ModalFormField as FormField, ModalFieldIcon as FieldIcon, ModalErrorBox, modalInputCls } from '../ui/ModalField.tsx';
 import type { SpecialtyRow } from './types';
 
 type SpecialtiesCatalogModalProps = {
@@ -28,9 +29,7 @@ export default function SpecialtiesCatalogModal({
     ? 'relative w-full max-w-md overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl'
     : 'relative w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 shadow-2xl';
 
-  const inputCls = isDark
-    ? 'h-10 flex-1 rounded-xl border border-slate-700/70 bg-slate-900/60 px-3 text-sm text-slate-100 placeholder-slate-500 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30'
-    : 'h-10 flex-1 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:border-[color:var(--color-accent)] focus:ring-1 focus:ring-[color:var(--color-accent)]/30';
+  const inputCls = modalInputCls(isDark);
 
   const rowCls = isDark
     ? 'flex items-center justify-between gap-2 rounded-xl border border-slate-800/70 bg-slate-900/30 px-3 py-2'
@@ -95,23 +94,28 @@ export default function SpecialtiesCatalogModal({
         </div>
 
         {error && (
-          <div className="mx-6 mt-4 flex items-start gap-2.5 rounded-xl border border-red-500/30 bg-red-950/40 px-3.5 py-2.5 text-xs text-red-200">
-            <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-red-400" />{error}
-          </div>
+          <ModalErrorBox isDark={isDark}>
+            <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />{error}
+          </ModalErrorBox>
         )}
 
         <div className="px-6 py-4">
-          <form onSubmit={handleCreate} className="flex items-center gap-2">
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="π.χ. Μαθηματικά, IB, Φυσική"
-              className={inputCls}
-              autoFocus
-            />
+          <form onSubmit={handleCreate} className="flex items-end gap-3">
+            <div className="flex-1">
+              <FormField label="Νέα ειδικότητα" isDark={isDark}>
+                <FieldIcon icon={Tags} isDark={isDark} />
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="π.χ. Μαθηματικά, IB, Φυσική"
+                  className={inputCls}
+                  autoFocus
+                />
+              </FormField>
+            </div>
             <button type="submit" disabled={saving || !name.trim()}
-              className="btn-primary flex h-10 w-10 shrink-0 items-center justify-center p-0 disabled:opacity-50">
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+              className="btn-primary h-11 gap-1.5 px-4 font-semibold shadow-sm hover:brightness-110 active:scale-[0.97] disabled:opacity-60">
+              {saving ? <><Loader2 className="h-3 w-3 animate-spin" />Αποθήκευση...</> : 'Αποθήκευση'}
             </button>
           </form>
 
