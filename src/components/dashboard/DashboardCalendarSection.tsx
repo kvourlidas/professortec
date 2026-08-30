@@ -31,7 +31,7 @@ import {
   ModalFormField, ModalFieldIcon, ModalSelectChevron, ModalErrorBox,
   modalInputCls, modalSelectCls,
 } from '../ui/ModalField';
-import { CalendarDays, Clock, BookOpen, GraduationCap, X, Loader2, Layers, Euro, Ban, ArrowLeftRight, Check, AlertCircle, DoorOpen } from 'lucide-react';
+import { CalendarDays, BookOpen, GraduationCap, X, Loader2, Layers, Euro, Ban, ArrowLeftRight, Check, AlertCircle, DoorOpen } from 'lucide-react';
 
 /* ------------ Types (unchanged) ------------ */
 
