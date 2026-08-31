@@ -153,8 +153,9 @@ function ClassCard({
                       {st.full_name ?? 'Χωρίς όνομα'}
                     </span>
                     {!hasSub && (
-                      <AlertTriangle className={`h-3 w-3 shrink-0 ${isDark ? 'text-amber-400' : 'text-amber-500'}`}
-                        title="Απαιτείται ενέργεια: δεν έχει ενεργή συνδρομή" />
+                      <span title="Απαιτείται ενέργεια: δεν έχει ενεργή συνδρομή" className="inline-flex shrink-0">
+                        <AlertTriangle className={`h-3 w-3 ${isDark ? 'text-amber-400' : 'text-amber-500'}`} />
+                      </span>
                     )}
                   </li>
                 );

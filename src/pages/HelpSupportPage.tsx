@@ -25,6 +25,8 @@ export default function HelpSupportPage() {
   const [category, setCategory] = useState('');
   const [message, setMessage] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!schoolId) return;
@@ -52,9 +54,26 @@ export default function HelpSupportPage() {
 
   const emptyValueCls = isDark ? 'text-slate-600 italic' : 'text-slate-400 italic';
 
-  const onSubmit = (e: FormEvent) => {
+  const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    if (sending) return;
+    setSending(true);
+    setError(null);
+    try {
+      const { error: fnError } = await supabase.functions.invoke('support-contact', {
+        body: { category, message, name, phone },
+      });
+      if (fnError) throw fnError;
+      setSubmitted(true);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Δεν ήταν δυνατή η αποστολή. Δοκιμάστε ξανά.',
+      );
+    } finally {
+      setSending(false);
+    }
   };
 
   if (submitted) {
@@ -77,7 +96,7 @@ export default function HelpSupportPage() {
           </div>
           <button
             type="button"
-            onClick={() => { setSubmitted(false); setMessage(''); setCategory(''); }}
+            onClick={() => { setSubmitted(false); setMessage(''); setCategory(''); setError(null); }}
             className="mt-1 rounded-xl px-5 py-2 text-sm font-semibold transition active:scale-[0.98]"
             style={{ background: 'var(--color-accent)', color: '#fff' }}
           >
@@ -114,7 +133,7 @@ export default function HelpSupportPage() {
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/15">
                   <Mail className="h-3.5 w-3.5 text-white" />
                 </span>
-                <span className="text-sm text-white/80">support@edra.gr</span>
+                <span className="text-sm text-white/80">support@edrahub.gr</span>
               </div>
             </div>
           </div>
@@ -202,14 +221,19 @@ export default function HelpSupportPage() {
               />
             </div>
 
+            {error && (
+              <p className="text-sm font-medium text-rose-500">{error}</p>
+            )}
+
             <div className="flex justify-end pt-1">
               <button
                 type="submit"
-                className="flex items-center gap-2 rounded-xl px-7 py-2.5 text-sm font-semibold shadow-sm transition active:scale-[0.98]"
+                disabled={sending}
+                className="flex items-center gap-2 rounded-xl px-7 py-2.5 text-sm font-semibold shadow-sm transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
                 style={{ background: 'var(--color-accent)', color: '#fff' }}
               >
                 <Send className="h-3.5 w-3.5" />
-                Αποστολή
+                {sending ? 'Αποστολή…' : 'Αποστολή'}
               </button>
             </div>
 

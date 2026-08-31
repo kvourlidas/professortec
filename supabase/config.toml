@@ -793,3 +793,9 @@ entrypoint = "./functions/schoolinfo-update/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/schoolinfo-update/*.html" ]
+
+[functions.support-contact]
+enabled = true
+verify_jwt = true
+import_map = "./functions/support-contact/deno.json"
+entrypoint = "./functions/support-contact/index.ts"

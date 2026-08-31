@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../context/ThemeContext';
 import { ChevronRight, GraduationCap, UserCog, BookOpen, ClipboardList, Bot, Loader2 } from 'lucide-react';
-import AssistantChat from '../assistant/AssistantChat';
 import kikaImg from '../../assets/kika-avatar.png';
 
 type ActionKey = 'students' | 'tutors' | 'classes' | 'tests' | 'ai';
@@ -38,7 +37,6 @@ export default function DashboardQuickActionsSection({ schoolId, actions }: Prop
   const navigate = useNavigate();
   const [counts, setCounts] = useState<Counts>({ students: null, tutors: null, classes: null, tests: null });
   const [loading, setLoading] = useState(false);
-  const [assistantOpen, setAssistantOpen] = useState(false);
 
   useEffect(() => {
     const countedActions = actions.filter((key): key is CountedActionKey => key !== 'ai');
@@ -79,8 +77,9 @@ export default function DashboardQuickActionsSection({ schoolId, actions }: Prop
             <button
               key={key}
               type="button"
-              onClick={() => (isAi ? setAssistantOpen(true) : navigate(path))}
-              className="group relative flex items-center justify-between gap-3 overflow-hidden rounded-2xl px-6 py-7 text-left shadow-lg transition-all hover:-translate-y-0.5 hover:brightness-110 active:scale-[0.98] active:brightness-100"
+              disabled={isAi}
+              onClick={() => (isAi ? undefined : navigate(path))}
+              className={`group relative flex items-center justify-between gap-3 overflow-hidden rounded-2xl px-6 py-7 text-left shadow-lg transition-all ${isAi ? 'cursor-not-allowed opacity-60' : 'hover:-translate-y-0.5 hover:brightness-110 active:scale-[0.98] active:brightness-100'}`}
               style={{ background: accent }}
             >
               <div className="flex min-w-0 items-center gap-4">
@@ -92,7 +91,7 @@ export default function DashboardQuickActionsSection({ schoolId, actions }: Prop
                 <div className="min-w-0">
                   <p className={`truncate text-lg font-bold leading-none ${isAi ? 'text-[#2E1065]' : 'text-white'}`}>{label}</p>
                   {isAi ? (
-                    <p className="mt-2 truncate text-sm font-medium text-[#2E1065]/70">Λειτουργίες AI</p>
+                    <p className="mt-2 truncate text-sm font-medium text-[#2E1065]/70">AI Βοηθός - Σύντομα κοντά σας</p>
                   ) : (
                     <p className="mt-2 text-2xl font-bold leading-none tabular-nums text-white">
                       {loading ? <Loader2 className="h-5 w-5 animate-spin text-white/70" /> : counts[key] ?? '—'}
@@ -106,12 +105,6 @@ export default function DashboardQuickActionsSection({ schoolId, actions }: Prop
           );
         })}
       </div>
-
-      {assistantOpen && (
-        <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-[420px]">
-          <AssistantChat onClose={() => setAssistantOpen(false)} />
-        </div>
-      )}
     </div>
   );
 }
