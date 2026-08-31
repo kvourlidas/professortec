@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { navItems, idiaiterouNavItems, type NavItem } from '../_nav';
-import { ChevronRight, ChevronLeft, Building2, User, HelpCircle } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Building2, User, HelpCircle, Rocket } from 'lucide-react';
 import edraLogo from '../assets/logoedra.png';
 import logoMark from '../assets/edra-webtab.png';
 import TopBar from './TopBar.tsx';
@@ -380,6 +380,16 @@ export default function Layout({ children }: LayoutProps) {
 
       {/* ── Main column ── */}
       <main className="flex flex-1 flex-col overflow-y-auto">
+        <a
+          href="https://edrahub.gr/setup-guide"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="fixed right-5 top-5 z-50 flex items-center gap-2 text-base font-bold text-[color:var(--color-accent)] transition hover:underline"
+        >
+          <Rocket className="h-5 w-5" />
+          Οδηγός Εκκίνησης
+        </a>
+
         <TopBar onOpenMobileMenu={() => setMobileOpen(true)} />
 
         <div className="page-shell px-4 py-6">{children}</div>

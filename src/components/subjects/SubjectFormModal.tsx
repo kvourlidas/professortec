@@ -58,12 +58,12 @@ export default function SubjectFormModal({
   const selectCls = modalSelectCls(isDark);
 
   const modalCardCls = isDark
-    ? 'relative w-full max-w-md overflow-hidden rounded-2xl border border-slate-700/60 shadow-2xl'
-    : 'relative w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 shadow-2xl';
+    ? 'relative w-full max-w-md rounded-2xl border border-slate-700/60 shadow-2xl'
+    : 'relative w-full max-w-md rounded-2xl border border-slate-200 shadow-2xl';
 
   const modalFooterCls = isDark
-    ? 'flex justify-end gap-2.5 border-t border-slate-800/70 bg-slate-900/20 px-6 py-4 mt-4'
-    : 'flex justify-end gap-2.5 border-t border-slate-200 bg-slate-50 px-6 py-4 mt-4';
+    ? 'flex justify-end gap-2.5 rounded-b-2xl border-t border-slate-800/70 bg-slate-900/20 px-6 py-4 mt-4'
+    : 'flex justify-end gap-2.5 rounded-b-2xl border-t border-slate-200 bg-slate-50 px-6 py-4 mt-4';
 
   const cancelBtnCls = isDark
     ? 'btn border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-slate-200 hover:bg-slate-700/60 disabled:opacity-50'
@@ -73,7 +73,7 @@ export default function SubjectFormModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className={modalCardCls} style={{ background: 'var(--color-sidebar)' }}>
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--ch-divider)' }}>
+        <div className="flex items-center justify-between rounded-t-2xl px-6 py-4" style={{ borderBottom: '1px solid var(--ch-divider)' }}>
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl"
               style={{ background: 'var(--ch-icon-bg)', border: '1px solid var(--ch-icon-border)' }}>
