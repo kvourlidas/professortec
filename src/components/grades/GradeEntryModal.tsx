@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, ArrowRight, ChevronLeft, ClipboardList, Loader2, Search, Users, X } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../context/ThemeContext';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 
 type StudentRow = { id: string; school_id: string; full_name: string };
 type TestResultRow = { id: string; test_id: string; student_id: string; grade: number | null };
@@ -33,6 +34,8 @@ export default function GradeEntryModal({ schoolId, onClose, onSaved }: GradeEnt
 
   const [phase, setPhase] = useState<1 | 2>(1);
   const [loadingTests, setLoadingTests] = useState(true);
+
+  useEscapeToClose(true, onClose);
   const [tests, setTests] = useState<TestItem[]>([]);
   const [testSearch, setTestSearch] = useState('');
   const [selectedTest, setSelectedTest] = useState<TestItem | null>(null);

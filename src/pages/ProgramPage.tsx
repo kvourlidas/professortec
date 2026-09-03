@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
 import { useTheme } from '../context/ThemeContext';
-import { Loader2, CalendarRange, CopyPlus } from 'lucide-react';
+import { Loader2, CalendarRange, CopyPlus, FileText } from 'lucide-react';
 import type { ClassRow, SubjectRow, LevelRow, TutorRow, ProgramRow, ProgramItemRow, ClassSubjectRow, SubjectTutorRow, AddSlotForm, EditSlotForm, DeleteSlotTarget } from '../components/program/types';
 import { DAY_OPTIONS, emptyAddSlotForm } from '../components/program/constants';
 import { formatDateDisplay, parseDateDisplayToISO, timeToMinutes, todayISO, normalizeText } from '../components/program/utils';
@@ -13,6 +13,7 @@ import ProgramClassesPanel from '../components/program/ProgramClassesPanel';
 import ProgramScheduleGrid from '../components/program/ProgramScheduleGrid';
 import StyledSelect from '../components/ui/StyledSelect';
 import ProgramCloneModal from '../components/program/ProgramCloneModal';
+import { exportProgramToPdf } from '../components/program/exportProgram';
 import { isSchoolYearCurrent } from '../components/school-info/types';
 
 type SchoolYearOption = { id: string; name: string; start_date: string; end_date: string; is_summer: boolean };
@@ -53,6 +54,8 @@ export default function ProgramPage() {
   const [schoolYears, setSchoolYears] = useState<SchoolYearOption[]>([]);
   const [selectedYearId, setSelectedYearId] = useState<string>('');
   const [cloneModalOpen, setCloneModalOpen] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [pdfError, setPdfError] = useState(false);
 
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [addForm, setAddForm] = useState<AddSlotForm>(emptyAddSlotForm);
@@ -117,6 +120,19 @@ export default function ProgramPage() {
     });
     return map;
   }, [yearFilteredItems]);
+
+  const handleExportPdf = async () => {
+    setPdfError(false);
+    setPdfBusy(true);
+    try {
+      await exportProgramToPdf(itemsByDay, classes, subjectById, tutorNameById, selectedYear?.name ?? null);
+    } catch (err) {
+      console.error('Export program PDF error', err);
+      setPdfError(true);
+    } finally {
+      setPdfBusy(false);
+    }
+  };
 
   // ── Load ──
   useEffect(() => {
@@ -400,6 +416,20 @@ export default function ProgramPage() {
               />
             </div>
           )}
+
+          {/* ── Export button ── */}
+          <div className="flex flex-col items-center gap-2">
+            <button
+              type="button"
+              onClick={handleExportPdf}
+              disabled={pdfBusy}
+              className={`btn gap-2 border px-4 py-1.5 font-semibold disabled:opacity-50 ${isDark ? 'border-red-500/40 bg-red-500/10 text-red-400 hover:bg-red-500/20' : 'border-red-300 bg-red-50 text-red-700 hover:bg-red-100'}`}
+            >
+              {pdfBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
+              {pdfBusy ? 'Δημιουργία PDF…' : 'Λήψη PDF'}
+            </button>
+            {pdfError && <p className="text-[11px] text-red-500">Αποτυχία δημιουργίας PDF.</p>}
+          </div>
 
           <ProgramClassesPanel
             classes={classes}

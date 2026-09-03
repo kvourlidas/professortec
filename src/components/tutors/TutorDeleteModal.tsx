@@ -1,5 +1,6 @@
 import { Users } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import type { TutorRow } from './types';
 
 type TutorDeleteModalProps = {
@@ -17,6 +18,8 @@ export default function TutorDeleteModal({
 }: TutorDeleteModalProps) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+
+  useEscapeToClose(!!deleteTarget, onCancel);
 
   if (!deleteTarget) return null;
 

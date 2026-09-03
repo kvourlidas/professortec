@@ -1,4 +1,5 @@
 import { School } from 'lucide-react';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 
 interface ClassDeleteModalProps {
   deleteTarget: { id: string; title: string } | null;
@@ -9,6 +10,8 @@ interface ClassDeleteModalProps {
 }
 
 export default function ClassDeleteModal({ deleteTarget, deleting, isDark, onCancel, onConfirm }: ClassDeleteModalProps) {
+  useEscapeToClose(!!deleteTarget, onCancel);
+
   if (!deleteTarget) return null;
 
   const cancelBtnCls = `btn border px-4 py-1.5 ${isDark ? 'border-slate-600/60 bg-slate-800/50 text-slate-200 hover:bg-slate-700/60' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`;

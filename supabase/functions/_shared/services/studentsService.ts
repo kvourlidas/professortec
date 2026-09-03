@@ -37,14 +37,18 @@ export type StudentPartialUpdate = {
   phone?: string;
   email?: string;
   special_notes?: string;
+  address?: string;
+  school_name?: string;
   father_name?: string;
   father_date_of_birth?: string;
   father_phone?: string;
   father_email?: string;
+  father_afm?: string;
   mother_name?: string;
   mother_date_of_birth?: string;
   mother_phone?: string;
   mother_email?: string;
+  mother_afm?: string;
 };
 
 export type UpdateStudentByNameResult =
@@ -90,14 +94,18 @@ export async function updateStudentByNameService(
     email: updates.email ?? current.email,
     special_notes: updates.special_notes ?? current.special_notes,
     level_id: current.level_id,
+    address: updates.address ?? current.address,
+    school_name: updates.school_name ?? current.school_name,
     father_name: updates.father_name ?? current.father_name,
     father_date_of_birth: updates.father_date_of_birth ?? current.father_date_of_birth,
     father_phone: updates.father_phone ?? current.father_phone,
     father_email: updates.father_email ?? current.father_email,
+    father_afm: updates.father_afm ?? current.father_afm,
     mother_name: updates.mother_name ?? current.mother_name,
     mother_date_of_birth: updates.mother_date_of_birth ?? current.mother_date_of_birth,
     mother_phone: updates.mother_phone ?? current.mother_phone,
     mother_email: updates.mother_email ?? current.mother_email,
+    mother_afm: updates.mother_afm ?? current.mother_afm,
   };
 
   if (params.change_level) {

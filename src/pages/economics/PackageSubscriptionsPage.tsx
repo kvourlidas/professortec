@@ -11,6 +11,7 @@ import {
 import StyledSelect from '../../components/ui/StyledSelect';
 import AppDatePicker from '../../components/ui/AppDatePicker';
 import { isSchoolYearCurrent } from '../../components/school-info/types';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 
 type PackageType = 'monthly' | 'yearly';
 type SchoolYearOption = { id: string; name: string; start_date: string; end_date: string };
@@ -150,6 +151,8 @@ export default function PackageSubscriptionsPage() {
 
   const [deleteOpen,   setDeleteOpen]   = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+
+  useEscapeToClose(deleteOpen && !!deleteTarget, () => { setDeleteOpen(false); setDeleteTarget(null); });
 
   const [dragId,     setDragId]     = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);

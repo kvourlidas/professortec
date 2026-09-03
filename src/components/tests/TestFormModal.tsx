@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
-import { X, ClipboardList, BookOpen, Tag, Loader2, Plus, Euro, AlertCircle, CheckSquare, Square } from 'lucide-react';
+import { X, ClipboardList, BookOpen, Tag, Loader2, Plus, Euro, AlertCircle } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import AppDatePicker from '../ui/AppDatePicker';
 import TimePicker from '../ui/TimePicker';
 import {
@@ -9,6 +10,7 @@ import {
   ModalErrorBox, modalInputCls, modalSelectCls,
 } from '../ui/ModalField';
 import StyledSelect from '../ui/StyledSelect';
+import { MultiSelectDropdown } from '../ui/MultiSelectDropdown';
 import type { AddTestForm, ClassRow, ClassSubjectRow, EditTestForm, StudentRow, SubjectRow } from './types';
 import { emptyForm } from './types';
 import { parseDateDisplayToISO } from './utils';
@@ -83,6 +85,9 @@ export default function TestFormModal({
     const assignedIds = new Set(form.studentAssignments.map((a) => a.studentId));
     return (students ?? []).filter((s) => !assignedIds.has(s.id)).sort((a, b) => (a.full_name ?? '').localeCompare(b.full_name ?? '', 'el-GR'));
   }, [students, form.studentAssignments]);
+
+  useEscapeToClose(open, onClose);
+
   if (!open) return null;
 
   const handleFieldChange = (field: keyof AddTestForm) => (e: ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
@@ -149,8 +154,6 @@ export default function TestFormModal({
   const classLabelCls = `flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`;
   const classHintCls = `text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`;
   const classEmptyBoxCls = `flex h-16 items-center justify-center rounded-xl border border-dashed ${isDark ? 'border-slate-700/60 bg-slate-900/30' : 'border-slate-200 bg-slate-50'}`;
-  const classListCls = `max-h-44 space-y-1 overflow-y-auto rounded-xl border p-2 ${isDark ? 'border-slate-700/60 bg-slate-900/40' : 'border-slate-200 bg-slate-50'}`;
-  const classItemCls = `flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-xs transition ${isDark ? 'hover:bg-slate-800/60' : 'hover:bg-slate-100'}`;
 
   const subOpts = isPrivateLessons ? [] : mode === 'add' ? getCommonSubjectsForClasses(form.classIds) : getSubjectsForClass(form.classId);
   const hasClassSelection = mode === 'add' ? form.classIds.length > 0 : !!form.classId;
@@ -265,34 +268,21 @@ export default function TestFormModal({
                       <label className={classLabelCls}>
                         <BookOpen className="h-3 w-3" />
                         Τμήματα *
-                        {form.classIds.length > 0 && (
-                          <span className="ml-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold"
-                            style={{ background: 'color-mix(in srgb, var(--color-accent) 20%, transparent)', color: 'var(--color-accent)' }}>
-                            {form.classIds.length}
-                          </span>
-                        )}
                       </label>
                       {classes.length === 0 ? (
                         <div className={classEmptyBoxCls}>
                           <p className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Δεν υπάρχουν τμήματα.</p>
                         </div>
                       ) : (
-                        <div className={classListCls}>
-                          {classes.map((c) => {
-                            const checked = form.classIds.includes(c.id);
-                            return (
-                              <label key={c.id} className={classItemCls}>
-                                {checked
-                                  ? <CheckSquare className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--color-accent)' }} />
-                                  : <Square className={`h-3.5 w-3.5 shrink-0 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />}
-                                <input type="checkbox" checked={checked} onChange={() => toggleClassId(c.id)} className="sr-only" />
-                                <span className={checked ? (isDark ? 'text-slate-100' : 'text-slate-800') : (isDark ? 'text-slate-400' : 'text-slate-500')}>
-                                  {c.title}
-                                </span>
-                              </label>
-                            );
-                          })}
-                        </div>
+                        <MultiSelectDropdown
+                          items={classes.map((c) => ({ id: c.id, label: c.title }))}
+                          selectedIds={form.classIds}
+                          onToggle={toggleClassId}
+                          onClearAll={() => setForm((prev) => ({ ...prev, classIds: [], subjectId: null }))}
+                          placeholder="Επίλεξε τμήματα…"
+                          emptyText="Δεν βρέθηκαν τμήματα"
+                          isDark={isDark}
+                        />
                       )}
                       <p className={classHintCls}>Μπορείτε να επιλέξετε πολλά τμήματα — θα δημιουργηθεί ξεχωριστό διαγώνισμα για κάθε τμήμα.</p>
                     </div>

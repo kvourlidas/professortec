@@ -1,5 +1,6 @@
 import { Layers } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import type { LevelRow } from './types';
 
 type LevelDeleteModalProps = {
@@ -17,6 +18,8 @@ export default function LevelDeleteModal({
 }: LevelDeleteModalProps) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+
+  useEscapeToClose(!!deleteTarget, onCancel);
 
   if (!deleteTarget) return null;
 

@@ -1,4 +1,5 @@
 import { Ban, Loader2 } from 'lucide-react';
+import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
 import type { StudentViewRow } from './types';
 
 interface Props {
@@ -10,6 +11,8 @@ interface Props {
 }
 
 export function CancelSubscriptionModal({ target, cancelling, isDark, onCancel, onConfirm }: Props) {
+  useEscapeToClose(!!target, onCancel);
+
   if (!target) return null;
 
   const smallModalCls = isDark

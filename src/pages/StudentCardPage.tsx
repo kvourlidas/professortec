@@ -8,20 +8,23 @@ import {
   GraduationCap, TrendingUp, Wallet, Receipt, BarChart3, HandCoins,
   Banknote, CreditCard, Landmark, Tag, Ban, Plus, Trash2,
   Copy, Check, Award, Package, AlertTriangle, AlertCircle, X, ClipboardCheck,
+  MapPin, School, Eye, EyeOff,
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient.ts';
 import { useAuth } from '../auth.tsx';
 import { useTheme } from '../context/ThemeContext.tsx';
 import { useToast } from '../context/ToastContext.tsx';
+import { useEscapeToClose } from '../hooks/useEscapeToClose';
 import DatePickerField from '../components/ui/AppDatePicker.tsx';
 import StyledSelect from '../components/ui/StyledSelect';
 import {
   ModalFormField, ModalFieldIcon, ModalErrorBox, modalInputCls,
 } from '../components/ui/ModalField.tsx';
 import type { StudentRow, LevelRow, SubscriptionRow, ClassEnrollment, ProgramSlot } from '../components/students/types.ts';
-import { STUDENT_SELECT, formatDateToGreek, formatMonthRangeGreek, isoToDisplay, displayToIso } from '../components/students/types.ts';
+import { STUDENT_SELECT_DETAIL, formatDateToGreek, formatMonthRangeGreek, isoToDisplay, displayToIso } from '../components/students/types.ts';
 import type { StudentGradeRow } from '../components/grades/types.ts';
 import { StudentSlotModal } from '../components/students/StudentSlotModal';
+import { exportStudentReportToPdf } from '../components/students/exportStudentReport';
 import { computeAccruedCharges, type ChargeOverrideRow } from '../components/students/chargeUtils';
 import { AssignRenewModal } from '../components/economics/subscriptions/AssignRenewModal';
 import { isSchoolYearCurrent } from '../components/school-info/types';
@@ -424,6 +427,39 @@ function CopyButton({ text, isDark }: { text: string; isDark: boolean }) {
   );
 }
 
+function PasswordReadField({ label, password, hasAccount, isDark }: { label: string; password: string | null | undefined; hasAccount: boolean; isDark: boolean }) {
+  const [visible, setVisible] = useState(false);
+  const badgeCls = hasAccount
+    ? (isDark ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : 'bg-emerald-50 text-emerald-600 border-emerald-200')
+    : (isDark ? 'bg-red-500/15 text-red-400 border-red-500/30' : 'bg-red-50 text-red-600 border-red-200');
+  return (
+    <div>
+      <div className="mb-0.5 flex items-center gap-1.5">
+        <span className={`text-[9px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{label}</span>
+        <span className={`rounded-full border px-1.5 py-[1px] text-[8px] font-bold uppercase tracking-wide ${badgeCls}`}>
+          {hasAccount ? 'Ενεργός' : 'Ανενεργός'}
+        </span>
+      </div>
+      <div className={`flex items-center rounded-lg border px-2.5 py-1.5 text-xs ${isDark ? 'border-slate-700/40 bg-slate-900/30 text-slate-200' : 'border-slate-200 bg-slate-50 text-slate-700'}`}>
+        {password?.trim() ? (
+          <>
+            <span className="flex-1 truncate font-mono">{visible ? password : '•'.repeat(Math.min(password.length, 12))}</span>
+            <button type="button" onClick={() => setVisible(v => !v)}
+              className={`ml-1 shrink-0 rounded p-0.5 transition-colors ${isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'}`}>
+              {visible ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+            </button>
+            {visible && <CopyButton text={password} isDark={isDark} />}
+          </>
+        ) : (
+          <span className={isDark ? 'italic text-slate-600' : 'italic text-slate-400'}>
+            {hasAccount ? 'Άγνωστος (ορίστηκε πριν την ενεργοποίηση αυτής της λειτουργίας)' : 'Χωρίς λογαριασμό'}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ReadField({ label, value, isDark, copyable }: { label: string; value: string | null | undefined; isDark: boolean; copyable?: boolean }) {
   return (
     <div>
@@ -612,6 +648,8 @@ export default function StudentCardPage() {
   const [specialNotes, setSpecialNotes] = useState('');
   const [levelId, setLevelId] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [address, setAddress] = useState('');
+  const [schoolName, setSchoolName] = useState('');
 
   const [editingParents, setEditingParents] = useState(false);
   const [savingParents, setSavingParents] = useState(false);
@@ -620,10 +658,12 @@ export default function StudentCardPage() {
   const [fatherDob, setFatherDob] = useState('');
   const [fatherPhone, setFatherPhone] = useState('');
   const [fatherEmail, setFatherEmail] = useState('');
+  const [fatherAfm, setFatherAfm] = useState('');
   const [motherName, setMotherName] = useState('');
   const [motherDob, setMotherDob] = useState('');
   const [motherPhone, setMotherPhone] = useState('');
   const [motherEmail, setMotherEmail] = useState('');
+  const [motherAfm, setMotherAfm] = useState('');
 
   const [slotModalOpen, setSlotModalOpen] = useState(false);
   const [slotDeleting, setSlotDeleting] = useState<string | null>(null);
@@ -657,6 +697,10 @@ export default function StudentCardPage() {
   const [_cancellingExtraChargeId, setCancellingExtraChargeId] = useState<string | null>(null);
   const [_cancellingExtraPaymentId, setCancellingExtraPaymentId] = useState<string | null>(null);
 
+  useEscapeToClose(lessonPayModalOpen, () => { if (!lessonPaymentSaving) setLessonPayModalOpen(false); });
+  useEscapeToClose(addChargeOpen, () => { if (!addChargeSaving) setAddChargeOpen(false); });
+  useEscapeToClose(subPayModalOpen, () => { if (!payingLoading) setSubPayModalOpen(false); });
+
   const [histContextMenu, setHistContextMenu] = useState<{ x: number; y: number; entry: UnifiedHistoryEntry } | null>(null);
   const [confirmCancelEntry, setConfirmCancelEntry] = useState<UnifiedHistoryEntry | null>(null);
   const [confirmCancelling, setConfirmCancelling] = useState(false);
@@ -664,6 +708,10 @@ export default function StudentCardPage() {
   const [lessonContextMenu, setLessonContextMenu] = useState<{ x: number; y: number; entry: LessonHistoryEntry } | null>(null);
   const [confirmCancelLessonEntry, setConfirmCancelLessonEntry] = useState<LessonHistoryEntry | null>(null);
   const [confirmCancelLessonRunning, setConfirmCancelLessonRunning] = useState(false);
+
+  useEscapeToClose(cancelSubConfirmOpen, () => { if (!cancelSubSaving) setCancelSubConfirmOpen(false); });
+  useEscapeToClose(!!confirmCancelEntry, () => { if (!confirmCancelling) setConfirmCancelEntry(null); });
+  useEscapeToClose(!!confirmCancelLessonEntry, () => { if (!confirmCancelLessonRunning) setConfirmCancelLessonEntry(null); });
 
   const inputCls = `h-8 w-full rounded-lg border px-2.5 text-xs outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 focus:border-[color:var(--color-accent)] ${isDark ? 'border-slate-700/70 bg-slate-900/60 text-slate-100 placeholder-slate-500' : 'border-slate-200 bg-slate-50 text-slate-800 placeholder-slate-400'}`;
   const cancelBtnCls = `btn border px-3 py-1.5 text-xs disabled:opacity-50 ${isDark ? 'border-slate-600/60 bg-slate-800/50 text-slate-200 hover:bg-slate-700/60' : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'}`;
@@ -782,6 +830,47 @@ export default function StudentCardPage() {
     [subscriptions, extraChargePayments, balancePayments]);
   const totalBalanceCombined = useMemo(() => Math.max(0, totalChargedCombined - totalPaidCombined), [totalChargedCombined, totalPaidCombined]);
 
+  const [reportBusy, setReportBusy] = useState(false);
+  const [reportError, setReportError] = useState(false);
+
+  const handleExportReport = async () => {
+    if (!student) return;
+    setReportError(false);
+    setReportBusy(true);
+    try {
+      const attendancePeriodLabel = attendanceMode === 'month'
+        ? `${MONTH_NAMES[Number(attendanceMonthKey.split('-')[1]) - 1]} ${attendanceMonthKey.split('-')[0]}`
+        : attendanceMode === 'year'
+          ? (schoolYears.find(y => y.id === attendanceYearId)?.name ?? 'Σχολικό Έτος')
+          : 'Σύνολο';
+      const presentCount = attendanceRows.filter(r => r.status === 'present').length;
+      const absentCount = attendanceRows.filter(r => r.status === 'absent').length;
+
+      await exportStudentReportToPdf({
+        student,
+        levelName,
+        isIdiaiterou,
+        classes,
+        scheduleSlots,
+        grades,
+        trimesterInputs: isIdiaiterou ? null : trimesterInputs,
+        trimesterYearName: schoolYears.find(y => y.id === trimesterYearId)?.name ?? null,
+        attendancePresent: presentCount,
+        attendanceAbsent: absentCount,
+        attendancePeriodLabel,
+        activeSub: isIdiaiterou ? null : activeSub,
+        totals: isIdiaiterou
+          ? { charged: lessonTotalCharged, paid: lessonTotalPaid, balance: Math.max(0, lessonBalance) }
+          : { charged: totalChargedCombined, paid: totalPaidCombined, balance: totalBalanceCombined },
+      });
+    } catch (err) {
+      console.error('Export student report error', err);
+      setReportError(true);
+    } finally {
+      setReportBusy(false);
+    }
+  };
+
   const unifiedHistory = useMemo<UnifiedHistoryEntry[]>(() => {
     const entries: UnifiedHistoryEntry[] = [];
     subscriptions.forEach(sub => {
@@ -819,7 +908,7 @@ export default function StudentCardPage() {
       setLoading(true);
       await supabase.rpc('run_subscription_expiry', { p_school_id: schoolId });
       const [stuRes, lvlRes, subRes, csRes, progRes] = await Promise.all([
-        supabase.from('students').select(STUDENT_SELECT).eq('id', id).eq('school_id', schoolId).is('deleted_at', null).maybeSingle(),
+        supabase.from('students').select(STUDENT_SELECT_DETAIL).eq('id', id).eq('school_id', schoolId).is('deleted_at', null).maybeSingle(),
         supabase.from('levels').select('id, school_id, name, created_at').eq('school_id', schoolId).order('name'),
         supabase.from('student_subscriptions_with_totals')
           .select('id, school_id, student_id, package_id, package_name, price, currency, status, starts_on, ends_on, created_at, balance, paid_amount, charge_amount, notes, plan_id, period_month, discount_pct')
@@ -1403,12 +1492,13 @@ export default function StudentCardPage() {
     setFullName(s.full_name ?? ''); setDateOfBirth(isoToDisplay(s.date_of_birth));
     setPhone(s.phone ?? ''); setEmail(s.email ?? '');
     setSpecialNotes(s.special_notes ?? ''); setLevelId(s.level_id ?? ''); setNewPassword('');
+    setAddress(s.address ?? ''); setSchoolName(s.school_name ?? '');
   }
   function populateParentsForm(s: StudentRow) {
     setFatherName(s.father_name ?? ''); setFatherDob(isoToDisplay(s.father_date_of_birth));
-    setFatherPhone(s.father_phone ?? ''); setFatherEmail(s.father_email ?? '');
+    setFatherPhone(s.father_phone ?? ''); setFatherEmail(s.father_email ?? ''); setFatherAfm(s.father_afm ?? '');
     setMotherName(s.mother_name ?? ''); setMotherDob(isoToDisplay(s.mother_date_of_birth));
-    setMotherPhone(s.mother_phone ?? ''); setMotherEmail(s.mother_email ?? '');
+    setMotherPhone(s.mother_phone ?? ''); setMotherEmail(s.mother_email ?? ''); setMotherAfm(s.mother_afm ?? '');
   }
 
   const handleSaveStudent = async () => {
@@ -1431,14 +1521,18 @@ export default function StudentCardPage() {
       email: email.trim() || null,
       special_notes: specialNotes.trim() || null,
       level_id: levelId || null,
+      address: address.trim() || null,
+      school_name: schoolName.trim() || null,
       father_name: student.father_name ?? null,
       father_date_of_birth: student.father_date_of_birth ?? null,
       father_phone: student.father_phone ?? null,
       father_email: student.father_email ?? null,
+      father_afm: student.father_afm ?? null,
       mother_name: student.mother_name ?? null,
       mother_date_of_birth: student.mother_date_of_birth ?? null,
       mother_phone: student.mother_phone ?? null,
       mother_email: student.mother_email ?? null,
+      mother_afm: student.mother_afm ?? null,
     };
 
     const { data, error } = await supabase.functions.invoke('student-update', {
@@ -1463,17 +1557,38 @@ export default function StudentCardPage() {
         return;
       }
 
-      const { error: pwErr } = await supabase.functions.invoke('set-student-password', {
-        body: {
-          school_id: schoolId,
-          student_id: student.id,
-          new_password: np,
-        },
-      });
-
-      if (pwErr) console.error(pwErr);
+      if (student.auth_user_id) {
+        const { error: pwErr } = await supabase.functions.invoke('set-student-password', {
+          body: { student_id: student.id, new_password: np },
+        });
+        if (pwErr) {
+          console.error(pwErr);
+          setStudentError('Αποτυχία αλλαγής κωδικού.');
+          setSavingStudent(false);
+          return;
+        }
+        setStudent(prev => (prev ? { ...prev, current_password: np } : prev));
+      } else {
+        const { data: acctData, error: acctErr } = await supabase.functions.invoke('create-student-user', {
+          body: {
+            school_id: schoolId,
+            student_id: student.id,
+            email: updated.email,
+            phone: updated.phone,
+            password: np,
+          },
+        });
+        if (acctErr || !acctData?.user_id) {
+          console.error(acctErr ?? acctData);
+          setStudentError('Αποτυχία δημιουργίας λογαριασμού. Χρειάζεται email ή τηλέφωνο.');
+          setSavingStudent(false);
+          return;
+        }
+        setStudent(prev => (prev ? { ...prev, auth_user_id: acctData.user_id, current_password: np } : prev));
+      }
     }
 
+    setNewPassword('');
     setSavingStudent(false);
     setEditingStudent(false);
     showToast('Στοιχεία μαθητή αποθηκεύτηκαν.');
@@ -1491,14 +1606,18 @@ export default function StudentCardPage() {
         email: student.email ?? null,
         special_notes: specialNotes.trim() || null,
         level_id: student.level_id ?? null,
+        address: student.address ?? null,
+        school_name: student.school_name ?? null,
         father_name: student.father_name ?? null,
         father_date_of_birth: student.father_date_of_birth ?? null,
         father_phone: student.father_phone ?? null,
         father_email: student.father_email ?? null,
+        father_afm: student.father_afm ?? null,
         mother_name: student.mother_name ?? null,
         mother_date_of_birth: student.mother_date_of_birth ?? null,
         mother_phone: student.mother_phone ?? null,
         mother_email: student.mother_email ?? null,
+        mother_afm: student.mother_afm ?? null,
       },
     });
     setSavingNotes(false);
@@ -1511,6 +1630,13 @@ export default function StudentCardPage() {
   const handleSaveParents = async () => {
     if (!student || !schoolId) return;
 
+    const fatherAfmTrimmed = fatherAfm.trim();
+    const motherAfmTrimmed = motherAfm.trim();
+    if ((fatherAfmTrimmed && !/^\d{9}$/.test(fatherAfmTrimmed)) || (motherAfmTrimmed && !/^\d{9}$/.test(motherAfmTrimmed))) {
+      setParentsError('Το ΑΦΜ πρέπει να αποτελείται από 9 ψηφία.');
+      return;
+    }
+
     setSavingParents(true);
     setParentsError(null);
 
@@ -1522,14 +1648,18 @@ export default function StudentCardPage() {
       email: student.email ?? null,
       special_notes: student.special_notes ?? null,
       level_id: student.level_id ?? null,
+      address: student.address ?? null,
+      school_name: student.school_name ?? null,
       father_name: fatherName.trim() || null,
       father_date_of_birth: displayToIso(fatherDob) || null,
       father_phone: fatherPhone.trim() || null,
       father_email: fatherEmail.trim() || null,
+      father_afm: fatherAfmTrimmed || null,
       mother_name: motherName.trim() || null,
       mother_date_of_birth: displayToIso(motherDob) || null,
       mother_phone: motherPhone.trim() || null,
       mother_email: motherEmail.trim() || null,
+      mother_afm: motherAfmTrimmed || null,
     };
 
     const { data, error } = await supabase.functions.invoke('student-update', {
@@ -1617,16 +1747,30 @@ export default function StudentCardPage() {
     <div className="space-y-4 px-1">
 
       {/* ── Header ── */}
-      <div className="flex items-center gap-3">
-        <button type="button" onClick={() => navigate('/students')}
-          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition ${isDark ? 'border-slate-700/60 bg-slate-800/50 text-slate-400 hover:border-slate-600 hover:text-slate-200' : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-700'}`}>
-          <ArrowLeft className="h-4 w-4" />
-        </button>
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
-          style={{ background: 'var(--color-accent)' }}>
-          <GraduationCap className="h-3.5 w-3.5" style={{ color: 'var(--color-on-accent)' }} />
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={() => navigate('/students')}
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition ${isDark ? 'border-slate-700/60 bg-slate-800/50 text-slate-400 hover:border-slate-600 hover:text-slate-200' : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-700'}`}>
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
+            style={{ background: 'var(--color-accent)' }}>
+            <GraduationCap className="h-3.5 w-3.5" style={{ color: 'var(--color-on-accent)' }} />
+          </div>
+          <h1 className={`text-sm font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>{student.full_name}</h1>
         </div>
-        <h1 className={`text-sm font-semibold tracking-tight ${isDark ? 'text-slate-50' : 'text-slate-800'}`}>{student.full_name}</h1>
+        <div className="flex flex-col items-end gap-1">
+          <button
+            type="button"
+            onClick={handleExportReport}
+            disabled={reportBusy}
+            className={`btn gap-2 border px-4 py-1.5 text-xs font-semibold disabled:opacity-50 ${isDark ? 'border-red-500/40 bg-red-500/10 text-red-400 hover:bg-red-500/20' : 'border-red-300 bg-red-50 text-red-700 hover:bg-red-100'}`}
+          >
+            {reportBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
+            {reportBusy ? 'Δημιουργία…' : 'Λήψη Αναφοράς (PDF)'}
+          </button>
+          {reportError && <p className="text-[11px] text-red-500">Αποτυχία δημιουργίας PDF.</p>}
+        </div>
       </div>
 
       {/* ── Grid ── */}
@@ -1656,9 +1800,24 @@ export default function StudentCardPage() {
                   </EditField>
                   <EditField label="Ημ. Γέννησης" icon={<Calendar className="h-3 w-3" />} isDark={isDark}><DatePickerField label="" value={dateOfBirth} onChange={setDateOfBirth} placeholder="24/12/2010" id="card-dob" /></EditField>
                   <EditField label="Τηλέφωνο" icon={<Phone className="h-3 w-3" />} isDark={isDark}><input className={inputCls} value={phone} onChange={e => setPhone(e.target.value)} /></EditField>
+                  <EditField label="Σχολείο" icon={<School className="h-3 w-3" />} isDark={isDark}><input className={inputCls} autoComplete="school-attended-do-not-autofill" value={schoolName} onChange={e => setSchoolName(e.target.value)} /></EditField>
+                  <EditField label="Διεύθυνση" icon={<MapPin className="h-3 w-3" />} isDark={isDark}><input className={inputCls} value={address} onChange={e => setAddress(e.target.value)} /></EditField>
                   <EditField label="Email" icon={<Mail className="h-3 w-3" />} isDark={isDark}><input type="email" className={inputCls} value={email} onChange={e => setEmail(e.target.value)} /></EditField>
-                  <EditField label="Νέος Κωδικός" icon={<Lock className="h-3 w-3" />} isDark={isDark}><input type="password" className={inputCls} value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Κενό = χωρίς αλλαγή" /></EditField>
+                  <EditField label={student.auth_user_id ? 'Νέος Κωδικός' : 'Κωδικός (δημιουργία λογαριασμού)'} icon={<Lock className="h-3 w-3" />} isDark={isDark}>
+                    <input
+                      type="password"
+                      className={inputCls}
+                      value={newPassword}
+                      onChange={e => setNewPassword(e.target.value)}
+                      placeholder={student.auth_user_id ? 'Κενό = χωρίς αλλαγή' : 'Τουλάχιστον 6 χαρακτήρες'}
+                    />
+                  </EditField>
                 </div>
+                <p className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                  {student.auth_user_id
+                    ? 'Ο μαθητής έχει ενεργό λογαριασμό στην εφαρμογή.'
+                    : 'Ο μαθητής δεν έχει λογαριασμό στην εφαρμογή ακόμα — βάλε κωδικό για να δημιουργηθεί (χρειάζεται email ή τηλέφωνο).'}
+                </p>
                 <div className="flex justify-end gap-2">
                   <button type="button" onClick={() => { setEditingStudent(false); populateStudentForm(student); setStudentError(null); }} disabled={savingStudent} className={cancelBtnCls}>Ακύρωση</button>
                   <button type="button" onClick={handleSaveStudent} disabled={savingStudent} className="btn-primary gap-1.5 px-3 py-1.5 text-xs font-semibold disabled:opacity-60">
@@ -1672,7 +1831,10 @@ export default function StudentCardPage() {
                 <ReadField label="Επίπεδο" value={levelName} isDark={isDark} />
                 <ReadField label="Ημ. Γέννησης" value={formatDateToGreek(student.date_of_birth)} isDark={isDark} />
                 <ReadField label="Τηλέφωνο" value={student.phone} isDark={isDark} />
+                <ReadField label="Σχολείο" value={student.school_name} isDark={isDark} />
+                <ReadField label="Διεύθυνση" value={student.address} isDark={isDark} />
                 <ReadField label="Email" value={student.email} isDark={isDark} copyable />
+                <PasswordReadField label="Κωδικός" password={student.current_password} hasAccount={!!student.auth_user_id} isDark={isDark} />
               </div>
             )}
           </DashCard>
@@ -1689,9 +1851,9 @@ export default function StudentCardPage() {
               <div className="space-y-3">
                 <div className="grid gap-3 sm:grid-cols-2">
                   {[
-                    { title: 'Πατέρας', name: fatherName, setName: setFatherName, dob: fatherDob, setDob: setFatherDob, dobId: 'card-fdob', phone: fatherPhone, setPhone: setFatherPhone, email: fatherEmail, setEmail: setFatherEmail },
-                    { title: 'Μητέρα', name: motherName, setName: setMotherName, dob: motherDob, setDob: setMotherDob, dobId: 'card-mdob', phone: motherPhone, setPhone: setMotherPhone, email: motherEmail, setEmail: setMotherEmail },
-                  ].map(({ title, name, setName, dob, setDob, dobId, phone: ph, setPhone: setPh, email: em, setEmail: setEm }) => (
+                    { title: 'Πατέρας', name: fatherName, setName: setFatherName, dob: fatherDob, setDob: setFatherDob, dobId: 'card-fdob', phone: fatherPhone, setPhone: setFatherPhone, email: fatherEmail, setEmail: setFatherEmail, afm: fatherAfm, setAfm: setFatherAfm },
+                    { title: 'Μητέρα', name: motherName, setName: setMotherName, dob: motherDob, setDob: setMotherDob, dobId: 'card-mdob', phone: motherPhone, setPhone: setMotherPhone, email: motherEmail, setEmail: setMotherEmail, afm: motherAfm, setAfm: setMotherAfm },
+                  ].map(({ title, name, setName, dob, setDob, dobId, phone: ph, setPhone: setPh, email: em, setEmail: setEm, afm, setAfm }) => (
                     <div key={title} className={`rounded-xl border p-3 ${isDark ? 'border-slate-700/50 bg-slate-900/20' : 'border-slate-200 bg-slate-50'}`}>
                       <p className={`mb-2 text-[10px] font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{title}</p>
                       <div className="space-y-2">
@@ -1699,6 +1861,15 @@ export default function StudentCardPage() {
                         <EditField label="Ημ. Γέννησης" isDark={isDark}><DatePickerField label="" value={dob} onChange={setDob} placeholder="24/12/1980" id={dobId} /></EditField>
                         <EditField label="Τηλέφωνο" isDark={isDark}><input className={inputCls} value={ph} onChange={e => setPh(e.target.value)} /></EditField>
                         <EditField label="Email" isDark={isDark}><input type="email" className={inputCls} value={em} onChange={e => setEm(e.target.value)} /></EditField>
+                        <EditField label="ΑΦΜ" isDark={isDark}>
+                          <input
+                            className={inputCls}
+                            inputMode="numeric"
+                            maxLength={9}
+                            value={afm}
+                            onChange={e => setAfm(e.target.value.replace(/\D/g, '').slice(0, 9))}
+                          />
+                        </EditField>
                       </div>
                     </div>
                   ))}
@@ -1713,9 +1884,9 @@ export default function StudentCardPage() {
             ) : (
               <div className="grid gap-3 sm:grid-cols-2">
                 {[
-                  { title: 'Πατερας', name: student.father_name, dob: student.father_date_of_birth, phone: student.father_phone, email: student.father_email },
-                  { title: 'Μητερα', name: student.mother_name, dob: student.mother_date_of_birth, phone: student.mother_phone, email: student.mother_email },
-                ].map(({ title, name, dob, phone: ph, email: em }) => (
+                  { title: 'Πατερας', name: student.father_name, dob: student.father_date_of_birth, phone: student.father_phone, email: student.father_email, afm: student.father_afm },
+                  { title: 'Μητερα', name: student.mother_name, dob: student.mother_date_of_birth, phone: student.mother_phone, email: student.mother_email, afm: student.mother_afm },
+                ].map(({ title, name, dob, phone: ph, email: em, afm }) => (
                   <div key={title}>
                     <p className={`mb-1.5 text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{title}</p>
                     <div className="grid gap-1.5 grid-cols-2">
@@ -1723,6 +1894,7 @@ export default function StudentCardPage() {
                       <ReadField label="Ημ. Γεννησης" value={formatDateToGreek(dob)} isDark={isDark} />
                       <ReadField label="Τηλεφωνο" value={ph} isDark={isDark} />
                       <ReadField label="Email" value={em} isDark={isDark} copyable />
+                      <ReadField label="ΑΦΜ" value={afm} isDark={isDark} />
                     </div>
                   </div>
                 ))}

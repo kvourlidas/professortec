@@ -1,6 +1,7 @@
 import type { ChangeEvent } from 'react';
 import { CalendarDays, X, Loader2 } from 'lucide-react';
 import { PrivateSlotFormFields } from './PrivateSlotFormFields';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import type { EditSlotForm, StudentRow, SubjectRow } from './types';
 
 interface PrivateProgramEditSlotModalProps {
@@ -28,6 +29,8 @@ export default function PrivateProgramEditSlotModal({
   onClose, onSubmit, onFieldChange, onStartTimeChange, onEndTimeChange, onDateChange,
   onAddStudent, onRemoveStudent, onChargeChange,
 }: PrivateProgramEditSlotModalProps) {
+  useEscapeToClose(open && !!form, onClose);
+
   if (!open || !form) return null;
 
   const modalCardCls = isDark

@@ -11,6 +11,7 @@ import {
 import ConfirmActionModal from '../../components/ui/ConfirmActionModal';
 import { ModalFormField, ModalFieldIcon, modalInputCls } from '../../components/ui/ModalField';
 import StyledSelect from '../../components/ui/StyledSelect';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 
 type TutorRow = { id: string; school_id: string; full_name: string | null };
 type TutorPaymentProfileRow = { id: string; school_id: string; tutor_id: string; base_gross: number; base_net: number; currency: string; updated_at: string; updated_by: string | null };
@@ -273,6 +274,8 @@ export default function TutorsPaymentsPage() {
 
   function openEditPayment(p: TutorPaymentRow) { setEditingPayment(p); setEditNet(Number(p.net_total) || 0); setEditGross(Number(p.gross_total) || 0); setEditBonusTotal(Number(p.bonus_total) || 0); setEditPaidOn(p.paid_on ?? isoDateFromTs(p.created_at)); setEditNotes(p.notes ?? ''); setEditOpen(true); }
   function closeEditPayment() { if (busy) return; setEditOpen(false); setEditingPayment(null); }
+
+  useEscapeToClose(editOpen && !!editingPayment, closeEditPayment);
 
   async function saveEditedPayment() {
     if (!schoolId || !selectedTutorId || !editingPayment) return;

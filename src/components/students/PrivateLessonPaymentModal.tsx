@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { HandCoins, X, Loader2, Banknote, CreditCard, Landmark, Euro, AlertCircle } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import {
   ModalFormField as FormField, ModalFieldIcon as FieldIcon,
   ModalErrorBox, modalInputCls,
@@ -28,6 +29,8 @@ export function PrivateLessonPaymentModal({ studentName, balance, onSubmit, onCl
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEscapeToClose(true, onClose);
 
   const parsedAmount = parseFloat(amount.replace(',', '.'));
   const isValid = !isNaN(parsedAmount) && parsedAmount > 0;

@@ -22,14 +22,20 @@ export async function insertStudent(
       email,
       special_notes,
       level_id,
+      address,
+      school_name,
+      auth_user_id,
+      current_password,
       father_name,
       father_date_of_birth,
       father_phone,
       father_email,
+      father_afm,
       mother_name,
       mother_date_of_birth,
       mother_phone,
       mother_email,
+      mother_afm,
       created_at
     `)
     .maybeSingle();
@@ -77,14 +83,18 @@ export async function updateStudentById(
       email: input.email,
       special_notes: input.special_notes,
       level_id: input.level_id,
+      address: input.address,
+      school_name: input.school_name,
       father_name: input.father_name,
       father_date_of_birth: input.father_date_of_birth,
       father_phone: input.father_phone,
       father_email: input.father_email,
+      father_afm: input.father_afm,
       mother_name: input.mother_name,
       mother_date_of_birth: input.mother_date_of_birth,
       mother_phone: input.mother_phone,
       mother_email: input.mother_email,
+      mother_afm: input.mother_afm,
     })
     .eq("id", input.student_id)
     .select(`
@@ -96,14 +106,20 @@ export async function updateStudentById(
       email,
       special_notes,
       level_id,
+      address,
+      school_name,
+      auth_user_id,
+      current_password,
       father_name,
       father_date_of_birth,
       father_phone,
       father_email,
+      father_afm,
       mother_name,
       mother_date_of_birth,
       mother_phone,
       mother_email,
+      mother_afm,
       created_at
     `)
     .maybeSingle();
@@ -132,14 +148,20 @@ export async function getStudentFullByIdAndSchoolId(
       email,
       special_notes,
       level_id,
+      address,
+      school_name,
+      auth_user_id,
+      current_password,
       father_name,
       father_date_of_birth,
       father_phone,
       father_email,
+      father_afm,
       mother_name,
       mother_date_of_birth,
       mother_phone,
-      mother_email
+      mother_email,
+      mother_afm
     `)
     .eq("id", studentId)
     .eq("school_id", schoolId)

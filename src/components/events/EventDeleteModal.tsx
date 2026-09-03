@@ -1,5 +1,6 @@
 import { CalendarDays } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 
 type EventDeleteModalProps = {
   deleteTarget: { id: string; name: string } | null;
@@ -11,6 +12,8 @@ type EventDeleteModalProps = {
 export default function EventDeleteModal({ deleteTarget, deleting, onCancel, onConfirm }: EventDeleteModalProps) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+
+  useEscapeToClose(!!deleteTarget, onCancel);
 
   if (!deleteTarget) return null;
 

@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { Tags, X, Trash2, Loader2, AlertCircle } from 'lucide-react';
 import { ModalFormField as FormField, ModalFieldIcon as FieldIcon, ModalErrorBox, modalInputCls } from '../ui/ModalField.tsx';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import type { SpecialtyRow } from './types';
 
 type SpecialtiesCatalogModalProps = {
@@ -22,6 +23,8 @@ export default function SpecialtiesCatalogModal({
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEscapeToClose(open, onClose);
 
   if (!open) return null;
 

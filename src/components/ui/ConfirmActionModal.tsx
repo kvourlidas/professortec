@@ -1,6 +1,7 @@
 import React from 'react';
 import { Loader2, Ban, AlertTriangle } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 
 type ConfirmActionModalProps = {
   open: boolean;
@@ -27,6 +28,8 @@ export default function ConfirmActionModal({
 }: ConfirmActionModalProps) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+
+  useEscapeToClose(open, onClose);
 
   if (!open) return null;
 

@@ -1,6 +1,7 @@
 import { X, Receipt, Loader2, Euro, FileText } from 'lucide-react';
 import AppDatePicker from '../../ui/AppDatePicker';
 import { ModalFormField, ModalFieldIcon, modalInputCls } from '../../ui/ModalField';
+import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
 import { clampNumber } from '../utils';
 import type { ExtraExpenseRow } from '../types';
 
@@ -26,6 +27,8 @@ export function EconomicsEditExpenseModal({
   editDate, onEditDateChange, editNotes, onEditNotesChange,
   busy, onClose, onSave, isDark,
 }: EconomicsEditExpenseModalProps) {
+  useEscapeToClose(open && !!editing, onClose);
+
   if (!open || !editing) return null;
 
   const inputCls = modalInputCls(isDark);

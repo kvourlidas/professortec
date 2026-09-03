@@ -6,6 +6,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useToast } from '../../context/ToastContext';
 import { CalendarRange, Plus, Pencil, Trash2, X, Star, Loader2, Save, CopyPlus, Sun, History } from 'lucide-react';
 import AppDatePicker from '../ui/AppDatePicker';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import { isSchoolYearCurrent, todayISODate } from './types';
 
 type SchoolYearRow = {
@@ -58,6 +59,10 @@ export default function SchoolYearsSection() {
   const [cloneTarget, setCloneTarget] = useState<{ target: SchoolYearRow; source: SchoolYearRow } | null>(null);
   const [cloning, setCloning] = useState(false);
   const [cloneNote, setCloneNote] = useState<string | null>(null);
+
+  useEscapeToClose(!!deleteTarget, () => setDeleteTarget(null));
+  useEscapeToClose(showHistory, () => setShowHistory(false));
+  useEscapeToClose(!!cloneTarget, () => setCloneTarget(null));
 
   const load = async () => {
     if (!schoolId) { setLoading(false); return; }

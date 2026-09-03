@@ -9,6 +9,7 @@ import {
   ModalErrorBox, modalInputCls, modalSelectCls,
 } from '../ui/ModalField';
 import StyledSelect from '../ui/StyledSelect';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import { displayToIso } from './types';
 
 interface SubjectRow { id: string; name: string; }
@@ -44,6 +45,8 @@ export function StudentSlotModal({ studentId, levelId, onClose, onCreated }: Stu
   const [chargePerSession, setChargePerSession] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEscapeToClose(true, onClose);
 
   useEffect(() => {
     const loadSubjects = async () => {

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, ArrowRight, Loader2, Search, Users, X } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../context/ThemeContext';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import type { GradeInfo, StudentRow, TestResultRow, TestResultsModalState } from './types';
 
 type TestResultsModalProps = {
@@ -127,6 +128,8 @@ export default function TestResultsModal({ resultsModal, schoolId, onClose }: Te
     setAssignedIds(prev => { const n = new Set(prev); visibleRightSelected.forEach(s => n.delete(s.id)); return n; });
     setSelectedRight(new Set());
   };
+
+  useEscapeToClose(!!resultsModal, onClose);
 
   if (!resultsModal) return null;
 

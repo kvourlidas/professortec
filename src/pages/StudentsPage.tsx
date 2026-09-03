@@ -3,11 +3,12 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Users, Search, UserPlus, ChevronLeft, ChevronRight,
-  Loader2, Trash2, Copy, Check, IdCard,
+  Loader2, Trash2, Copy, Check, IdCard, FileSpreadsheet, FileText,
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient.ts';
 import { useAuth } from '../auth.tsx';
 import { useTheme } from '../context/ThemeContext.tsx';
+import { useEscapeToClose } from '../hooks/useEscapeToClose';
 import StudentCreateModal from '../components/students/StudentCreateModal.tsx';
 import ColumnFilterDropdown, {
   ALL_COLUMNS, DEFAULT_VISIBLE, type ColumnKey,
@@ -18,6 +19,7 @@ import SortDropdown, {
 import PageSizeDropdown, {
   type PageSizeOption,
 } from '../components/students/PageSizeDropdown.tsx';
+import { exportStudentsToExcel, exportStudentsToPdf } from '../components/students/exportStudents.ts';
 import type { StudentRow, LevelRow } from '../components/students/types.ts';
 import { STUDENT_SELECT, formatDateToGreek, normalizeText } from '../components/students/types.ts';
 
@@ -134,6 +136,12 @@ export default function StudentsPage() {
 
   const [deleteTarget, setDeleteTarget] = useState<StudentRow | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  useEscapeToClose(!!deleteTarget, () => { if (!deleting) setDeleteTarget(null); });
+
+  const [excelBusy, setExcelBusy] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [exportError, setExportError] = useState<'excel' | 'pdf' | null>(null);
 
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -262,7 +270,7 @@ export default function StudentsPage() {
     if (!q) return students;
     return students.filter((s) => {
       const levelName = s.level_id ? (levelNameById.get(s.level_id) ?? '') : '';
-      const composite = [s.full_name, levelName, s.phone, s.email, s.special_notes, s.father_name, s.mother_name].filter(Boolean).join(' ');
+      const composite = [s.full_name, levelName, s.phone, s.email, s.special_notes, s.address, s.school_name, s.father_name, s.mother_name].filter(Boolean).join(' ');
       return normalizeText(composite).includes(q);
     });
   }, [students, levelNameById, search]);
@@ -281,6 +289,32 @@ export default function StudentsPage() {
 
   const showingFrom = sortedStudents.length === 0 ? 0 : (page - 1) * pageSize + 1;
   const showingTo = Math.min(page * pageSize, sortedStudents.length);
+
+  const handleExportExcel = async () => {
+    setExportError(null);
+    setExcelBusy(true);
+    try {
+      await exportStudentsToExcel(sortedStudents, levelNameById);
+    } catch (err) {
+      console.error('Export Excel error', err);
+      setExportError('excel');
+    } finally {
+      setExcelBusy(false);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    setExportError(null);
+    setPdfBusy(true);
+    try {
+      await exportStudentsToPdf(sortedStudents, levelNameById);
+    } catch (err) {
+      console.error('Export PDF error', err);
+      setExportError('pdf');
+    } finally {
+      setPdfBusy(false);
+    }
+  };
 
   const visibleColumnDefs = useMemo(
     () => ALL_COLUMNS.filter((c) => visibleColumns.has(c.key)),
@@ -315,14 +349,18 @@ export default function StudentsPage() {
       case 'phone': return s.phone ? <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{s.phone}</span> : empty;
       case 'email': return s.email ? <span className="inline-flex items-center"><span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{s.email}</span><CopyBtn text={s.email} /></span> : empty;
       case 'special_notes': return s.special_notes?.trim() ? <span className={`truncate block text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{s.special_notes}</span> : empty;
+      case 'address': return s.address ? <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{s.address}</span> : empty;
+      case 'school_name': return s.school_name ? <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{s.school_name}</span> : empty;
       case 'father_name': return s.father_name ? <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{s.father_name}</span> : empty;
       case 'father_date_of_birth': return s.father_date_of_birth ? <span className={`tabular-nums ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{formatDateToGreek(s.father_date_of_birth)}</span> : empty;
       case 'father_phone': return s.father_phone ? <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{s.father_phone}</span> : empty;
       case 'father_email': return s.father_email ? <span className="inline-flex items-center"><span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{s.father_email}</span><CopyBtn text={s.father_email} /></span> : empty;
+      case 'father_afm': return s.father_afm ? <span className={`tabular-nums ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{s.father_afm}</span> : empty;
       case 'mother_name': return s.mother_name ? <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{s.mother_name}</span> : empty;
       case 'mother_date_of_birth': return s.mother_date_of_birth ? <span className={`tabular-nums ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{formatDateToGreek(s.mother_date_of_birth)}</span> : empty;
       case 'mother_phone': return s.mother_phone ? <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{s.mother_phone}</span> : empty;
       case 'mother_email': return s.mother_email ? <span className="inline-flex items-center"><span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{s.mother_email}</span><CopyBtn text={s.mother_email} /></span> : empty;
+      case 'mother_afm': return s.mother_afm ? <span className={`tabular-nums ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{s.mother_afm}</span> : empty;
       case 'created_at': return s.created_at ? <span className={`tabular-nums ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{formatDateToGreek(s.created_at.slice(0, 10))}</span> : empty;
       default: return empty;
     }
@@ -398,6 +436,33 @@ export default function StudentsPage() {
             Προσθήκη μαθητή
           </button>
         </div>
+      </div>
+
+      {/* ── Export buttons ── */}
+      <div className="flex flex-col items-center gap-2">
+        <div className="flex flex-wrap items-center justify-center gap-2.5">
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            disabled={excelBusy || sortedStudents.length === 0}
+            className={`btn gap-2 border px-4 py-1.5 font-semibold disabled:opacity-50 ${isDark ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20' : 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'}`}
+          >
+            {excelBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileSpreadsheet className="h-3.5 w-3.5" />}
+            {excelBusy ? 'Δημιουργία…' : 'Λήψη Excel'}
+          </button>
+          <button
+            type="button"
+            onClick={handleExportPdf}
+            disabled={pdfBusy || sortedStudents.length === 0}
+            className={`btn gap-2 border px-4 py-1.5 font-semibold disabled:opacity-50 ${isDark ? 'border-red-500/40 bg-red-500/10 text-red-400 hover:bg-red-500/20' : 'border-red-300 bg-red-50 text-red-700 hover:bg-red-100'}`}
+          >
+            {pdfBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
+            {pdfBusy ? 'Δημιουργία PDF…' : 'Λήψη PDF'}
+          </button>
+        </div>
+        {exportError && (
+          <p className="text-[11px] text-red-500">Αποτυχία δημιουργίας {exportError === 'pdf' ? 'PDF' : 'Excel'}.</p>
+        )}
       </div>
 
       {/* ── Alerts ── */}

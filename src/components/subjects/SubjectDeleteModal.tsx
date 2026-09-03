@@ -1,5 +1,6 @@
 import { BookOpen } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import type { SubjectRow } from './types';
 
 type SubjectDeleteModalProps = {
@@ -17,6 +18,8 @@ export default function SubjectDeleteModal({
 }: SubjectDeleteModalProps) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+
+  useEscapeToClose(!!deleteTarget, onCancel);
 
   if (!deleteTarget) return null;
 

@@ -4,6 +4,7 @@ import DatePickerField from '../ui/AppDatePicker';
 import TimePicker from '../ui/TimePicker';
 import { CalendarDays, Type, X, Loader2, AlertCircle } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import {
   ModalFormField as FormField, ModalFieldIcon as FieldIcon, ModalErrorBox, modalInputCls,
 } from '../ui/ModalField';
@@ -110,6 +111,8 @@ export default function EventFormModal({
       endTime,
     });
   };
+
+  useEscapeToClose(open, onClose);
 
   if (!open) return null;
 

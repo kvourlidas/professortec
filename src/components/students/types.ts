@@ -7,14 +7,20 @@ export type StudentRow = {
   email: string | null;
   special_notes: string | null;
   level_id: string | null;
+  address: string | null;
+  school_name: string | null;
+  auth_user_id: string | null;
+  current_password?: string | null;
   father_name: string | null;
   father_date_of_birth: string | null;
   father_phone: string | null;
   father_email: string | null;
+  father_afm: string | null;
   mother_name: string | null;
   mother_date_of_birth: string | null;
   mother_phone: string | null;
   mother_email: string | null;
+  mother_afm: string | null;
   created_at: string;
 };
 
@@ -62,10 +68,16 @@ export type ProgramSlot = {
 
 export const STUDENT_SELECT = `
   id, school_id, full_name, date_of_birth, phone, email, special_notes, level_id,
-  father_name, father_date_of_birth, father_phone, father_email,
-  mother_name, mother_date_of_birth, mother_phone, mother_email,
+  address, school_name, auth_user_id,
+  father_name, father_date_of_birth, father_phone, father_email, father_afm,
+  mother_name, mother_date_of_birth, mother_phone, mother_email, mother_afm,
   created_at
 `;
+
+// Only for single-student detail views (the student card) — includes the
+// stored login password. Deliberately not part of STUDENT_SELECT so it never
+// gets pulled into bulk list queries.
+export const STUDENT_SELECT_DETAIL = `${STUDENT_SELECT}, current_password`;
 
 export function formatDateToGreek(dateStr: string | null): string {
   if (!dateStr) return '—';

@@ -1,5 +1,6 @@
 import { CalendarOff } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import type { HolidayGroup } from './types';
 import { formatDisplay } from './utils';
 
@@ -13,6 +14,8 @@ type HolidayDeleteModalProps = {
 export default function HolidayDeleteModal({ deleteGroup, deleting, onCancel, onConfirm }: HolidayDeleteModalProps) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+
+  useEscapeToClose(!!deleteGroup, onCancel);
 
   if (!deleteGroup) return null;
 

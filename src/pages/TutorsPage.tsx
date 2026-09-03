@@ -24,9 +24,10 @@ import PageSizeDropdown, {
 import type { ModalMode, SpecialtyRow, TutorFormState, TutorRow } from '../components/tutors/types';
 import { TUTOR_SELECT } from '../components/tutors/types';
 import { formatDateToGreek, normalizeText, displayToIso } from '../components/tutors/utils';
+import { exportTutorsToExcel, exportTutorsToPdf } from '../components/tutors/exportTutors';
 import {
   Users, Search, UserPlus, ChevronLeft, ChevronRight,
-  Copy, Check, Tags,
+  Copy, Check, Tags, Loader2, FileSpreadsheet, FileText,
 } from 'lucide-react';
 
 // ── Storage keys ─────────────────────────────────────────────────────────────
@@ -130,6 +131,11 @@ export default function TutorsPage() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   useEffect(() => { setPage(1); }, [search]);
+
+  // Export
+  const [excelBusy, setExcelBusy] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [exportError, setExportError] = useState<'excel' | 'pdf' | null>(null);
 
   // Persisted preferences
   const [visibleColumns, setVisibleColumns] = useState<Set<TutorColumnKey>>(loadSavedColumns);
@@ -316,6 +322,32 @@ export default function TutorsPage() {
 
   const sortedTutors = useMemo(() => sortTutors(filteredTutors, sort), [filteredTutors, sort]);
 
+  const handleExportExcel = async () => {
+    setExportError(null);
+    setExcelBusy(true);
+    try {
+      await exportTutorsToExcel(sortedTutors, tutorSpecialtyMap);
+    } catch (err) {
+      console.error('Export Excel error', err);
+      setExportError('excel');
+    } finally {
+      setExcelBusy(false);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    setExportError(null);
+    setPdfBusy(true);
+    try {
+      await exportTutorsToPdf(sortedTutors, tutorSpecialtyMap);
+    } catch (err) {
+      console.error('Export PDF error', err);
+      setExportError('pdf');
+    } finally {
+      setPdfBusy(false);
+    }
+  };
+
   const pageCount = useMemo(() => Math.max(1, Math.ceil(sortedTutors.length / pageSize)), [sortedTutors.length, pageSize]);
   useEffect(() => { setPage((p) => Math.min(Math.max(1, p), pageCount)); }, [pageCount]);
   const pagedTutors = useMemo(() => {
@@ -445,6 +477,33 @@ export default function TutorsPage() {
             Προσθήκη καθηγητή
           </button>
         </div>
+      </div>
+
+      {/* ── Export buttons ── */}
+      <div className="flex flex-col items-center gap-2">
+        <div className="flex flex-wrap items-center justify-center gap-2.5">
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            disabled={excelBusy || sortedTutors.length === 0}
+            className={`btn gap-2 border px-4 py-1.5 font-semibold disabled:opacity-50 ${isDark ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20' : 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'}`}
+          >
+            {excelBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileSpreadsheet className="h-3.5 w-3.5" />}
+            {excelBusy ? 'Δημιουργία…' : 'Λήψη Excel'}
+          </button>
+          <button
+            type="button"
+            onClick={handleExportPdf}
+            disabled={pdfBusy || sortedTutors.length === 0}
+            className={`btn gap-2 border px-4 py-1.5 font-semibold disabled:opacity-50 ${isDark ? 'border-red-500/40 bg-red-500/10 text-red-400 hover:bg-red-500/20' : 'border-red-300 bg-red-50 text-red-700 hover:bg-red-100'}`}
+          >
+            {pdfBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
+            {pdfBusy ? 'Δημιουργία PDF…' : 'Λήψη PDF'}
+          </button>
+        </div>
+        {exportError && (
+          <p className="text-[11px] text-red-500">Αποτυχία δημιουργίας {exportError === 'pdf' ? 'PDF' : 'Excel'}.</p>
+        )}
       </div>
 
       {/* ── Alerts ── */}

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { X, Layers, AlertCircle } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import {
   ModalFormField as FormField, ModalFieldIcon as FieldIcon,
   ModalErrorBox, modalInputCls,
@@ -34,6 +35,8 @@ export default function LevelFormModal({
   useEffect(() => {
     if (open) setName(initialName);
   }, [open, initialName]);
+
+  useEscapeToClose(open, onClose);
 
   if (!open) return null;
 

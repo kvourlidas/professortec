@@ -4,9 +4,9 @@ import { Columns2, Check, RotateCcw, ChevronDown } from 'lucide-react';
 import { triggerCls } from './dropdownTriggerCls';
 
 export type ColumnKey =
-  | 'full_name' | 'level' | 'date_of_birth' | 'phone' | 'email' | 'special_notes'
-  | 'father_name' | 'father_date_of_birth' | 'father_phone' | 'father_email'
-  | 'mother_name' | 'mother_date_of_birth' | 'mother_phone' | 'mother_email'
+  | 'full_name' | 'level' | 'date_of_birth' | 'phone' | 'email' | 'special_notes' | 'address' | 'school_name'
+  | 'father_name' | 'father_date_of_birth' | 'father_phone' | 'father_email' | 'father_afm'
+  | 'mother_name' | 'mother_date_of_birth' | 'mother_phone' | 'mother_email' | 'mother_afm'
   | 'created_at';
 
 export type ColumnDef = {
@@ -23,15 +23,19 @@ export const ALL_COLUMNS: ColumnDef[] = [
   { key: 'phone',                 label: 'Τηλέφωνο',         group: 'Μαθητής' },
   { key: 'email',                 label: 'Email',             group: 'Μαθητής' },
   { key: 'special_notes',         label: 'Σημειώσεις',        group: 'Μαθητής' },
+  { key: 'address',               label: 'Διεύθυνση',        group: 'Μαθητής' },
+  { key: 'school_name',           label: 'Σχολείο',           group: 'Μαθητής' },
 
   { key: 'father_name',           label: 'Όνομα Πατέρα',     group: 'Πατέρας' },
   { key: 'father_date_of_birth',  label: 'Ημ. Γέννησης',     group: 'Πατέρας' },
   { key: 'father_phone',          label: 'Τηλέφωνο',         group: 'Πατέρας' },
   { key: 'father_email',          label: 'Email',             group: 'Πατέρας' },
+  { key: 'father_afm',            label: 'ΑΦΜ',               group: 'Πατέρας' },
   { key: 'mother_name',           label: 'Όνομα Μητέρας',    group: 'Μητέρα' },
   { key: 'mother_date_of_birth',  label: 'Ημ. Γέννησης',     group: 'Μητέρα' },
   { key: 'mother_phone',          label: 'Τηλέφωνο',         group: 'Μητέρα' },
   { key: 'mother_email',          label: 'Email',             group: 'Μητέρα' },
+  { key: 'mother_afm',            label: 'ΑΦΜ',               group: 'Μητέρα' },
   { key: 'created_at',            label: 'Ημ. Εγγραφής',     group: 'Άλλα' },
 ];
 

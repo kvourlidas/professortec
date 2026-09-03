@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../auth';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import type { RosterEntry } from '../private-program/types';
 
 import FullCalendar from '@fullcalendar/react';
@@ -142,6 +143,7 @@ function ModalShell({ title, subtitle, icon, onClose, children, maxWidthClass = 
 }) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  useEscapeToClose(true, onClose);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className={`relative w-full ${maxWidthClass} overflow-hidden rounded-2xl border shadow-2xl ${
@@ -1088,6 +1090,9 @@ export default function DashboardCalendarSection({ schoolId }: DashboardCalendar
   const handleEventModalClose = () => { setEventModal(null); setEventError(null); setShowDeleteConfirm(false); };
   const handleProgramAskDeleteForDay = () => setShowDeleteConfirm(true);
   const handleProgramCancelDeleteConfirm = () => setShowDeleteConfirm(false);
+
+  useEscapeToClose(!!(eventModal && showDeleteConfirm), handleProgramCancelDeleteConfirm);
+  useEscapeToClose(!!(testModal && showConvertTestConfirm), () => setShowConvertTestConfirm(false));
 
   const handleTestCancelForDay = async () => {
     if (!testModal) return;

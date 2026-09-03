@@ -1,5 +1,6 @@
 import { ClipboardList } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import type { DeleteTarget } from './types';
 
 type TestDeleteModalProps = {
@@ -12,6 +13,8 @@ type TestDeleteModalProps = {
 export default function TestDeleteModal({ deleteTarget, deleting, onCancel, onConfirm }: TestDeleteModalProps) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+
+  useEscapeToClose(!!deleteTarget, onCancel);
 
   if (!deleteTarget) return null;
 

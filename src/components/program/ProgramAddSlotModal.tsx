@@ -1,6 +1,7 @@
 import type { ChangeEvent } from 'react';
 import { CalendarDays, X, Loader2 } from 'lucide-react';
 import { SlotFormFields } from './SlotFormFields';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import type { AddSlotForm, ClassRow, SubjectRow, TutorRow } from './types';
 
 interface ProgramAddSlotModalProps {
@@ -24,6 +25,8 @@ export default function ProgramAddSlotModal({
   open, form, saving, error, classes, subjOptions, tutorOptions, isDark,
   onClose, onSubmit, onFieldChange, onStartTimeChange, onEndTimeChange, onDateChange,
 }: ProgramAddSlotModalProps) {
+  useEscapeToClose(open, onClose);
+
   if (!open) return null;
 
   const modalCardCls = isDark

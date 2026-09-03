@@ -8,14 +8,18 @@ export type PendingStudent = {
   phone: string | null;
   email: string | null;
   special_notes: string | null;
+  address: string | null;
+  school_name: string | null;
   father_name: string | null;
   father_date_of_birth: string | null;
   father_phone: string | null;
   father_email: string | null;
+  father_afm: string | null;
   mother_name: string | null;
   mother_date_of_birth: string | null;
   mother_phone: string | null;
   mother_email: string | null;
+  mother_afm: string | null;
 };
 
 export type PendingStudentUpdate = PendingStudent & {

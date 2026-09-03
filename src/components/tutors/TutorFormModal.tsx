@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { X, GraduationCap, User, Hash, Phone, Mail, CreditCard, Loader2, AlertCircle, Tags, ChevronDown, Check } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import DatePickerField from '../ui/AppDatePicker';
 import {
   ModalFormField as FormField, ModalFieldIcon as FieldIcon,
@@ -70,6 +71,8 @@ export default function TutorFormModal({
     }
     setSpecialtyIds(new Set(initialSpecialtyIds));
   }, [open, mode, editingTutor, initialSpecialtyIds]);
+
+  useEscapeToClose(open, onClose);
 
   if (!open) return null;
 

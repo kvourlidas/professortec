@@ -3,10 +3,11 @@ import type { FormEvent } from 'react';
 import {
   User, Phone, Mail, Lock, Loader2,
   X, GraduationCap, Layers, UserCheck,
-  AlertCircle,
+  AlertCircle, MapPin, School, Hash,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient.ts';
 import { useTheme } from '../../context/ThemeContext.tsx';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import DatePickerField from '../ui/AppDatePicker.tsx';
 import {
   ModalFormField as FormField, ModalFieldIcon as FieldIcon, ModalSelectChevron,
@@ -38,6 +39,8 @@ export default function StudentCreateModal({ schoolId, levels, onCreated, onClos
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
+  const [address, setAddress] = useState('');
+  const [schoolName, setSchoolName] = useState('');
 
   const [levelId, setLevelId] = useState('');
   const [password, setPassword] = useState('');
@@ -46,13 +49,17 @@ export default function StudentCreateModal({ schoolId, levels, onCreated, onClos
   const [fatherDob, setFatherDob] = useState('');
   const [fatherPhone, setFatherPhone] = useState('');
   const [fatherEmail, setFatherEmail] = useState('');
+  const [fatherAfm, setFatherAfm] = useState('');
   const [motherName, setMotherName] = useState('');
   const [motherDob, setMotherDob] = useState('');
   const [motherPhone, setMotherPhone] = useState('');
   const [motherEmail, setMotherEmail] = useState('');
+  const [motherAfm, setMotherAfm] = useState('');
 
 
   const [passwordVisible, setPasswordVisible] = useState(false);
+
+  useEscapeToClose(true, onClose);
 
   const inputCls = modalInputCls(isDark);
   const selectCls = modalSelectCls(isDark);
@@ -77,6 +84,13 @@ export default function StudentCreateModal({ schoolId, levels, onCreated, onClos
       return;
     }
 
+    const fatherAfmTrimmed = fatherAfm.trim();
+    const motherAfmTrimmed = motherAfm.trim();
+    if ((fatherAfmTrimmed && !/^\d{9}$/.test(fatherAfmTrimmed)) || (motherAfmTrimmed && !/^\d{9}$/.test(motherAfmTrimmed))) {
+      setError('Το ΑΦΜ πρέπει να αποτελείται από 9 ψηφία.');
+      return;
+    }
+
     setSaving(true);
     setError(null);
 
@@ -85,16 +99,20 @@ export default function StudentCreateModal({ schoolId, levels, onCreated, onClos
       date_of_birth: displayToIso(dateOfBirth) || null,
       phone: phoneTrimmed || null,
       email: emailTrimmed || null,
+      address: address.trim() || null,
+      school_name: schoolName.trim() || null,
 
       level_id: levelId || null,
       father_name: fatherName.trim() || null,
       father_date_of_birth: displayToIso(fatherDob) || null,
       father_phone: fatherPhone.trim() || null,
       father_email: fatherEmail.trim() || null,
+      father_afm: fatherAfmTrimmed || null,
       mother_name: motherName.trim() || null,
       mother_date_of_birth: displayToIso(motherDob) || null,
       mother_phone: motherPhone.trim() || null,
       mother_email: motherEmail.trim() || null,
+      mother_afm: motherAfmTrimmed || null,
     };
 
     try {
@@ -193,6 +211,14 @@ export default function StudentCreateModal({ schoolId, levels, onCreated, onClos
                   <FieldIcon icon={Phone} isDark={isDark} />
                   <input className={inputCls} placeholder="π.χ. 6900000000" value={phone} onChange={(e) => setPhone(e.target.value)} />
                 </FormField>
+                <FormField label="Σχολείο" isDark={isDark}>
+                  <FieldIcon icon={School} isDark={isDark} />
+                  <input className={inputCls} autoComplete="school-attended-do-not-autofill" placeholder="π.χ. 3ο Γυμνάσιο Αθηνών" value={schoolName} onChange={(e) => setSchoolName(e.target.value)} />
+                </FormField>
+                <FormField label="Διεύθυνση" isDark={isDark}>
+                  <FieldIcon icon={MapPin} isDark={isDark} />
+                  <input className={inputCls} placeholder="π.χ. Ερμού 25, Αθήνα" value={address} onChange={(e) => setAddress(e.target.value)} />
+                </FormField>
                 <FormField label="Email" isDark={isDark}>
                   <FieldIcon icon={Mail} isDark={isDark} />
                   <input type="email" className={inputCls} placeholder="π.χ. student@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -215,9 +241,9 @@ export default function StudentCreateModal({ schoolId, levels, onCreated, onClos
             ) : (
               <div className="space-y-3">
                 {[
-                  { title: 'Πατέρας', name: fatherName, setName: setFatherName, dob: fatherDob, setDob: setFatherDob, dobId: 'create-father-dob', phone: fatherPhone, setPhone: setFatherPhone, email: fatherEmail, setEmail: setFatherEmail },
-                  { title: 'Μητέρα', name: motherName, setName: setMotherName, dob: motherDob, setDob: setMotherDob, dobId: 'create-mother-dob', phone: motherPhone, setPhone: setMotherPhone, email: motherEmail, setEmail: setMotherEmail },
-                ].map(({ title, name, setName, dob, setDob, dobId, phone: ph, setPhone: setPh, email: em, setEmail: setEm }) => (
+                  { title: 'Πατέρας', name: fatherName, setName: setFatherName, dob: fatherDob, setDob: setFatherDob, dobId: 'create-father-dob', phone: fatherPhone, setPhone: setFatherPhone, email: fatherEmail, setEmail: setFatherEmail, afm: fatherAfm, setAfm: setFatherAfm },
+                  { title: 'Μητέρα', name: motherName, setName: setMotherName, dob: motherDob, setDob: setMotherDob, dobId: 'create-mother-dob', phone: motherPhone, setPhone: setMotherPhone, email: motherEmail, setEmail: setMotherEmail, afm: motherAfm, setAfm: setMotherAfm },
+                ].map(({ title, name, setName, dob, setDob, dobId, phone: ph, setPhone: setPh, email: em, setEmail: setEm, afm, setAfm }) => (
                   <div key={title} className={parentBoxCls}>
                     <p className={`mb-3 text-xs font-semibold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>{title}</p>
                     <div className="space-y-3">
@@ -235,6 +261,17 @@ export default function StudentCreateModal({ schoolId, levels, onCreated, onClos
                       <FormField label="Email" isDark={isDark}>
                         <FieldIcon icon={Mail} isDark={isDark} />
                         <input type="email" className={inputCls} placeholder="π.χ. parent@example.com" value={em} onChange={(e) => setEm(e.target.value)} />
+                      </FormField>
+                      <FormField label="ΑΦΜ" isDark={isDark}>
+                        <FieldIcon icon={Hash} isDark={isDark} />
+                        <input
+                          className={inputCls}
+                          inputMode="numeric"
+                          maxLength={9}
+                          placeholder="π.χ. 123456789"
+                          value={afm}
+                          onChange={(e) => setAfm(e.target.value.replace(/\D/g, '').slice(0, 9))}
+                        />
                       </FormField>
                     </div>
                   </div>

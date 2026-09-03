@@ -1,6 +1,7 @@
 import type { ChangeEvent } from 'react';
 import { CalendarDays, X, Loader2 } from 'lucide-react';
 import { SlotFormFields } from './SlotFormFields';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import type { EditSlotForm, ClassRow, SubjectRow, TutorRow } from './types';
 
 interface ProgramEditSlotModalProps {
@@ -24,6 +25,8 @@ export default function ProgramEditSlotModal({
   open, form, saving, error, classes, subjOptions, tutorOptions, isDark,
   onClose, onSubmit, onFieldChange, onStartTimeChange, onEndTimeChange, onDateChange,
 }: ProgramEditSlotModalProps) {
+  useEscapeToClose(open && !!form, onClose);
+
   if (!open || !form) return null;
 
   const currentClass = classes.find((c) => c.id === form.classId) ?? null;

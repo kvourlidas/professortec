@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { CopyPlus, X, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import StyledSelect from '../ui/StyledSelect';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 
 type SchoolYearOption = { id: string; name: string; start_date: string; end_date: string; is_summer: boolean };
 
@@ -20,8 +21,6 @@ export default function ProgramCloneModal({ open, schoolId, schoolYears, isDark,
   const [cloning, setCloning] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (!open) return null;
-
   const cancelBtnCls = 'btn border border-slate-600/60 bg-slate-800/50 px-4 py-1.5 text-slate-200 hover:bg-slate-700/60 disabled:opacity-50';
   const selectCls = `h-10 w-full rounded-lg border px-3 text-sm outline-none transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 focus:border-[color:var(--color-accent)] ${isDark ? 'border-slate-700/70 bg-slate-900/60 text-slate-200' : 'border-slate-200 bg-slate-50 text-slate-700'}`;
 
@@ -29,6 +28,10 @@ export default function ProgramCloneModal({ open, schoolId, schoolYears, isDark,
   const target = schoolYears.find((y) => y.id === targetId) ?? null;
 
   const handleClose = () => { if (cloning) return; setError(null); setSourceId(''); setTargetId(''); onClose(); };
+
+  useEscapeToClose(open, handleClose);
+
+  if (!open) return null;
 
   const confirmClone = async () => {
     if (!schoolId || !source || !target || source.id === target.id) return;

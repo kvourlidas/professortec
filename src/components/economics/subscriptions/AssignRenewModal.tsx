@@ -1,5 +1,6 @@
 import { AlertCircle, CalendarDays, ChevronDown, Loader2, Package, Plus, RefreshCw, Search, X } from 'lucide-react';
 import { useMemo } from 'react';
+import { useEscapeToClose } from '../../../hooks/useEscapeToClose';
 import AppDatePicker from '../../ui/AppDatePicker';
 import { ModalErrorBox, ModalSelectChevron, modalInputCls, modalSelectCls } from '../../ui/ModalField';
 import StyledSelect from '../../ui/StyledSelect';
@@ -88,6 +89,8 @@ export function AssignRenewModal({
       return Math.max(0, Math.round((base - disc) * 100) / 100);
     }
   }, [customPrice, discountPct, discountMode, selPackage]);
+
+  useEscapeToClose(open, onClose);
 
   if (!open) return null;
 

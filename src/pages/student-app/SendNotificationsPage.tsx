@@ -140,10 +140,24 @@ export default function SendNotificationsPage() {
         return;
       }
 
+      const targeted: number = result?.targeted ?? 0;
+      const stored: number = result?.stored ?? 0;
       const pushed: number = result?.pushed ?? 0;
-      setResultMsg(pushed > 0
-        ? `Η ειδοποίηση στάλθηκε σε ${pushed} μαθητή/ές!`
-        : 'Η ειδοποίηση αποθηκεύτηκε (κανένας μαθητής δεν είχε ενεργοποιημένες ειδοποιήσεις).');
+      const withoutAccount = Math.max(0, targeted - stored);
+      const withoutPush = Math.max(0, stored - pushed);
+
+      let msg: string;
+      if (targeted === 0) {
+        msg = 'Δεν βρέθηκαν μαθητές για αυτή την επιλογή.';
+      } else if (pushed === stored && withoutAccount === 0) {
+        msg = `Η ειδοποίηση στάλθηκε σε όλους (${pushed}/${targeted}) τους μαθητές!`;
+      } else {
+        const parts: string[] = [`Άμεση ειδοποίηση (push) σε ${pushed} από τους ${targeted} μαθητές.`];
+        if (withoutAccount > 0) parts.push(`${withoutAccount} μαθητές δεν έχουν ακόμα λογαριασμό στην εφαρμογή και δεν μπορούν να λάβουν ειδοποιήσεις.`);
+        if (withoutPush > 0) parts.push(`${withoutPush} μαθητές έχουν λογαριασμό αλλά δεν έχουν ενεργοποιημένες ειδοποιήσεις στη συσκευή τους — θα τη δουν μέσα στην εφαρμογή.`);
+        msg = parts.join(' ');
+      }
+      setResultMsg(msg);
       setTitle('');
       setBody('');
       setRecipientMode('all');

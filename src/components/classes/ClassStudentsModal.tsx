@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../auth';
 import { useTheme } from '../../context/ThemeContext';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import { Loader2, Search, Users, X, GraduationCap, UserCheck, UserMinus, ArrowRight, ArrowLeft, Lock, AlertTriangle } from 'lucide-react';
 
 type ClassStudentsModalProps = {
@@ -110,6 +111,8 @@ export default function ClassStudentsModal({ open, onClose, classId, classTitle 
       setInitialAssignedIds(new Set(assignedIds)); setSaving(false); onClose();
     } catch (err) { console.error('Save class students error', err); setSaving(false); setLocalError('Δεν ήταν δυνατή η αποθήκευση των αλλαγών.'); }
   };
+
+  useEscapeToClose(open && !!classId, onClose);
 
   if (!open || !classId) return null;
 

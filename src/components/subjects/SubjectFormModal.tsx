@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { X, BookOpen, Layers, Loader2, AlertCircle } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import {
   ModalFormField as FormField, ModalFieldIcon as FieldIcon, ModalSelectChevron,
   ModalErrorBox, modalInputCls, modalSelectCls,
@@ -46,6 +47,8 @@ export default function SubjectFormModal({
       setLevelId('');
     }
   }, [open, mode, editingSubject]);
+
+  useEscapeToClose(open, onClose);
 
   if (!open) return null;
 

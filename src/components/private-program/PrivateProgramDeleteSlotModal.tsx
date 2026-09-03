@@ -1,4 +1,5 @@
 import { CalendarDays } from 'lucide-react';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import type { DeleteSlotTarget } from './types';
 
 interface PrivateProgramDeleteSlotModalProps {
@@ -10,6 +11,8 @@ interface PrivateProgramDeleteSlotModalProps {
 }
 
 export default function PrivateProgramDeleteSlotModal({ target, deleting, isDark, onCancel, onConfirm }: PrivateProgramDeleteSlotModalProps) {
+  useEscapeToClose(!!target, onCancel);
+
   if (!target) return null;
 
   const modalSmCardCls = isDark

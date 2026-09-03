@@ -44,8 +44,23 @@ serve(async (req) => {
         .in("class_id", class_ids);
       if (error) throw error;
       targetStudentIds = (rows ?? []).map((r: any) => r.student_id);
-      if (targetStudentIds.length === 0) return ok({ stored: 0, pushed: 0 });
+      if (targetStudentIds.length === 0) return ok({ targeted: 0, stored: 0, pushed: 0 });
     }
+
+    // Count how many students were actually targeted by this send (regardless
+    // of whether they have an app account yet) so the caller can tell the
+    // difference between "nobody matched the selection" and "matched, but
+    // most of them don't have a login account and so can't receive anything".
+    let targetedQuery = db
+      .from("students")
+      .select("id", { count: "exact", head: true })
+      .eq("school_id", schoolId)
+      .is("deleted_at", null);
+    if (!isSendAll) {
+      targetedQuery = targetedQuery.in("id", targetStudentIds);
+    }
+    const { count: targetedCount, error: targetedErr } = await targetedQuery;
+    if (targetedErr) throw targetedErr;
 
     // Fetch target students with their push token
     let studentsQuery = db
@@ -61,7 +76,9 @@ serve(async (req) => {
 
     const { data: students, error: studentsErr } = await studentsQuery;
     if (studentsErr) throw studentsErr;
-    if (!students || students.length === 0) return ok({ stored: 0, pushed: 0 });
+    if (!students || students.length === 0) {
+      return ok({ targeted: targetedCount ?? 0, stored: 0, pushed: 0 });
+    }
 
     // Insert notification records into the DB
     const records = students.map((s: any) => ({
@@ -108,7 +125,7 @@ serve(async (req) => {
       }
     }
 
-    return ok({ stored: students.length, pushed });
+    return ok({ targeted: targetedCount ?? students.length, stored: students.length, pushed });
   } catch (error) {
     return fail(error);
   }

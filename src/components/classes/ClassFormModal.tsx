@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { X, GraduationCap, BookOpen, Layers, Loader2, CheckSquare, Square, AlertCircle } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import {
   ModalFormField as FormField, ModalFieldIcon as FieldIcon, ModalSelectChevron,
   ModalErrorBox, modalInputCls, modalSelectCls,
@@ -44,6 +45,8 @@ export default function ClassFormModal({ open, mode, editingClass, subjects, lev
     if (!form.levelId) return [];
     return safeSubjects.filter((s) => s.level_id === form.levelId);
   }, [safeSubjects, form.levelId]);
+
+  useEscapeToClose(open, onClose);
 
   if (!open) return null;
   const isCreate = mode === 'create';
