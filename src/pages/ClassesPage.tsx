@@ -8,9 +8,11 @@ import ClassStudentsModal from '../components/classes/ClassStudentsModal.tsx';
 import ClassDeleteModal from '../components/classes/ClassDeleteModal.tsx';
 import ClassesGrid from '../components/classes/ClassesGrid.tsx';
 import type { StudentRow } from '../components/classes/ClassesGrid.tsx';
-import { Plus, School, Search } from 'lucide-react';
+import { Plus, School, Search, Loader2 } from 'lucide-react';
+import { FaFileExcel, FaFilePdf } from 'react-icons/fa6';
 import type { ClassRow, SubjectRow, LevelRow, ModalMode, ClassFormState } from '../components/classes/types.ts';
 import { normalizeText } from '../components/classes/utils.ts';
+import { exportClassesToExcel, exportClassesToPdf } from '../components/classes/exportClasses.ts';
 
 export default function ClassesPage() {
   const { profile } = useAuth();
@@ -35,6 +37,9 @@ export default function ClassesPage() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [studentsModalClass, setStudentsModalClass] = useState<{ id: string; title: string } | null>(null);
+  const [excelBusy, setExcelBusy] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [exportError, setExportError] = useState<'excel' | 'pdf' | null>(null);
 
   const levelNameById = useMemo(() => {
     const m = new Map<string, string>();
@@ -199,6 +204,20 @@ export default function ClassesPage() {
     });
   }, [classes, search, subjects, levelNameById]);
 
+  const handleExportExcel = async () => {
+    setExcelBusy(true); setExportError(null);
+    try { await exportClassesToExcel(filteredClasses, subjects, levelNameById, studentsByClass); }
+    catch (err) { console.error('Export Excel error', err); setExportError('excel'); }
+    finally { setExcelBusy(false); }
+  };
+
+  const handleExportPdf = async () => {
+    setPdfBusy(true); setExportError(null);
+    try { await exportClassesToPdf(filteredClasses, subjects, levelNameById, studentsByClass); }
+    catch (err) { console.error('Export PDF error', err); setExportError('pdf'); }
+    finally { setPdfBusy(false); }
+  };
+
   const inputCls = `h-9 w-full rounded-lg border pl-9 pr-3 text-xs outline-none ring-0 backdrop-blur transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 focus:border-[color:var(--color-accent)] ${isDark ? 'border-slate-700/70 bg-slate-900/60 text-slate-100 placeholder-slate-500' : 'border-slate-200 bg-white text-slate-800 placeholder-slate-400'}`;
   return (
     <div className="space-y-6 px-1">
@@ -230,6 +249,33 @@ export default function ClassesPage() {
             Προσθήκη Τμήματος
           </button>
         </div>
+      </div>
+
+      {/* ── Export buttons ── */}
+      <div className="flex flex-col items-end gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2.5">
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            disabled={excelBusy || filteredClasses.length === 0}
+            className={`inline-flex items-center gap-1.5 text-[11px] font-semibold transition hover:underline disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed ${isDark ? 'text-emerald-400 hover:text-emerald-300' : 'text-emerald-600 hover:text-emerald-700'}`}
+          >
+            {excelBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <FaFileExcel className="h-3 w-3" />}
+            {excelBusy ? 'Δημιουργία…' : 'Λήψη Excel'}
+          </button>
+          <button
+            type="button"
+            onClick={handleExportPdf}
+            disabled={pdfBusy || filteredClasses.length === 0}
+            className={`inline-flex items-center gap-1.5 text-[11px] font-semibold transition hover:underline disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed ${isDark ? 'text-rose-400 hover:text-rose-300' : 'text-rose-600 hover:text-rose-700'}`}
+          >
+            {pdfBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <FaFilePdf className="h-3 w-3" />}
+            {pdfBusy ? 'Δημιουργία PDF…' : 'Λήψη PDF'}
+          </button>
+        </div>
+        {exportError && (
+          <p className="text-[11px] text-red-500">Αποτυχία δημιουργίας {exportError === 'pdf' ? 'PDF' : 'Excel'}.</p>
+        )}
       </div>
 
       {/* ── Alerts ── */}

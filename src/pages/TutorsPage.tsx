@@ -27,8 +27,9 @@ import { formatDateToGreek, normalizeText, displayToIso } from '../components/tu
 import { exportTutorsToExcel, exportTutorsToPdf } from '../components/tutors/exportTutors';
 import {
   Users, Search, UserPlus, ChevronLeft, ChevronRight,
-  Copy, Check, Tags, Loader2, FileSpreadsheet, FileText,
+  Copy, Check, Tags, Loader2,
 } from 'lucide-react';
+import { FaFileExcel, FaFilePdf } from 'react-icons/fa6';
 
 // ── Storage keys ─────────────────────────────────────────────────────────────
 const COLUMNS_KEY   = 'pt_tutors_visible_columns_v3';
@@ -480,24 +481,24 @@ export default function TutorsPage() {
       </div>
 
       {/* ── Export buttons ── */}
-      <div className="flex flex-col items-center gap-2">
-        <div className="flex flex-wrap items-center justify-center gap-2.5">
+      <div className="flex flex-col items-end gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2.5">
           <button
             type="button"
             onClick={handleExportExcel}
             disabled={excelBusy || sortedTutors.length === 0}
-            className={`btn gap-2 border px-4 py-1.5 font-semibold disabled:opacity-50 ${isDark ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20' : 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'}`}
+            className={`inline-flex items-center gap-1.5 text-[11px] font-semibold transition hover:underline disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed ${isDark ? 'text-emerald-400 hover:text-emerald-300' : 'text-emerald-600 hover:text-emerald-700'}`}
           >
-            {excelBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileSpreadsheet className="h-3.5 w-3.5" />}
+            {excelBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <FaFileExcel className="h-3 w-3" />}
             {excelBusy ? 'Δημιουργία…' : 'Λήψη Excel'}
           </button>
           <button
             type="button"
             onClick={handleExportPdf}
             disabled={pdfBusy || sortedTutors.length === 0}
-            className={`btn gap-2 border px-4 py-1.5 font-semibold disabled:opacity-50 ${isDark ? 'border-red-500/40 bg-red-500/10 text-red-400 hover:bg-red-500/20' : 'border-red-300 bg-red-50 text-red-700 hover:bg-red-100'}`}
+            className={`inline-flex items-center gap-1.5 text-[11px] font-semibold transition hover:underline disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed ${isDark ? 'text-rose-400 hover:text-rose-300' : 'text-rose-600 hover:text-rose-700'}`}
           >
-            {pdfBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
+            {pdfBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <FaFilePdf className="h-3 w-3" />}
             {pdfBusy ? 'Δημιουργία PDF…' : 'Λήψη PDF'}
           </button>
         </div>

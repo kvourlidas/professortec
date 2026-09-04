@@ -10,6 +10,7 @@ import {
   Copy, Check, Award, Package, AlertTriangle, AlertCircle, X, ClipboardCheck,
   MapPin, School, Eye, EyeOff,
 } from 'lucide-react';
+import { FaFilePdf } from 'react-icons/fa6';
 import { supabase } from '../lib/supabaseClient.ts';
 import { useAuth } from '../auth.tsx';
 import { useTheme } from '../context/ThemeContext.tsx';
@@ -1764,9 +1765,9 @@ export default function StudentCardPage() {
             type="button"
             onClick={handleExportReport}
             disabled={reportBusy}
-            className={`btn gap-2 border px-4 py-1.5 text-xs font-semibold disabled:opacity-50 ${isDark ? 'border-red-500/40 bg-red-500/10 text-red-400 hover:bg-red-500/20' : 'border-red-300 bg-red-50 text-red-700 hover:bg-red-100'}`}
+            className={`inline-flex items-center gap-1.5 text-[11px] font-semibold transition hover:underline disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed ${isDark ? 'text-rose-400 hover:text-rose-300' : 'text-rose-600 hover:text-rose-700'}`}
           >
-            {reportBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
+            {reportBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <FaFilePdf className="h-3 w-3" />}
             {reportBusy ? 'Δημιουργία…' : 'Λήψη Αναφοράς (PDF)'}
           </button>
           {reportError && <p className="text-[11px] text-red-500">Αποτυχία δημιουργίας PDF.</p>}

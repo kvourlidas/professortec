@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { BarChart3, ClipboardCheck, TrendingUp, Trophy, LayoutGrid, BookOpen, CalendarRange } from 'lucide-react';
+import { BarChart3, ClipboardCheck, TrendingUp, Trophy, LayoutGrid, BookOpen, CalendarRange, Loader2 } from 'lucide-react';
+import { FaFilePdf } from 'react-icons/fa6';
 import StudentGradesChart from './StudentGradesChart';
 import GradesTable from './GradesTable';
 import StyledSelect from '../ui/StyledSelect';
@@ -35,6 +36,10 @@ interface GradesPanelProps {
   gradedCount: number;
   gradesForChart: { test_date: string | null; grade: number | null; test_name: string | null }[];
   isDark: boolean;
+  onExportPdf: () => void;
+  reportBusy: boolean;
+  reportError: string | null;
+  hasReportData: boolean;
 }
 
 export default function GradesPanel({
@@ -49,6 +54,7 @@ export default function GradesPanel({
   avgGrade, gradedCount,
   gradesForChart,
   isDark,
+  onExportPdf, reportBusy, reportError, hasReportData,
 }: GradesPanelProps) {
   const hasSelection = selectionType === 'student' ? !!selectedStudent : selectionType === 'tutor' ? !!selectedTutor : false;
 
@@ -121,50 +127,65 @@ export default function GradesPanel({
           </div>
 
           {/* Date filter — general / month / school year / range */}
-          <div className="flex flex-wrap items-center gap-2.5">
-            <span className={`flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-              <CalendarRange className="h-3 w-3" />Περίοδος
-            </span>
-            <StyledSelect
-              isDark={isDark} showChevron className={`${subjectSelectCls} pr-7`}
-              value={dateFilterMode}
-              onChange={(v) => onDateFilterModeChange(v as GradesDateFilterMode)}
-              options={[
-                { value: 'all', label: 'Όλες οι περίοδοι' },
-                { value: 'month', label: 'Μήνας' },
-                { value: 'schoolYear', label: 'Σχολικό έτος' },
-                { value: 'range', label: 'Εύρος ημερομηνιών' },
-              ]}
-            />
+          <div className="flex flex-wrap items-center justify-between gap-2.5">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <span className={`flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                <CalendarRange className="h-3 w-3" />Περίοδος
+              </span>
+              <StyledSelect
+                isDark={isDark} showChevron className={`${subjectSelectCls} pr-7`}
+                value={dateFilterMode}
+                onChange={(v) => onDateFilterModeChange(v as GradesDateFilterMode)}
+                options={[
+                  { value: 'all', label: 'Όλες οι περίοδοι' },
+                  { value: 'month', label: 'Μήνας' },
+                  { value: 'schoolYear', label: 'Σχολικό έτος' },
+                  { value: 'range', label: 'Εύρος ημερομηνιών' },
+                ]}
+              />
 
-            {dateFilterMode === 'month' && (
-              monthOptions.length > 0
-                ? <StyledSelect
-                    isDark={isDark} showChevron className={`${subjectSelectCls} pr-7`}
-                    value={filterMonthValue}
-                    onChange={onFilterMonthChange}
-                    options={monthOptions.map((m) => ({ value: m, label: formatMonthLabel(m) }))}
-                  />
-                : <span className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Δεν υπάρχουν βαθμοί.</span>
-            )}
+              {dateFilterMode === 'month' && (
+                monthOptions.length > 0
+                  ? <StyledSelect
+                      isDark={isDark} showChevron className={`${subjectSelectCls} pr-7`}
+                      value={filterMonthValue}
+                      onChange={onFilterMonthChange}
+                      options={monthOptions.map((m) => ({ value: m, label: formatMonthLabel(m) }))}
+                    />
+                  : <span className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Δεν υπάρχουν βαθμοί.</span>
+              )}
 
-            {dateFilterMode === 'schoolYear' && (
-              schoolYears.length > 0
-                ? <StyledSelect
-                    isDark={isDark} showChevron className={`${subjectSelectCls} pr-7`}
-                    value={filterYearId}
-                    onChange={onFilterYearChange}
-                    options={schoolYears.map((y) => ({ value: y.id, label: y.name }))}
-                  />
-                : <span className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Δεν έχουν οριστεί σχολικά έτη.</span>
-            )}
+              {dateFilterMode === 'schoolYear' && (
+                schoolYears.length > 0
+                  ? <StyledSelect
+                      isDark={isDark} showChevron className={`${subjectSelectCls} pr-7`}
+                      value={filterYearId}
+                      onChange={onFilterYearChange}
+                      options={schoolYears.map((y) => ({ value: y.id, label: y.name }))}
+                    />
+                  : <span className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Δεν έχουν οριστεί σχολικά έτη.</span>
+              )}
 
-            {dateFilterMode === 'range' && (
-              <div className="flex items-center gap-2">
-                <div className="w-36"><AppDatePicker value={filterRangeStart} onChange={onFilterRangeStartChange} placeholder="Από" variant="boxed" /></div>
-                <div className="w-36"><AppDatePicker value={filterRangeEnd} onChange={onFilterRangeEndChange} placeholder="Έως" variant="boxed" /></div>
-              </div>
-            )}
+              {dateFilterMode === 'range' && (
+                <div className="flex items-center gap-2">
+                  <div className="w-36"><AppDatePicker value={filterRangeStart} onChange={onFilterRangeStartChange} placeholder="Από" variant="boxed" /></div>
+                  <div className="w-36"><AppDatePicker value={filterRangeEnd} onChange={onFilterRangeEndChange} placeholder="Έως" variant="boxed" /></div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col items-end gap-1">
+              <button
+                type="button"
+                onClick={onExportPdf}
+                disabled={reportBusy || !hasReportData}
+                className={`inline-flex items-center gap-1.5 text-[11px] font-semibold transition hover:underline disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed ${isDark ? 'text-rose-400 hover:text-rose-300' : 'text-rose-600 hover:text-rose-700'}`}
+              >
+                {reportBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <FaFilePdf className="h-3 w-3" />}
+                {reportBusy ? 'Δημιουργία…' : 'Λήψη Αναφοράς (PDF)'}
+              </button>
+              {reportError && <p className="text-[11px] text-red-500">{reportError}</p>}
+            </div>
           </div>
 
           {/* Stats — flat labeled columns, matching the rest of the app */}

@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../auth';
 import { useTheme } from '../context/ThemeContext';
-import { Loader2, CalendarRange, CopyPlus, FileText } from 'lucide-react';
+import { Loader2, CalendarRange, CopyPlus } from 'lucide-react';
+import { FaFilePdf } from 'react-icons/fa6';
 import type { ClassRow, SubjectRow, LevelRow, TutorRow, ProgramRow, ProgramItemRow, ClassSubjectRow, SubjectTutorRow, AddSlotForm, EditSlotForm, DeleteSlotTarget } from '../components/program/types';
 import { DAY_OPTIONS, emptyAddSlotForm } from '../components/program/constants';
 import { formatDateDisplay, parseDateDisplayToISO, timeToMinutes, todayISO, normalizeText } from '../components/program/utils';
@@ -418,14 +419,14 @@ export default function ProgramPage() {
           )}
 
           {/* ── Export button ── */}
-          <div className="flex flex-col items-center gap-2">
+          <div className="flex flex-col items-end gap-2">
             <button
               type="button"
               onClick={handleExportPdf}
               disabled={pdfBusy}
-              className={`btn gap-2 border px-4 py-1.5 font-semibold disabled:opacity-50 ${isDark ? 'border-red-500/40 bg-red-500/10 text-red-400 hover:bg-red-500/20' : 'border-red-300 bg-red-50 text-red-700 hover:bg-red-100'}`}
+              className={`inline-flex items-center gap-1.5 text-[11px] font-semibold transition hover:underline disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed ${isDark ? 'text-rose-400 hover:text-rose-300' : 'text-rose-600 hover:text-rose-700'}`}
             >
-              {pdfBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
+              {pdfBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <FaFilePdf className="h-3 w-3" />}
               {pdfBusy ? 'Δημιουργία PDF…' : 'Λήψη PDF'}
             </button>
             {pdfError && <p className="text-[11px] text-red-500">Αποτυχία δημιουργίας PDF.</p>}

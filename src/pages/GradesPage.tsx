@@ -5,6 +5,8 @@ import { useTheme } from '../context/ThemeContext';
 import { Check, ChevronDown, GraduationCap, Search, User, Users, X } from 'lucide-react';
 import type { StudentRow, TutorRow, StudentGradeRow, TutorGradeRow, GradeRow, GradesTab, SelectionType, GradesDateFilterMode, SchoolYearOption } from '../components/grades/types';
 import GradesPanel from '../components/grades/GradesPanel';
+import { formatMonthLabel } from '../components/grades/utils';
+import { exportGradesReportToPdf } from '../components/grades/exportGradesReport';
 
 function parseDateDisplayToISO(display: string): string | null {
   const v = display.trim();
@@ -62,6 +64,10 @@ const GradesPage = () => {
   const [filterYearId, setFilterYearId] = useState<string>('');
   const [filterRangeStart, setFilterRangeStart] = useState<string>('');
   const [filterRangeEnd, setFilterRangeEnd] = useState<string>('');
+
+  // ── PDF report ────────────────────────────────────────────────────────────
+  const [reportBusy, setReportBusy] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
 
   // ── Load lists ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -214,6 +220,32 @@ const GradesPage = () => {
     return visibleGrades;
   }, [visibleGrades, dateFilterMode, effectiveFilterMonthValue, effectiveFilterYearId, schoolYears, filterRangeStart, filterRangeEnd]);
 
+  // Same date filter as above, but applied to ALL grades regardless of the on-screen
+  // subject tab — the PDF report always covers every subject, only the period narrows it.
+  const dateOnlyGrades = useMemo(() => {
+    if (dateFilterMode === 'month') {
+      if (!effectiveFilterMonthValue) return currentGrades;
+      return currentGrades.filter((g) => g.test_date?.slice(0, 7) === effectiveFilterMonthValue);
+    }
+    if (dateFilterMode === 'schoolYear') {
+      const year = schoolYears.find((y) => y.id === effectiveFilterYearId);
+      if (!year) return currentGrades;
+      return currentGrades.filter((g) => g.test_date && g.test_date >= year.start_date && g.test_date <= year.end_date);
+    }
+    if (dateFilterMode === 'range') {
+      const startISO = parseDateDisplayToISO(filterRangeStart);
+      const endISO = parseDateDisplayToISO(filterRangeEnd);
+      if (!startISO && !endISO) return currentGrades;
+      return currentGrades.filter((g) => {
+        if (!g.test_date) return false;
+        if (startISO && g.test_date < startISO) return false;
+        if (endISO && g.test_date > endISO) return false;
+        return true;
+      });
+    }
+    return currentGrades;
+  }, [currentGrades, dateFilterMode, effectiveFilterMonthValue, effectiveFilterYearId, schoolYears, filterRangeStart, filterRangeEnd]);
+
   const gradesForChart = useMemo(() =>
     dateFilteredGrades.map((g) => ({ test_date: g.test_date, grade: g.grade, test_name: g.test_name })),
     [dateFilteredGrades]);
@@ -224,6 +256,27 @@ const GradesPage = () => {
     const sum = valid.reduce((acc, g) => acc + (g.grade ?? 0), 0);
     return { avgGrade: sum / valid.length, gradedCount: valid.length };
   }, [dateFilteredGrades]);
+
+  const periodLabel = useMemo(() => {
+    if (dateFilterMode === 'month') return effectiveFilterMonthValue ? `Μήνας: ${formatMonthLabel(effectiveFilterMonthValue)}` : 'Όλες οι περίοδοι';
+    if (dateFilterMode === 'schoolYear') return `Σχολικό έτος: ${schoolYears.find((y) => y.id === effectiveFilterYearId)?.name ?? '—'}`;
+    if (dateFilterMode === 'range') return `Εύρος: ${filterRangeStart || '—'} → ${filterRangeEnd || '—'}`;
+    return 'Όλες οι περίοδοι';
+  }, [dateFilterMode, effectiveFilterMonthValue, effectiveFilterYearId, schoolYears, filterRangeStart, filterRangeEnd]);
+
+  const handleExportReport = async () => {
+    const subjectName = selectionType === 'student' ? selectedStudent?.full_name : selectedTutor?.full_name;
+    if (!subjectName) return;
+    setReportBusy(true); setReportError(null);
+    try {
+      await exportGradesReportToPdf({
+        roleLabel: selectionType === 'student' ? 'Μαθητής' : 'Καθηγητής',
+        subjectName, periodLabel, grades: dateOnlyGrades,
+      });
+    } catch (e: any) {
+      setReportError(e?.message ?? 'Αποτυχία δημιουργίας PDF.');
+    } finally { setReportBusy(false); }
+  };
 
   return (
     <div className="space-y-5 px-1">
@@ -424,6 +477,10 @@ const GradesPage = () => {
         gradedCount={gradedCount}
         gradesForChart={gradesForChart}
         isDark={isDark}
+        onExportPdf={handleExportReport}
+        reportBusy={reportBusy}
+        reportError={reportError}
+        hasReportData={dateOnlyGrades.length > 0}
       />
     </div>
   );

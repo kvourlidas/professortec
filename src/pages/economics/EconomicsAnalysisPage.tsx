@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../auth';
 import { useTheme } from '../../context/ThemeContext';
 import { Wallet, Loader2, Banknote, CreditCard, Landmark } from 'lucide-react';
+import { FaFilePdf } from 'react-icons/fa6';
 import ConfirmActionModal from '../../components/ui/ConfirmActionModal';
 
 import type { Mode, TxRow, ExtraExpenseRow } from '../../components/economics/types';
@@ -10,7 +11,7 @@ import {
   isoToday, money,
   startOfMonthISO, endOfMonthISO, startOfYearISO, endOfYearISO,
   startOfDayTs, endOfDayTs,
-  buildSeriesForPeriod, getCurrentPeriod, hasAll, hasAny,
+  buildSeriesForPeriod, getCurrentPeriod, hasAll, hasAny, monthLabelEl,
 } from '../../components/economics/utils';
 import { PAGE_SIZE, STUDENT_INCOME_TABLE, EXTRA_EXPENSES_TABLE } from '../../components/economics/constants';
 import { MultiSeriesChart } from '../../components/economics/analysis/MultiSeriesChart';
@@ -22,6 +23,7 @@ import { isSchoolYearCurrent } from '../../components/school-info/types';
 import { EconomicsEditExpenseModal } from '../../components/economics/analysis/EconomicsEditExpenseModal';
 import { EconomicsCategoryBreakdown } from '../../components/economics/analysis/EconomicsCategoryBreakdown';
 import { EconomicsTransactionsCard } from '../../components/economics/analysis/EconomicsTransactionsCard';
+import { exportEconomicsReportToPdf } from '../../components/economics/analysis/exportEconomicsReport';
 
 // ── Edge function helper ──────────────────────────────────────────────────────
 async function callEdgeFunction(name: string, body: Record<string, unknown>) {
@@ -79,6 +81,8 @@ export default function EconomicsAnalysisPage() {
   const [cancelConfirmRow, setCancelConfirmRow] = useState<TxRow | null>(null);
   const [outstandingBalance, setOutstandingBalance] = useState(0);
   const [chartActive, setChartActive] = useState<Set<SeriesId>>(new Set(['income', 'expense', 'owed']));
+  const [reportBusy, setReportBusy] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
 
   const toggleChart = (id: SeriesId) => {
     setChartActive(prev => {
@@ -98,6 +102,13 @@ export default function EconomicsAnalysisPage() {
     return { start: rangeStart || isoToday(), end: rangeEnd || isoToday() };
   }
   const bounds = useMemo(() => getBounds(), [mode, month, year, rangeStart, rangeEnd, schoolYearId, schoolYears]);
+
+  const periodLabel = useMemo(() => {
+    if (mode === 'month') return `Μήνας: ${monthLabelEl(month)} ${year}`;
+    if (mode === 'year') return `Έτος: ${year}`;
+    if (mode === 'schoolYear') return `Σχολικό έτος: ${schoolYears.find(y => y.id === schoolYearId)?.name ?? '—'}`;
+    return `Εύρος: ${bounds.start} → ${bounds.end}`;
+  }, [mode, month, year, schoolYearId, schoolYears, bounds.start, bounds.end]);
 
   useEffect(() => { setCatPage(1); setTxPage(1); }, [schoolId, mode, month, year, rangeStart, rangeEnd, schoolYearId]);
 
@@ -352,6 +363,20 @@ export default function EconomicsAnalysisPage() {
     finally { setBusy(false); }
   }
 
+  // ── Export current filtered view as PDF ────────────────────────────────────
+  async function handleExportReport() {
+    setReportBusy(true); setReportError(null);
+    try {
+      await exportEconomicsReportToPdf({
+        mode, periodLabel, rangeStart: bounds.start, rangeEnd: bounds.end,
+        incomeTotal, expenseTotal, netTotal, outstandingBalance,
+        collectionByMethod, expenseByCategory, txRows: visibleTxRows,
+      });
+    } catch (e: any) {
+      setReportError(e?.message ?? 'Αποτυχία δημιουργίας PDF.');
+    } finally { setReportBusy(false); }
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-[70vh] flex-col items-center justify-center gap-3 text-slate-400">
@@ -365,7 +390,7 @@ export default function EconomicsAnalysisPage() {
     <div className="space-y-6 px-1">
 
       {/* Header + Filters */}
-      <div className="relative z-10">
+      <div className="relative z-10 flex flex-wrap items-start justify-between gap-3">
       <EconomicsFilterBar
         mode={mode} onModeChange={setMode}
         month={month} onMonthChange={setMonth}
@@ -378,6 +403,18 @@ export default function EconomicsAnalysisPage() {
         schoolYearsOptions={schoolYears.map(y => ({ value: y.id, label: y.name }))}
         isDark={isDark}
       />
+      <div className="flex flex-col items-end gap-1">
+        <button
+          type="button"
+          onClick={handleExportReport}
+          disabled={reportBusy}
+          className={`inline-flex items-center gap-1.5 text-[11px] font-semibold transition hover:underline disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed ${isDark ? 'text-rose-400 hover:text-rose-300' : 'text-rose-600 hover:text-rose-700'}`}
+        >
+          {reportBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <FaFilePdf className="h-3 w-3" />}
+          {reportBusy ? 'Δημιουργία…' : 'Λήψη Αναφοράς (PDF)'}
+        </button>
+        {reportError && <p className="text-[11px] text-red-500">{reportError}</p>}
+      </div>
       </div>
 
       {/* Error banner */}
