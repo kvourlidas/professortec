@@ -8,6 +8,7 @@ import EditDeleteButtons from '../components/ui/EditDeleteButtons';
 import TutorFormModal from '../components/tutors/TutorFormModal';
 import TutorDeleteModal from '../components/tutors/TutorDeleteModal';
 import SpecialtiesCatalogModal from '../components/tutors/SpecialtiesCatalogModal';
+import TutorImportModal, { type TutorImportResult } from '../components/tutors/TutorImportModal';
 import TutorSortDropdown, {
   DEFAULT_TUTOR_SORT,
   type TutorSortState,
@@ -27,7 +28,7 @@ import { formatDateToGreek, normalizeText, displayToIso } from '../components/tu
 import { exportTutorsToExcel, exportTutorsToPdf } from '../components/tutors/exportTutors';
 import {
   Users, Search, UserPlus, ChevronLeft, ChevronRight,
-  Copy, Check, Tags, Loader2,
+  Copy, Check, Tags, Loader2, Upload, IdCard,
 } from 'lucide-react';
 import { FaFileExcel, FaFilePdf } from 'react-icons/fa6';
 
@@ -127,6 +128,7 @@ export default function TutorsPage() {
   const [specialties, setSpecialties] = useState<SpecialtyRow[]>([]);
   const [tutorSpecialtyMap, setTutorSpecialtyMap] = useState<Map<string, SpecialtyRow[]>>(new Map());
   const [catalogOpen, setCatalogOpen] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
 
   // Search & pagination
   const [search, setSearch] = useState('');
@@ -292,6 +294,23 @@ export default function TutorsPage() {
       setError('Αποτυχία διαγραφής καθηγητή.');
     } finally {
       setDeleting(false);
+    }
+  };
+
+  // ── Bulk import handler ───────────────────────────────────────────────────
+  const handleTutorsImported = (result: TutorImportResult) => {
+    if (result.tutors.length > 0) {
+      setTutors((prev) => [...prev, ...result.tutors].sort((a, b) => (a.full_name ?? '').localeCompare(b.full_name ?? '', 'el')));
+    }
+    if (result.newSpecialties.length > 0) {
+      setSpecialties((prev) => [...prev, ...result.newSpecialties].sort((a, b) => a.name.localeCompare(b.name, 'el')));
+    }
+    if (result.links.length > 0) {
+      setTutorSpecialtyMap((prev) => {
+        const next = new Map(prev);
+        result.links.forEach(({ tutorId, specialties: list }) => next.set(tutorId, list));
+        return next;
+      });
     }
   };
 
@@ -472,6 +491,13 @@ export default function TutorsPage() {
             <Tags className="h-3.5 w-3.5" />
             Ειδικότητες
           </button>
+          <button type="button" onClick={() => setImportModalOpen(true)}
+            className={`btn h-9 gap-2 border px-4 font-semibold transition active:scale-[0.98] ${
+              isDark ? 'border-slate-700/70 bg-slate-800/60 text-slate-300 hover:border-slate-600' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+            }`}>
+            <Upload className="h-3.5 w-3.5" />
+            Εισαγωγή από Excel
+          </button>
           <button type="button" onClick={openCreateModal}
             className="btn-primary h-9 gap-2 px-4 font-semibold shadow-sm hover:brightness-110 active:scale-[0.98]">
             <UserPlus className="h-3.5 w-3.5" />
@@ -490,7 +516,7 @@ export default function TutorsPage() {
             className={`inline-flex items-center gap-1.5 text-[11px] font-semibold transition hover:underline disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed ${isDark ? 'text-emerald-400 hover:text-emerald-300' : 'text-emerald-600 hover:text-emerald-700'}`}
           >
             {excelBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <FaFileExcel className="h-3 w-3" />}
-            {excelBusy ? 'Δημιουργία…' : 'Λήψη Excel'}
+            {excelBusy ? 'Δημιουργία…' : 'Λήψη Αναφοράς'}
           </button>
           <button
             type="button"
@@ -499,7 +525,7 @@ export default function TutorsPage() {
             className={`inline-flex items-center gap-1.5 text-[11px] font-semibold transition hover:underline disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed ${isDark ? 'text-rose-400 hover:text-rose-300' : 'text-rose-600 hover:text-rose-700'}`}
           >
             {pdfBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <FaFilePdf className="h-3 w-3" />}
-            {pdfBusy ? 'Δημιουργία PDF…' : 'Λήψη PDF'}
+            {pdfBusy ? 'Δημιουργία…' : 'Λήψη Αναφοράς'}
           </button>
         </div>
         {exportError && (
@@ -569,7 +595,7 @@ export default function TutorsPage() {
               </thead>
               <tbody className={tbodyDivideCls}>
                 {pagedTutors.map((t, i) => (
-                  <tr key={t.id} className={trHoverCls}>
+                  <tr key={t.id} onClick={() => navigate(`/tutors/${t.id}`)} title="Άνοιγμα καρτέλας καθηγητή" className={`group cursor-pointer ${trHoverCls}`}>
                     <td className={`whitespace-nowrap px-5 py-3.5 tabular-nums ${visibleColumnDefs.length > 0 ? colDivider : ''} ${isDark ? 'text-slate-600' : 'text-slate-300'}`}>{(page - 1) * pageSize + i + 1}</td>
                     {visibleColumnDefs.map((col: TutorColumnDef) => (
                       <td key={col.key} className={`px-5 py-3.5 ${colDivider}`}>
@@ -577,8 +603,18 @@ export default function TutorsPage() {
                       </td>
                     ))}
                     <td className="px-5 py-3.5">
-                      <div className="flex items-center justify-end gap-1">
-                        <EditDeleteButtons onEdit={() => openEditModal(t)} onDelete={() => { setError(null); setDeleteTarget(t); }} />
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button type="button" onClick={(e) => { e.stopPropagation(); navigate(`/tutors/${t.id}`); }}
+                          title="Άνοιγμα καρτέλας καθηγητή"
+                          className="flex items-center gap-1.5 text-xs font-semibold transition hover:underline"
+                          style={{ color: 'var(--color-accent)' }}>
+                          <IdCard className="h-3.5 w-3.5" />
+                          Καρτέλα καθηγητή
+                        </button>
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <EditDeleteButtons onEdit={() => openEditModal(t)} onDelete={() => { setError(null); setDeleteTarget(t); }} />
+                        </div>
+                        <ChevronRight className={`h-3.5 w-3.5 shrink-0 opacity-0 transition-all duration-150 group-hover:translate-x-0.5 group-hover:opacity-60 ${isDark ? 'text-slate-400' : 'text-slate-400'}`} />
                       </div>
                     </td>
                   </tr>
@@ -641,6 +677,15 @@ export default function TutorsPage() {
         onCreated={handleSpecialtyCreated}
         onDeleted={handleSpecialtyDeleted}
       />
+
+      {importModalOpen && schoolId && (
+        <TutorImportModal
+          schoolId={schoolId}
+          specialties={specialties}
+          onImported={handleTutorsImported}
+          onClose={() => setImportModalOpen(false)}
+        />
+      )}
     </div>
   );
 }

@@ -70,7 +70,7 @@ function gradesTable(grades: GradeRow[], includeSubjectColumn: boolean) {
       body: [
         headerRow,
         ...grades.map((g) => {
-          const row = [
+          const row: { text: string; fontSize: number; bold?: boolean; alignment?: 'left' | 'right' | 'center' }[] = [
             { text: formatDate(g.test_date), fontSize: 7.5 },
             { text: formatTime(g.start_time) + (g.end_time ? ` – ${formatTime(g.end_time)}` : ''), fontSize: 7.5 },
             { text: breakLongTokens(g.test_name ?? '—'), fontSize: 7.5 },

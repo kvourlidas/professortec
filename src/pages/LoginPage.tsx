@@ -28,8 +28,8 @@ const FEATURES = [
 async function createSignupSchool(info: { name: string; address: string; phone: string; email: string }) {
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token;
-  if (!token) return;
-  await supabase.functions.invoke('signup-school-create', {
+  if (!token) throw new Error('No session');
+  const { error } = await supabase.functions.invoke('signup-school-create', {
     body: {
       name: info.name.trim(),
       address: info.address.trim() || null,
@@ -38,13 +38,14 @@ async function createSignupSchool(info: { name: string; address: string; phone: 
     },
     headers: { Authorization: `Bearer ${token}` },
   });
+  if (error) throw error;
 }
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const redirectTo = (location.state as { from?: string } | null)?.from || '/dashboard';
-  const { user, signInWeb, signUpWeb, signInWithGoogle, authError, clearAuthError } = useAuth();
+  const { user, signInWeb, signUpWeb, signInWithGoogle, authError, clearAuthError, refreshProfile } = useAuth();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
@@ -126,10 +127,12 @@ export default function LoginPage() {
     if (result === 'ok') {
       try {
         await createSignupSchool({ name: infoName, address: infoAddress, phone: infoPhone, email: infoEmail });
+        await refreshProfile();
+        navigate('/dashboard', { replace: true });
       } catch (e) {
         console.error('Failed to create school on signup', e);
+        setStepError('Κάτι πήγε στραβά κατά τη δημιουργία του σχολείου. Δοκίμασε ξανά.');
       }
-      navigate('/dashboard', { replace: true });
     } else if (result === 'confirm_email') {
       setConfirmEmail(true);
     }

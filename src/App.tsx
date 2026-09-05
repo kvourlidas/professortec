@@ -13,6 +13,7 @@ const AttendancePage = lazy(() => import('./pages/AttendancePage'));
 const PrivateAttendancePage = lazy(() => import('./pages/PrivateAttendancePage'));
 const PrivateSchedulePage = lazy(() => import('./pages/PrivateSchedulePage'));
 const TutorsPage = lazy(() => import('./pages/TutorsPage'));
+const TutorCardPage = lazy(() => import('./pages/TutorCardPage'));
 const ProgramPage = lazy(() => import('./pages/ProgramPage'));
 const HolidaysPage = lazy(() => import('./pages/HolidaysPage'));
 const EventsPage = lazy(() => import('./pages/EventsPage'));
@@ -125,6 +126,7 @@ export default function App() {
         {/* Frontistirio-only routes */}
         <Route path={p('/classes')} element={<ProtectedRoute><FrontistirioOnly><ClassesPage /></FrontistirioOnly></ProtectedRoute>} />
         <Route path={p('/tutors')} element={<ProtectedRoute><FrontistirioOnly><TutorsPage /></FrontistirioOnly></ProtectedRoute>} />
+        <Route path={p('/tutors/:id')} element={<ProtectedRoute><FrontistirioOnly><TutorCardPage /></FrontistirioOnly></ProtectedRoute>} />
         <Route path={p('/program/events')} element={<ProtectedRoute><FrontistirioOnly><EventsPage /></FrontistirioOnly></ProtectedRoute>} />
         <Route path={p('/school-info')} element={<ProtectedRoute><FrontistirioOnly><SchoolInfoPage /></FrontistirioOnly></ProtectedRoute>} />
         <Route path={p('/tutor-info')} element={<ProtectedRoute><TutorInfoPage /></ProtectedRoute>} />

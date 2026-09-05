@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Users, Search, UserPlus, ChevronLeft, ChevronRight,
-  Loader2, Trash2, Copy, Check, IdCard,
+  Loader2, Trash2, Copy, Check, IdCard, Upload,
 } from 'lucide-react';
 import { FaFileExcel, FaFilePdf } from 'react-icons/fa6';
 import { supabase } from '../lib/supabaseClient.ts';
@@ -11,6 +11,7 @@ import { useAuth } from '../auth.tsx';
 import { useTheme } from '../context/ThemeContext.tsx';
 import { useEscapeToClose } from '../hooks/useEscapeToClose';
 import StudentCreateModal from '../components/students/StudentCreateModal.tsx';
+import StudentImportModal from '../components/students/StudentImportModal.tsx';
 import ColumnFilterDropdown, {
   ALL_COLUMNS, DEFAULT_VISIBLE, type ColumnKey,
 } from '../components/students/ColumnFilterDropdown.tsx';
@@ -127,6 +128,7 @@ export default function StudentsPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
 
   useEffect(() => {
     if ((location.state as { openCreate?: boolean } | null)?.openCreate) {
@@ -237,6 +239,15 @@ export default function StudentsPage() {
     const nextList = [...students, student].sort((a, b) => (a.full_name ?? '').localeCompare(b.full_name ?? '', 'el'));
     setStudents(nextList); sessionStorage.setItem(studentsCacheKey, JSON.stringify(nextList));
     setCreateModalOpen(false);
+  };
+
+  const handleImported = (newStudents: StudentRow[]) => {
+    if (newStudents.length === 0) return;
+    setStudents((prev) => {
+      const nextList = [...prev, ...newStudents].sort((a, b) => (a.full_name ?? '').localeCompare(b.full_name ?? '', 'el'));
+      sessionStorage.setItem(studentsCacheKey, JSON.stringify(nextList));
+      return nextList;
+    });
   };
 
   const handleDelete = async () => {
@@ -432,6 +443,10 @@ export default function StudentsPage() {
             <Search className={`pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
             <input className={`${inputCls} pl-9 sm:w-52`} placeholder="Αναζήτηση μαθητή..." value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
+          <button type="button" onClick={() => setImportModalOpen(true)} className={`btn h-9 gap-2 border px-4 font-semibold ${isDark ? 'border-slate-600/60 bg-slate-800/50 text-slate-200 hover:bg-slate-700/60' : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'}`}>
+            <Upload className="h-3.5 w-3.5" />
+            Εισαγωγή από Excel
+          </button>
           <button type="button" onClick={() => setCreateModalOpen(true)} className="btn-primary h-9 gap-2 px-4 font-semibold">
             <UserPlus className="h-3.5 w-3.5" />
             Προσθήκη μαθητή
@@ -449,7 +464,7 @@ export default function StudentsPage() {
             className={`inline-flex items-center gap-1.5 text-[11px] font-semibold transition hover:underline disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed ${isDark ? 'text-emerald-400 hover:text-emerald-300' : 'text-emerald-600 hover:text-emerald-700'}`}
           >
             {excelBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <FaFileExcel className="h-3 w-3" />}
-            {excelBusy ? 'Δημιουργία…' : 'Λήψη Excel'}
+            {excelBusy ? 'Δημιουργία…' : 'Λήψη Αναφοράς'}
           </button>
           <button
             type="button"
@@ -458,7 +473,7 @@ export default function StudentsPage() {
             className={`inline-flex items-center gap-1.5 text-[11px] font-semibold transition hover:underline disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed ${isDark ? 'text-rose-400 hover:text-rose-300' : 'text-rose-600 hover:text-rose-700'}`}
           >
             {pdfBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <FaFilePdf className="h-3 w-3" />}
-            {pdfBusy ? 'Δημιουργία PDF…' : 'Λήψη PDF'}
+            {pdfBusy ? 'Δημιουργία…' : 'Λήψη Αναφοράς'}
           </button>
         </div>
         {exportError && (
@@ -586,6 +601,11 @@ export default function StudentsPage() {
       {/* ── Create modal ── */}
       {createModalOpen && schoolId && (
         <StudentCreateModal schoolId={schoolId} levels={levels} onCreated={handleCreated} onClose={() => setCreateModalOpen(false)} />
+      )}
+
+      {/* ── Import modal ── */}
+      {importModalOpen && schoolId && (
+        <StudentImportModal schoolId={schoolId} levels={levels} onImported={handleImported} onClose={() => setImportModalOpen(false)} />
       )}
 
       {/* ── Delete modal ── */}

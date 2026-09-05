@@ -1,7 +1,7 @@
 // src/components/TopBar.tsx
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Menu, LogOut, Sun, Moon, Plus, GraduationCap, UserCog, BookOpen } from 'lucide-react';
+import { Menu, LogOut, Sun, Moon, Plus, GraduationCap, UserCog, BookOpen, Rocket } from 'lucide-react';
 import { useAuth } from '../auth';
 import { useTheme } from '../context/ThemeContext';
 import { getPageTitle } from '../pageTitles';
@@ -55,9 +55,20 @@ export default function TopBar({ onOpenMobileMenu }: Props) {
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white" style={{ background: 'rgba(255,255,255,0.18)' }}>
             {(profile?.full_name || user?.email || '?')[0].toUpperCase()}
           </div>
-          <p className="hidden min-w-0 truncate text-sm font-semibold leading-tight text-white sm:block">
-            {profile?.full_name || user?.email}
-          </p>
+          <div className="hidden min-w-0 flex-col sm:flex">
+            <p className="truncate text-sm font-semibold leading-tight text-white">
+              {profile?.full_name || user?.email}
+            </p>
+            <a
+              href="https://edrahub.gr/setup-guide"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-0.5 flex items-center gap-1 truncate text-[10px] font-semibold text-white/60 transition hover:text-white"
+            >
+              <Rocket className="h-2.5 w-2.5" />
+              Οδηγός Εκκίνησης
+            </a>
+          </div>
         </div>
 
         {/* Page title */}
