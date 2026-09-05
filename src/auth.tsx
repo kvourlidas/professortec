@@ -205,9 +205,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithGoogle = async (): Promise<void> => {
     setAuthError(null);
+    // Land back on /login, not /dashboard — a brand-new Google user has no
+    // school yet, and LoginPage itself (not a separate onboarding page) is
+    // where they finish the same account-type/school-info steps as everyone else.
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/dashboard` },
+      options: { redirectTo: `${window.location.origin}/login` },
     });
     if (error) setAuthError('Πρόβλημα σύνδεσης με Google. Δοκίμασε ξανά.');
   };

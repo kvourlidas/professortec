@@ -3,7 +3,6 @@ import { Suspense, lazy } from 'react';
 import type { ReactElement } from 'react';
 
 const LoginPage = lazy(() => import('./pages/LoginPage'));
-const OnboardingPage = lazy(() => import('./pages/OnboardingPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const ClassesPage = lazy(() => import('./pages/ClassesPage'));
 const StudentsPage = lazy(() => import('./pages/StudentsPage'));
@@ -64,29 +63,12 @@ function ProtectedRoute({ children }: { children: ReactElement }) {
   }
 
   if (profile && !profile.school_id) {
-    return <Navigate to={p('/onboarding')} replace />;
+    // No separate onboarding page — LoginPage itself finishes account-type/school
+    // setup for an authenticated-but-schoolless user (e.g. a brand-new Google signup).
+    return <Navigate to={p('/login')} replace />;
   }
 
   return <Layout>{children}</Layout>;
-}
-
-function OnboardingRoute({ children }: { children: ReactElement }) {
-  const { user, profile, loading } = useAuth();
-  const location = useLocation();
-
-  if (loading) {
-    return <LoadingScreen />;
-  }
-
-  if (!user) {
-    return <Navigate to={p('/login')} replace state={{ from: `${location.pathname}${location.search}` }} />;
-  }
-
-  if (profile && profile.school_id) {
-    return <Navigate to={p('/dashboard')} replace />;
-  }
-
-  return children;
 }
 
 function FrontistirioOnly({ children }: { children: ReactElement }) {
@@ -112,7 +94,6 @@ export default function App() {
       <Suspense fallback={<RouteFallback />}>
       <Routes>
         <Route path={p('/login')} element={<LoginPage />} />
-        <Route path={p('/onboarding')} element={<OnboardingRoute><OnboardingPage /></OnboardingRoute>} />
 
         <Route
           path={p('/dashboard')}

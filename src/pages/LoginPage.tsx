@@ -1,5 +1,5 @@
 // src/pages/LoginPage.tsx
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
@@ -25,7 +25,10 @@ const FEATURES = [
   { icon: Wallet, label: 'Οικονομική διαχείριση' },
 ];
 
-async function createSignupSchool(info: { name: string; address: string; phone: string; email: string }) {
+async function createSignupSchool(info: {
+  name: string; address: string; phone: string; email: string;
+  accountType: AccountType; fullName: string;
+}) {
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token;
   if (!token) throw new Error('No session');
@@ -35,6 +38,8 @@ async function createSignupSchool(info: { name: string; address: string; phone: 
       address: info.address.trim() || null,
       phone: info.phone.trim() || null,
       email: info.email.trim() || null,
+      account_type: info.accountType,
+      full_name: info.fullName.trim() || null,
     },
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -45,7 +50,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const redirectTo = (location.state as { from?: string } | null)?.from || '/dashboard';
-  const { user, signInWeb, signUpWeb, signInWithGoogle, authError, clearAuthError, refreshProfile } = useAuth();
+  const { user, profile, signInWeb, signUpWeb, signInWithGoogle, authError, clearAuthError, refreshProfile } = useAuth();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
@@ -84,9 +89,30 @@ export default function LoginPage() {
     setGooglePending(false);
   };
 
+  // Already signed in (has a school): nothing left to do here, go straight in.
   useEffect(() => {
-    if (user) navigate(redirectTo, { replace: true });
-  }, [user, navigate, redirectTo]);
+    if (user && profile?.school_id) navigate(redirectTo, { replace: true });
+  }, [user, profile, navigate, redirectTo]);
+
+  // Authenticated but schoolless — e.g. a brand-new Google sign-in, whose OAuth
+  // redirect skips this form entirely. Resume the same steps 1-3 wizard here
+  // (no separate onboarding page) instead of dumping them on the dashboard.
+  // Guarded so it only fires once, and never while our own signup submission
+  // is what put the account in this same "no school yet" state transiently.
+  const resumedRef = useRef(false);
+  const submittingRef = useRef(false);
+  useEffect(() => {
+    if (resumedRef.current || submittingRef.current) return;
+    if (!user || !profile || profile.school_id) return;
+    resumedRef.current = true;
+    setMode('signup');
+    setSignupStep(1);
+    setSignupEmail(user.email ?? '');
+    setInfoEmail(user.email ?? '');
+    if (profile.full_name && profile.full_name !== user.email) setInfoName(profile.full_name);
+  }, [user, profile]);
+
+  const isResumedSession = !!user;
 
   useEffect(() => {
     clearAuthError();
@@ -109,9 +135,18 @@ export default function LoginPage() {
       if (!accountType) { setStepError('Επίλεξε τύπο λογαριασμού.'); return; }
       setSignupStep(2);
     } else if (signupStep === 2) {
-      if (!signupEmail.trim()) { setStepError('Το email είναι υποχρεωτικό.'); return; }
-      if (signupPw.length < 6) { setStepError('Ο κωδικός πρέπει να έχει τουλάχιστον 6 χαρακτήρες.'); return; }
-      if (signupPw !== signupPwConfirm) { setStepError('Οι κωδικοί δεν ταιριάζουν.'); return; }
+      if (isResumedSession) {
+        // Already authenticated (e.g. Google) — a password here is optional,
+        // only validated if they actually chose to set one.
+        if (signupPw || signupPwConfirm) {
+          if (signupPw.length < 6) { setStepError('Ο κωδικός πρέπει να έχει τουλάχιστον 6 χαρακτήρες.'); return; }
+          if (signupPw !== signupPwConfirm) { setStepError('Οι κωδικοί δεν ταιριάζουν.'); return; }
+        }
+      } else {
+        if (!signupEmail.trim()) { setStepError('Το email είναι υποχρεωτικό.'); return; }
+        if (signupPw.length < 6) { setStepError('Ο κωδικός πρέπει να έχει τουλάχιστον 6 χαρακτήρες.'); return; }
+        if (signupPw !== signupPwConfirm) { setStepError('Οι κωδικοί δεν ταιριάζουν.'); return; }
+      }
       setInfoEmail(prev => prev || signupEmail.trim());
       setSignupStep(3);
     }
@@ -123,10 +158,22 @@ export default function LoginPage() {
     clearAuthError();
     setStepError(null);
     setPending(true);
-    const result = await signUpWeb(signupEmail.trim(), signupPw, infoName.trim(), accountType);
+    submittingRef.current = true;
+
+    let result: 'ok' | 'confirm_email' | 'error' = 'ok';
+    if (!isResumedSession) {
+      result = await signUpWeb(signupEmail.trim(), signupPw, infoName.trim(), accountType);
+    } else if (signupPw) {
+      const { error } = await supabase.auth.updateUser({ password: signupPw });
+      if (error) { setStepError('Πρόβλημα κατά τον ορισμό κωδικού. Δοκίμασε ξανά.'); result = 'error'; }
+    }
+
     if (result === 'ok') {
       try {
-        await createSignupSchool({ name: infoName, address: infoAddress, phone: infoPhone, email: infoEmail });
+        await createSignupSchool({
+          name: infoName, address: infoAddress, phone: infoPhone, email: infoEmail,
+          accountType, fullName: infoName,
+        });
         await refreshProfile();
         navigate('/dashboard', { replace: true });
       } catch (e) {
@@ -311,13 +358,15 @@ export default function LoginPage() {
                       <div className="space-y-4">
                         <div className="space-y-1">
                           <h1 className="text-xl font-bold tracking-tight text-[color:var(--color-text-main)]">Στοιχεία λογαριασμού</h1>
-                          <p className="text-sm text-[color:var(--color-text-muted)]">Email και κωδικός πρόσβασης.</p>
+                          <p className="text-sm text-[color:var(--color-text-muted)]">
+                            {isResumedSession ? 'Ήδη συνδεδεμένος με Google. Προαιρετικά, όρισε κωδικό.' : 'Email και κωδικός πρόσβασης.'}
+                          </p>
                         </div>
                         <Field label="Email" isDark={isDark}>
                           <Mail className={`absolute left-0 top-1/2 h-4 w-4 -translate-y-1/2 pointer-events-none ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
-                          <input type="email" value={signupEmail} onChange={e => setSignupEmail(e.target.value)} autoComplete="email" placeholder="admin@school.gr" className={inputCls} autoFocus />
+                          <input type="email" value={signupEmail} onChange={e => setSignupEmail(e.target.value)} autoComplete="email" placeholder="admin@school.gr" className={inputCls} autoFocus disabled={isResumedSession} />
                         </Field>
-                        <Field label="Κωδικός" isDark={isDark}>
+                        <Field label={isResumedSession ? 'Κωδικός (προαιρετικό)' : 'Κωδικός'} isDark={isDark}>
                           <Lock className={`absolute left-0 top-1/2 h-4 w-4 -translate-y-1/2 pointer-events-none ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
                           <input type={showSignupPw ? 'text' : 'password'} value={signupPw} onChange={e => setSignupPw(e.target.value)} autoComplete="new-password" placeholder="••••••••" minLength={6} className={`${inputCls} pr-10`} />
                           <ToggleEye show={showSignupPw} toggle={() => setShowSignupPw(v => !v)} isDark={isDark} />
