@@ -271,9 +271,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await hardSignOut();
   };
 
+  // Deliberately does NOT use the `user` state captured in this closure: a caller
+  // that started running before `user` was set (e.g. the signup form's submit
+  // handler, invoked while `user` was still null) would otherwise be stuck with
+  // a permanently-stale closure whose `if (!user) return;` guard always no-ops,
+  // even though the user has since signed in. Fetching the session fresh here
+  // makes refreshProfile correct regardless of when it's called.
   const refreshProfile = async () => {
-    if (!user) return;
-    await hydrateFromUser(user);
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (!currentUser) return;
+    await hydrateFromUser(currentUser);
   };
 
   return (
