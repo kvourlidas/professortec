@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient.ts';
 import { useAuth } from '../auth.tsx';
@@ -6,13 +6,18 @@ import { useTheme } from '../context/ThemeContext.tsx';
 import ClassFormModal from '../components/classes/ClassFormModal.tsx';
 import ClassStudentsModal from '../components/classes/ClassStudentsModal.tsx';
 import ClassDeleteModal from '../components/classes/ClassDeleteModal.tsx';
+import ClassesCloneModal from '../components/classes/ClassesCloneModal.tsx';
 import ClassesGrid from '../components/classes/ClassesGrid.tsx';
 import type { StudentRow } from '../components/classes/ClassesGrid.tsx';
-import { Plus, School, Search, Loader2 } from 'lucide-react';
+import { Plus, School, Search, Loader2, CopyPlus, CalendarRange } from 'lucide-react';
 import { FaFileExcel, FaFilePdf } from 'react-icons/fa6';
+import StyledSelect from '../components/ui/StyledSelect.tsx';
 import type { ClassRow, SubjectRow, LevelRow, ModalMode, ClassFormState } from '../components/classes/types.ts';
 import { normalizeText } from '../components/classes/utils.ts';
 import { exportClassesToExcel, exportClassesToPdf } from '../components/classes/exportClasses.ts';
+import { isSchoolYearCurrent } from '../components/school-info/types.ts';
+
+type SchoolYearRow = { id: string; name: string; start_date: string; end_date: string };
 
 export default function ClassesPage() {
   const { profile } = useAuth();
@@ -40,6 +45,12 @@ export default function ClassesPage() {
   const [excelBusy, setExcelBusy] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [exportError, setExportError] = useState<'excel' | 'pdf' | null>(null);
+
+  const [schoolYears, setSchoolYears] = useState<SchoolYearRow[]>([]);
+  const [yearsLoading, setYearsLoading] = useState(true);
+  const [yearFilter, setYearFilter] = useState('');
+  const yearFilterInitialized = useRef(false);
+  const [cloneModalOpen, setCloneModalOpen] = useState(false);
 
   const levelNameById = useMemo(() => {
     const m = new Map<string, string>();
@@ -81,21 +92,24 @@ export default function ClassesPage() {
     setActiveSubIds(new Set((data ?? []).map((r: any) => r.student_id)));
   };
 
+  /* ── Load school years, then default the filter to the current one ── */
   useEffect(() => {
-    if (!schoolId) { setLoading(false); return; }
+    if (!schoolId) { setYearsLoading(false); return; }
+    yearFilterInitialized.current = false;
 
-    const loadClasses = async () => {
-      setLoading(true); setError(null);
-      const { data, error } = await supabase
-        .from('classes')
-        .select('id, school_id, title, subject, subject_id, tutor_id')
-        .eq('school_id', schoolId)
-        .order('title', { ascending: true });
-      if (error) { console.error(error); setError('Αποτυχία φόρτωσης τμημάτων.'); setLoading(false); return; }
-      const loaded = (data ?? []) as ClassRow[];
-      setClasses(loaded);
-      await loadStudentsByClass(loaded.map((c) => c.id));
-      setLoading(false);
+    const loadYears = async () => {
+      setYearsLoading(true);
+      const { data, error: yearsErr } = await supabase
+        .from('school_years').select('id,name,start_date,end_date').eq('school_id', schoolId).order('start_date', { ascending: false });
+      if (yearsErr) { console.error(yearsErr); setYearsLoading(false); return; }
+      const years = (data ?? []) as SchoolYearRow[];
+      setSchoolYears(years);
+      if (!yearFilterInitialized.current) {
+        const defaultYear = years.find((y) => isSchoolYearCurrent(y)) ?? years[0] ?? null;
+        setYearFilter(defaultYear?.id ?? '');
+        yearFilterInitialized.current = true;
+      }
+      setYearsLoading(false);
     };
 
     const loadLookups = async () => {
@@ -111,8 +125,32 @@ export default function ClassesPage() {
       } catch (err) { console.error('Lookup load error', err); }
     };
 
-    loadClasses(); loadLookups(); loadActiveSubIds();
+    loadYears(); loadLookups(); loadActiveSubIds();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [schoolId]);
+
+  /* ── Load this year's classes (and their enrolled students) whenever the year filter changes ── */
+  useEffect(() => {
+    if (!schoolId || !yearFilter) { setClasses([]); setStudentsByClass({}); if (!yearsLoading) setLoading(false); return; }
+
+    const loadClasses = async () => {
+      setLoading(true); setError(null);
+      const { data, error } = await supabase
+        .from('classes')
+        .select('id, school_id, title, subject, subject_id, tutor_id, school_year_id')
+        .eq('school_id', schoolId)
+        .eq('school_year_id', yearFilter)
+        .order('title', { ascending: true });
+      if (error) { console.error(error); setError('Αποτυχία φόρτωσης τμημάτων.'); setLoading(false); return; }
+      const loaded = (data ?? []) as ClassRow[];
+      setClasses(loaded);
+      await loadStudentsByClass(loaded.map((c) => c.id));
+      setLoading(false);
+    };
+
+    loadClasses();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [schoolId, yearFilter]);
 
   /* ── Refresh students for a single class after modal saves ── */
   const refreshClassStudents = async (classId: string) => {
@@ -155,7 +193,7 @@ export default function ClassesPage() {
 
     if (modalMode === 'create') {
       const { data, error } = await supabase.functions.invoke('classes-create', {
-        body: { title: payload.title, subject: payload.subject, subject_id: payload.subject_id },
+        body: { title: payload.title, subject: payload.subject, subject_id: payload.subject_id, school_year_id: yearFilter },
       });
       setSaving(false);
       if (error || !data?.item) { console.error(error ?? data); setError('Αποτυχία δημιουργίας τμήματος.'); return; }
@@ -204,6 +242,15 @@ export default function ClassesPage() {
     });
   }, [classes, search, subjects, levelNameById]);
 
+  const handleCloned = (created: ClassRow[]) => {
+    setClasses((prev) => [...created, ...prev]);
+    setStudentsByClass((prev) => {
+      const next = { ...prev };
+      created.forEach((c) => { next[c.id] = []; });
+      return next;
+    });
+  };
+
   const handleExportExcel = async () => {
     setExcelBusy(true); setExportError(null);
     try { await exportClassesToExcel(filteredClasses, subjects, levelNameById, studentsByClass); }
@@ -239,12 +286,23 @@ export default function ClassesPage() {
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2.5">
+          <StyledSelect
+            isDark={isDark} showChevron value={yearFilter} onChange={setYearFilter}
+            disabled={schoolYears.length === 0}
+            className={`h-9 w-full rounded-lg border pl-3 pr-8 text-xs outline-none ring-0 backdrop-blur transition focus:ring-1 focus:ring-[color:var(--color-accent)]/30 focus:border-[color:var(--color-accent)] sm:w-44 ${isDark ? 'border-slate-700/70 bg-slate-900/60 text-slate-100' : 'border-slate-200 bg-white text-slate-800'}`}
+            options={schoolYears.map((y) => ({ value: y.id, label: y.name }))}
+          />
           <div className="relative">
             <Search className={`pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
             <input className={`${inputCls} sm:w-52`} placeholder="Αναζήτηση τμήματος..." value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
-          <button type="button" onClick={openCreateModal}
-            className="btn-primary h-9 gap-2 px-4 font-semibold shadow-sm hover:brightness-110 active:scale-[0.98]">
+          <button type="button" onClick={() => setCloneModalOpen(true)} disabled={!yearFilter}
+            className={`btn h-9 gap-2 border px-4 font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${isDark ? 'border-slate-600/60 bg-slate-800/50 text-slate-200 hover:bg-slate-700/60' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'}`}>
+            <CopyPlus className="h-3.5 w-3.5" />
+            Αντιγραφή από έτος
+          </button>
+          <button type="button" onClick={openCreateModal} disabled={!yearFilter}
+            className="btn-primary h-9 gap-2 px-4 font-semibold shadow-sm hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50">
             <Plus className="h-3.5 w-3.5" />
             Προσθήκη Τμήματος
           </button>
@@ -290,10 +348,16 @@ export default function ClassesPage() {
           Το προφίλ σας δεν είναι συνδεδεμένο με σχολείο (school_id είναι null).
         </div>
       )}
+      {schoolId && !yearsLoading && schoolYears.length === 0 && (
+        <div className={`flex items-start gap-3 rounded-xl border px-4 py-3 text-xs backdrop-blur ${isDark ? 'border-amber-500/40 bg-amber-950/30 text-amber-200' : 'border-amber-200 bg-amber-50 text-amber-700'}`}>
+          <CalendarRange className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          Δεν έχετε ορίσει σχολικά έτη ακόμα. Ορίστε ένα σχολικό έτος στα στοιχεία σχολείου για να μπορείτε να δημιουργήσετε τμήματα.
+        </div>
+      )}
 
       {/* ── Card grid ── */}
       <ClassesGrid
-        loading={loading}
+        loading={loading || yearsLoading}
         classes={classes}
         filteredClasses={filteredClasses}
         subjects={subjects}
@@ -315,6 +379,16 @@ export default function ClassesPage() {
         classTitle={studentsModalClass?.title}
       />
       <ClassDeleteModal deleteTarget={deleteTarget} deleting={deleting} isDark={isDark} onCancel={() => setDeleteTarget(null)} onConfirm={handleConfirmDelete} />
+      <ClassesCloneModal
+        open={cloneModalOpen}
+        schoolId={schoolId}
+        schoolYears={schoolYears}
+        targetYearId={yearFilter}
+        existingClasses={classes}
+        isDark={isDark}
+        onClose={() => setCloneModalOpen(false)}
+        onCloned={handleCloned}
+      />
     </div>
   );
 }

@@ -5,6 +5,7 @@ export type ClassRow = {
   subject: string | null;
   subject_id: string | null;
   tutor_id: string | null;
+  school_year_id: string | null;
 };
 
 export type SubjectRow = {

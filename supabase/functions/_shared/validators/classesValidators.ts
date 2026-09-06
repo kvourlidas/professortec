@@ -8,6 +8,7 @@ export function validateCreateClassBody(body: any) {
   const title = body?.title?.trim?.();
   const subject = body?.subject ?? null;
   const subject_id = body?.subject_id ?? null;
+  const school_year_id = body?.school_year_id ?? null;
 
   if (!title) {
     throw new ValidationError("Missing title");
@@ -17,6 +18,7 @@ export function validateCreateClassBody(body: any) {
     title,
     subject,
     subject_id,
+    school_year_id,
   };
 }
 

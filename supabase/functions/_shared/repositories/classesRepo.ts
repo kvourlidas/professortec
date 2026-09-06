@@ -1,7 +1,21 @@
 import { NotFoundError } from "../errors.ts";
 import type { CreateClassInput, UpdateClassInput } from "../types/classes.ts";
 
+async function resolveCurrentSchoolYearId(supabase: any, schoolId: string): Promise<string | null> {
+  const today = new Date().toISOString().slice(0, 10);
+  const { data } = await supabase
+    .from("school_years")
+    .select("id")
+    .eq("school_id", schoolId)
+    .lte("start_date", today)
+    .gte("end_date", today)
+    .maybeSingle();
+  return data?.id ?? null;
+}
+
 export async function insertClass(supabase: any, input: CreateClassInput) {
+  const schoolYearId = input.school_year_id ?? (await resolveCurrentSchoolYearId(supabase, input.school_id));
+
   const { data, error } = await supabase
     .from("classes")
     .insert({
@@ -9,8 +23,9 @@ export async function insertClass(supabase: any, input: CreateClassInput) {
       title: input.title,
       subject: input.subject,
       subject_id: input.subject_id,
+      school_year_id: schoolYearId,
     })
-    .select("id, school_id, title, subject, subject_id, tutor_id")
+    .select("id, school_id, title, subject, subject_id, tutor_id, school_year_id")
     .maybeSingle();
 
   if (error || !data) {
